@@ -1,0 +1,8 @@
+[package]
+name = "keystone-cc-infra"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+keystone-cc-core = { path = "../keystone-cc-core" }
+bevy = "0.16.1"

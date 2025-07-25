@@ -1,0 +1,6 @@
+[workspace]
+members = [
+    "keystone-cc-core",
+    "keystone-cc-infra",
+    "keystone-cc-app",
+]

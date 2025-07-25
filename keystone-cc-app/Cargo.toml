@@ -1,0 +1,12 @@
+[package]
+name = "keystone-cc-app"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+keystone-cc-core = { path = "../keystone-cc-core" }
+keystone-cc-infra = { path = "../keystone-cc-infra" }
+bevy = "0.16.1"
+
+[package.metadata.bundle.mac]
+identifier = "com.yourorg.keystonecallofcats"
