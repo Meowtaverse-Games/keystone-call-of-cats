@@ -5,6 +5,9 @@ pub struct Player {
 
 impl Player {
     pub fn new(name: &str) -> Self {
-        Self { name: name.to_string(), health: 100 }
+        Self {
+            name: name.to_string(),
+            health: 100,
+        }
     }
 }

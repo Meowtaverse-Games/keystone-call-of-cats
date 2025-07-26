@@ -1,24 +1,28 @@
-use bevy::prelude::*;
 use bevy::diagnostic::FrameCount;
+use bevy::prelude::*;
 
 #[derive(States, Debug, Clone, Eq, PartialEq, Hash, Default)]
 enum VisibilityState {
-    #[default] Hidden,
+    #[default]
+    Hidden,
     Shown,
 }
 
 fn main() {
     App::new()
-        .add_plugins(
-            DefaultPlugins.set(WindowPlugin {primary_window: Some(Window {
+        .add_plugins(DefaultPlugins.set(WindowPlugin {
+            primary_window: Some(Window {
                 visible: false,
                 ..default()
             }),
             ..default()
-            }))
+        }))
         .init_state::<VisibilityState>()
         .add_plugins(boundary_plugin::BoundaryPlugin)
-        .add_systems(Update, make_visible.run_if(in_state(VisibilityState::Hidden)))
+        .add_systems(
+            Update,
+            make_visible.run_if(in_state(VisibilityState::Hidden)),
+        )
         .run();
 }
 
@@ -35,23 +39,26 @@ fn make_visible(
 
 mod boundary_plugin {
     use bevy::prelude::*;
-    use keystone_cc_infra::*;
     use keystone_cc_core::boundary::ScoreRepo;
+    use keystone_cc_infra::*;
 
     pub struct BoundaryPlugin;
 
     impl Plugin for BoundaryPlugin {
         fn build(&self, app: &mut App) {
-            app
-                .init_resource::<Events<BevyGameEvent>>()
+            app.init_resource::<Events<BevyGameEvent>>()
                 .add_event::<BevyGameEvent>()
                 .insert_resource(FileScoreRepo)
-                .add_systems(Startup, setup_score_repo);
+                .add_systems(Startup, setup_score_repo)
+                .add_systems(Update, load_score);
         }
     }
 
-    fn setup_score_repo() {
-        let repo = FileScoreRepo;
+    fn setup_score_repo(repo: Res<FileScoreRepo>) {
         repo.save(42);
+    }
+
+    fn load_score(repo: Res<FileScoreRepo>) {
+        println!("{}", repo.load());
     }
 }
