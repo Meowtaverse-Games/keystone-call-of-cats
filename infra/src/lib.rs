@@ -4,3 +4,9 @@ pub use file_score_repo::FileScoreRepo;
 mod event_publisher;
 pub use event_publisher::BevyEventPublisher;
 pub use event_publisher::BevyGameEvent;
+
+pub mod game_state;
+pub use game_state::GameState;
+
+pub mod visibility;
+pub use visibility::VisibilityPlugin;

@@ -1,0 +1,9 @@
+[package]
+name = "keystone-cc-scenes"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+keystone-cc-core = { path = "../core" }
+keystone-cc-infra = { path = "../infra" }
+bevy = { workspace = true }

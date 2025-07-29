@@ -2509,12 +2509,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "keystone-cc-app"
+name = "keystone-cc"
 version = "0.1.0"
 dependencies = [
  "bevy",
  "keystone-cc-core",
  "keystone-cc-infra",
+ "keystone-cc-scenes",
 ]
 
 [[package]]
@@ -2527,6 +2528,15 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "keystone-cc-core",
+]
+
+[[package]]
+name = "keystone-cc-scenes"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "keystone-cc-core",
+ "keystone-cc-infra",
 ]
 
 [[package]]

@@ -4,5 +4,5 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-keystone-cc-core = { path = "../keystone-cc-core" }
-bevy = "0.16.1"
+keystone-cc-core = { path = "../core" }
+bevy = { workspace = true }
