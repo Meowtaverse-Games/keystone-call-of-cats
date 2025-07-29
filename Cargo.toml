@@ -1,6 +1,10 @@
 [workspace]
 members = [
-    "keystone-cc-core",
-    "keystone-cc-infra",
-    "keystone-cc-app",
+    "core",
+    "infra",
+    "scenes",
+    "app",
 ]
+
+[workspace.dependencies]
+bevy = "0.16.1"

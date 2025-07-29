@@ -1,0 +1,13 @@
+[package]
+name = "keystone-cc"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+keystone-cc-core = { path = "../core" }
+keystone-cc-infra = { path = "../infra" }
+keystone-cc-scenes = { path = "../scenes" }
+bevy = { workspace = true }
+
+[package.metadata.bundle.mac]
+identifier = "com.meowtaverse-games.com.keystone-cc"
