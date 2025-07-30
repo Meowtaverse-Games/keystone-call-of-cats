@@ -1,18 +1,14 @@
-mod title;
-//pub mod gameplay;
-//pub mod gameover;
+mod boot;
 
 use bevy::prelude::*;
-use title::TitlePlugin;
-// use gameplay::GameplayPlugin;
-// use gameover::GameOverPlugin;
+use boot::BootPlugin;
 
 pub struct ScenesPlugin;
 
 impl Plugin for ScenesPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((
-            TitlePlugin,
+            BootPlugin,
         ));
     }
 }

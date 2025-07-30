@@ -4,14 +4,13 @@ use keystone_cc_infra::GameState;
 mod components;
 mod systems;
 
-pub struct TitlePlugin;
-impl Plugin for TitlePlugin {
+pub struct BootPlugin;
+impl Plugin for BootPlugin {
     fn build(&self, app: &mut App) {
         app
             .insert_resource(ClearColor(Color::BLACK))
-            .add_systems(OnEnter(GameState::Title), systems::setup_title)
-            // .add_systems(Update, systems::title_input.run_if(in_state(GameState::Title)))
-            .add_systems(OnExit(GameState::Title), systems::cleanup_title);
+            .add_systems(OnEnter(GameState::Boot), systems::setup)
+            .add_systems(OnExit(GameState::Boot), systems::cleanup);
     }
 }
 
@@ -40,21 +39,3 @@ mod boundary_plugin {
         println!("{}", repo.load());
     }
 }
-
-// fn setup_title(mut commands: Commands, asset_server: Res<AssetServer>) {
-//     commands.spawn((
-//         Text::new("title"),
-//         TextFont {
-//             font_size: 40.0,
-//             font: asset_server.load("SawarabiGothic-Regular.ttf"),
-//             ..default()
-//         },
-//         TextColor(Color::WHITE),
-//     ));
-// }
-
-// fn title_input(keys: Res<ButtonInput<KeyCode>>, mut next_state: ResMut<NextState<GameState>>) {
-//     if keys.just_pressed(KeyCode::Enter) {
-//         next_state.set(GameState::Playing);
-//     }
-// }
