@@ -7,8 +7,6 @@ pub struct ScenesPlugin;
 
 impl Plugin for ScenesPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins((
-            BootPlugin,
-        ));
+        app.add_plugins((BootPlugin,));
     }
 }

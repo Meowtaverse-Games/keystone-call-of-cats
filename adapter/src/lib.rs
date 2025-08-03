@@ -15,4 +15,4 @@ pub mod camera;
 pub use camera::CameraPlugin;
 
 pub mod assets_loader;
-pub use assets_loader::{AssetsLoaderPlugin, AssetGroup};
+// pub use assets_loader::{AssetsLoaderPlugin, AssetGroup};

@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use keystone_cc_infra::GameState;
+use keystone_cc_adapter::*;
 
 mod components;
 mod systems;
@@ -7,8 +7,7 @@ mod systems;
 pub struct BootPlugin;
 impl Plugin for BootPlugin {
     fn build(&self, app: &mut App) {
-        app
-            .insert_resource(ClearColor(Color::BLACK))
+        app.insert_resource(ClearColor(Color::BLACK))
             .add_systems(OnEnter(GameState::Boot), systems::setup)
             .add_systems(OnExit(GameState::Boot), systems::cleanup);
     }
@@ -16,8 +15,8 @@ impl Plugin for BootPlugin {
 
 mod boundary_plugin {
     use bevy::prelude::*;
+    use keystone_cc_adapter::*;
     use keystone_cc_core::boundary::ScoreRepo;
-    use keystone_cc_infra::*;
 
     pub struct BoundaryPlugin;
 

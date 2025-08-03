@@ -1,3 +1,5 @@
+
+
 fn check_and_fire_event(
     mut events: EventWriter<AssetsLoadedEvent>,
     loading: Res<LoadingGroups>,
