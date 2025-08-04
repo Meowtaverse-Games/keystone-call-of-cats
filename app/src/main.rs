@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 
+use keystone_cc_adapter::assets_loader::AssetsLoaderPlugin;
 use keystone_cc_adapter::VisibilityPlugin;
 use keystone_cc_adapter::{game_state::GameState, CameraPlugin};
 use keystone_cc_scenes::ScenesPlugin;
@@ -15,6 +16,7 @@ fn main() {
         }))
         .add_plugins(VisibilityPlugin)
         .add_plugins(CameraPlugin)
+        .add_plugins(AssetsLoaderPlugin)
         .add_plugins(ScenesPlugin)
         .init_state::<GameState>()
         .run();
