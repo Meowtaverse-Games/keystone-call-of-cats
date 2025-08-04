@@ -53,7 +53,10 @@ impl Plugin for AssetsLoaderPlugin {
             .init_state::<AssetsLoaderState>()
             .add_event::<AssetsLoadedEvent>()
             .add_systems(OnEnter(AssetsLoaderState::Loading), load_splash_assets)
-            .add_systems(Update, check_and_fire_events.run_if(in_state(AssetsLoaderState::Loading)));
+            .add_systems(
+                Update,
+                check_and_fire_events.run_if(in_state(AssetsLoaderState::Loading)),
+            );
     }
 }
 

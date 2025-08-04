@@ -2,8 +2,8 @@ use std::time::Duration;
 
 use bevy::prelude::*;
 
-use keystone_cc_adapter::*;
 use keystone_cc_adapter::assets_loader::AssetsLoadedEvent;
+use keystone_cc_adapter::*;
 
 use super::components::BootUI;
 #[derive(Resource, Default)]

@@ -3,7 +3,9 @@ use bevy::prelude::*;
 
 pub fn setup(
     mut clear_color: ResMut<ClearColor>,
-    mut commands: Commands, asset_server: Res<AssetServer>) {
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+) {
     let logo_handle: Handle<Image> = asset_server.load("images/logo_with_black.png");
 
     clear_color.0 = Color::WHITE;
