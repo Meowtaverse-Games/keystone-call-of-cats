@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy::asset::{AssetPlugin};
 
 use keystone_cc_adapter::assets_loader::AssetsLoaderPlugin;
 use keystone_cc_adapter::VisibilityPlugin;
@@ -7,8 +8,13 @@ use keystone_cc_scenes::ScenesPlugin;
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins.set(WindowPlugin {
+        .add_plugins(DefaultPlugins.set(AssetPlugin {
+            file_path: "assets".to_string(),
+            watch_for_changes_override: Some(true),
+            ..default()
+        }).set(WindowPlugin {
             primary_window: Some(Window {
+                title: "keystone: call of cats".to_string(),
                 visible: false,
                 ..default()
             }),

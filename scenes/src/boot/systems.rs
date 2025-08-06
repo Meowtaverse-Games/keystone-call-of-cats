@@ -56,8 +56,6 @@ pub fn update(
         info!("Boot timer finished");
         next_state.set(GameState::Title);
     }
-
-    info!("Update system running in Boot state");
 }
 
 pub fn cleanup(mut commands: Commands, query: Query<Entity, With<BootUI>>) {
