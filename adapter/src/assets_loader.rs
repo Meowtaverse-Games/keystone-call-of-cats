@@ -29,12 +29,13 @@ impl Assets {
     }
 
     pub fn is_loaded(&self, asset_server: &Res<AssetServer>) -> bool {
-        self.images.handles.values().any(|handle| {
-            match asset_server.get_load_state(handle) {
+        self.images
+            .handles
+            .values()
+            .any(|handle| match asset_server.get_load_state(handle) {
                 Some(LoadState::Loaded) => true,
                 _ => false,
-            }
-        })
+            })
     }
 }
 
