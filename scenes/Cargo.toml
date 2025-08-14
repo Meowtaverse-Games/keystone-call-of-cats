@@ -6,4 +6,5 @@ edition = "2024"
 [dependencies]
 keystone-cc-core = { path = "../core" }
 keystone-cc-adapter = { path = "../adapter" }
+keystone-cc-plugins = { path = "../plugins" }
 bevy = { workspace = true }

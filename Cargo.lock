@@ -379,6 +379,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy_aspect_ratio_mask"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "423b3a09e0a15da0e70623db9ab2e89a09d1a0c7cfb440b14a6c0cb2ad61fcba"
+dependencies = [
+ "bevy",
+]
+
+[[package]]
 name = "bevy_asset"
 version = "0.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2544,6 +2553,7 @@ dependencies = [
  "bevy",
  "keystone-cc-adapter",
  "keystone-cc-core",
+ "keystone-cc-plugins",
  "keystone-cc-scenes",
 ]
 
@@ -2552,7 +2562,7 @@ name = "keystone-cc-adapter"
 version = "0.1.0"
 dependencies = [
  "bevy",
- "bevy_asset_loader",
+ "bevy_ecs",
  "keystone-cc-core",
 ]
 
@@ -2561,12 +2571,23 @@ name = "keystone-cc-core"
 version = "0.1.0"
 
 [[package]]
+name = "keystone-cc-plugins"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "bevy_aspect_ratio_mask",
+ "bevy_asset_loader",
+ "keystone-cc-core",
+]
+
+[[package]]
 name = "keystone-cc-scenes"
 version = "0.1.0"
 dependencies = [
  "bevy",
  "keystone-cc-adapter",
  "keystone-cc-core",
+ "keystone-cc-plugins",
 ]
 
 [[package]]
@@ -3354,10 +3375,6 @@ name = "pkg-config"
 version = "0.3.32"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7edddbd0b52d732b21ad9a5fab5c704c14cd949e5e9a1ec5929a24fded1b904c"
-
-[[package]]
-name = "plugins"
-version = "0.1.0"
 
 [[package]]
 name = "png"

@@ -10,9 +10,3 @@ pub use game_state::GameState;
 
 pub mod visibility;
 pub use visibility::VisibilityPlugin;
-
-pub mod camera;
-pub use camera::CameraPlugin;
-
-pub mod assets_loader;
-// pub use assets_loader::{AssetsLoaderPlugin, AssetGroup};
