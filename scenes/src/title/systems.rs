@@ -39,15 +39,13 @@ pub fn cleanup(mut commands: Commands, query: Query<Entity, With<TitleUI>>) {
 pub fn draw(mut commands: Commands, ui_root: Res<UIRoot>) {
     commands.entity(ui_root.0).with_children(|parent| {
         parent
-            .spawn((
-                Node {
-                    width: Val::Percent(100.0),
-                    top: Val::Percent(10.0),
-                    position_type: PositionType::Absolute,
-                    justify_content: JustifyContent::Center,
-                    ..default()
-                },
-            ))
+            .spawn((Node {
+                width: Val::Percent(100.0),
+                top: Val::Percent(10.0),
+                position_type: PositionType::Absolute,
+                justify_content: JustifyContent::Center,
+                ..default()
+            },))
             .with_children(|p| {
                 p.spawn(Text::new("keystone"));
             });
