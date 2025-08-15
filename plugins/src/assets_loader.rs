@@ -58,7 +58,6 @@ fn load_splash_assets(mut assets: ResMut<Assets>, asset_server: Res<AssetServer>
     assets.load_image(asset_server, "logo", "images/logo_with_black.png");
 }
 
-/// 毎フレーム呼ばれるシステム: 読み込み完了を検知してイベント発行
 fn check_and_fire_events(
     assets: Res<Assets>,
     asset_server: Res<AssetServer>,
