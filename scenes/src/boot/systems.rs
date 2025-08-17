@@ -16,11 +16,9 @@ pub struct BootTimer {
 pub fn setup(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
-    mut load_asset_group_writer: EventWriter<LoadAssetGroup>,
+    mut load_writer: EventWriter<LoadAssetGroup>,
 ) {
-    load_asset_group_writer.write(DEFAULT_GROUP);
-
-    let logo_handle: Handle<Image> = asset_server.load("images/logo_with_black.png");
+    load_writer.write(DEFAULT_GROUP);
 
     let fixed_width = 180.0;
     let custom_size = Vec2::new(fixed_width, fixed_width);
@@ -29,7 +27,7 @@ pub fn setup(
         .spawn((Node { ..default() }, BootUI))
         .with_children(|p| {
             p.spawn(Sprite {
-                image: logo_handle.clone(),
+                image: asset_server.load("images/logo_with_black.png"),
                 custom_size: Some(custom_size),
                 ..Default::default()
             });

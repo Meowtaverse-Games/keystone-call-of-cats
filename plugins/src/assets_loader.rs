@@ -1,6 +1,8 @@
 use bevy::asset::{AssetServer, Handle, LoadState};
 use bevy::prelude::*;
+use bevy::time::common_conditions::on_timer;
 use std::collections::HashMap;
+use std::time::Duration;
 
 #[derive(Event, Clone, Copy)]
 pub struct LoadAssetGroup {
@@ -43,7 +45,13 @@ impl Plugin for AssetLoaderPlugin {
             .init_resource::<PendingGroups>()
             .add_event::<LoadAssetGroup>()
             .add_event::<AssetGroupLoaded>()
-            .add_systems(Update, (handle_load_requests, poll_pending_groups));
+            .add_systems(Update, (handle_load_requests))
+            .add_systems(
+                Update,
+                poll_pending_groups
+                    .run_if(pending_not_empty)
+                    .run_if(on_timer(Duration::from_millis(50))),
+            );
     }
 }
 
@@ -71,19 +79,26 @@ fn handle_load_requests(
     }
 }
 
+fn pending_not_empty(pending: Res<PendingGroups>) -> bool {
+    !pending.inner.is_empty()
+}
+
 fn poll_pending_groups(
     server: Res<AssetServer>,
     mut pending: ResMut<PendingGroups>,
     mut done_writer: EventWriter<AssetGroupLoaded>,
 ) {
     let keys: Vec<&'static str> = pending.inner.keys().copied().collect();
-    for group in keys {
-        let all_loaded = pending.inner[&group]
-            .iter()
-            .all(|u| matches!(server.get_load_state(u.id()), Some(LoadState::Loaded)));
-        if all_loaded {
-            pending.inner.remove(&group);
-            done_writer.write(AssetGroupLoaded(group));
+    info!("in poll");
+
+    pending.inner.retain(|group, handles| {
+        handles.retain(|h| !matches!(server.get_load_state(h.id()), Some(LoadState::Loaded)));
+
+        if handles.is_empty() {
+            done_writer.write(AssetGroupLoaded(*group));
+            false
+        } else {
+            true
         }
-    }
+    });
 }
