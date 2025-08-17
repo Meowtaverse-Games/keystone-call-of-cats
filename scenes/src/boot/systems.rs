@@ -13,11 +13,12 @@ pub struct BootTimer {
     timer: Timer,
 }
 
-pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>,
-    mut writer: EventWriter<LoadAssetGroup> ) {
-    
+pub fn setup(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut writer: EventWriter<LoadAssetGroup>,
+) {
     writer.write(DEFAULT_GROUP);
-
 
     let logo_handle: Handle<Image> = asset_server.load("images/logo_with_black.png");
 
