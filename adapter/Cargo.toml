@@ -1,9 +1,9 @@
 [package]
 name = "keystone-cc-adapter"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 keystone-cc-core = { path = "../core" }
 bevy = { workspace = true }
-bevy_asset_loader = "0.23.0"
+bevy_ecs = "0.16.1"
