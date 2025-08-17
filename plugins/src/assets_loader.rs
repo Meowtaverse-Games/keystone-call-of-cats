@@ -7,8 +7,8 @@ use std::time::Duration;
 #[derive(Event, Clone, Copy)]
 pub struct LoadAssetGroup {
     pub group: &'static str,
-    pub images: &'static [(&'static u32, &'static str)],
-    pub fonts: &'static [(&'static u32, &'static str)],
+    pub images: &'static [(u32, &'static str)],
+    pub fonts: &'static [(u32, &'static str)],
 }
 
 #[derive(Event, Clone, Copy)]
@@ -16,20 +16,20 @@ pub struct AssetGroupLoaded(pub &'static str);
 
 #[derive(Resource, Default)]
 pub struct AssetStore {
-    images: HashMap<&'static u32, Handle<Image>>,
-    fonts: HashMap<&'static u32, Handle<Font>>,
-    sounds: HashMap<&'static u32, Handle<AudioSource>>,
+    images: HashMap<u32, Handle<Image>>,
+    fonts: HashMap<u32, Handle<Font>>,
+    sounds: HashMap<u32, Handle<AudioSource>>,
 }
 
 impl AssetStore {
-    pub fn image(&self, key: &'static u32) -> Option<Handle<Image>> {
-        self.images.get(key).cloned()
+    pub fn image<K: Into<u32>>(&self, key: K) -> Option<Handle<Image>> {
+        self.images.get(&key.into()).cloned()
     }
-    pub fn font(&self, key: &'static u32) -> Option<Handle<Font>> {
-        self.fonts.get(key).cloned()
+    pub fn font<K: Into<u32>>(&self, key: K) -> Option<Handle<Font>> {
+        self.fonts.get(&key.into()).cloned()
     }
-    pub fn sound(&self, key: &'static u32) -> Option<Handle<AudioSource>> {
-        self.sounds.get(key).cloned()
+    pub fn sound<K: Into<u32>>(&self, key: K) -> Option<Handle<AudioSource>> {
+        self.sounds.get(&key.into()).cloned()
     }
 }
 
@@ -45,7 +45,7 @@ impl Plugin for AssetLoaderPlugin {
             .init_resource::<PendingGroups>()
             .add_event::<LoadAssetGroup>()
             .add_event::<AssetGroupLoaded>()
-            .add_systems(Update, (handle_load_requests))
+            .add_systems(Update, handle_load_requests)
             .add_systems(
                 Update,
                 poll_pending_groups
@@ -67,12 +67,12 @@ fn handle_load_requests(
         for (key, path) in req.images {
             let h: Handle<Image> = server.load(*path);
             list.push(h.clone().untyped());
-            store.images.insert(key, h);
+            store.images.insert(*key, h);
         }
         for (key, path) in req.fonts {
             let h: Handle<Font> = server.load(*path);
             list.push(h.clone().untyped());
-            store.fonts.insert(key, h);
+            store.fonts.insert(*key, h);
         }
 
         pending.inner.insert(req.group, list);
@@ -88,7 +88,6 @@ fn poll_pending_groups(
     mut pending: ResMut<PendingGroups>,
     mut done_writer: EventWriter<AssetGroupLoaded>,
 ) {
-    let keys: Vec<&'static str> = pending.inner.keys().copied().collect();
     info!("in poll");
 
     pending.inner.retain(|group, handles| {

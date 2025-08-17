@@ -1,12 +1,13 @@
 use bevy::prelude::*;
 
+use crate::assets::FontKey;
 use super::components::TitleUI;
-use keystone_cc_plugins::UIRoot;
+use keystone_cc_plugins::{assets_loader::AssetStore, UIRoot};
 
 pub fn setup(
     mut commands: Commands,
     ui_root: Res<UIRoot>,
-    asset_server: Res<AssetServer>,
+    asset_store: Res<AssetStore>,
     mut clear_color: ResMut<ClearColor>,
 ) {
     clear_color.0 = Color::WHITE;
@@ -27,7 +28,7 @@ pub fn setup(
                 p.spawn((
                     Text::new("keystone"),
                     TextFont {
-                        font: asset_server.load("fonts/PixelMplus12-Regular.ttf"),
+                        font: asset_store.font(FontKey::Title).unwrap(),
                         font_size: 32.0,
                         ..default()
                     },
