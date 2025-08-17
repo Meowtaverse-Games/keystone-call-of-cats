@@ -1,9 +1,9 @@
-use bevy::asset::AssetPlugin;
 use bevy::prelude::*;
+use bevy::asset::AssetPlugin;
 
 use keystone_cc_adapter::{VisibilityPlugin, game_state::GameState};
 use keystone_cc_plugins::DesignResolutionPlugin;
-use keystone_cc_plugins::assets_loader::AssetsLoaderPlugin;
+use keystone_cc_plugins::assets_loader::AssetLoaderPlugin;
 use keystone_cc_scenes::ScenesPlugin;
 
 fn main() {
@@ -26,8 +26,7 @@ fn main() {
         )
         .add_plugins(VisibilityPlugin)
         .add_plugins(DesignResolutionPlugin::new(1600.0, 1200.0).fix_min(800.0, 600.0))
-        // .add_plugins(CameraPlugin)
-        .add_plugins(AssetsLoaderPlugin)
+        .add_plugins(AssetLoaderPlugin)
         .add_plugins(ScenesPlugin)
         .init_state::<GameState>()
         .run();

@@ -3,7 +3,9 @@ use std::time::Duration;
 use bevy::prelude::*;
 
 use keystone_cc_adapter::*;
-use keystone_cc_plugins::assets_loader::AssetsLoadedEvent;
+use keystone_cc_plugins::assets_loader::*;
+
+use crate::assets::DEFAULT_GROUP;
 
 use super::components::BootUI;
 #[derive(Resource, Default)]
@@ -11,7 +13,12 @@ pub struct BootTimer {
     timer: Timer,
 }
 
-pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
+pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>,
+    mut writer: EventWriter<LoadAssetGroup> ) {
+    
+    writer.write(DEFAULT_GROUP);
+
+
     let logo_handle: Handle<Image> = asset_server.load("images/logo_with_black.png");
 
     let fixed_width = 180.0;
@@ -40,7 +47,7 @@ pub fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 pub struct Loaded(bool);
 
 pub fn update(
-    mut reader: EventReader<AssetsLoadedEvent>,
+    mut reader: EventReader<AssetGroupLoaded>,
     mut loaded: Local<Loaded>,
     mut boot_timer: ResMut<BootTimer>,
     time: Res<Time>,
@@ -52,7 +59,7 @@ pub fn update(
     }
 
     boot_timer.timer.tick(time.delta());
-    if boot_timer.timer.finished() {
+    if boot_timer.timer.finished() && loaded.0 {
         info!("Boot timer finished");
         next_state.set(GameState::Title);
     }

@@ -2,71 +2,88 @@ use bevy::asset::{AssetServer, Handle, LoadState};
 use bevy::prelude::*;
 use std::collections::HashMap;
 
-#[derive(States, Debug, Clone, Eq, PartialEq, Hash, Default)]
-pub enum AssetsLoaderState {
-    #[default]
-    Loading,
-    Done,
+#[derive(Event, Clone, Copy)]
+pub struct LoadAssetGroup {
+    pub group: &'static str,
+    pub images: &'static [(&'static u32, &'static str)],
+    pub fonts: &'static [(&'static u32, &'static str)],
 }
 
-#[derive(Event)]
-pub struct AssetsLoadedEvent;
+#[derive(Event, Clone, Copy)]
+pub struct AssetGroupLoaded(pub &'static str);
 
-#[derive(Default)]
-pub struct ImageAssets {
-    pub handles: HashMap<String, Handle<Image>>,
+#[derive(Resource, Default)]
+pub struct AssetStore {
+    images: HashMap<&'static u32, Handle<Image>>,
+    fonts: HashMap<&'static u32, Handle<Font>>,
+    sounds: HashMap<&'static u32, Handle<AudioSource>>,
+}
+
+impl AssetStore {
+    pub fn image(&self, key: &'static u32) -> Option<Handle<Image>> {
+        self.images.get(key).cloned()
+    }
+    pub fn font(&self, key: &'static u32) -> Option<Handle<Font>> {
+        self.fonts.get(key).cloned()
+    }
+    pub fn sound(&self, key: &'static u32) -> Option<Handle<AudioSource>> {
+        self.sounds.get(key).cloned()
+    }
 }
 
 #[derive(Resource, Default)]
-pub struct Assets {
-    images: ImageAssets,
+struct PendingGroups {
+    inner: HashMap<&'static str, Vec<UntypedHandle>>,
 }
 
-impl Assets {
-    pub fn load_image(&mut self, asset_server: Res<AssetServer>, key: &str, path: &str) {
-        let handle: Handle<Image> = asset_server.load(path);
-        self.images.handles.insert(key.to_string(), handle);
-    }
-
-    pub fn is_loaded(&self, asset_server: &Res<AssetServer>) -> bool {
-        self.images
-            .handles
-            .values()
-            .any(|handle| match asset_server.get_load_state(handle) {
-                Some(LoadState::Loaded) => true,
-                _ => false,
-            })
-    }
-}
-
-pub struct AssetsLoaderPlugin;
-
-impl Plugin for AssetsLoaderPlugin {
+pub struct AssetLoaderPlugin;
+impl Plugin for AssetLoaderPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<Assets>()
-            .init_state::<AssetsLoaderState>()
-            .add_event::<AssetsLoadedEvent>()
-            .add_systems(OnEnter(AssetsLoaderState::Loading), load_splash_assets)
-            .add_systems(
-                Update,
-                check_and_fire_events.run_if(in_state(AssetsLoaderState::Loading)),
-            );
+        app.init_resource::<AssetStore>()
+            .init_resource::<PendingGroups>()
+            .add_event::<LoadAssetGroup>()
+            .add_event::<AssetGroupLoaded>()
+            .add_systems(Update, (handle_load_requests, poll_pending_groups));
     }
 }
 
-fn load_splash_assets(mut assets: ResMut<Assets>, asset_server: Res<AssetServer>) {
-    assets.load_image(asset_server, "logo", "images/logo_with_black.png");
+fn handle_load_requests(
+    mut ev: EventReader<LoadAssetGroup>,
+    server: Res<AssetServer>,
+    mut store: ResMut<AssetStore>,
+    mut pending: ResMut<PendingGroups>,
+) {
+    for req in ev.read().copied() {
+        let mut list: Vec<UntypedHandle> = Vec::new();
+
+        for (key, path) in req.images {
+            let h: Handle<Image> = server.load(*path);
+            list.push(h.clone().untyped());
+            store.images.insert(key, h);
+        }
+        for (key, path) in req.fonts {
+            let h: Handle<Font> = server.load(*path);
+            list.push(h.clone().untyped());
+            store.fonts.insert(key, h);
+        }
+
+        pending.inner.insert(req.group, list);
+    }
 }
 
-fn check_and_fire_events(
-    assets: Res<Assets>,
-    asset_server: Res<AssetServer>,
-    mut assets_loaded_ev: EventWriter<AssetsLoadedEvent>,
-    mut assets_loader_state: ResMut<NextState<AssetsLoaderState>>,
+fn poll_pending_groups(
+    server: Res<AssetServer>,
+    mut pending: ResMut<PendingGroups>,
+    mut done_writer: EventWriter<AssetGroupLoaded>,
 ) {
-    if assets.is_loaded(&asset_server) {
-        print!("Assets loaded successfully.");
-        assets_loaded_ev.write(AssetsLoadedEvent);
-        assets_loader_state.set(AssetsLoaderState::Done);
+    let keys: Vec<&'static str> = pending.inner.keys().copied().collect();
+    for group in keys {
+        let all_loaded = pending.inner[&group]
+            .iter()
+            .all(|u| matches!(server.get_load_state(u.id()), Some(LoadState::Loaded)));
+        if all_loaded {
+            pending.inner.remove(&group);
+            done_writer.write(AssetGroupLoaded(group));
+        }
     }
 }
