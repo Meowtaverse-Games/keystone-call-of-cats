@@ -7,7 +7,9 @@ pub enum ImageKey {
 }
 
 impl From<ImageKey> for u32 {
-    fn from(v: ImageKey) -> u32 { v as u32 }
+    fn from(v: ImageKey) -> u32 {
+        v as u32
+    }
 }
 
 #[repr(u32)]
@@ -18,14 +20,14 @@ pub enum FontKey {
 }
 
 impl From<FontKey> for u32 {
-    fn from(v: FontKey) -> u32 { v as u32 }
+    fn from(v: FontKey) -> u32 {
+        v as u32
+    }
 }
 
 pub const DEFAULT_GROUP: LoadAssetGroup = LoadAssetGroup {
     group: "default",
-    images: &[
-        (ImageKey::Logo as u32, "images/logo_with_black.png"),
-    ],
+    images: &[(ImageKey::Logo as u32, "images/logo_with_black.png")],
     fonts: &[
         (FontKey::Default as u32, "fonts/PixelMplus12-Regular.ttf"),
         (FontKey::Title as u32, "fonts/Quicky Story.ttf"),

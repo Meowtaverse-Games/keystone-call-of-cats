@@ -1,8 +1,8 @@
 use bevy::prelude::*;
 
-use crate::assets::FontKey;
 use super::components::TitleUI;
-use keystone_cc_plugins::{assets_loader::AssetStore, UIRoot};
+use crate::assets::FontKey;
+use keystone_cc_plugins::{UIRoot, assets_loader::AssetStore};
 
 pub fn setup(
     mut commands: Commands,
