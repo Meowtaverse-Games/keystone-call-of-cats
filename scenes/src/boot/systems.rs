@@ -16,28 +16,24 @@ pub struct BootTimer {
 pub fn setup(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
-    mut writer: EventWriter<LoadAssetGroup>,
+    mut load_asset_group_writer: EventWriter<LoadAssetGroup>,
 ) {
-    writer.write(DEFAULT_GROUP);
+    load_asset_group_writer.write(DEFAULT_GROUP);
 
     let logo_handle: Handle<Image> = asset_server.load("images/logo_with_black.png");
 
     let fixed_width = 180.0;
-    let aspect = {
-        let w = 250.0;
-        let h = 250.0;
-        h / w
-    };
-    let custom_size = Vec2::new(fixed_width, fixed_width * aspect);
+    let custom_size = Vec2::new(fixed_width, fixed_width);
 
-    commands.spawn((
-        Sprite {
-            image: logo_handle.clone(),
-            custom_size: Some(custom_size),
-            ..Default::default()
-        },
-        BootUI,
-    ));
+    commands
+        .spawn((Node { ..default() }, BootUI))
+        .with_children(|p| {
+            p.spawn(Sprite {
+                image: logo_handle.clone(),
+                custom_size: Some(custom_size),
+                ..Default::default()
+            });
+        });
 
     commands.insert_resource(BootTimer {
         timer: Timer::new(Duration::from_secs(3), TimerMode::Once),
