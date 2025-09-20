@@ -1,3 +1,3 @@
-[submodule "assets"]
-	path = assets
+[submodule "ext-assets"]
+	path = ext-assets
 	url = https://github.com/Meotaverse-Games/keystone-call-of-cats-assets.git
