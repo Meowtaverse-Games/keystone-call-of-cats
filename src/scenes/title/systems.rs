@@ -2,8 +2,8 @@ use bevy::color::palettes::css::*;
 use bevy::prelude::*;
 
 use super::components::TitleUI;
-use crate::assets::FontKey;
-use keystone_cc_plugins::{UIRoot, assets_loader::AssetStore};
+use crate::plugins::{UIRoot, assets_loader::AssetStore};
+use crate::scenes::assets::FontKey;
 
 pub fn setup(
     mut commands: Commands,

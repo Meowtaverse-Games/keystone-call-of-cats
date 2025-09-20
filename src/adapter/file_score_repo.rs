@@ -1,5 +1,6 @@
 use bevy::prelude::Resource;
-use keystone_cc_core::boundary::ScoreRepo;
+
+use crate::core::boundary::ScoreRepo;
 
 #[derive(Resource)]
 pub struct FileScoreRepo;

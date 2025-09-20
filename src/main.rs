@@ -1,10 +1,15 @@
+mod adapter;
+mod core;
+mod plugins;
+mod scenes;
+
 use bevy::asset::AssetPlugin;
 use bevy::prelude::*;
 
-use keystone_cc_adapter::{VisibilityPlugin, game_state::GameState};
-use keystone_cc_plugins::DesignResolutionPlugin;
-use keystone_cc_plugins::assets_loader::AssetLoaderPlugin;
-use keystone_cc_scenes::ScenesPlugin;
+use crate::adapter::{VisibilityPlugin, game_state::GameState};
+use crate::plugins::DesignResolutionPlugin;
+use crate::plugins::assets_loader::AssetLoaderPlugin;
+use crate::scenes::ScenesPlugin;
 
 fn main() {
     App::new()

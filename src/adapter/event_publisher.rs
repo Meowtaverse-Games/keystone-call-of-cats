@@ -1,5 +1,6 @@
 use bevy::prelude::*;
-use keystone_cc_core::boundary::{EventPublisher, GameEvent};
+
+use crate::core::boundary::{EventPublisher, GameEvent};
 
 #[derive(Event)]
 pub struct BevyGameEvent(pub GameEvent);
