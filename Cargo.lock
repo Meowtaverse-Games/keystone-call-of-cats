@@ -2880,6 +2880,7 @@ dependencies = [
  "bevy_asset_loader",
  "bevy_ecs",
  "bevy_egui",
+ "bevy_render",
 ]
 
 [[package]]
