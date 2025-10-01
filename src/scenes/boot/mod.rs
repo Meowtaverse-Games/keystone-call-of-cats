@@ -1,5 +1,6 @@
 use bevy::prelude::*;
-use keystone_cc_adapter::*;
+
+use crate::adapter::*;
 
 mod components;
 mod systems;

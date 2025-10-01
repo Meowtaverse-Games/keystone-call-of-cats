@@ -2,10 +2,9 @@ use std::time::Duration;
 
 use bevy::prelude::*;
 
-use keystone_cc_adapter::*;
-use keystone_cc_plugins::assets_loader::*;
-
-use crate::assets::DEFAULT_GROUP;
+use crate::adapter::*;
+use crate::plugins::assets_loader::*;
+use crate::scenes::assets::DEFAULT_GROUP;
 
 use super::components::BootUI;
 #[derive(Resource, Default)]

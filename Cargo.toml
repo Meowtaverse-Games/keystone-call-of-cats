@@ -1,12 +1,15 @@
-[workspace]
-members = [
-    "core",
-    "adapter",
-    "plugins",
-    "scenes",
-    "app",
-]
-resolver = "3"
+[package]
+name = "keystone-cc"
+version = "0.1.0"
+edition = "2024"
 
-[workspace.dependencies]
+[dependencies]
 bevy = "0.16.1"
+bevy_ecs = "0.16.1"
+bevy_asset_loader = "0.23.0"
+bevy_aspect_ratio_mask = "0.2.0"
+bevy_egui = "0.36.0"
+bevy_render = "0.16.1"
+
+[package.metadata.bundle.mac]
+identifier = "com.meowtaverse-games.com.keystone-cc"

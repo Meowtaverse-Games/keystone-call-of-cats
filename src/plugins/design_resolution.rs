@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy::render::camera::ScalingMode;
 use bevy_aspect_ratio_mask::{AspectRatioMask, AspectRatioPlugin, Hud, Resolution};
 
-use keystone_cc_core::domain::graphics::design_resolution::DesignResolution;
+use crate::core::domain::graphics::design_resolution::DesignResolution;
 
 #[derive(Component)]
 #[require(Camera2d)]

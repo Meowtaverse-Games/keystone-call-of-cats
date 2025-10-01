@@ -1,4 +1,4 @@
-use keystone_cc_plugins::assets_loader::LoadAssetGroup;
+use crate::plugins::assets_loader::LoadAssetGroup;
 
 #[repr(u32)]
 #[derive(Clone, Copy, Debug)]
