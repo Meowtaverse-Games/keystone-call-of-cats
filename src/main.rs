@@ -5,6 +5,7 @@ mod scenes;
 
 use bevy::asset::AssetPlugin;
 use bevy::prelude::*;
+use bevy_egui::EguiPlugin;
 
 use crate::adapter::{VisibilityPlugin, game_state::GameState};
 use crate::plugins::DesignResolutionPlugin;
@@ -32,6 +33,7 @@ fn main() {
         .add_plugins(VisibilityPlugin)
         .add_plugins(DesignResolutionPlugin::new(1600.0, 1200.0).fix_min(800.0, 600.0))
         .add_plugins(AssetLoaderPlugin)
+        .add_plugins(EguiPlugin::default())
         .add_plugins(ScenesPlugin)
         .init_state::<GameState>()
         .run();
