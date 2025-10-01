@@ -1,9 +1,6 @@
 use std::time::Duration;
 
 use bevy::prelude::*;
-use bevy_egui::{
-    egui, EguiContexts,
-};
 
 use crate::adapter::*;
 use crate::plugins::assets_loader::*;
