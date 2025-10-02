@@ -1,4 +1,4 @@
-use bevy::prelude::{Assets, Image, Res};
+use bevy::prelude::{Assets, Image, Res, Vec2};
 use bevy_egui::{
     EguiContexts,
     egui::{self, load::SizedTexture},
@@ -8,15 +8,8 @@ use crate::plugins::assets_loader::AssetStore;
 use crate::scenes::assets::ImageKey;
 
 pub fn ui(mut contexts: EguiContexts, asset_store: Res<AssetStore>, images: Res<Assets<Image>>) {
-    let texture = asset_store.image(ImageKey::Logo).and_then(|handle| {
-        images.get(&handle).map(|image| {
-            let texture_id = contexts
-                .image_id(&handle)
-                .unwrap_or_else(|| contexts.add_image(handle.clone_weak()));
-
-            (texture_id, image.size_f32())
-        })
-    });
+    let logo = texture_handle(&mut contexts, &asset_store, &images, ImageKey::Logo);
+    let spa = texture_handle(&mut contexts, &asset_store, &images, ImageKey::Spa);
 
     let Ok(ctx) = contexts.ctx_mut() else {
         return;
@@ -38,12 +31,48 @@ pub fn ui(mut contexts: EguiContexts, asset_store: Res<AssetStore>, images: Res<
             .auto_shrink([false, false])
             .show(ui, |ui| {
                 ui.horizontal(|ui| {
-                    if let Some((texture_id, size)) = texture {
-                        ui.image(SizedTexture::new(texture_id, size.to_array()));
+                    if let Some((texture_id, size)) = logo {
+                        ui.image(SizedTexture::new(texture_id, [size.x, size.y]));
                     } else {
                         ui.label("Loading...");
                     }
                 });
             });
     });
+
+    egui::CentralPanel::default().show(ctx, |ui| {
+        ui.centered_and_justified(|ui| {
+            if let Some((texture_id, size)) = spa {
+                if size.x > f32::EPSILON && size.y > f32::EPSILON {
+                    let available = ui.available_size();
+                    let scale = (available.x / size.x)
+                        .min(available.y / size.y)
+                        .clamp(0.0, 1.0);
+                    let target = egui::Vec2::new(size.x * scale, size.y * scale);
+                    ui.image(SizedTexture::new(texture_id, target));
+                } else {
+                    ui.label("Image size unavailable");
+                }
+            } else {
+                ui.label("Loading spa.png...");
+            }
+        });
+    });
+}
+
+fn texture_handle(
+    contexts: &mut EguiContexts,
+    asset_store: &AssetStore,
+    images: &Assets<Image>,
+    key: ImageKey,
+) -> Option<(egui::TextureId, Vec2)> {
+    asset_store.image(key).and_then(|handle| {
+        images.get(&handle).map(|image| {
+            let texture_id = contexts
+                .image_id(&handle)
+                .unwrap_or_else(|| contexts.add_image(handle.clone_weak()));
+
+            (texture_id, image.size_f32())
+        })
+    })
 }
