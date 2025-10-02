@@ -1,15 +1,29 @@
-use bevy::prelude::{Assets, Image, Res, Vec2};
+use bevy::prelude::{Assets, Commands, Entity, Image, Query, Res, Vec2, With, Sprite};
 use bevy_egui::{
     EguiContexts,
     egui::{self, load::SizedTexture},
 };
 
+use super::components::StageBackground;
 use crate::plugins::assets_loader::AssetStore;
 use crate::scenes::assets::ImageKey;
 
+pub fn setup(mut commands: Commands, asset_store: Res<AssetStore>) {
+    if let Some(texture) = asset_store.image(ImageKey::Spa) {
+        commands.spawn((Sprite::from_image(texture), StageBackground));
+    } else {
+        // warn!("Stage setup: spa.png handle missing");
+    }
+}
+
+pub fn cleanup(mut commands: Commands, query: Query<Entity, With<StageBackground>>) {
+    for entity in &query {
+        commands.entity(entity).despawn();
+    }
+}
+
 pub fn ui(mut contexts: EguiContexts, asset_store: Res<AssetStore>, images: Res<Assets<Image>>) {
     let logo = texture_handle(&mut contexts, &asset_store, &images, ImageKey::Logo);
-    let spa = texture_handle(&mut contexts, &asset_store, &images, ImageKey::Spa);
 
     let Ok(ctx) = contexts.ctx_mut() else {
         return;
@@ -38,25 +52,6 @@ pub fn ui(mut contexts: EguiContexts, asset_store: Res<AssetStore>, images: Res<
                     }
                 });
             });
-    });
-
-    egui::CentralPanel::default().show(ctx, |ui| {
-        ui.centered_and_justified(|ui| {
-            if let Some((texture_id, size)) = spa {
-                if size.x > f32::EPSILON && size.y > f32::EPSILON {
-                    let available = ui.available_size();
-                    let scale = (available.x / size.x)
-                        .min(available.y / size.y)
-                        .clamp(0.0, 1.0);
-                    let target = egui::Vec2::new(size.x * scale, size.y * scale);
-                    ui.image(SizedTexture::new(texture_id, target));
-                } else {
-                    ui.label("Image size unavailable");
-                }
-            } else {
-                ui.label("Loading spa.png...");
-            }
-        });
     });
 }
 

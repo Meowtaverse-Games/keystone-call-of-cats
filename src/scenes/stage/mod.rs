@@ -9,9 +9,11 @@ mod systems;
 pub struct StagePlugin;
 impl Plugin for StagePlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            EguiPrimaryContextPass,
-            systems::ui.run_if(in_state(GameState::Stage)),
-        );
+        app.add_systems(OnEnter(GameState::Stage), systems::setup)
+            .add_systems(OnExit(GameState::Stage), systems::cleanup)
+            .add_systems(
+                EguiPrimaryContextPass,
+                systems::ui.run_if(in_state(GameState::Stage)),
+            );
     }
 }
