@@ -1,4 +1,4 @@
-use bevy::prelude::{Assets, Commands, Entity, Image, Query, Res, Vec2, With, Sprite};
+use bevy::prelude::{Assets, Commands, Entity, Image, Query, Res, Sprite, Vec2, With};
 use bevy_egui::{
     EguiContexts,
     egui::{self, load::SizedTexture},
