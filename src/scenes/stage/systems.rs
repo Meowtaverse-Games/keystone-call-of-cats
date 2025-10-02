@@ -1,11 +1,11 @@
-use bevy::prelude::{Assets, Commands, Entity, Image, Query, Res, Sprite, Vec2, With};
+use bevy::{prelude::*, window::PrimaryWindow};
 use bevy_egui::{
     EguiContexts,
     egui::{self, load::SizedTexture},
 };
 
 use super::components::StageBackground;
-use crate::plugins::assets_loader::AssetStore;
+use crate::plugins::{assets_loader::AssetStore, design_resolution::MainCamera};
 use crate::scenes::assets::ImageKey;
 
 pub fn setup(mut commands: Commands, asset_store: Res<AssetStore>) {
@@ -22,14 +22,20 @@ pub fn cleanup(mut commands: Commands, query: Query<Entity, With<StageBackground
     }
 }
 
-pub fn ui(mut contexts: EguiContexts, asset_store: Res<AssetStore>, images: Res<Assets<Image>>) {
+pub fn ui(
+    mut contexts: EguiContexts,
+    asset_store: Res<AssetStore>,
+    images: Res<Assets<Image>>,
+    mut camera: Single<&mut Camera, With<MainCamera>>,
+    window: Single<&mut Window, With<PrimaryWindow>>,
+) {
     let logo = texture_handle(&mut contexts, &asset_store, &images, ImageKey::Logo);
 
     let Ok(ctx) = contexts.ctx_mut() else {
         return;
     };
 
-    let left = egui::SidePanel::left("stage-left")
+    let mut left = egui::SidePanel::left("stage-left")
         .resizable(true)
         .default_width(200.0)
         .min_width(100.0)
@@ -39,20 +45,32 @@ pub fn ui(mut contexts: EguiContexts, asset_store: Res<AssetStore>, images: Res<
             inner_margin: egui::Margin::same(10),
             stroke: egui::Stroke::new(1.0, egui::Color32::from_rgb(100, 100, 150)),
             ..Default::default()
-        });
-    left.show(ctx, |ui| {
-        egui::ScrollArea::horizontal()
-            .auto_shrink([false, false])
-            .show(ui, |ui| {
-                ui.horizontal(|ui| {
-                    if let Some((texture_id, size)) = logo {
-                        ui.image(SizedTexture::new(texture_id, [size.x, size.y]));
-                    } else {
-                        ui.label("Loading...");
-                    }
+        })
+        .show(ctx, |ui| {
+            egui::ScrollArea::horizontal()
+                .auto_shrink([false, false])
+                .show(ui, |ui| {
+                    ui.horizontal(|ui| {
+                        if let Some((texture_id, size)) = logo {
+                            ui.image(SizedTexture::new(texture_id, [size.x, size.y]));
+                        } else {
+                            ui.label("Loading...");
+                        }
+                    });
                 });
-            });
-    });
+        })
+        .response
+        .rect
+        .width();
+
+    left *= window.scale_factor();
+
+    println!(
+        "window: {:?}, left panel: {}\n",
+        window.physical_size(),
+        left
+    );
+    stdout().flush().unwrap();
 }
 
 fn texture_handle(
