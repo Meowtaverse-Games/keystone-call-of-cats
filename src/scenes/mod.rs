@@ -2,12 +2,12 @@ use bevy::prelude::*;
 
 pub mod assets;
 mod boot;
-mod title;
 mod stage;
+mod title;
 
 use boot::BootPlugin;
-use title::TitlePlugin;
 use stage::StagePlugin;
+use title::TitlePlugin;
 
 pub struct ScenesPlugin;
 

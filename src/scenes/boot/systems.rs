@@ -33,10 +33,11 @@ pub fn setup(
         });
 
     commands.insert_resource(BootTimer {
+        // for testing, make it shorter
         timer: Timer::new(
-            Duration::from_micros(100),
-          // Duration::from_secs(3),
-        TimerMode::Once),
+            Duration::from_micros(100), // Duration::from_secs(3),
+            TimerMode::Once,
+        ),
     });
 }
 

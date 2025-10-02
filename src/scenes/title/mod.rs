@@ -13,4 +13,3 @@ impl Plugin for TitlePlugin {
             .add_systems(OnExit(GameState::Title), systems::cleanup);
     }
 }
-
