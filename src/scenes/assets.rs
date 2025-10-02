@@ -4,6 +4,7 @@ use crate::plugins::assets_loader::LoadAssetGroup;
 #[derive(Clone, Copy, Debug)]
 pub enum ImageKey {
     Logo,
+    Spa,
 }
 
 impl From<ImageKey> for u32 {
@@ -27,7 +28,10 @@ impl From<FontKey> for u32 {
 
 pub const DEFAULT_GROUP: LoadAssetGroup = LoadAssetGroup {
     group: "default",
-    images: &[(ImageKey::Logo as u32, "images/logo_with_black.png")],
+    images: &[
+        (ImageKey::Logo as u32, "images/logo_with_black.png"),
+        (ImageKey::Spa as u32, "images/spa.png"),
+    ],
     fonts: &[
         (FontKey::Default as u32, "fonts/PixelMplus12-Regular.ttf"),
         (FontKey::Title as u32, "fonts/Quicky Story.ttf"),
