@@ -1,4 +1,4 @@
-use bevy::{prelude::*, window::PrimaryWindow};
+use bevy::{camera::Viewport, prelude::*, window::PrimaryWindow};
 use bevy_egui::{
     EguiContexts,
     egui::{self, load::SizedTexture},
@@ -65,12 +65,19 @@ pub fn ui(
 
     left *= window.scale_factor();
 
+    camera.viewport = Some(Viewport {
+        physical_position: UVec2::new(left as u32, 0),
+        physical_size: UVec2::new(
+            (window.physical_width() as f32 - left) as u32,
+            window.physical_height()),
+        ..default()
+    });
+
     println!(
         "window: {:?}, left panel: {}\n",
         window.physical_size(),
         left
     );
-    stdout().flush().unwrap();
 }
 
 fn texture_handle(
@@ -83,7 +90,7 @@ fn texture_handle(
         images.get(&handle).map(|image| {
             let texture_id = contexts
                 .image_id(&handle)
-                .unwrap_or_else(|| contexts.add_image(handle.clone_weak()));
+                .unwrap_or_else(|| contexts.add_image(bevy_egui::EguiTextureHandle::Strong(handle.clone())));
 
             (texture_id, image.size_f32())
         })

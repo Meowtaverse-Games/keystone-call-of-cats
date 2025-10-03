@@ -4,14 +4,14 @@ use bevy::time::common_conditions::on_timer;
 use std::collections::HashMap;
 use std::time::Duration;
 
-#[derive(Event, Clone, Copy)]
+#[derive(Message, Clone, Copy)]
 pub struct LoadAssetGroup {
     pub group: &'static str,
     pub images: &'static [(u32, &'static str)],
     pub fonts: &'static [(u32, &'static str)],
 }
 
-#[derive(Event, Clone, Copy)]
+#[derive(Message, Clone, Copy)]
 pub struct AssetGroupLoaded(pub &'static str);
 
 #[derive(Resource, Default)]
@@ -43,8 +43,8 @@ impl Plugin for AssetLoaderPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<AssetStore>()
             .init_resource::<PendingGroups>()
-            .add_event::<LoadAssetGroup>()
-            .add_event::<AssetGroupLoaded>()
+            .add_message::<LoadAssetGroup>()
+            .add_message::<AssetGroupLoaded>()
             .add_systems(Update, handle_load_requests)
             .add_systems(
                 Update,
@@ -56,7 +56,7 @@ impl Plugin for AssetLoaderPlugin {
 }
 
 fn handle_load_requests(
-    mut ev: EventReader<LoadAssetGroup>,
+    mut ev: MessageReader<LoadAssetGroup>,
     server: Res<AssetServer>,
     mut store: ResMut<AssetStore>,
     mut pending: ResMut<PendingGroups>,
