@@ -47,12 +47,12 @@ pub struct DesignResolutionPlugin {
 }
 
 impl DesignResolutionPlugin {
-    pub fn new(width: f32, height: f32) -> Self {
+    pub fn new(width: f32, height: f32, mask_color: Color) -> Self {
         Self {
             design: DesignResolution::new(width, height),
             min_width: width,
             min_height: height,
-            mask_color: Color::BLACK,
+            mask_color,
         }
     }
 
@@ -75,8 +75,8 @@ impl Plugin for DesignResolutionPlugin {
         })
         .insert_resource(MaskColor(self.mask_color))
         .add_systems(Startup, setup_camera)
-        .add_systems(Startup, setup_ui_root);
-        // .add_systems(Update, update_letterbox);
+        .add_systems(Startup, setup_ui_root)
+        .add_systems(Update, update_letterbox);
     }
 }
 
