@@ -5,7 +5,10 @@ use bevy_egui::{
 };
 
 use super::components::StageBackground;
-use crate::plugins::{assets_loader::AssetStore, design_resolution::MainCamera};
+use crate::plugins::{
+    assets_loader::AssetStore,
+    design_resolution::{LetterboxOffsets, MainCamera},
+};
 use crate::scenes::assets::ImageKey;
 
 pub fn setup(mut commands: Commands, asset_store: Res<AssetStore>) {
@@ -28,6 +31,7 @@ pub fn ui(
     images: Res<Assets<Image>>,
     mut camera: Single<&mut Camera, With<MainCamera>>,
     window: Single<&mut Window, With<PrimaryWindow>>,
+    mut letterbox_offsets: ResMut<LetterboxOffsets>,
 ) {
     let logo = texture_handle(&mut contexts, &asset_store, &images, ImageKey::Logo);
 
@@ -35,7 +39,7 @@ pub fn ui(
         return;
     };
 
-    let mut left = egui::SidePanel::left("stage-left")
+    let left = egui::SidePanel::left("stage-left")
         .resizable(true)
         .default_width(200.0)
         .min_width(100.0)
@@ -63,20 +67,29 @@ pub fn ui(
         .rect
         .width();
 
-    left *= window.scale_factor();
+    let left_logical = left;
+    let left_physical = left_logical * window.scale_factor();
 
-    camera.viewport = Some(Viewport {
-        physical_position: UVec2::new(left as u32, 0),
-        physical_size: UVec2::new(
-            (window.physical_width() as f32 - left) as u32,
-            window.physical_height()),
-        ..default()
-    });
+    if (letterbox_offsets.left - left_logical).abs() > f32::EPSILON {
+        letterbox_offsets.left = left_logical;
+    }
+
+    if letterbox_offsets.right != 0.0 {
+        letterbox_offsets.right = 0.0;
+    }
+
+    // camera.viewport = Some(Viewport {
+    //     physical_position: UVec2::new(left as u32, 0),
+    //     physical_size: UVec2::new(
+    //         (window.physical_width() as f32 - left) as u32,
+    //         window.physical_height()),
+    //     ..default()
+    // });
 
     println!(
         "window: {:?}, left panel: {}\n",
         window.physical_size(),
-        left
+        left_physical
     );
 }
 
@@ -88,9 +101,9 @@ fn texture_handle(
 ) -> Option<(egui::TextureId, Vec2)> {
     asset_store.image(key).and_then(|handle| {
         images.get(&handle).map(|image| {
-            let texture_id = contexts
-                .image_id(&handle)
-                .unwrap_or_else(|| contexts.add_image(bevy_egui::EguiTextureHandle::Strong(handle.clone())));
+            let texture_id = contexts.image_id(&handle).unwrap_or_else(|| {
+                contexts.add_image(bevy_egui::EguiTextureHandle::Strong(handle.clone()))
+            });
 
             (texture_id, image.size_f32())
         })
