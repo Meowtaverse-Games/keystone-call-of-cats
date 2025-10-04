@@ -33,7 +33,11 @@ pub fn setup(
         });
 
     commands.insert_resource(BootTimer {
-        timer: Timer::new(Duration::from_secs(3), TimerMode::Once),
+        // for testing, make it shorter
+        timer: Timer::new(
+            Duration::from_micros(100), // Duration::from_secs(3),
+            TimerMode::Once,
+        ),
     });
 }
 
@@ -54,8 +58,9 @@ pub fn update(
 
     boot_timer.timer.tick(time.delta());
     if boot_timer.timer.finished() && loaded.0 {
+        // TODO; transition to the title scene
         info!("Boot timer finished");
-        next_state.set(GameState::Title);
+        next_state.set(GameState::Stage);
     }
 }
 
