@@ -1,14 +1,11 @@
-use bevy::{camera::Viewport, prelude::*, window::PrimaryWindow};
+use bevy::{prelude::*, window::PrimaryWindow};
 use bevy_egui::{
     EguiContexts,
     egui::{self, load::SizedTexture},
 };
 
 use super::components::StageBackground;
-use crate::plugins::{
-    assets_loader::AssetStore,
-    design_resolution::{LetterboxOffsets, MainCamera},
-};
+use crate::plugins::{assets_loader::AssetStore, design_resolution::LetterboxOffsets};
 use crate::scenes::assets::ImageKey;
 
 pub fn setup(mut commands: Commands, asset_store: Res<AssetStore>) {
@@ -29,7 +26,6 @@ pub fn ui(
     mut contexts: EguiContexts,
     asset_store: Res<AssetStore>,
     images: Res<Assets<Image>>,
-    mut camera: Single<&mut Camera, With<MainCamera>>,
     window: Single<&mut Window, With<PrimaryWindow>>,
     mut letterbox_offsets: ResMut<LetterboxOffsets>,
 ) {
