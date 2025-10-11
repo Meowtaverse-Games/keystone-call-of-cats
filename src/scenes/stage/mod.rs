@@ -12,6 +12,11 @@ impl Plugin for StagePlugin {
         app.add_systems(OnEnter(GameState::Stage), systems::setup)
             .add_systems(OnExit(GameState::Stage), systems::cleanup)
             .add_systems(
+                Update,
+                (systems::animate_character, systems::move_character)
+                    .run_if(in_state(GameState::Stage)),
+            )
+            .add_systems(
                 EguiPrimaryContextPass,
                 systems::ui.run_if(in_state(GameState::Stage)),
             );
