@@ -8,12 +8,7 @@ use bevy_egui::{
     egui::{self, load::SizedTexture},
 };
 
-use super::components::{
-    CharacterAnimation,
-    CharacterMotion,
-    StageBackground,
-    StageCharacter,
-};
+use super::components::{CharacterAnimation, CharacterMotion, StageBackground, StageCharacter};
 use crate::plugins::{assets_loader::AssetStore, design_resolution::LetterboxOffsets};
 use crate::scenes::assets::ImageKey;
 
