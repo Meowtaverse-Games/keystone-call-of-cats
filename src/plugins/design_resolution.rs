@@ -186,7 +186,7 @@ fn setup_ui_root(
 
 fn update_letterbox(
     mut first_run: Local<bool>,
-    mut resize_events: EventReader<WindowResized>,
+    mut resize_events: MessageReader<WindowResized>,
     windows: Query<&Window, With<PrimaryWindow>>,
     design: Res<VirtualResolution>,
     mut ui_scale: ResMut<UiScale>,
