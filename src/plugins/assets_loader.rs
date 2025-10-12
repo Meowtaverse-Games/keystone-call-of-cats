@@ -4,21 +4,21 @@ use bevy::time::common_conditions::on_timer;
 use std::collections::HashMap;
 use std::time::Duration;
 
-#[derive(Event, Clone, Copy)]
+#[derive(Message, Clone, Copy)]
 pub struct LoadAssetGroup {
     pub group: &'static str,
     pub images: &'static [(u32, &'static str)],
     pub fonts: &'static [(u32, &'static str)],
 }
 
-#[derive(Event, Clone, Copy)]
-pub struct AssetGroupLoaded(pub &'static str);
+#[derive(Message, Clone, Copy)]
+pub struct AssetGroupLoaded;
 
 #[derive(Resource, Default)]
 pub struct AssetStore {
     images: HashMap<u32, Handle<Image>>,
     fonts: HashMap<u32, Handle<Font>>,
-    sounds: HashMap<u32, Handle<AudioSource>>,
+    // sounds: HashMap<u32, Handle<AudioSource>>,
 }
 
 impl AssetStore {
@@ -28,9 +28,9 @@ impl AssetStore {
     pub fn font<K: Into<u32>>(&self, key: K) -> Option<Handle<Font>> {
         self.fonts.get(&key.into()).cloned()
     }
-    pub fn sound<K: Into<u32>>(&self, key: K) -> Option<Handle<AudioSource>> {
-        self.sounds.get(&key.into()).cloned()
-    }
+    // pub fn sound<K: Into<u32>>(&self, key: K) -> Option<Handle<AudioSource>> {
+    //     self.sounds.get(&key.into()).cloned()
+    // }
 }
 
 #[derive(Resource, Default)]
@@ -43,8 +43,8 @@ impl Plugin for AssetLoaderPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<AssetStore>()
             .init_resource::<PendingGroups>()
-            .add_event::<LoadAssetGroup>()
-            .add_event::<AssetGroupLoaded>()
+            .add_message::<LoadAssetGroup>()
+            .add_message::<AssetGroupLoaded>()
             .add_systems(Update, handle_load_requests)
             .add_systems(
                 Update,
@@ -56,7 +56,7 @@ impl Plugin for AssetLoaderPlugin {
 }
 
 fn handle_load_requests(
-    mut ev: EventReader<LoadAssetGroup>,
+    mut ev: MessageReader<LoadAssetGroup>,
     server: Res<AssetServer>,
     mut store: ResMut<AssetStore>,
     mut pending: ResMut<PendingGroups>,
@@ -86,15 +86,15 @@ fn pending_not_empty(pending: Res<PendingGroups>) -> bool {
 fn poll_pending_groups(
     server: Res<AssetServer>,
     mut pending: ResMut<PendingGroups>,
-    mut done_writer: EventWriter<AssetGroupLoaded>,
+    mut done_writer: MessageWriter<AssetGroupLoaded>,
 ) {
     info!("in poll");
 
-    pending.inner.retain(|group, handles| {
+    pending.inner.retain(|_, handles| {
         handles.retain(|h| !matches!(server.get_load_state(h.id()), Some(LoadState::Loaded)));
 
         if handles.is_empty() {
-            done_writer.write(AssetGroupLoaded(*group));
+            done_writer.write(AssetGroupLoaded);
             false
         } else {
             true

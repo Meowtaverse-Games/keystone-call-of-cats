@@ -15,7 +15,7 @@ pub struct BootTimer {
 pub fn setup(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
-    mut load_writer: EventWriter<LoadAssetGroup>,
+    mut load_writer: MessageWriter<LoadAssetGroup>,
 ) {
     load_writer.write(DEFAULT_GROUP);
 
@@ -33,7 +33,11 @@ pub fn setup(
         });
 
     commands.insert_resource(BootTimer {
-        timer: Timer::new(Duration::from_secs(3), TimerMode::Once),
+        // for testing, make it shorter
+        timer: Timer::new(
+            Duration::from_micros(100), // Duration::from_secs(3),
+            TimerMode::Once,
+        ),
     });
 }
 
@@ -41,7 +45,7 @@ pub fn setup(
 pub struct Loaded(bool);
 
 pub fn update(
-    mut reader: EventReader<AssetGroupLoaded>,
+    mut reader: MessageReader<AssetGroupLoaded>,
     mut loaded: Local<Loaded>,
     mut boot_timer: ResMut<BootTimer>,
     time: Res<Time>,
@@ -53,9 +57,10 @@ pub fn update(
     }
 
     boot_timer.timer.tick(time.delta());
-    if boot_timer.timer.finished() && loaded.0 {
+    if boot_timer.timer.is_finished() && loaded.0 {
+        // TODO; transition to the title scene
         info!("Boot timer finished");
-        next_state.set(GameState::Title);
+        next_state.set(GameState::Stage);
     }
 }
 

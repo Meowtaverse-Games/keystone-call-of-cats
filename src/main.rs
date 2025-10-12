@@ -31,7 +31,10 @@ fn main() {
                 }),
         )
         .add_plugins(VisibilityPlugin)
-        .add_plugins(DesignResolutionPlugin::new(1600.0, 1200.0).fix_min(800.0, 600.0))
+        .add_plugins(
+            DesignResolutionPlugin::new(1600.0, 1200.0, Color::linear_rgb(0.02, 0.02, 0.02))
+                .fix_min(800.0 * 2.0, 600.0),
+        )
         .add_plugins(AssetLoaderPlugin)
         .add_plugins(EguiPlugin::default())
         .add_plugins(ScenesPlugin)
