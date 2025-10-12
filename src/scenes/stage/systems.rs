@@ -13,7 +13,7 @@ use crate::scenes::assets::{ImageKey, PLAYER_IDLE_KEYS, PLAYER_RUN_KEYS};
 pub fn setup(
     mut commands: Commands,
     asset_store: Res<AssetStore>,
-    tiled_assets: Option<Res<TiledMapAssets>>,
+    tiled_assets: Res<TiledMapAssets>,
 ) {
     let idle_frames: Vec<Handle<Image>> = PLAYER_IDLE_KEYS
         .iter()
@@ -60,27 +60,28 @@ pub fn setup(
         return;
     };
 
-    if let Some(assets) = tiled_assets.as_ref() {
-        let _ = assets.map();
+    tiled_assets.layers().for_each(|layer| {
+        info!("Layer name: {}, type: {:?}", layer.name, layer.tag);
+    }); 
 
-        if let Some(tileset) = assets.tileset(0) {
-            if let (Some(image), Some(tile_sprite)) = (tileset.image(), tileset.atlas_sprite(0)) {
-                let mut sprite = Sprite::from_atlas_image(tile_sprite.texture, tile_sprite.atlas);
-                sprite.custom_size =
-                    Some(Vec2::new(image.tile_size.x as f32, image.tile_size.y as f32) * 4.0);
+    tiled_assets.tilesets().iter().for_each(|tileset| {
+        info!("Tileset: {}", tileset.name());
+        if let (Some(image), Some(tile_sprite)) = (tileset.image(), tileset.atlas_sprite(0)) {
+            let mut sprite = Sprite::from_atlas_image(tile_sprite.texture, tile_sprite.atlas);
+            sprite.custom_size =
+                Some(Vec2::new(image.tile_size.x as f32, image.tile_size.y as f32) * 4.0);
 
-                commands.spawn((
-                    sprite,
-                    Transform::from_xyz(-320.0, -160.0, 0.0),
-                    Name::new(format!(
-                        "{}::tile0 ({})",
-                        tileset.name(),
-                        image.path.as_str()
-                    )),
-                ));
-            }
+            commands.spawn((
+                sprite,
+                Transform::from_xyz(-320.0, -160.0, 0.0),
+                Name::new(format!(
+                    "{}::tile0 ({})",
+                    tileset.name(),
+                    image.path.as_str()
+                )),
+            ));
         }
-    }
+    });
 
     let ground_y = -100.0;
 

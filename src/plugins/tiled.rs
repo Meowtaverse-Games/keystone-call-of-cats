@@ -3,7 +3,7 @@ use std::sync::Arc;
 use bevy::asset::Assets;
 use bevy::math::UVec2;
 use bevy::prelude::*;
-use tiled::{Loader, Map, Tileset};
+use tiled::{Loader, Map, Tileset, LayerType};
 
 /// Configures how the [`TiledPlugin`] loads Tiled data.
 #[derive(Resource, Clone)]
@@ -46,9 +46,37 @@ impl TiledMapAssets {
         Arc::clone(&self.map)
     }
 
-    pub fn tileset(&self, index: usize) -> Option<&TiledTileset> {
-        self.tilesets.get(index)
+    pub fn tilesets(&self) -> &[TiledTileset] {
+        &self.tilesets
     }
+
+    pub fn layers(&self) -> impl Iterator<Item = Layer> + '_ {
+        self.map.layers().map(|layer| {
+            let tag = match layer.layer_type() {
+                LayerType::Tiles(_) => LayerTag::Tile,
+                LayerType::Objects(_) => LayerTag::Object,
+                LayerType::Image(_) => LayerTag::Image,
+                LayerType::Group(_) => LayerTag::Group,
+            };
+            Layer {
+                name: layer.name.clone(),
+                tag,
+            }
+        })
+    }
+}
+
+#[derive(Debug)]
+pub enum LayerTag {
+    Tile,
+    Object,
+    Image,
+    Group,
+}
+
+pub struct Layer {
+    pub name: String,
+    pub tag: LayerTag,
 }
 
 #[derive(Clone)]
@@ -126,9 +154,8 @@ fn load_tiled_assets(
         .map(|tileset| load_tileset(tileset, &asset_server, &mut layouts))
         .collect::<Vec<_>>();
 
-
-    map.tilesets().iter().for_each(|tileset| {   
-        info!(target: "tiled", "Loaded tileset: {}", tileset.name);  
+    map.tilesets().iter().for_each(|tileset| {
+        info!(target: "tiled", "Loaded tileset: {}", tileset.name);
     });
 
     commands.insert_resource(TiledMapAssets {
