@@ -9,33 +9,19 @@ use tiled::{Loader, Map, Tileset};
 #[derive(Resource, Clone)]
 pub struct TiledLoaderConfig {
     pub map_path: String,
-}
-
-impl Default for TiledLoaderConfig {
-    fn default() -> Self {
-        Self {
-            map_path: "assets/tiled/stage1-1.tmx".to_string(),
-        }
-    }
+    pub tsx_path: String,
 }
 
 pub struct TiledPlugin {
     config: TiledLoaderConfig,
 }
 
-impl Default for TiledPlugin {
-    fn default() -> Self {
-        Self {
-            config: TiledLoaderConfig::default(),
-        }
-    }
-}
-
 impl TiledPlugin {
-    pub fn new(map_path: impl Into<String>) -> Self {
+    pub fn new(map_path: impl Into<String>, tsx_path: impl Into<String>) -> Self {
         Self {
             config: TiledLoaderConfig {
                 map_path: map_path.into(),
+                tsx_path: tsx_path.into(),
             },
         }
     }
@@ -50,6 +36,7 @@ impl Plugin for TiledPlugin {
 
 #[derive(Resource)]
 pub struct TiledMapAssets {
+    tsx: Arc<Tileset>,
     map: Arc<Map>,
     tilesets: Vec<TiledTileset>,
 }
@@ -125,13 +112,27 @@ fn load_tiled_assets(
         }
     };
 
+    let tsx = match loader.load_tsx_tileset(&config.tsx_path) {
+        Ok(tilesets) => tilesets,
+        Err(err) => {
+            error!(target: "tiled", "Failed to load TSX tilesets from '{}': {err}", config.tsx_path);
+            return;
+        }
+    };
+
     let tilesets = map
         .tilesets()
         .iter()
         .map(|tileset| load_tileset(tileset, &asset_server, &mut layouts))
         .collect::<Vec<_>>();
 
+
+    map.tilesets().iter().for_each(|tileset| {   
+        info!(target: "tiled", "Loaded tileset: {}", tileset.name);  
+    });
+
     commands.insert_resource(TiledMapAssets {
+        tsx: Arc::new(tsx),
         map: Arc::new(map),
         tilesets,
     });
