@@ -120,21 +120,34 @@ pub fn animate_character(
 
 pub fn move_character(
     time: Res<Time>,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
     mut query: Query<(&mut Transform, &mut PlayerMotion, &mut Sprite), With<Player>>,
 ) {
     for (mut transform, mut motion, mut sprite) in &mut query {
-        let delta = motion.direction * motion.speed * time.delta_secs();
-        transform.translation.x += delta;
-        motion.is_moving = delta.abs() > f32::EPSILON;
+        let mut input_direction: f32 = 0.0;
 
-        if transform.translation.x > motion.max_x {
-            transform.translation.x = motion.max_x;
-            motion.direction = -motion.direction.abs();
-        } else if transform.translation.x < motion.min_x {
-            transform.translation.x = motion.min_x;
-            motion.direction = motion.direction.abs();
+        if keyboard_input.pressed(KeyCode::ArrowRight) {
+            input_direction += 1.0;
         }
 
+        if keyboard_input.pressed(KeyCode::ArrowLeft) {
+            input_direction -= 1.0;
+        }
+
+        let mut moved = false;
+
+        if input_direction.abs() > f32::EPSILON {
+            let direction = input_direction.signum();
+            let delta = direction * motion.speed * time.delta_secs();
+            let target_x = (transform.translation.x + delta)
+                .clamp(motion.min_x, motion.max_x);
+
+            moved = (target_x - transform.translation.x).abs() > f32::EPSILON;
+            transform.translation.x = target_x;
+            motion.direction = direction;
+        }
+
+        motion.is_moving = moved;
         sprite.flip_x = motion.direction < 0.0;
     }
 }
