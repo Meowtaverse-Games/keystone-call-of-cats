@@ -3,9 +3,11 @@ mod core;
 mod plugins;
 mod scenes;
 
-use bevy::asset::AssetPlugin;
 use bevy::prelude::*;
+use bevy::asset::AssetPlugin;
+
 use bevy_egui::EguiPlugin;
+use tiled::Loader;
 
 use crate::adapter::{VisibilityPlugin, game_state::GameState};
 use crate::plugins::DesignResolutionPlugin;
@@ -13,6 +15,14 @@ use crate::plugins::assets_loader::AssetLoaderPlugin;
 use crate::scenes::ScenesPlugin;
 
 fn main() {
+    let mut loader = Loader::new();
+    let map = loader.load_tmx_map("assets/tiled/stage1-1.tmx").unwrap();
+    println!("{:?}", map);
+    println!("{:?}", map.tilesets()[0].get_tile(0).unwrap().probability);
+
+    let tileset = loader.load_tsx_tileset("assets/tiled/super-platfomer-assets.tsx").unwrap();
+    assert_eq!(*map.tilesets()[0], tileset);
+
     App::new()
         .add_plugins(
             DefaultPlugins

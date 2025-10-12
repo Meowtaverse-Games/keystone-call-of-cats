@@ -10,7 +10,7 @@ bevy_asset_loader = "0.23.0"
 bevy_egui = "0.37.1"
 bevy_render = "0.17.2"
 bevy_camera = "0.17.2"
-bevy_ecs_tiled = "0.9.5"
+tiled = "0.15.0"
 
 [package.metadata.bundle.mac]
 identifier = "com.meowtaverse-games.com.keystone-cc"
