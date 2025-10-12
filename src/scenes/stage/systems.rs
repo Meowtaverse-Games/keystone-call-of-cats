@@ -6,17 +6,17 @@ use bevy_egui::{
 
 use super::components::*;
 use crate::plugins::{assets_loader::AssetStore, design_resolution::LetterboxOffsets};
-use crate::scenes::assets::ImageKey;
+use crate::scenes::assets::{ImageKey, PLAYER_IDLE_KEYS, PLAYER_RUN_KEYS};
 
-pub fn setup(mut commands: Commands, asset_store: Res<AssetStore>, asset_server: Res<AssetServer>) {
-    if let Some(texture) = asset_store.image(ImageKey::SPA) {
-        commands.spawn((Sprite::from_image(texture.clone()), StageBackground));
-    } else {
-        warn!("Stage setup: spa.png handle missing");
-    }
-
-    let idle_frames = load_animation_frames(&asset_server, "images/SPA/Player/Iddle", 4);
-    let run_frames = load_animation_frames(&asset_server, "images/SPA/Player/Run", 10);
+pub fn setup(mut commands: Commands, asset_store: Res<AssetStore>) {
+    let idle_frames: Vec<Handle<Image>> = PLAYER_IDLE_KEYS
+        .iter()
+        .filter_map(|key| asset_store.image(*key))
+        .collect();
+    let run_frames: Vec<Handle<Image>> = PLAYER_RUN_KEYS
+        .iter()
+        .filter_map(|key| asset_store.image(*key))
+        .collect();
 
     if idle_frames.is_empty() && run_frames.is_empty() {
         warn!("Stage setup: no player animation frames found");
@@ -137,16 +137,6 @@ pub fn move_character(
 
         sprite.flip_x = motion.direction < 0.0;
     }
-}
-
-fn load_animation_frames(
-    asset_server: &AssetServer,
-    base_path: &str,
-    frame_count: usize,
-) -> Vec<Handle<Image>> {
-    (1..=frame_count)
-        .map(|index| asset_server.load(format!("{base_path}/{index}.png")))
-        .collect()
 }
 
 pub fn ui(
