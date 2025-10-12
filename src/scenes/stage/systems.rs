@@ -1,68 +1,82 @@
-use bevy::{
-    math::{URect, UVec2},
-    prelude::*,
-    window::PrimaryWindow,
-};
+use bevy::{prelude::*, window::PrimaryWindow};
 use bevy_egui::{
     EguiContexts,
     egui::{self, load::SizedTexture},
 };
 
-use super::components::{CharacterAnimation, CharacterMotion, StageBackground, StageCharacter};
+use super::components::*;
 use crate::plugins::{assets_loader::AssetStore, design_resolution::LetterboxOffsets};
 use crate::scenes::assets::ImageKey;
 
-pub fn setup(
-    mut commands: Commands,
-    asset_store: Res<AssetStore>,
-    images: Res<Assets<Image>>,
-    mut atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
-) {
-    if let Some(texture) = asset_store.image(ImageKey::Spa) {
+pub fn setup(mut commands: Commands, asset_store: Res<AssetStore>, asset_server: Res<AssetServer>) {
+    if let Some(texture) = asset_store.image(ImageKey::SPA) {
         commands.spawn((Sprite::from_image(texture.clone()), StageBackground));
-
-        if let Some(image) = images.get(&texture) {
-            let image_size = image.size();
-            let mut layout = TextureAtlasLayout::new_empty(image_size);
-
-            let frame_size = UVec2::new(25, 30);
-            let frame_offset = UVec2::new(6, 480);
-            let frame_count = 3usize;
-
-            for index in 0..frame_count {
-                let min = frame_offset + UVec2::new(frame_size.x * index as u32, 0);
-                let max = min + frame_size;
-                layout.add_texture(URect::from_corners(min, max));
-            }
-
-            let layout_handle = atlas_layouts.add(layout);
-
-            commands.spawn((
-                Sprite::from_atlas_image(texture, TextureAtlas::from(layout_handle)),
-                StageCharacter,
-                CharacterAnimation {
-                    timer: Timer::from_seconds(0.12, TimerMode::Repeating),
-                    frames: frame_count,
-                },
-                CharacterMotion {
-                    speed: 90.0,
-                    direction: 1.0,
-                    min_x: -150.0,
-                    max_x: 150.0,
-                },
-                Transform::from_xyz(0.0, -100.0, 1.0).with_scale(Vec3::splat(4.0)),
-            ));
-        } else {
-            warn!("Stage setup: spa.png image data not found");
-        }
     } else {
         warn!("Stage setup: spa.png handle missing");
     }
+
+    let idle_frames = load_animation_frames(&asset_server, "images/SPA/Player/Iddle", 4);
+    let run_frames = load_animation_frames(&asset_server, "images/SPA/Player/Run", 10);
+
+    if idle_frames.is_empty() && run_frames.is_empty() {
+        warn!("Stage setup: no player animation frames found");
+        return;
+    }
+
+    if idle_frames.is_empty() {
+        warn!("Stage setup: Idle animation frames missing; falling back to run frames");
+    }
+
+    if run_frames.is_empty() {
+        warn!("Stage setup: Run animation frames missing; player will stay idle");
+    }
+
+    let clips = PlayerAnimationClips {
+        idle: idle_frames,
+        run: run_frames,
+    };
+
+    let initial_state = if clips.idle.is_empty() {
+        PlayerAnimationState::Run
+    } else {
+        PlayerAnimationState::Idle
+    };
+
+    let initial_frame = clips
+        .frames(initial_state)
+        .first()
+        .cloned()
+        .or_else(|| clips.frames(PlayerAnimationState::Run).first().cloned())
+        .or_else(|| clips.frames(PlayerAnimationState::Idle).first().cloned());
+
+    let Some(initial_frame) = initial_frame else {
+        warn!("Stage setup: could not determine an initial player sprite");
+        return;
+    };
+
+    commands.spawn((
+        Sprite::from_image(initial_frame),
+        Player,
+        PlayerAnimation {
+            timer: Timer::from_seconds(0.12, TimerMode::Repeating),
+            clips,
+            state: initial_state,
+            frame_index: 0,
+        },
+        PlayerMotion {
+            speed: 90.0,
+            direction: 1.0,
+            min_x: -150.0,
+            max_x: 150.0,
+            is_moving: matches!(initial_state, PlayerAnimationState::Run),
+        },
+        Transform::from_xyz(0.0, -100.0, 1.0).with_scale(Vec3::splat(4.0)),
+    ));
 }
 
 pub fn cleanup(
     mut commands: Commands,
-    query: Query<Entity, Or<(With<StageBackground>, With<StageCharacter>)>>,
+    query: Query<Entity, Or<(With<StageBackground>, With<Player>)>>,
 ) {
     for entity in &query {
         commands.entity(entity).despawn();
@@ -71,16 +85,34 @@ pub fn cleanup(
 
 pub fn animate_character(
     time: Res<Time>,
-    mut query: Query<(&mut Sprite, &mut CharacterAnimation), With<StageCharacter>>,
+    mut query: Query<(&mut Sprite, &mut PlayerAnimation, &PlayerMotion), With<Player>>,
 ) {
-    for (mut sprite, mut animation) in &mut query {
-        if animation.frames == 0 {
+    for (mut sprite, mut animation, motion) in &mut query {
+        let desired_state = if motion.is_moving {
+            PlayerAnimationState::Run
+        } else {
+            PlayerAnimationState::Idle
+        };
+
+        if animation.state != desired_state && !animation.clips.frames(desired_state).is_empty() {
+            animation.state = desired_state;
+            animation.frame_index = 0;
+            animation.timer.reset();
+
+            if let Some(handle) = animation.current_frames().first() {
+                sprite.image = handle.clone();
+            }
+        }
+
+        let frame_count = animation.current_frames().len();
+        if frame_count == 0 {
             continue;
         }
 
         if animation.timer.tick(time.delta()).just_finished() {
-            if let Some(atlas) = sprite.texture_atlas.as_mut() {
-                atlas.index = (atlas.index + 1) % animation.frames;
+            animation.frame_index = (animation.frame_index + 1) % frame_count;
+            if let Some(handle) = animation.current_frames().get(animation.frame_index) {
+                sprite.image = handle.clone();
             }
         }
     }
@@ -88,10 +120,12 @@ pub fn animate_character(
 
 pub fn move_character(
     time: Res<Time>,
-    mut query: Query<(&mut Transform, &mut CharacterMotion, &mut Sprite), With<StageCharacter>>,
+    mut query: Query<(&mut Transform, &mut PlayerMotion, &mut Sprite), With<Player>>,
 ) {
     for (mut transform, mut motion, mut sprite) in &mut query {
-        transform.translation.x += motion.direction * motion.speed * time.delta_secs();
+        let delta = motion.direction * motion.speed * time.delta_secs();
+        transform.translation.x += delta;
+        motion.is_moving = delta.abs() > f32::EPSILON;
 
         if transform.translation.x > motion.max_x {
             transform.translation.x = motion.max_x;
@@ -103,6 +137,16 @@ pub fn move_character(
 
         sprite.flip_x = motion.direction < 0.0;
     }
+}
+
+fn load_animation_frames(
+    asset_server: &AssetServer,
+    base_path: &str,
+    frame_count: usize,
+) -> Vec<Handle<Image>> {
+    (1..=frame_count)
+        .map(|index| asset_server.load(format!("{base_path}/{index}.png")))
+        .collect()
 }
 
 pub fn ui(
