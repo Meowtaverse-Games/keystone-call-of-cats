@@ -54,6 +54,8 @@ pub fn setup(mut commands: Commands, asset_store: Res<AssetStore>) {
         return;
     };
 
+    let ground_y = -100.0;
+
     commands.spawn((
         Sprite::from_image(initial_frame),
         Player,
@@ -69,8 +71,13 @@ pub fn setup(mut commands: Commands, asset_store: Res<AssetStore>) {
             min_x: -150.0,
             max_x: 150.0,
             is_moving: matches!(initial_state, PlayerAnimationState::Run),
+            vertical_velocity: 0.0,
+            gravity: -600.0,
+            jump_speed: 280.0,
+            ground_y,
+            is_jumping: false,
         },
-        Transform::from_xyz(0.0, -100.0, 1.0).with_scale(Vec3::splat(4.0)),
+        Transform::from_xyz(0.0, ground_y, 1.0).with_scale(Vec3::splat(4.0)),
     ));
 }
 
@@ -139,12 +146,27 @@ pub fn move_character(
         if input_direction.abs() > f32::EPSILON {
             let direction = input_direction.signum();
             let delta = direction * motion.speed * time.delta_secs();
-            let target_x = (transform.translation.x + delta)
-                .clamp(motion.min_x, motion.max_x);
+            let target_x = (transform.translation.x + delta).clamp(motion.min_x, motion.max_x);
 
             moved = (target_x - transform.translation.x).abs() > f32::EPSILON;
             transform.translation.x = target_x;
             motion.direction = direction;
+        }
+
+        if keyboard_input.just_pressed(KeyCode::Space) && !motion.is_jumping {
+            motion.is_jumping = true;
+            motion.vertical_velocity = motion.jump_speed;
+        }
+
+        if motion.is_jumping || transform.translation.y > motion.ground_y {
+            motion.vertical_velocity += motion.gravity * time.delta_secs();
+            transform.translation.y += motion.vertical_velocity * time.delta_secs();
+
+            if transform.translation.y <= motion.ground_y {
+                transform.translation.y = motion.ground_y;
+                motion.vertical_velocity = 0.0;
+                motion.is_jumping = false;
+            }
         }
 
         motion.is_moving = moved;

@@ -51,4 +51,9 @@ pub struct PlayerMotion {
     pub min_x: f32,
     pub max_x: f32,
     pub is_moving: bool,
+    pub vertical_velocity: f32,
+    pub gravity: f32,
+    pub jump_speed: f32,
+    pub ground_y: f32,
+    pub is_jumping: bool,
 }
