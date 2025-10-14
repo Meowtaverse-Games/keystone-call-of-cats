@@ -58,6 +58,18 @@ impl TiledMapAssets {
                 LayerType::Image(_) => LayerTag::Image,
                 LayerType::Group(_) => LayerTag::Group,
             };
+
+            let tile_layer = layer.as_tile_layer().unwrap();
+            info!("Layer '{}' has dimensions {}x{}", layer.name, tile_layer.width().unwrap(), tile_layer.height().unwrap());
+            for x in 0..tile_layer.width().unwrap() {
+                for y in 0..tile_layer.height().unwrap() {
+                    if let Some(tile) = tile_layer.get_tile(x as i32, y as i32) {
+                        if let Some(tile_data) = tile.get_tile() {
+                            info!("Tile at ({}, {}): ID {}", x, y, tile_data.probability);
+                        }
+                    }
+                }
+            };
             Layer {
                 name: layer.name.clone(),
                 tag,
