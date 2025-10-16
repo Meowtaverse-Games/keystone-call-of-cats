@@ -3,7 +3,7 @@ use std::sync::Arc;
 use bevy::asset::Assets;
 use bevy::math::UVec2;
 use bevy::prelude::*;
-use tiled::{Loader, Map, Tileset, LayerType};
+use tiled as tiled_rs;
 
 /// Configures how the [`TiledPlugin`] loads Tiled data.
 #[derive(Resource, Clone)]
@@ -12,6 +12,7 @@ pub struct TiledLoaderConfig {
     pub tsx_path: String,
 }
 
+// A plugin that loads Tiled maps and tilesets at startup.
 pub struct TiledPlugin {
     config: TiledLoaderConfig,
 }
@@ -36,16 +37,12 @@ impl Plugin for TiledPlugin {
 
 #[derive(Resource)]
 pub struct TiledMapAssets {
-    tsx: Arc<Tileset>,
-    map: Arc<Map>,
+    tsx: Arc<tiled_rs::Tileset>,
+    map: Arc<tiled_rs::Map>,
     tilesets: Vec<TiledTileset>,
 }
 
 impl TiledMapAssets {
-    pub fn map(&self) -> Arc<Map> {
-        Arc::clone(&self.map)
-    }
-
     pub fn tilesets(&self) -> &[TiledTileset] {
         &self.tilesets
     }
@@ -53,28 +50,34 @@ impl TiledMapAssets {
     pub fn layers(&self) -> impl Iterator<Item = Layer> + '_ {
         self.map.layers().map(|layer| {
             let tag = match layer.layer_type() {
-                LayerType::Tiles(_) => LayerTag::Tile,
-                LayerType::Objects(_) => LayerTag::Object,
-                LayerType::Image(_) => LayerTag::Image,
-                LayerType::Group(_) => LayerTag::Group,
+                tiled_rs::LayerType::Tiles(_) => LayerTag::Tile,
+                tiled_rs::LayerType::Objects(_) => LayerTag::Object,
+                tiled_rs::LayerType::Image(_) => LayerTag::Image,
+                tiled_rs::LayerType::Group(_) => LayerTag::Group,
             };
 
+            Layer {
+                name: layer.name.clone(),
+                tag,
+                tile_layer: layer.as_tile_layer().unwrap(),
+            }
+        })
+    }
+
+    pub fn tile(x: i32, y: i32) -> Option<Tile> {
             let tile_layer = layer.as_tile_layer().unwrap();
             info!("Layer '{}' has dimensions {}x{}", layer.name, tile_layer.width().unwrap(), tile_layer.height().unwrap());
+            info!("Tiles in layer '{:?}", tile_layer);
             for x in 0..tile_layer.width().unwrap() {
                 for y in 0..tile_layer.height().unwrap() {
                     if let Some(tile) = tile_layer.get_tile(x as i32, y as i32) {
                         if let Some(tile_data) = tile.get_tile() {
-                            info!("Tile at ({}, {}): ID {}", x, y, tile_data.probability);
+                            // info!("Tile at ({}, {}): ID {}: {:?}", x, y, tile.id(), tile_data.properties);
                         }
                     }
                 }
             };
-            Layer {
-                name: layer.name.clone(),
-                tag,
-            }
-        })
+
     }
 }
 
@@ -86,14 +89,15 @@ pub enum LayerTag {
     Group,
 }
 
-pub struct Layer {
+pub struct Layer<'map> {
     pub name: String,
     pub tag: LayerTag,
+    tile_layer: tiled_rs::TileLayer<'map>,
 }
 
 #[derive(Clone)]
 pub struct TiledTileset {
-    tileset: Arc<Tileset>,
+    tileset: Arc<tiled_rs::Tileset>,
     image: Option<TiledTilesetImage>,
 }
 
@@ -142,7 +146,7 @@ fn load_tiled_assets(
     asset_server: Res<AssetServer>,
     mut layouts: ResMut<Assets<TextureAtlasLayout>>,
 ) {
-    let mut loader = Loader::new();
+    let mut loader = tiled_rs::Loader::new();
 
     let map = match loader.load_tmx_map(&config.map_path) {
         Ok(map) => map,
@@ -178,7 +182,7 @@ fn load_tiled_assets(
 }
 
 fn load_tileset(
-    tileset: &Arc<Tileset>,
+    tileset: &Arc<tiled_rs::Tileset>,
     asset_server: &AssetServer,
     layouts: &mut Assets<TextureAtlasLayout>,
 ) -> TiledTileset {
@@ -194,12 +198,13 @@ fn load_tileset(
 }
 
 fn create_tileset_image(
-    tileset: &Tileset,
-    image: &tiled::Image,
+    tileset: &tiled_rs::Tileset,
+    image: &tiled_rs::Image,
     asset_server: &AssetServer,
     layouts: &mut Assets<TextureAtlasLayout>,
 ) -> TiledTilesetImage {
     let path = normalize_asset_path(&image.source);
+    info!(target: "tiled", "Loading tileset image from path: {}", path);
     let texture = asset_server.load(path.clone());
 
     let columns = tileset.columns.max(1);
@@ -213,6 +218,7 @@ fn create_tileset_image(
         Some(UVec2::new(tileset.spacing, tileset.spacing)),
         Some(UVec2::new(tileset.margin, tileset.margin)),
     );
+    info!(target: "tiled", "Tileset '{}' layout: {} columns x {} rows (tile size: {}x{}, spacing: {}, margin: {})", tileset.name, columns, rows, tileset.tile_width, tileset.tile_height, tileset.spacing, tileset.margin);
 
     layout.textures.truncate(tile_count as usize);
 
