@@ -3,6 +3,7 @@ use std::sync::Arc;
 use bevy::asset::Assets;
 use bevy::math::UVec2;
 use bevy::prelude::*;
+
 use tiled as tiled_rs;
 
 /// Configures how the [`TiledPlugin`] loads Tiled data.
@@ -65,19 +66,23 @@ impl TiledMapAssets {
     }
 
     pub fn tile(x: i32, y: i32) -> Option<Tile> {
-            let tile_layer = layer.as_tile_layer().unwrap();
-            info!("Layer '{}' has dimensions {}x{}", layer.name, tile_layer.width().unwrap(), tile_layer.height().unwrap());
-            info!("Tiles in layer '{:?}", tile_layer);
-            for x in 0..tile_layer.width().unwrap() {
-                for y in 0..tile_layer.height().unwrap() {
-                    if let Some(tile) = tile_layer.get_tile(x as i32, y as i32) {
-                        if let Some(tile_data) = tile.get_tile() {
-                            // info!("Tile at ({}, {}): ID {}: {:?}", x, y, tile.id(), tile_data.properties);
-                        }
+        let tile_layer = layer.as_tile_layer().unwrap();
+        info!(
+            "Layer '{}' has dimensions {}x{}",
+            layer.name,
+            tile_layer.width().unwrap(),
+            tile_layer.height().unwrap()
+        );
+        info!("Tiles in layer '{:?}", tile_layer);
+        for x in 0..tile_layer.width().unwrap() {
+            for y in 0..tile_layer.height().unwrap() {
+                if let Some(tile) = tile_layer.get_tile(x as i32, y as i32) {
+                    if let Some(tile_data) = tile.get_tile() {
+                        // info!("Tile at ({}, {}): ID {}: {:?}", x, y, tile.id(), tile_data.properties);
                     }
                 }
-            };
-
+            }
+        }
     }
 }
 

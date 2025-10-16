@@ -62,7 +62,7 @@ pub fn setup(
 
     tiled_assets.layers().for_each(|layer| {
         info!("Layer name: {}, type: {:?}", layer.name, layer.tag);
-    }); 
+    });
 
     tiled_assets.tilesets().iter().for_each(|tileset| {
         info!("Tileset: {}", tileset.name());

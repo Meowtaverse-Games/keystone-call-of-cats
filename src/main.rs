@@ -29,7 +29,7 @@ fn main() {
                     }),
                     ..default()
                 })
-                .set(ImagePlugin::default_nearest())
+                .set(ImagePlugin::default_nearest()),
         )
         .add_plugins(VisibilityPlugin)
         .add_plugins(
