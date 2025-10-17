@@ -120,7 +120,6 @@ pub fn setup(
             for x in 0..layer.width() {
                 if let Some(tile) = layer.tile(x, y) {
                     if let Some(tile_sprite) = tileset.atlas_sprite(tile.id) {
-                        info!("Spawning tile at ({}, {}) with id {}: {:?}", x, y, tile.id, tile.collision);
                         commands.spawn((
                             StageTile { coord: UVec2::new(x as u32, y as u32) },
                             Sprite::from_atlas_image(tile_sprite.texture, tile_sprite.atlas),
@@ -357,11 +356,8 @@ pub fn ui(
         .rect
         .width();
 
-    let left_logical = left;
-    // let left_physical = left_logical * window.scale_factor();
-
-    if (letterbox_offsets.left - left_logical).abs() > f32::EPSILON {
-        letterbox_offsets.left = left_logical;
+    if (letterbox_offsets.left - left).abs() > f32::EPSILON {
+        letterbox_offsets.left = left;
     }
 }
 
