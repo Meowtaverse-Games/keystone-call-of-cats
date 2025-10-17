@@ -6,6 +6,7 @@ use bevy_egui::{
     EguiContexts,
     egui::{self, load::SizedTexture},
 };
+use avian2d::prelude::*;
 
 use super::components::*;
 use crate::plugins::{
@@ -176,6 +177,9 @@ pub fn setup(
             ground_y,
             is_jumping: false,
         },
+        RigidBody::Dynamic,
+        Collider::circle(4.5),
+        DebugRender::default().with_collider_color(Color::srgb(1.0, 0.0, 0.0)),
         Transform::from_xyz(0.0, ground_y, 1.0).with_scale(Vec3::splat(4.0)),
     ));
 }
