@@ -1,14 +1,36 @@
-use bevy::{prelude::*, window::PrimaryWindow};
+use bevy::{
+    prelude::*,
+    window::{PrimaryWindow, WindowResized},
+};
 use bevy_egui::{
     EguiContexts,
     egui::{self, load::SizedTexture},
 };
+use avian2d::prelude::*;
 
 use super::components::*;
-use crate::plugins::{assets_loader::AssetStore, design_resolution::LetterboxOffsets};
+use crate::plugins::{
+    TiledMapAssets,
+    assets_loader::AssetStore,
+    design_resolution::{LetterboxOffsets, StageViewport},
+};
 use crate::scenes::assets::{ImageKey, PLAYER_IDLE_KEYS, PLAYER_RUN_KEYS};
 
-pub fn setup(mut commands: Commands, asset_store: Res<AssetStore>) {
+#[derive(Resource, Clone, Copy)]
+pub struct StageTileLayout {
+    base_tile_size: Vec2,
+    map_tile_dimensions: UVec2,
+    current_scale: f32,
+    last_viewport_size: Vec2,
+    origin_offset: Vec2,
+}
+
+pub fn setup(
+    mut commands: Commands,
+    asset_store: Res<AssetStore>,
+    tiled_map_assets: Res<TiledMapAssets>,
+    viewport: Res<StageViewport>,
+) {
     let idle_frames: Vec<Handle<Image>> = PLAYER_IDLE_KEYS
         .iter()
         .filter_map(|key| asset_store.image(*key))
@@ -54,6 +76,84 @@ pub fn setup(mut commands: Commands, asset_store: Res<AssetStore>) {
         return;
     };
 
+    let tileset = match tiled_map_assets.tilesets().first() {
+        Some(tileset) => tileset,
+        None => {
+            warn!("Stage setup: no tilesets available");
+            return;
+        }
+    };
+
+    let map_tile_dimensions = tiled_map_assets.layers().fold(UVec2::ZERO, |acc, layer| {
+        let width = layer.width().max(0) as u32;
+        let height = layer.height().max(0) as u32;
+        UVec2::new(acc.x.max(width), acc.y.max(height))
+    });
+
+    let raw_tile_size = tileset
+        .image()
+        .map(|image| image.tile_size)
+        .unwrap_or(UVec2::new(32, 32));
+
+    let base_tile_size = Vec2::new(raw_tile_size.x.max(1) as f32, raw_tile_size.y.max(1) as f32);
+
+    let mut viewport_size = viewport.size;
+
+    let map_pixel_size = Vec2::new(
+        map_tile_dimensions.x as f32 * base_tile_size.x,
+        map_tile_dimensions.y as f32 * base_tile_size.y,
+    );
+
+    let scale_x = viewport_size.x / map_pixel_size.x;
+    let scale_y = viewport_size.y / map_pixel_size.y;
+    let scale = scale_x.min(scale_y).max(f32::EPSILON);
+    let tile_size = base_tile_size * scale;
+    let map_actual_width = map_tile_dimensions.x as f32 * tile_size.x;
+    let map_actual_height = map_tile_dimensions.y as f32 * tile_size.y;
+    let origin_offset = Vec2::new(-map_actual_width / 2.0 + tile_size.x / 2.0, -map_actual_height / 2.0 + tile_size.y / 2.0);
+
+    commands.insert_resource(StageTileLayout {
+        base_tile_size,
+        map_tile_dimensions,
+        current_scale: scale,
+        last_viewport_size: viewport_size,
+        origin_offset,
+    });
+
+    tiled_map_assets.layers().for_each(|layer| {
+        info!("Layer name: {}, type: {:?}", layer.name, layer.layer_type);
+        for y in 0..layer.height() {
+            for x in 0..layer.width() {
+                if let Some(tile) = layer.tile(x as i32, y as i32) {
+                    if let Some(tile_sprite) = tileset.atlas_sprite(tile.id) {
+                        let mut command = commands.spawn((
+                            StageTile {
+                                coord: UVec2::new(x as u32, y as u32),
+                            },
+                            Sprite::from_atlas_image(tile_sprite.texture, tile_sprite.atlas),
+
+                            Transform::from_xyz(
+                                x as f32 * tile_size.x + origin_offset.x,
+                                -(y as f32 * tile_size.y + origin_offset.y),
+                                0.0,
+                            )
+                            .with_scale(Vec3::new(scale, scale, 1.0)),
+                        ));
+                        if layer.name.starts_with("Ground") {
+                            command.insert((
+                                RigidBody::Static,
+                                Collider::rectangle(base_tile_size.x * scale, base_tile_size.y * scale),
+                                DebugRender::default().with_collider_color(Color::srgb(0.0, 1.0, 0.0)),
+                            ));
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    let ground_y = -100.0;
+
     commands.spawn((
         Sprite::from_image(initial_frame),
         Player,
@@ -69,18 +169,109 @@ pub fn setup(mut commands: Commands, asset_store: Res<AssetStore>) {
             min_x: -150.0,
             max_x: 150.0,
             is_moving: matches!(initial_state, PlayerAnimationState::Run),
+            vertical_velocity: 0.0,
+            gravity: -600.0,
+            jump_speed: 280.0,
+            ground_y,
+            is_jumping: false,
         },
-        Transform::from_xyz(0.0, -100.0, 1.0).with_scale(Vec3::splat(4.0)),
+        RigidBody::Dynamic,
+        Collider::circle(4.5),
+        DebugRender::default().with_collider_color(Color::srgb(1.0, 0.0, 0.0)),
+        Transform::from_xyz(0.0, ground_y, 1.0).with_scale(Vec3::splat(4.0)),
     ));
 }
 
 pub fn cleanup(
     mut commands: Commands,
     query: Query<Entity, Or<(With<StageBackground>, With<Player>)>>,
+    tiles: Query<Entity, With<StageTile>>,
 ) {
     for entity in &query {
         commands.entity(entity).despawn();
     }
+
+    for entity in &tiles {
+        commands.entity(entity).despawn();
+    }
+
+    commands.remove_resource::<StageTileLayout>();
+}
+
+pub fn update_tiles_on_resize(
+    mut resize_events: MessageReader<WindowResized>,
+    windows: Query<(Entity, &Window), With<PrimaryWindow>>,
+    viewport: Res<StageViewport>,
+    layout: Option<ResMut<StageTileLayout>>,
+    mut tiles: Query<(&StageTile, &mut Transform)>,
+) {
+    let Ok((window_entity, window)) = windows.single() else {
+        for _ in resize_events.read() {}
+        return;
+    };
+
+    let Some(mut layout) = layout else {
+        for _ in resize_events.read() {}
+        return;
+    };
+
+    let viewport_changed = viewport.is_changed();
+    let mut window_resized = false;
+    for event in resize_events.read() {
+        if event.window == window_entity {
+            window_resized = true;
+        }
+    }
+
+    if !viewport_changed && !window_resized {
+        return;
+    }
+
+    let mut viewport_size = viewport.size;
+    if viewport_size.x <= 0.0 || viewport_size.y <= 0.0 {
+        let window_size = window.resolution.size();
+        viewport_size = Vec2::new(window_size.x.max(1.0), window_size.y.max(1.0));
+    }
+
+    if (viewport_size.x - layout.last_viewport_size.x).abs() <= f32::EPSILON
+        && (viewport_size.y - layout.last_viewport_size.y).abs() <= f32::EPSILON
+    {
+        return;
+    }
+
+    let map_pixel_size = Vec2::new(
+        layout.map_tile_dimensions.x as f32 * layout.base_tile_size.x,
+        layout.map_tile_dimensions.y as f32 * layout.base_tile_size.y,
+    );
+
+    if map_pixel_size.x <= 0.0 || map_pixel_size.y <= 0.0 {
+        return;
+    }
+
+    let scale_x = viewport_size.x / map_pixel_size.x;
+    let scale_y = viewport_size.y / map_pixel_size.y;
+    let new_scale = scale_x.min(scale_y).max(f32::EPSILON);
+
+    if (new_scale - layout.current_scale).abs() <= f32::EPSILON {
+        layout.last_viewport_size = viewport_size;
+        return;
+    }
+
+    let tile_size = layout.base_tile_size * new_scale;
+    let map_actual_width = layout.map_tile_dimensions.x as f32 * tile_size.x;
+    let map_actual_height = layout.map_tile_dimensions.y as f32 * tile_size.y;
+    let origin_offset = Vec2::new(-map_actual_width / 2.0 + tile_size.x / 2.0, -map_actual_height / 2.0 + tile_size.y / 2.0);
+
+    for (tile, mut transform) in &mut tiles {
+        transform.translation.x = tile.coord.x as f32 * tile_size.x + origin_offset.x;
+        transform.translation.y = -(tile.coord.y as f32 * tile_size.y + origin_offset.y);
+        transform.scale.x = new_scale;
+        transform.scale.y = new_scale;
+    }
+
+    layout.current_scale = new_scale;
+    layout.last_viewport_size = viewport_size;
+    layout.origin_offset = origin_offset;
 }
 
 pub fn animate_character(
@@ -139,12 +330,27 @@ pub fn move_character(
         if input_direction.abs() > f32::EPSILON {
             let direction = input_direction.signum();
             let delta = direction * motion.speed * time.delta_secs();
-            let target_x = (transform.translation.x + delta)
-                .clamp(motion.min_x, motion.max_x);
+            let target_x = (transform.translation.x + delta).clamp(motion.min_x, motion.max_x);
 
             moved = (target_x - transform.translation.x).abs() > f32::EPSILON;
             transform.translation.x = target_x;
             motion.direction = direction;
+        }
+
+        if keyboard_input.just_pressed(KeyCode::Space) && !motion.is_jumping {
+            motion.is_jumping = true;
+            motion.vertical_velocity = motion.jump_speed;
+        }
+
+        if motion.is_jumping || transform.translation.y > motion.ground_y {
+            motion.vertical_velocity += motion.gravity * time.delta_secs();
+            transform.translation.y += motion.vertical_velocity * time.delta_secs();
+
+            if transform.translation.y <= motion.ground_y {
+                transform.translation.y = motion.ground_y;
+                motion.vertical_velocity = 0.0;
+                motion.is_jumping = false;
+            }
         }
 
         motion.is_moving = moved;
@@ -156,7 +362,7 @@ pub fn ui(
     mut contexts: EguiContexts,
     asset_store: Res<AssetStore>,
     images: Res<Assets<Image>>,
-    window: Single<&mut Window, With<PrimaryWindow>>,
+    _window: Single<&mut Window, With<PrimaryWindow>>,
     mut letterbox_offsets: ResMut<LetterboxOffsets>,
 ) {
     let logo = texture_handle(&mut contexts, &asset_store, &images, ImageKey::Logo);
@@ -193,15 +399,8 @@ pub fn ui(
         .rect
         .width();
 
-    let left_logical = left;
-    let _left_physical = left_logical * window.scale_factor();
-
-    if (letterbox_offsets.left - left_logical).abs() > f32::EPSILON {
-        letterbox_offsets.left = left_logical;
-    }
-
-    if letterbox_offsets.right != 0.0 {
-        letterbox_offsets.right = 0.0;
+    if (letterbox_offsets.left - left).abs() > f32::EPSILON {
+        letterbox_offsets.left = left;
     }
 }
 

@@ -13,7 +13,11 @@ impl Plugin for StagePlugin {
             .add_systems(OnExit(GameState::Stage), systems::cleanup)
             .add_systems(
                 Update,
-                (systems::animate_character, systems::move_character)
+                (
+                    systems::animate_character,
+                    systems::move_character,
+                    systems::update_tiles_on_resize,
+                )
                     .run_if(in_state(GameState::Stage)),
             )
             .add_systems(
