@@ -38,7 +38,7 @@ impl Plugin for TiledPlugin {
 
 #[derive(Resource)]
 pub struct TiledMapAssets {
-    tsx: Arc<tiled_rs::Tileset>,
+    _tsx: Arc<tiled_rs::Tileset>,
     map: Arc<tiled_rs::Map>,
     tilesets: Vec<Tileset>,
 }
@@ -123,10 +123,6 @@ pub struct Tileset {
 }
 
 impl Tileset {
-    pub fn name(&self) -> &str {
-        &self.tileset.name
-    }
-
     pub fn image(&self) -> Option<&TiledTilesetImage> {
         self.image.as_ref()
     }
@@ -149,7 +145,6 @@ impl Tileset {
 
 #[derive(Clone)]
 pub struct TiledTilesetImage {
-    pub path: String,
     pub texture: Handle<Image>,
     pub layout: Handle<TextureAtlasLayout>,
     pub tile_size: UVec2,
@@ -196,7 +191,7 @@ fn load_tiled_assets(
     });
 
     commands.insert_resource(TiledMapAssets {
-        tsx: Arc::new(tsx),
+        _tsx: Arc::new(tsx),
         map: Arc::new(map),
         tilesets,
     });
@@ -246,7 +241,6 @@ fn create_tileset_image(
     let layout = layouts.add(layout);
 
     TiledTilesetImage {
-        path,
         texture,
         layout,
         tile_size: UVec2::new(tileset.tile_width, tileset.tile_height),

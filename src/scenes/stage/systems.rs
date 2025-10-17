@@ -1,4 +1,4 @@
-use bevy::{prelude::*, window::PrimaryWindow};
+use bevy::{prelude::*, window::{PrimaryWindow, WindowResized}};
 use bevy_egui::{
     EguiContexts,
     egui::{self, load::SizedTexture},
@@ -9,6 +9,13 @@ use crate::plugins::{
     TiledMapAssets, assets_loader::AssetStore, design_resolution::LetterboxOffsets,
 };
 use crate::scenes::assets::{ImageKey, PLAYER_IDLE_KEYS, PLAYER_RUN_KEYS};
+
+#[derive(Resource, Clone, Copy)]
+pub struct StageTileLayout {
+    base_tile_size: Vec2,
+    max_layer_width: u32,
+    current_scale: f32,
+}
 
 pub fn setup(
     mut commands: Commands,
@@ -101,13 +108,21 @@ pub fn setup(
     let tile_width = base_tile_width * scale;
     let tile_height = base_tile_height * scale;
 
+    commands.insert_resource(StageTileLayout {
+        base_tile_size: Vec2::new(base_tile_width, base_tile_height),
+        max_layer_width,
+        current_scale: scale,
+    });
+
     tiled_map_assets.layers().for_each(|layer| {
         info!("Layer name: {}, type: {:?}", layer.name, layer.layer_type);
         for y in 0..layer.height() {
             for x in 0..layer.width() {
                 if let Some(tile) = layer.tile(x as i32, y as i32) {
                     if let Some(tile_sprite) = tileset.atlas_sprite(tile.id) {
+                        info!("Spawning tile at ({}, {}) with id {}: {:?}", x, y, tile.id, tile.collision);
                         commands.spawn((
+                            StageTile { coord: UVec2::new(x, y) },
                             Sprite::from_atlas_image(tile_sprite.texture, tile_sprite.atlas),
                             Transform::from_xyz(
                                 x as f32 * tile_width,
@@ -153,10 +168,68 @@ pub fn setup(
 pub fn cleanup(
     mut commands: Commands,
     query: Query<Entity, Or<(With<StageBackground>, With<Player>)>>,
+    tiles: Query<Entity, With<StageTile>>,
 ) {
     for entity in &query {
         commands.entity(entity).despawn();
     }
+
+    for entity in &tiles {
+        commands.entity(entity).despawn();
+    }
+
+    commands.remove_resource::<StageTileLayout>();
+}
+
+
+pub fn update_tiles_on_resize(
+    mut resize_events: MessageReader<WindowResized>,
+    windows: Query<(Entity, &Window), With<PrimaryWindow>>,
+    layout: Option<ResMut<StageTileLayout>>,
+    mut tiles: Query<(&StageTile, &mut Transform)>,
+) {
+    let Ok((window_entity, window)) = windows.single() else {
+        for _ in resize_events.read() {}
+        return;
+    };
+
+    let Some(mut layout) = layout else {
+        for _ in resize_events.read() {}
+        return;
+    };
+
+    if layout.max_layer_width == 0 {
+        for _ in resize_events.read() {}
+        return;
+    }
+
+    let mut latest_width = None;
+    for event in resize_events.read() {
+        if event.window == window_entity {
+            latest_width = Some(event.width);
+        }
+    }
+
+    let window_width = latest_width.unwrap_or_else(|| window.width());
+    let desired_tile_width = window_width / layout.max_layer_width as f32;
+    let base_tile_width = layout.base_tile_size.x.max(f32::EPSILON);
+    let new_scale = (desired_tile_width / base_tile_width).max(f32::EPSILON);
+
+    if (new_scale - layout.current_scale).abs() <= f32::EPSILON {
+        return;
+    }
+
+    let tile_width = layout.base_tile_size.x * new_scale;
+    let tile_height = layout.base_tile_size.y * new_scale;
+
+    for (tile, mut transform) in &mut tiles {
+        transform.translation.x = tile.coord.x as f32 * tile_width;
+        transform.translation.y = -(tile.coord.y as f32 * tile_height);
+        transform.scale.x = new_scale;
+        transform.scale.y = new_scale;
+    }
+
+    layout.current_scale = new_scale;
 }
 
 pub fn animate_character(

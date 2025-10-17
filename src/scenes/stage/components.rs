@@ -6,6 +6,11 @@ pub struct StageUI;
 #[derive(Component)]
 pub struct StageBackground;
 
+#[derive(Component, Clone, Copy)]
+pub struct StageTile {
+    pub coord: UVec2,
+}
+
 #[derive(Component)]
 pub struct Player;
 
