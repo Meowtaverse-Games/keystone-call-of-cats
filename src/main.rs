@@ -8,8 +8,8 @@ use bevy::prelude::*;
 
 use bevy_egui::EguiPlugin;
 
-use avian2d::prelude::*;
 use avian2d::debug_render::PhysicsDebugPlugin;
+use avian2d::prelude::*;
 
 use crate::adapter::{VisibilityPlugin, game_state::GameState};
 use crate::plugins::*;
@@ -17,8 +17,8 @@ use crate::scenes::ScenesPlugin;
 
 fn main() {
     App::new()
-        .add_plugins(
-            (            DefaultPlugins
+        .add_plugins((
+            DefaultPlugins
                 .set(AssetPlugin {
                     file_path: "assets".to_string(),
                     watch_for_changes_override: Some(true),
@@ -33,11 +33,9 @@ fn main() {
                     ..default()
                 })
                 .set(ImagePlugin::default_nearest()),
-                PhysicsPlugins::default(),
-                PhysicsDebugPlugin::default(),
-
-            )
-        )
+            PhysicsPlugins::default(),
+            PhysicsDebugPlugin::default(),
+        ))
         .add_plugins(VisibilityPlugin)
         .add_plugins(
             DesignResolutionPlugin::new(1600.0, 1200.0, Color::linear_rgb(0.02, 0.02, 0.02))
