@@ -1,7 +1,4 @@
-use bevy::{
-    prelude::*,
-    window::{PrimaryWindow, WindowResized},
-};
+use bevy::{prelude::*, window::{PrimaryWindow, WindowResized}};
 use bevy_egui::{
     EguiContexts,
     egui::{self, load::SizedTexture},
@@ -91,7 +88,7 @@ pub fn setup(
         .layers()
         .map(|layer| layer.width())
         .max()
-        .unwrap_or(0);
+        .unwrap_or(0) as u32;
 
     if max_layer_width == 0 {
         warn!("Stage setup: tiled map has no layers with width");
@@ -121,16 +118,11 @@ pub fn setup(
         info!("Layer name: {}, type: {:?}", layer.name, layer.layer_type);
         for y in 0..layer.height() {
             for x in 0..layer.width() {
-                if let Some(tile) = layer.tile(x as i32, y as i32) {
+                if let Some(tile) = layer.tile(x, y) {
                     if let Some(tile_sprite) = tileset.atlas_sprite(tile.id) {
-                        info!(
-                            "Spawning tile at ({}, {}) with id {}: {:?}",
-                            x, y, tile.id, tile.collision
-                        );
+                        info!("Spawning tile at ({}, {}) with id {}: {:?}", x, y, tile.id, tile.collision);
                         commands.spawn((
-                            StageTile {
-                                coord: UVec2::new(x, y),
-                            },
+                            StageTile { coord: UVec2::new(x as u32, y as u32) },
                             Sprite::from_atlas_image(tile_sprite.texture, tile_sprite.atlas),
                             Transform::from_xyz(
                                 x as f32 * tile_width,
@@ -172,6 +164,7 @@ pub fn setup(
     ));
 }
 
+
 pub fn cleanup(
     mut commands: Commands,
     query: Query<Entity, Or<(With<StageBackground>, With<Player>)>>,
@@ -187,6 +180,7 @@ pub fn cleanup(
 
     commands.remove_resource::<StageTileLayout>();
 }
+
 
 pub fn update_tiles_on_resize(
     mut resize_events: MessageReader<WindowResized>,
@@ -364,14 +358,10 @@ pub fn ui(
         .width();
 
     let left_logical = left;
-    let _left_physical = left_logical * window.scale_factor();
+    // let left_physical = left_logical * window.scale_factor();
 
     if (letterbox_offsets.left - left_logical).abs() > f32::EPSILON {
         letterbox_offsets.left = left_logical;
-    }
-
-    if letterbox_offsets.right != 0.0 {
-        letterbox_offsets.right = 0.0;
     }
 }
 
