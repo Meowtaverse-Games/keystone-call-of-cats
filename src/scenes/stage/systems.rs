@@ -29,18 +29,8 @@ pub fn setup(
     mut commands: Commands,
     asset_store: Res<AssetStore>,
     tiled_map_assets: Res<TiledMapAssets>,
-    windows: Query<&Window, With<PrimaryWindow>>,
-    letterbox_offsets: Res<LetterboxOffsets>,
     viewport: Res<StageViewport>,
 ) {
-    let window = match windows.single() {
-        Ok(window) => window,
-        Err(err) => {
-            warn!("Stage setup: primary window unavailable: {err}");
-            return;
-        }
-    };
-
     let idle_frames: Vec<Handle<Image>> = PLAYER_IDLE_KEYS
         .iter()
         .filter_map(|key| asset_store.image(*key))
@@ -136,11 +126,12 @@ pub fn setup(
             for x in 0..layer.width() {
                 if let Some(tile) = layer.tile(x as i32, y as i32) {
                     if let Some(tile_sprite) = tileset.atlas_sprite(tile.id) {
-                        commands.spawn((
+                        let mut command = commands.spawn((
                             StageTile {
                                 coord: UVec2::new(x as u32, y as u32),
                             },
                             Sprite::from_atlas_image(tile_sprite.texture, tile_sprite.atlas),
+
                             Transform::from_xyz(
                                 x as f32 * tile_size.x + origin_offset.x,
                                 -(y as f32 * tile_size.y + origin_offset.y),
@@ -148,6 +139,13 @@ pub fn setup(
                             )
                             .with_scale(Vec3::new(scale, scale, 1.0)),
                         ));
+                        if layer.name.starts_with("Ground") {
+                            command.insert((
+                                RigidBody::Static,
+                                Collider::rectangle(base_tile_size.x * scale, base_tile_size.y * scale),
+                                DebugRender::default().with_collider_color(Color::srgb(0.0, 1.0, 0.0)),
+                            ));
+                        }
                     }
                 }
             }
