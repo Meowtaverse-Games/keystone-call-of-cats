@@ -60,33 +60,29 @@ pub fn setup(
         return;
     };
 
+    let tile_size = (32, 32);
+
+    let tileset = &tiled_map_assets.tilesets()[0];
+
     tiled_map_assets.layers().for_each(|layer| {
         info!("Layer name: {}, type: {:?}", layer.name, layer.layer_type);
         for y in 0..layer.height() {
             for x in 0..layer.width() {
                 if let Some(tile) = layer.tile(x as i32, y as i32) {
-                    info!("  Tile at ({}, {}): id={}, collision={:?}", x, y, tile.id, tile.collision);
+                    let tile_sprite = tileset.atlas_sprite(tile.id).unwrap();
+                    commands.spawn((
+                        Sprite::from_atlas_image(
+                            tile_sprite.texture,
+                            tile_sprite.atlas,
+                        ),
+                        Transform::from_xyz(
+                            x as f32 * tile_size.0 as f32,
+                            -(y as f32 * tile_size.1 as f32),
+                            0.0,
+                        ),
+                    ));
                 }
             }
-        }
-    });
-
-    tiled_map_assets.tilesets().iter().for_each(|tileset| {
-        info!("Tileset: {}", tileset.name());
-        if let (Some(image), Some(tile_sprite)) = (tileset.image(), tileset.atlas_sprite(0)) {
-            let mut sprite = Sprite::from_atlas_image(tile_sprite.texture, tile_sprite.atlas);
-            sprite.custom_size =
-                Some(Vec2::new(image.tile_size.x as f32, image.tile_size.y as f32) * 4.0);
-
-            commands.spawn((
-                sprite,
-                Transform::from_xyz(-320.0, -160.0, 0.0),
-                Name::new(format!(
-                    "{}::tile0 ({})",
-                    tileset.name(),
-                    image.path.as_str()
-                )),
-            ));
         }
     });
 
