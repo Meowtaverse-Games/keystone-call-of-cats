@@ -13,7 +13,7 @@ use crate::scenes::assets::{ImageKey, PLAYER_IDLE_KEYS, PLAYER_RUN_KEYS};
 pub fn setup(
     mut commands: Commands,
     asset_store: Res<AssetStore>,
-    tiled_assets: Res<TiledMapAssets>,
+    tiled_map_assets: Res<TiledMapAssets>,
 ) {
     let idle_frames: Vec<Handle<Image>> = PLAYER_IDLE_KEYS
         .iter()
@@ -60,11 +60,18 @@ pub fn setup(
         return;
     };
 
-    tiled_assets.layers().for_each(|layer| {
-        info!("Layer name: {}, type: {:?}", layer.name, layer.tag);
+    tiled_map_assets.layers().for_each(|layer| {
+        info!("Layer name: {}, type: {:?}", layer.name, layer.layer_type);
+        for y in 0..layer.height() {
+            for x in 0..layer.width() {
+                if let Some(tile) = layer.tile(x as i32, y as i32) {
+                    info!("  Tile at ({}, {}): id={}, collision={:?}", x, y, tile.id, tile.collision);
+                }
+            }
+        }
     });
 
-    tiled_assets.tilesets().iter().for_each(|tileset| {
+    tiled_map_assets.tilesets().iter().for_each(|tileset| {
         info!("Tileset: {}", tileset.name());
         if let (Some(image), Some(tile_sprite)) = (tileset.image(), tileset.atlas_sprite(0)) {
             let mut sprite = Sprite::from_atlas_image(tile_sprite.texture, tile_sprite.atlas);

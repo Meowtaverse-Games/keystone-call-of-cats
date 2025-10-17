@@ -40,73 +40,89 @@ impl Plugin for TiledPlugin {
 pub struct TiledMapAssets {
     tsx: Arc<tiled_rs::Tileset>,
     map: Arc<tiled_rs::Map>,
-    tilesets: Vec<TiledTileset>,
+    tilesets: Vec<Tileset>,
 }
 
 impl TiledMapAssets {
-    pub fn tilesets(&self) -> &[TiledTileset] {
+    pub fn tilesets(&self) -> &[Tileset] {
         &self.tilesets
     }
 
     pub fn layers(&self) -> impl Iterator<Item = Layer> + '_ {
         self.map.layers().map(|layer| {
-            let tag = match layer.layer_type() {
-                tiled_rs::LayerType::Tiles(_) => LayerTag::Tile,
-                tiled_rs::LayerType::Objects(_) => LayerTag::Object,
-                tiled_rs::LayerType::Image(_) => LayerTag::Image,
-                tiled_rs::LayerType::Group(_) => LayerTag::Group,
+            let layer_type = match layer.layer_type() {
+                tiled_rs::LayerType::Tiles(_) => LayerType::Tile,
+                tiled_rs::LayerType::Objects(_) => LayerType::Object,
+                tiled_rs::LayerType::Image(_) => LayerType::Image,
+                tiled_rs::LayerType::Group(_) => LayerType::Group,
             };
 
             Layer {
                 name: layer.name.clone(),
-                tag,
-                tile_layer: layer.as_tile_layer().unwrap(),
+                layer_type,
+                tiled_tile_layer: layer.as_tile_layer().unwrap(),
             }
         })
-    }
-
-    pub fn tile(x: i32, y: i32) -> Option<Tile> {
-        let tile_layer = layer.as_tile_layer().unwrap();
-        info!(
-            "Layer '{}' has dimensions {}x{}",
-            layer.name,
-            tile_layer.width().unwrap(),
-            tile_layer.height().unwrap()
-        );
-        info!("Tiles in layer '{:?}", tile_layer);
-        for x in 0..tile_layer.width().unwrap() {
-            for y in 0..tile_layer.height().unwrap() {
-                if let Some(tile) = tile_layer.get_tile(x as i32, y as i32) {
-                    if let Some(tile_data) = tile.get_tile() {
-                        // info!("Tile at ({}, {}): ID {}: {:?}", x, y, tile.id(), tile_data.properties);
-                    }
-                }
-            }
-        }
     }
 }
 
 #[derive(Debug)]
-pub enum LayerTag {
+pub enum LayerType {
     Tile,
     Object,
     Image,
     Group,
 }
 
+pub struct Tile {
+    pub id: u32,
+    pub collision: Option<bool>,
+}
+
 pub struct Layer<'map> {
     pub name: String,
-    pub tag: LayerTag,
-    tile_layer: tiled_rs::TileLayer<'map>,
+    pub layer_type: LayerType,
+    tiled_tile_layer: tiled_rs::TileLayer<'map>,
+}
+
+impl Layer<'_> {
+    pub fn width(&self) -> u32 {
+        self.tiled_tile_layer.width().unwrap()
+    }
+
+    pub fn height(&self) ->u32 {
+        self.tiled_tile_layer.height().unwrap()
+    }   
+
+    pub fn tile(&self, x: i32, y: i32) -> Option<Tile> {
+        if let Some(tile) = self.tiled_tile_layer.get_tile(x as i32, y as i32) {
+            if let Some(tile_data) = tile.get_tile() {
+                Some(Tile {
+                    id: tile.id(),
+                    collision: tile_data.properties.get("collision").and_then(|v| {
+                        if let tiled_rs::PropertyValue::BoolValue(b) = v {
+                            Some(*b)
+                        } else {
+                            None
+                        }
+                    }),
+                })
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
 }
 
 #[derive(Clone)]
-pub struct TiledTileset {
+pub struct Tileset {
     tileset: Arc<tiled_rs::Tileset>,
     image: Option<TiledTilesetImage>,
 }
 
-impl TiledTileset {
+impl Tileset {
     pub fn name(&self) -> &str {
         &self.tileset.name
     }
@@ -190,13 +206,13 @@ fn load_tileset(
     tileset: &Arc<tiled_rs::Tileset>,
     asset_server: &AssetServer,
     layouts: &mut Assets<TextureAtlasLayout>,
-) -> TiledTileset {
+) -> Tileset {
     let image = tileset
         .image
         .as_ref()
         .map(|image| create_tileset_image(tileset, image, asset_server, layouts));
 
-    TiledTileset {
+    Tileset {
         tileset: Arc::clone(tileset),
         image,
     }
