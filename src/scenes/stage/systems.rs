@@ -25,6 +25,59 @@ pub struct StageTileLayout {
 #[derive(Resource, Default)]
 pub struct ScriptEditorState {
     pub buffer: String,
+    pub last_action: Option<EditorMenuAction>,
+}
+
+impl ScriptEditorState {
+    fn apply_action(&mut self, action: EditorMenuAction) {
+        if matches!(action, EditorMenuAction::LoadExample) && self.buffer.is_empty() {
+        }
+
+        self.last_action = Some(action);
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum EditorMenuAction {
+    LoadExample,
+    SaveBuffer,
+    RunScript,
+}
+
+impl EditorMenuAction {
+    pub const ALL: [Self; 3] = [Self::LoadExample, Self::SaveBuffer, Self::RunScript];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::LoadExample => "Load",
+            Self::SaveBuffer => "Save",
+            Self::RunScript => "Run",
+        }
+    }
+
+    pub fn key_text(self) -> &'static str {
+        match self {
+            Self::LoadExample => "F1",
+            Self::SaveBuffer => "F2",
+            Self::RunScript => "F3",
+        }
+    }
+
+    pub fn key(self) -> egui::Key {
+        match self {
+            Self::LoadExample => egui::Key::F1,
+            Self::SaveBuffer => egui::Key::F2,
+            Self::RunScript => egui::Key::F3,
+        }
+    }
+
+    pub fn status_text(self) -> &'static str {
+        match self {
+            Self::LoadExample => "メニュー「ロード（F1）」を選択しました。",
+            Self::SaveBuffer => "メニュー「セーブ（F2）」を選択しました。",
+            Self::RunScript => "メニュー「実行（F3）」を選択しました。",
+        }
+    }
 }
 
 pub fn setup(
@@ -381,7 +434,15 @@ pub fn ui(
         return;
     };
 
-    let buffer = &mut editor.buffer;
+    let mut action_from_keys = None;
+    ctx.input(|input| {
+        for action in EditorMenuAction::ALL {
+            if input.key_pressed(action.key()) {
+                action_from_keys = Some(action);
+                break;
+            }
+        }
+    });
 
     let left = egui::SidePanel::left("stage-left")
         .resizable(true)
@@ -395,20 +456,45 @@ pub fn ui(
             ..Default::default()
         })
         .show(ctx, |ui| {
-            let mut available_size = ui.available_size();
-            if !available_size.x.is_finite() {
-                available_size.x = ui.max_rect().width();
-            }
-            if !available_size.y.is_finite() {
-                available_size.y = ui.max_rect().height();
-            }
+            ui.vertical(|ui| {
+                let mut pending_action = action_from_keys;
 
-            ui.add_sized(
-                available_size,
-                egui::TextEdit::multiline(buffer)
-                    .code_editor()
-                    .desired_width(f32::INFINITY),
-            );
+                ui.horizontal(|ui| {
+                    ui.spacing_mut().item_spacing.x = 8.0;
+
+                    for action in EditorMenuAction::ALL {
+                        let label = format!("{} ({})", action.label(), action.key_text());
+                        if ui.button(label).clicked() {
+                            pending_action = Some(action);
+                        }
+                    }
+                });
+
+                if let Some(action) = pending_action {
+                    editor.apply_action(action);
+                }
+
+                if let Some(action) = editor.last_action {
+                    ui.label(action.status_text());
+                }
+
+                ui.separator();
+
+                let mut available_size = ui.available_size();
+                if !available_size.x.is_finite() {
+                    available_size.x = ui.max_rect().width();
+                }
+                if !available_size.y.is_finite() {
+                    available_size.y = ui.max_rect().height();
+                }
+
+                ui.add_sized(
+                    available_size,
+                    egui::TextEdit::multiline(&mut editor.buffer)
+                        .code_editor()
+                        .desired_width(f32::INFINITY),
+                );
+            });
         })
         .response
         .rect
