@@ -21,6 +21,7 @@ pub struct StageTileLayout {
     map_tile_dimensions: UVec2,
     current_scale: f32,
     last_viewport_size: Vec2,
+    origin_offset: Vec2,
 }
 
 pub fn setup(
@@ -98,11 +99,6 @@ pub fn setup(
         UVec2::new(acc.x.max(width), acc.y.max(height))
     });
 
-    if map_tile_dimensions.x == 0 || map_tile_dimensions.y == 0 {
-        warn!("Stage setup: tiled map has invalid layer dimensions");
-        return;
-    }
-
     let raw_tile_size = tileset
         .image()
         .map(|image| image.tile_size)
@@ -111,33 +107,26 @@ pub fn setup(
     let base_tile_size = Vec2::new(raw_tile_size.x.max(1) as f32, raw_tile_size.y.max(1) as f32);
 
     let mut viewport_size = viewport.size;
-    if viewport_size.x <= 0.0 || viewport_size.y <= 0.0 {
-        let fallback_width =
-            (window.width() - letterbox_offsets.left - letterbox_offsets.right).max(1.0);
-        let fallback_height = window.height().max(1.0);
-        viewport_size = Vec2::new(fallback_width, fallback_height);
-    }
 
     let map_pixel_size = Vec2::new(
         map_tile_dimensions.x as f32 * base_tile_size.x,
         map_tile_dimensions.y as f32 * base_tile_size.y,
     );
 
-    if map_pixel_size.x <= 0.0 || map_pixel_size.y <= 0.0 {
-        warn!("Stage setup: tiled map resolved to zero pixel size");
-        return;
-    }
-
     let scale_x = viewport_size.x / map_pixel_size.x;
     let scale_y = viewport_size.y / map_pixel_size.y;
     let scale = scale_x.min(scale_y).max(f32::EPSILON);
     let tile_size = base_tile_size * scale;
+    let map_actual_width = map_tile_dimensions.x as f32 * tile_size.x;
+    let map_actual_height = map_tile_dimensions.y as f32 * tile_size.y;
+    let origin_offset = Vec2::new(-map_actual_width / 2.0 + tile_size.x / 2.0, -map_actual_height / 2.0 + tile_size.y / 2.0);
 
     commands.insert_resource(StageTileLayout {
         base_tile_size,
         map_tile_dimensions,
         current_scale: scale,
         last_viewport_size: viewport_size,
+        origin_offset,
     });
 
     tiled_map_assets.layers().for_each(|layer| {
@@ -152,8 +141,8 @@ pub fn setup(
                             },
                             Sprite::from_atlas_image(tile_sprite.texture, tile_sprite.atlas),
                             Transform::from_xyz(
-                                x as f32 * tile_size.x,
-                                -(y as f32 * tile_size.y),
+                                x as f32 * tile_size.x + origin_offset.x,
+                                -(y as f32 * tile_size.y + origin_offset.y),
                                 0.0,
                             )
                             .with_scale(Vec3::new(scale, scale, 1.0)),
@@ -267,16 +256,20 @@ pub fn update_tiles_on_resize(
     }
 
     let tile_size = layout.base_tile_size * new_scale;
+    let map_actual_width = layout.map_tile_dimensions.x as f32 * tile_size.x;
+    let map_actual_height = layout.map_tile_dimensions.y as f32 * tile_size.y;
+    let origin_offset = Vec2::new(-map_actual_width / 2.0 + tile_size.x / 2.0, -map_actual_height / 2.0 + tile_size.y / 2.0);
 
     for (tile, mut transform) in &mut tiles {
-        transform.translation.x = tile.coord.x as f32 * tile_size.x;
-        transform.translation.y = -(tile.coord.y as f32 * tile_size.y);
+        transform.translation.x = tile.coord.x as f32 * tile_size.x + origin_offset.x;
+        transform.translation.y = -(tile.coord.y as f32 * tile_size.y + origin_offset.y);
         transform.scale.x = new_scale;
         transform.scale.y = new_scale;
     }
 
     layout.current_scale = new_scale;
     layout.last_viewport_size = viewport_size;
+    layout.origin_offset = origin_offset;
 }
 
 pub fn animate_character(
