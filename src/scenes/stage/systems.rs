@@ -14,7 +14,16 @@ pub fn setup(
     mut commands: Commands,
     asset_store: Res<AssetStore>,
     tiled_map_assets: Res<TiledMapAssets>,
+    windows: Query<&Window, With<PrimaryWindow>>,
 ) {
+    let window = match windows.single() {
+        Ok(window) => window,
+        Err(err) => {
+            warn!("Stage setup: primary window unavailable: {err}");
+            return;
+        }
+    };
+
     let idle_frames: Vec<Handle<Image>> = PLAYER_IDLE_KEYS
         .iter()
         .filter_map(|key| asset_store.image(*key))
@@ -60,24 +69,54 @@ pub fn setup(
         return;
     };
 
-    let tile_size = (32, 32);
+    let tileset = match tiled_map_assets.tilesets().first() {
+        Some(tileset) => tileset,
+        None => {
+            warn!("Stage setup: no tilesets available");
+            return;
+        }
+    };
 
-    let tileset = &tiled_map_assets.tilesets()[0];
+    let max_layer_width = tiled_map_assets
+        .layers()
+        .map(|layer| layer.width())
+        .max()
+        .unwrap_or(0);
+
+    if max_layer_width == 0 {
+        warn!("Stage setup: tiled map has no layers with width");
+        return;
+    }
+
+    let base_tile_size = tileset
+        .image()
+        .map(|image| image.tile_size)
+        .unwrap_or(UVec2::new(32, 32));
+
+    let base_tile_width = base_tile_size.x.max(1) as f32;
+    let base_tile_height = base_tile_size.y.max(1) as f32;
+    let window_width = window.width().max(f32::EPSILON);
+    let desired_tile_width = window_width / max_layer_width as f32;
+    let scale = (desired_tile_width / base_tile_width).max(f32::EPSILON);
+    let tile_width = base_tile_width * scale;
+    let tile_height = base_tile_height * scale;
 
     tiled_map_assets.layers().for_each(|layer| {
         info!("Layer name: {}, type: {:?}", layer.name, layer.layer_type);
         for y in 0..layer.height() {
             for x in 0..layer.width() {
                 if let Some(tile) = layer.tile(x as i32, y as i32) {
-                    let tile_sprite = tileset.atlas_sprite(tile.id).unwrap();
-                    commands.spawn((
-                        Sprite::from_atlas_image(tile_sprite.texture, tile_sprite.atlas),
-                        Transform::from_xyz(
-                            x as f32 * tile_size.0 as f32,
-                            -(y as f32 * tile_size.1 as f32),
-                            0.0,
-                        ),
-                    ));
+                    if let Some(tile_sprite) = tileset.atlas_sprite(tile.id) {
+                        commands.spawn((
+                            Sprite::from_atlas_image(tile_sprite.texture, tile_sprite.atlas),
+                            Transform::from_xyz(
+                                x as f32 * tile_width,
+                                -(y as f32 * tile_height),
+                                0.0,
+                            )
+                            .with_scale(Vec3::new(scale, scale, 1.0)),
+                        ));
+                    }
                 }
             }
         }
@@ -109,6 +148,7 @@ pub fn setup(
         Transform::from_xyz(0.0, ground_y, 1.0).with_scale(Vec3::splat(4.0)),
     ));
 }
+
 
 pub fn cleanup(
     mut commands: Commands,
