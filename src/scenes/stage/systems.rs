@@ -30,8 +30,7 @@ pub struct ScriptEditorState {
 
 impl ScriptEditorState {
     fn apply_action(&mut self, action: EditorMenuAction) {
-        if matches!(action, EditorMenuAction::LoadExample) && self.buffer.is_empty() {
-        }
+        if matches!(action, EditorMenuAction::LoadExample) && self.buffer.is_empty() {}
 
         self.last_action = Some(action);
     }
