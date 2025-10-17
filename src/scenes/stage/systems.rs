@@ -71,10 +71,7 @@ pub fn setup(
                 if let Some(tile) = layer.tile(x as i32, y as i32) {
                     let tile_sprite = tileset.atlas_sprite(tile.id).unwrap();
                     commands.spawn((
-                        Sprite::from_atlas_image(
-                            tile_sprite.texture,
-                            tile_sprite.atlas,
-                        ),
+                        Sprite::from_atlas_image(tile_sprite.texture, tile_sprite.atlas),
                         Transform::from_xyz(
                             x as f32 * tile_size.0 as f32,
                             -(y as f32 * tile_size.1 as f32),

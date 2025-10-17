@@ -90,9 +90,9 @@ impl Layer<'_> {
         self.tiled_tile_layer.width().unwrap()
     }
 
-    pub fn height(&self) ->u32 {
+    pub fn height(&self) -> u32 {
         self.tiled_tile_layer.height().unwrap()
-    }   
+    }
 
     pub fn tile(&self, x: i32, y: i32) -> Option<Tile> {
         if let Some(tile) = self.tiled_tile_layer.get_tile(x as i32, y as i32) {
