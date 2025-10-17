@@ -1,12 +1,9 @@
+use avian2d::prelude::*;
 use bevy::{
     prelude::*,
     window::{PrimaryWindow, WindowResized},
 };
-use bevy_egui::{
-    EguiContexts,
-    egui::{self, load::SizedTexture},
-};
-use avian2d::prelude::*;
+use bevy_egui::{EguiContexts, egui};
 
 use super::components::*;
 use crate::plugins::{
@@ -14,7 +11,7 @@ use crate::plugins::{
     assets_loader::AssetStore,
     design_resolution::{LetterboxOffsets, StageViewport},
 };
-use crate::scenes::assets::{ImageKey, PLAYER_IDLE_KEYS, PLAYER_RUN_KEYS};
+use crate::scenes::assets::{PLAYER_IDLE_KEYS, PLAYER_RUN_KEYS};
 
 #[derive(Resource, Clone, Copy)]
 pub struct StageTileLayout {
@@ -23,6 +20,11 @@ pub struct StageTileLayout {
     current_scale: f32,
     last_viewport_size: Vec2,
     origin_offset: Vec2,
+}
+
+#[derive(Resource, Default)]
+pub struct ScriptEditorState {
+    pub buffer: String,
 }
 
 pub fn setup(
@@ -110,7 +112,10 @@ pub fn setup(
     let tile_size = base_tile_size * scale;
     let map_actual_width = map_tile_dimensions.x as f32 * tile_size.x;
     let map_actual_height = map_tile_dimensions.y as f32 * tile_size.y;
-    let origin_offset = Vec2::new(-map_actual_width / 2.0 + tile_size.x / 2.0, -map_actual_height / 2.0 + tile_size.y / 2.0);
+    let origin_offset = Vec2::new(
+        -map_actual_width / 2.0 + tile_size.x / 2.0,
+        -map_actual_height / 2.0 + tile_size.y / 2.0,
+    );
 
     commands.insert_resource(StageTileLayout {
         base_tile_size,
@@ -119,6 +124,7 @@ pub fn setup(
         last_viewport_size: viewport_size,
         origin_offset,
     });
+    commands.insert_resource(ScriptEditorState::default());
 
     tiled_map_assets.layers().for_each(|layer| {
         info!("Layer name: {}, type: {:?}", layer.name, layer.layer_type);
@@ -131,7 +137,6 @@ pub fn setup(
                                 coord: UVec2::new(x as u32, y as u32),
                             },
                             Sprite::from_atlas_image(tile_sprite.texture, tile_sprite.atlas),
-
                             Transform::from_xyz(
                                 x as f32 * tile_size.x + origin_offset.x,
                                 -(y as f32 * tile_size.y + origin_offset.y),
@@ -142,8 +147,12 @@ pub fn setup(
                         if layer.name.starts_with("Ground") {
                             command.insert((
                                 RigidBody::Static,
-                                Collider::rectangle(base_tile_size.x * scale, base_tile_size.y * scale),
-                                DebugRender::default().with_collider_color(Color::srgb(0.0, 1.0, 0.0)),
+                                Collider::rectangle(
+                                    base_tile_size.x * scale,
+                                    base_tile_size.y * scale,
+                                ),
+                                DebugRender::default()
+                                    .with_collider_color(Color::srgb(0.0, 1.0, 0.0)),
                             ));
                         }
                     }
@@ -196,6 +205,7 @@ pub fn cleanup(
     }
 
     commands.remove_resource::<StageTileLayout>();
+    commands.remove_resource::<ScriptEditorState>();
 }
 
 pub fn update_tiles_on_resize(
@@ -260,7 +270,10 @@ pub fn update_tiles_on_resize(
     let tile_size = layout.base_tile_size * new_scale;
     let map_actual_width = layout.map_tile_dimensions.x as f32 * tile_size.x;
     let map_actual_height = layout.map_tile_dimensions.y as f32 * tile_size.y;
-    let origin_offset = Vec2::new(-map_actual_width / 2.0 + tile_size.x / 2.0, -map_actual_height / 2.0 + tile_size.y / 2.0);
+    let origin_offset = Vec2::new(
+        -map_actual_width / 2.0 + tile_size.x / 2.0,
+        -map_actual_height / 2.0 + tile_size.y / 2.0,
+    );
 
     for (tile, mut transform) in &mut tiles {
         transform.translation.x = tile.coord.x as f32 * tile_size.x + origin_offset.x;
@@ -360,16 +373,15 @@ pub fn move_character(
 
 pub fn ui(
     mut contexts: EguiContexts,
-    asset_store: Res<AssetStore>,
-    images: Res<Assets<Image>>,
     _window: Single<&mut Window, With<PrimaryWindow>>,
     mut letterbox_offsets: ResMut<LetterboxOffsets>,
+    mut editor: ResMut<ScriptEditorState>,
 ) {
-    let logo = texture_handle(&mut contexts, &asset_store, &images, ImageKey::Logo);
-
     let Ok(ctx) = contexts.ctx_mut() else {
         return;
     };
+
+    let buffer = &mut editor.buffer;
 
     let left = egui::SidePanel::left("stage-left")
         .resizable(true)
@@ -383,17 +395,20 @@ pub fn ui(
             ..Default::default()
         })
         .show(ctx, |ui| {
-            egui::ScrollArea::horizontal()
-                .auto_shrink([false, false])
-                .show(ui, |ui| {
-                    ui.horizontal(|ui| {
-                        if let Some((texture_id, size)) = logo {
-                            ui.image(SizedTexture::new(texture_id, [size.x, size.y]));
-                        } else {
-                            ui.label("Loading...");
-                        }
-                    });
-                });
+            let mut available_size = ui.available_size();
+            if !available_size.x.is_finite() {
+                available_size.x = ui.max_rect().width();
+            }
+            if !available_size.y.is_finite() {
+                available_size.y = ui.max_rect().height();
+            }
+
+            ui.add_sized(
+                available_size,
+                egui::TextEdit::multiline(buffer)
+                    .code_editor()
+                    .desired_width(f32::INFINITY),
+            );
         })
         .response
         .rect
@@ -402,21 +417,4 @@ pub fn ui(
     if (letterbox_offsets.left - left).abs() > f32::EPSILON {
         letterbox_offsets.left = left;
     }
-}
-
-fn texture_handle(
-    contexts: &mut EguiContexts,
-    asset_store: &AssetStore,
-    images: &Assets<Image>,
-    key: ImageKey,
-) -> Option<(egui::TextureId, Vec2)> {
-    asset_store.image(key).and_then(|handle| {
-        images.get(&handle).map(|image| {
-            let texture_id = contexts.image_id(&handle).unwrap_or_else(|| {
-                contexts.add_image(bevy_egui::EguiTextureHandle::Strong(handle.clone()))
-            });
-
-            (texture_id, image.size_f32())
-        })
-    })
 }
