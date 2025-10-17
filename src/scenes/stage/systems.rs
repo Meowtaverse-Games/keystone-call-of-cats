@@ -1,4 +1,7 @@
-use bevy::{prelude::*, window::{PrimaryWindow, WindowResized}};
+use bevy::{
+    prelude::*,
+    window::{PrimaryWindow, WindowResized},
+};
 use bevy_egui::{
     EguiContexts,
     egui::{self, load::SizedTexture},
@@ -6,15 +9,18 @@ use bevy_egui::{
 
 use super::components::*;
 use crate::plugins::{
-    TiledMapAssets, assets_loader::AssetStore, design_resolution::LetterboxOffsets,
+    TiledMapAssets,
+    assets_loader::AssetStore,
+    design_resolution::{LetterboxOffsets, StageViewport},
 };
 use crate::scenes::assets::{ImageKey, PLAYER_IDLE_KEYS, PLAYER_RUN_KEYS};
 
 #[derive(Resource, Clone, Copy)]
 pub struct StageTileLayout {
     base_tile_size: Vec2,
-    max_layer_width: u32,
+    map_tile_dimensions: UVec2,
     current_scale: f32,
+    last_viewport_size: Vec2,
 }
 
 pub fn setup(
@@ -22,6 +28,8 @@ pub fn setup(
     asset_store: Res<AssetStore>,
     tiled_map_assets: Res<TiledMapAssets>,
     windows: Query<&Window, With<PrimaryWindow>>,
+    letterbox_offsets: Res<LetterboxOffsets>,
+    viewport: Res<StageViewport>,
 ) {
     let window = match windows.single() {
         Ok(window) => window,
@@ -84,48 +92,68 @@ pub fn setup(
         }
     };
 
-    let max_layer_width = tiled_map_assets
-        .layers()
-        .map(|layer| layer.width())
-        .max()
-        .unwrap_or(0) as u32;
+    let map_tile_dimensions = tiled_map_assets.layers().fold(UVec2::ZERO, |acc, layer| {
+        let width = layer.width().max(0) as u32;
+        let height = layer.height().max(0) as u32;
+        UVec2::new(acc.x.max(width), acc.y.max(height))
+    });
 
-    if max_layer_width == 0 {
-        warn!("Stage setup: tiled map has no layers with width");
+    if map_tile_dimensions.x == 0 || map_tile_dimensions.y == 0 {
+        warn!("Stage setup: tiled map has invalid layer dimensions");
         return;
     }
 
-    let base_tile_size = tileset
+    let raw_tile_size = tileset
         .image()
         .map(|image| image.tile_size)
         .unwrap_or(UVec2::new(32, 32));
 
-    let base_tile_width = base_tile_size.x.max(1) as f32;
-    let base_tile_height = base_tile_size.y.max(1) as f32;
-    let window_width = window.width().max(f32::EPSILON);
-    let desired_tile_width = window_width / max_layer_width as f32;
-    let scale = (desired_tile_width / base_tile_width).max(f32::EPSILON);
-    let tile_width = base_tile_width * scale;
-    let tile_height = base_tile_height * scale;
+    let base_tile_size = Vec2::new(raw_tile_size.x.max(1) as f32, raw_tile_size.y.max(1) as f32);
+
+    let mut viewport_size = viewport.size;
+    if viewport_size.x <= 0.0 || viewport_size.y <= 0.0 {
+        let fallback_width =
+            (window.width() - letterbox_offsets.left - letterbox_offsets.right).max(1.0);
+        let fallback_height = window.height().max(1.0);
+        viewport_size = Vec2::new(fallback_width, fallback_height);
+    }
+
+    let map_pixel_size = Vec2::new(
+        map_tile_dimensions.x as f32 * base_tile_size.x,
+        map_tile_dimensions.y as f32 * base_tile_size.y,
+    );
+
+    if map_pixel_size.x <= 0.0 || map_pixel_size.y <= 0.0 {
+        warn!("Stage setup: tiled map resolved to zero pixel size");
+        return;
+    }
+
+    let scale_x = viewport_size.x / map_pixel_size.x;
+    let scale_y = viewport_size.y / map_pixel_size.y;
+    let scale = scale_x.min(scale_y).max(f32::EPSILON);
+    let tile_size = base_tile_size * scale;
 
     commands.insert_resource(StageTileLayout {
-        base_tile_size: Vec2::new(base_tile_width, base_tile_height),
-        max_layer_width,
+        base_tile_size,
+        map_tile_dimensions,
         current_scale: scale,
+        last_viewport_size: viewport_size,
     });
 
     tiled_map_assets.layers().for_each(|layer| {
         info!("Layer name: {}, type: {:?}", layer.name, layer.layer_type);
         for y in 0..layer.height() {
             for x in 0..layer.width() {
-                if let Some(tile) = layer.tile(x, y) {
+                if let Some(tile) = layer.tile(x as i32, y as i32) {
                     if let Some(tile_sprite) = tileset.atlas_sprite(tile.id) {
                         commands.spawn((
-                            StageTile { coord: UVec2::new(x as u32, y as u32) },
+                            StageTile {
+                                coord: UVec2::new(x as u32, y as u32),
+                            },
                             Sprite::from_atlas_image(tile_sprite.texture, tile_sprite.atlas),
                             Transform::from_xyz(
-                                x as f32 * tile_width,
-                                -(y as f32 * tile_height),
+                                x as f32 * tile_size.x,
+                                -(y as f32 * tile_size.y),
                                 0.0,
                             )
                             .with_scale(Vec3::new(scale, scale, 1.0)),
@@ -163,7 +191,6 @@ pub fn setup(
     ));
 }
 
-
 pub fn cleanup(
     mut commands: Commands,
     query: Query<Entity, Or<(With<StageBackground>, With<Player>)>>,
@@ -180,10 +207,10 @@ pub fn cleanup(
     commands.remove_resource::<StageTileLayout>();
 }
 
-
 pub fn update_tiles_on_resize(
     mut resize_events: MessageReader<WindowResized>,
     windows: Query<(Entity, &Window), With<PrimaryWindow>>,
+    viewport: Res<StageViewport>,
     layout: Option<ResMut<StageTileLayout>>,
     mut tiles: Query<(&StageTile, &mut Transform)>,
 ) {
@@ -197,38 +224,59 @@ pub fn update_tiles_on_resize(
         return;
     };
 
-    if layout.max_layer_width == 0 {
-        for _ in resize_events.read() {}
-        return;
-    }
-
-    let mut latest_width = None;
+    let viewport_changed = viewport.is_changed();
+    let mut window_resized = false;
     for event in resize_events.read() {
         if event.window == window_entity {
-            latest_width = Some(event.width);
+            window_resized = true;
         }
     }
 
-    let window_width = latest_width.unwrap_or_else(|| window.width());
-    let desired_tile_width = window_width / layout.max_layer_width as f32;
-    let base_tile_width = layout.base_tile_size.x.max(f32::EPSILON);
-    let new_scale = (desired_tile_width / base_tile_width).max(f32::EPSILON);
-
-    if (new_scale - layout.current_scale).abs() <= f32::EPSILON {
+    if !viewport_changed && !window_resized {
         return;
     }
 
-    let tile_width = layout.base_tile_size.x * new_scale;
-    let tile_height = layout.base_tile_size.y * new_scale;
+    let mut viewport_size = viewport.size;
+    if viewport_size.x <= 0.0 || viewport_size.y <= 0.0 {
+        let window_size = window.resolution.size();
+        viewport_size = Vec2::new(window_size.x.max(1.0), window_size.y.max(1.0));
+    }
+
+    if (viewport_size.x - layout.last_viewport_size.x).abs() <= f32::EPSILON
+        && (viewport_size.y - layout.last_viewport_size.y).abs() <= f32::EPSILON
+    {
+        return;
+    }
+
+    let map_pixel_size = Vec2::new(
+        layout.map_tile_dimensions.x as f32 * layout.base_tile_size.x,
+        layout.map_tile_dimensions.y as f32 * layout.base_tile_size.y,
+    );
+
+    if map_pixel_size.x <= 0.0 || map_pixel_size.y <= 0.0 {
+        return;
+    }
+
+    let scale_x = viewport_size.x / map_pixel_size.x;
+    let scale_y = viewport_size.y / map_pixel_size.y;
+    let new_scale = scale_x.min(scale_y).max(f32::EPSILON);
+
+    if (new_scale - layout.current_scale).abs() <= f32::EPSILON {
+        layout.last_viewport_size = viewport_size;
+        return;
+    }
+
+    let tile_size = layout.base_tile_size * new_scale;
 
     for (tile, mut transform) in &mut tiles {
-        transform.translation.x = tile.coord.x as f32 * tile_width;
-        transform.translation.y = -(tile.coord.y as f32 * tile_height);
+        transform.translation.x = tile.coord.x as f32 * tile_size.x;
+        transform.translation.y = -(tile.coord.y as f32 * tile_size.y);
         transform.scale.x = new_scale;
         transform.scale.y = new_scale;
     }
 
     layout.current_scale = new_scale;
+    layout.last_viewport_size = viewport_size;
 }
 
 pub fn animate_character(
@@ -319,7 +367,7 @@ pub fn ui(
     mut contexts: EguiContexts,
     asset_store: Res<AssetStore>,
     images: Res<Assets<Image>>,
-    window: Single<&mut Window, With<PrimaryWindow>>,
+    _window: Single<&mut Window, With<PrimaryWindow>>,
     mut letterbox_offsets: ResMut<LetterboxOffsets>,
 ) {
     let logo = texture_handle(&mut contexts, &asset_store, &images, ImageKey::Logo);

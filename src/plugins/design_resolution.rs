@@ -34,6 +34,12 @@ pub struct LetterboxOffsets {
     pub right: f32,
 }
 
+#[derive(Resource, Copy, Clone, Default, Debug)]
+pub struct StageViewport {
+    pub size: Vec2,
+    pub scale: f32,
+}
+
 #[derive(Component)]
 struct HudRoot;
 
@@ -81,6 +87,7 @@ impl Plugin for DesignResolutionPlugin {
         })
         .insert_resource(MaskColor(self.mask_color))
         .insert_resource(LetterboxOffsets::default())
+        .insert_resource(StageViewport::default())
         .add_systems(Startup, setup_camera)
         .add_systems(Startup, setup_ui_root)
         .add_systems(Update, update_letterbox);
@@ -191,6 +198,7 @@ fn update_letterbox(
     design: Res<VirtualResolution>,
     mut ui_scale: ResMut<UiScale>,
     offsets: Res<LetterboxOffsets>,
+    mut stage_viewport: ResMut<StageViewport>,
     mut hud_and_masks: ParamSet<(
         Query<&mut Node, With<HudRoot>>,
         Query<(&MaskSide, &mut Node), With<MaskSide>>,
@@ -237,6 +245,14 @@ fn update_letterbox(
     }
 
     ui_scale.0 = min_scale;
+
+    let new_viewport = StageViewport {
+        size: Vec2::new(design.width * min_scale, design.height * min_scale),
+        scale: min_scale,
+    };
+    if stage_viewport.size != new_viewport.size || stage_viewport.scale != new_viewport.scale {
+        *stage_viewport = new_viewport;
+    }
 
     let horizontal_overflow = if scale_x > min_scale {
         design.width * (scale_x / min_scale - 1.0)
