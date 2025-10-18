@@ -48,7 +48,7 @@ impl TiledMapAssets {
         &self.tilesets
     }
 
-    pub fn layers(&self) -> impl Iterator<Item = Layer> + '_ {
+    pub fn layers<'a>(&'a self) -> impl Iterator<Item = Layer<'a>> + 'a {
         self.map.layers().map(|layer| {
             let layer_type = match layer.layer_type() {
                 tiled_rs::LayerType::Tiles(_) => LayerType::Tile,
@@ -86,7 +86,7 @@ pub struct Layer<'map> {
     tiled_tile_layer: tiled_rs::TileLayer<'map>,
 }
 
-impl Layer<'_> {
+impl<'a> Layer<'a> {
     pub fn width(&self) -> i32 {
         self.tiled_tile_layer.width().unwrap() as i32
     }
