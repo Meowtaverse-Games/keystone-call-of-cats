@@ -153,7 +153,7 @@ pub fn setup(
 
     let base_tile_size = Vec2::new(raw_tile_size.x.max(1) as f32, raw_tile_size.y.max(1) as f32);
 
-    let mut viewport_size = viewport.size;
+    let viewport_size = viewport.size;
 
     let map_pixel_size = Vec2::new(
         map_tile_dimensions.x as f32 * base_tile_size.x,
