@@ -4,7 +4,7 @@ use crate::plugins::assets_loader::LoadAssetGroup;
 #[derive(Clone, Copy, Debug)]
 pub enum ImageKey {
     Logo,
-    SPA,
+    Spa,
     PlayerIdle1,
     PlayerIdle2,
     PlayerIdle3,
