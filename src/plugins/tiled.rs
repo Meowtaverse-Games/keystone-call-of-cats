@@ -96,21 +96,17 @@ impl Layer<'_> {
 
     pub fn tile(&self, x: i32, y: i32) -> Option<Tile> {
         if let Some(tile) = self.tiled_tile_layer.get_tile(x, y) {
-            if let Some(tile_data) = tile.get_tile() {
-                Some(Tile {
-                    id: tile.id(),
-                    // Retrieving a custom property named "collision" only if it exists and is a boolean
-                    collision: tile_data.properties.get("collision").and_then(|v| {
-                        if let tiled_rs::PropertyValue::BoolValue(b) = v {
-                            Some(*b)
-                        } else {
-                            None
-                        }
-                    }),
-                })
-            } else {
-                None
-            }
+            tile.get_tile().map(|tile_data| Tile {
+                id: tile.id(),
+                // Retrieving a custom property named "collision" only if it exists and is a boolean
+                collision: tile_data.properties.get("collision").and_then(|v| {
+                    if let tiled_rs::PropertyValue::BoolValue(b) = v {
+                        Some(*b)
+                    } else {
+                        None
+                    }
+                }),
+            })
         } else {
             None
         }
