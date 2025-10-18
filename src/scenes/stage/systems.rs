@@ -235,6 +235,7 @@ pub fn setup(
             is_jumping: false,
         },
         RigidBody::Dynamic,
+        LockedAxes::ROTATION_LOCKED,
         Collider::circle(4.5),
         DebugRender::default().with_collider_color(Color::srgb(1.0, 0.0, 0.0)),
         Transform::from_xyz(0.0, ground_y, 1.0).with_scale(Vec3::splat(4.0)),
