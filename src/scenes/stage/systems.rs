@@ -13,6 +13,8 @@ use crate::plugins::{
 };
 use crate::scenes::assets::{PLAYER_IDLE_KEYS, PLAYER_RUN_KEYS};
 
+type StageCleanupFilter = Or<(With<StageBackground>, With<Player>)>;
+
 #[derive(Resource, Clone, Copy)]
 pub struct StageTileLayout {
     base_tile_size: Vec2,
@@ -245,7 +247,7 @@ pub fn setup(
 
 pub fn cleanup(
     mut commands: Commands,
-    query: Query<Entity, Or<(With<StageBackground>, With<Player>)>>,
+    query: Query<Entity, StageCleanupFilter>,
     tiles: Query<Entity, With<StageTile>>,
 ) {
     for entity in &query {
