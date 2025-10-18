@@ -226,7 +226,7 @@ fn create_tileset_image(
 
     let columns = tileset.columns.max(1);
     let tile_count = tileset.tilecount;
-    let rows = ((tile_count + columns - 1) / columns).max(1);
+    let rows = tile_count.div_ceil(columns).max(1);
 
     let mut layout = TextureAtlasLayout::from_grid(
         UVec2::new(tileset.tile_width, tileset.tile_height),
