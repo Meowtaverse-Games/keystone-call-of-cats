@@ -74,6 +74,7 @@ pub enum LayerType {
     Group,
 }
 
+#[allow(dead_code)]
 pub struct Tile {
     pub id: u32,
     pub collision: Option<bool>,

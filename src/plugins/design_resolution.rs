@@ -191,7 +191,7 @@ fn setup_ui_root(
     commands.insert_resource(UIRoot(hud));
 }
 
-#[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments, clippy::type_complexity)]
 fn update_letterbox(
     mut first_run: Local<bool>,
     mut resize_events: MessageReader<WindowResized>,
