@@ -48,7 +48,7 @@ impl TiledMapAssets {
         &self.tilesets
     }
 
-    pub fn layers(&self) -> impl Iterator<Item = Layer> + '_ {
+    pub fn layers<'a>(&'a self) -> impl Iterator<Item = Layer<'a>> + 'a {
         self.map.layers().map(|layer| {
             let layer_type = match layer.layer_type() {
                 tiled_rs::LayerType::Tiles(_) => LayerType::Tile,
@@ -74,6 +74,7 @@ pub enum LayerType {
     Group,
 }
 
+#[allow(dead_code)]
 pub struct Tile {
     pub id: u32,
     pub collision: Option<bool>,
@@ -85,7 +86,7 @@ pub struct Layer<'map> {
     tiled_tile_layer: tiled_rs::TileLayer<'map>,
 }
 
-impl Layer<'_> {
+impl<'a> Layer<'a> {
     pub fn width(&self) -> i32 {
         self.tiled_tile_layer.width().unwrap() as i32
     }
@@ -96,21 +97,17 @@ impl Layer<'_> {
 
     pub fn tile(&self, x: i32, y: i32) -> Option<Tile> {
         if let Some(tile) = self.tiled_tile_layer.get_tile(x, y) {
-            if let Some(tile_data) = tile.get_tile() {
-                Some(Tile {
-                    id: tile.id(),
-                    // Retrieving a custom property named "collision" only if it exists and is a boolean
-                    collision: tile_data.properties.get("collision").and_then(|v| {
-                        if let tiled_rs::PropertyValue::BoolValue(b) = v {
-                            Some(*b)
-                        } else {
-                            None
-                        }
-                    }),
-                })
-            } else {
-                None
-            }
+            tile.get_tile().map(|tile_data| Tile {
+                id: tile.id(),
+                // Retrieving a custom property named "collision" only if it exists and is a boolean
+                collision: tile_data.properties.get("collision").and_then(|v| {
+                    if let tiled_rs::PropertyValue::BoolValue(b) = v {
+                        Some(*b)
+                    } else {
+                        None
+                    }
+                }),
+            })
         } else {
             None
         }
@@ -226,7 +223,7 @@ fn create_tileset_image(
 
     let columns = tileset.columns.max(1);
     let tile_count = tileset.tilecount;
-    let rows = ((tile_count + columns - 1) / columns).max(1);
+    let rows = tile_count.div_ceil(columns).max(1);
 
     let mut layout = TextureAtlasLayout::from_grid(
         UVec2::new(tileset.tile_width, tileset.tile_height),

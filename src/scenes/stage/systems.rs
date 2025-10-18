@@ -13,6 +13,8 @@ use crate::plugins::{
 };
 use crate::scenes::assets::{PLAYER_IDLE_KEYS, PLAYER_RUN_KEYS};
 
+type StageCleanupFilter = Or<(With<StageBackground>, With<Player>)>;
+
 #[derive(Resource, Clone, Copy)]
 pub struct StageTileLayout {
     base_tile_size: Vec2,
@@ -30,7 +32,7 @@ pub struct ScriptEditorState {
 
 impl ScriptEditorState {
     fn apply_action(&mut self, action: EditorMenuAction) {
-        if matches!(action, EditorMenuAction::LoadExample) && self.buffer.is_empty() {}
+        // if matches!(action, EditorMenuAction::LoadExample) && self.buffer.is_empty() {}
 
         self.last_action = Some(action);
     }
@@ -151,7 +153,7 @@ pub fn setup(
 
     let base_tile_size = Vec2::new(raw_tile_size.x.max(1) as f32, raw_tile_size.y.max(1) as f32);
 
-    let mut viewport_size = viewport.size;
+    let viewport_size = viewport.size;
 
     let map_pixel_size = Vec2::new(
         map_tile_dimensions.x as f32 * base_tile_size.x,
@@ -182,31 +184,27 @@ pub fn setup(
         info!("Layer name: {}, type: {:?}", layer.name, layer.layer_type);
         for y in 0..layer.height() {
             for x in 0..layer.width() {
-                if let Some(tile) = layer.tile(x as i32, y as i32) {
-                    if let Some(tile_sprite) = tileset.atlas_sprite(tile.id) {
-                        let mut command = commands.spawn((
-                            StageTile {
-                                coord: UVec2::new(x as u32, y as u32),
-                            },
-                            Sprite::from_atlas_image(tile_sprite.texture, tile_sprite.atlas),
-                            Transform::from_xyz(
-                                x as f32 * tile_size.x + origin_offset.x,
-                                -(y as f32 * tile_size.y + origin_offset.y),
-                                0.0,
-                            )
-                            .with_scale(Vec3::new(scale, scale, 1.0)),
+                if let Some(tile) = layer.tile(x, y)
+                    && let Some(tile_sprite) = tileset.atlas_sprite(tile.id)
+                {
+                    let mut command = commands.spawn((
+                        StageTile {
+                            coord: UVec2::new(x as u32, y as u32),
+                        },
+                        Sprite::from_atlas_image(tile_sprite.texture, tile_sprite.atlas),
+                        Transform::from_xyz(
+                            x as f32 * tile_size.x + origin_offset.x,
+                            -(y as f32 * tile_size.y + origin_offset.y),
+                            0.0,
+                        )
+                        .with_scale(Vec3::new(scale, scale, 1.0)),
+                    ));
+                    if layer.name.starts_with("Ground") {
+                        command.insert((
+                            RigidBody::Static,
+                            Collider::rectangle(base_tile_size.x * scale, base_tile_size.y * scale),
+                            DebugRender::default().with_collider_color(Color::srgb(0.0, 1.0, 0.0)),
                         ));
-                        if layer.name.starts_with("Ground") {
-                            command.insert((
-                                RigidBody::Static,
-                                Collider::rectangle(
-                                    base_tile_size.x * scale,
-                                    base_tile_size.y * scale,
-                                ),
-                                DebugRender::default()
-                                    .with_collider_color(Color::srgb(0.0, 1.0, 0.0)),
-                            ));
-                        }
                     }
                 }
             }
@@ -245,7 +243,7 @@ pub fn setup(
 
 pub fn cleanup(
     mut commands: Commands,
-    query: Query<Entity, Or<(With<StageBackground>, With<Player>)>>,
+    query: Query<Entity, StageCleanupFilter>,
     tiles: Query<Entity, With<StageTile>>,
 ) {
     for entity in &query {
