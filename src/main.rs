@@ -34,7 +34,7 @@ fn main() {
                 })
                 .set(ImagePlugin::default_nearest()),
             PhysicsPlugins::default(),
-            PhysicsDebugPlugin::default(),
+            PhysicsDebugPlugin,
         ))
         .add_plugins(VisibilityPlugin)
         .add_plugins(
