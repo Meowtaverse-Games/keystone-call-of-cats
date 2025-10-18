@@ -182,7 +182,7 @@ pub fn setup(
         info!("Layer name: {}, type: {:?}", layer.name, layer.layer_type);
         for y in 0..layer.height() {
             for x in 0..layer.width() {
-                if let Some(tile) = layer.tile(x as i32, y as i32) {
+                if let Some(tile) = layer.tile(x, y) {
                     if let Some(tile_sprite) = tileset.atlas_sprite(tile.id) {
                         let mut command = commands.spawn((
                             StageTile {
