@@ -35,7 +35,7 @@ pub struct LetterboxOffsets {
 }
 
 #[derive(Resource, Copy, Clone, Default, Debug)]
-pub struct StageViewport {
+pub struct ScaledViewport {
     pub size: Vec2,
     pub scale: f32,
 }
@@ -87,7 +87,7 @@ impl Plugin for DesignResolutionPlugin {
         })
         .insert_resource(MaskColor(self.mask_color))
         .insert_resource(LetterboxOffsets::default())
-        .insert_resource(StageViewport::default())
+        .insert_resource(ScaledViewport::default())
         .add_systems(Startup, setup_camera)
         .add_systems(Startup, setup_ui_root)
         .add_systems(Update, update_letterbox);
@@ -199,7 +199,7 @@ fn update_letterbox(
     design: Res<VirtualResolution>,
     mut ui_scale: ResMut<UiScale>,
     offsets: Res<LetterboxOffsets>,
-    mut stage_viewport: ResMut<StageViewport>,
+    mut scaled_viewport: ResMut<ScaledViewport>,
     mut hud_and_masks: ParamSet<(
         Query<&mut Node, With<HudRoot>>,
         Query<(&MaskSide, &mut Node), With<MaskSide>>,
@@ -247,12 +247,12 @@ fn update_letterbox(
 
     ui_scale.0 = min_scale;
 
-    let new_viewport = StageViewport {
+    let new_viewport = ScaledViewport {
         size: Vec2::new(design.width * min_scale, design.height * min_scale),
         scale: min_scale,
     };
-    if stage_viewport.size != new_viewport.size || stage_viewport.scale != new_viewport.scale {
-        *stage_viewport = new_viewport;
+    if scaled_viewport.size != new_viewport.size || scaled_viewport.scale != new_viewport.scale {
+        *scaled_viewport = new_viewport;
     }
 
     let horizontal_overflow = if scale_x > min_scale {
@@ -272,42 +272,42 @@ fn update_letterbox(
     let left_margin = left_offset / min_scale + horizontal_overflow / 2.0;
     let right_margin = right_offset / min_scale + horizontal_overflow / 2.0;
 
-    let stage_top = vertical_overflow / 2.0;
-    let stage_bottom = stage_top + design.height;
-    let stage_left = left_margin;
-    let stage_right = stage_left + design.width;
-    let total_width = stage_left + design.width + right_margin;
+    let content_top = vertical_overflow / 2.0;
+    let content_bottom = content_top + design.height;
+    let content_left = left_margin;
+    let content_right = content_left + design.width;
+    let total_width = content_left + design.width + right_margin;
     let total_height = design.height + vertical_overflow;
 
     if let Ok(mut node) = hud_and_masks.p0().single_mut() {
-        node.margin.left = Val::Px(stage_left);
-        node.margin.top = Val::Px(stage_top);
+        node.margin.left = Val::Px(content_left);
+        node.margin.top = Val::Px(content_top);
     }
 
     for (side, mut node) in hud_and_masks.p1().iter_mut() {
         match side {
             MaskSide::Left => {
-                node.width = Val::Px(stage_left.max(0.0));
+                node.width = Val::Px(content_left.max(0.0));
                 node.left = Val::Px(0.0);
                 node.top = Val::Px(0.0);
                 node.height = Val::Px(total_height.max(0.0));
             }
             MaskSide::Right => {
                 node.width = Val::Px(right_margin.max(0.0));
-                node.left = Val::Px(stage_right);
+                node.left = Val::Px(content_right);
                 node.top = Val::Px(0.0);
                 node.height = Val::Px(total_height.max(0.0));
             }
             MaskSide::Top => {
-                node.height = Val::Px(stage_top.max(0.0));
+                node.height = Val::Px(content_top.max(0.0));
                 node.top = Val::Px(0.0);
                 node.width = Val::Px(total_width.max(0.0));
                 node.left = Val::Px(0.0);
             }
             MaskSide::Bottom => {
-                let bottom_height = (total_height - stage_bottom).max(0.0);
+                let bottom_height = (total_height - content_bottom).max(0.0);
                 node.height = Val::Px(bottom_height);
-                node.top = Val::Px(stage_bottom);
+                node.top = Val::Px(content_bottom);
                 node.width = Val::Px(total_width.max(0.0));
                 node.left = Val::Px(0.0);
             }

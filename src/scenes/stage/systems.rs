@@ -9,7 +9,7 @@ use super::components::*;
 use crate::plugins::{
     TiledMapAssets,
     assets_loader::AssetStore,
-    design_resolution::{LetterboxOffsets, StageViewport},
+    design_resolution::{LetterboxOffsets, ScaledViewport},
 };
 use crate::scenes::assets::{PLAYER_IDLE_KEYS, PLAYER_RUN_KEYS};
 
@@ -85,7 +85,7 @@ pub fn setup(
     mut commands: Commands,
     asset_store: Res<AssetStore>,
     tiled_map_assets: Res<TiledMapAssets>,
-    viewport: Res<StageViewport>,
+    viewport: Res<ScaledViewport>,
 ) {
     let idle_frames: Vec<Handle<Image>> = PLAYER_IDLE_KEYS
         .iter()
@@ -262,7 +262,7 @@ pub fn cleanup(
 pub fn update_tiles_on_resize(
     mut resize_events: MessageReader<WindowResized>,
     windows: Query<(Entity, &Window), With<PrimaryWindow>>,
-    viewport: Res<StageViewport>,
+    viewport: Res<ScaledViewport>,
     layout: Option<ResMut<StageTileLayout>>,
     mut tiles: Query<(&StageTile, &mut Transform)>,
 ) {
