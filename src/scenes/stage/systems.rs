@@ -442,14 +442,29 @@ pub fn ui(
         }
     });
 
+    let screen_width = ctx.input(|input| input.content_rect().width());
+
+    let (min_width, max_width) = if screen_width.is_finite() && screen_width > 0.0 {
+        (screen_width * 0.125, screen_width * 0.5)
+    } else {
+        (100.0, 300.0)
+    };
+
+    let stored_width = screen_width * 0.25;
+    let default_width = if stored_width > 0.0 {
+        stored_width.clamp(min_width, max_width)
+    } else {
+        ((min_width + max_width) * 0.5).clamp(min_width, max_width)
+    };
+
     let left = egui::SidePanel::left("stage-left")
         .resizable(true)
-        .default_width(200.0)
-        .min_width(100.0)
-        .max_width(300.0)
+        .default_width(default_width)
+        .min_width(min_width)
+        .max_width(max_width)
         .frame(egui::Frame {
             fill: egui::Color32::from_rgb(255, 255, 255),
-            inner_margin: egui::Margin::same(10),
+            inner_margin: egui::Margin::same(5),
             stroke: egui::Stroke::new(1.0, egui::Color32::from_rgb(100, 100, 150)),
             ..Default::default()
         })
@@ -496,7 +511,8 @@ pub fn ui(
         })
         .response
         .rect
-        .width();
+        .width()
+        .clamp(min_width, max_width);
 
     if (letterbox_offsets.left - left).abs() > f32::EPSILON {
         letterbox_offsets.left = left;
