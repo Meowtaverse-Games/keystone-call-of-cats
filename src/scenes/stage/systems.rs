@@ -86,7 +86,7 @@ pub fn setup(
     asset_store: Res<AssetStore>,
     tiled_map_assets: Res<TiledMapAssets>,
     viewport: Res<ScaledViewport>,
-    ui_root: Res<UIRoot>,
+    root: Res<UIRoot>,
 ) {
     let idle_frames: Vec<Handle<Image>> = PLAYER_IDLE_KEYS
         .iter()
@@ -212,7 +212,7 @@ pub fn setup(
         }
     });
 
-    commands.entity(ui_root.0).with_children(|parent| {
+    commands.entity(root.0).with_children(|parent| {
         parent
             .spawn((
                 StageDebugMarker,
