@@ -9,11 +9,11 @@ use super::components::*;
 use crate::plugins::{
     TiledMapAssets,
     assets_loader::AssetStore,
-    design_resolution::{LetterboxOffsets, ScaledViewport},
+    design_resolution::*,
 };
 use crate::scenes::assets::{PLAYER_IDLE_KEYS, PLAYER_RUN_KEYS};
 
-type StageCleanupFilter = Or<(With<StageBackground>, With<Player>)>;
+type StageCleanupFilter = Or<(With<StageBackground>, With<Player>, With<StageDebugMarker>)>;
 
 #[derive(Resource, Clone, Copy)]
 pub struct StageTileLayout {
@@ -86,6 +86,7 @@ pub fn setup(
     asset_store: Res<AssetStore>,
     tiled_map_assets: Res<TiledMapAssets>,
     viewport: Res<ScaledViewport>,
+    ui_root: Res<UIRoot>,
 ) {
     let idle_frames: Vec<Handle<Image>> = PLAYER_IDLE_KEYS
         .iter()
@@ -209,6 +210,32 @@ pub fn setup(
                 }
             }
         }
+    });
+
+    commands.entity(ui_root.0).with_children(|parent| {
+        parent
+            .spawn((
+                StageDebugMarker,
+                Node {
+                    width: Val::Percent(100.0),
+                    height: Val::Percent(100.0),
+                    justify_content: JustifyContent::Center,
+                    align_items: AlignItems::Center,
+                    ..default()
+                },
+                ZIndex(1),
+            ))
+            .with_children(|parent| {
+                parent.spawn((
+                    Node {
+                        width: Val::Px(8.0),
+                        height: Val::Px(8.0),
+                        ..default()
+                    },
+                    BackgroundColor(Color::srgb(1.0, 0.0, 0.0)),
+                    BorderRadius::all(Val::Percent(50.0)),
+                ));
+            });
     });
 
     let ground_y = -100.0;

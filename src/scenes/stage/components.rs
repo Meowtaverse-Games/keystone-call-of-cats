@@ -3,6 +3,9 @@ use bevy::prelude::*;
 #[derive(Component)]
 pub struct StageBackground;
 
+#[derive(Component)]
+pub struct StageDebugMarker;
+
 #[derive(Component, Clone, Copy)]
 pub struct StageTile {
     pub coord: UVec2,
