@@ -6,11 +6,7 @@ use bevy::{
 use bevy_egui::{EguiContexts, egui};
 
 use super::components::*;
-use crate::plugins::{
-    TiledMapAssets,
-    assets_loader::AssetStore,
-    design_resolution::*,
-};
+use crate::plugins::{TiledMapAssets, assets_loader::AssetStore, design_resolution::*};
 use crate::scenes::assets::{PLAYER_IDLE_KEYS, PLAYER_RUN_KEYS};
 
 type StageCleanupFilter = Or<(With<StageBackground>, With<Player>, With<StageDebugMarker>)>;
@@ -21,7 +17,6 @@ pub struct StageTileLayout {
     map_tile_dimensions: UVec2,
     current_scale: f32,
     last_viewport_size: Vec2,
-    origin_offset: Vec2,
 }
 
 #[derive(Resource, Default)]
@@ -86,6 +81,7 @@ pub fn setup(
     asset_store: Res<AssetStore>,
     tiled_map_assets: Res<TiledMapAssets>,
     viewport: Res<ScaledViewport>,
+    window: Single<&mut Window, With<PrimaryWindow>>,
     root: Res<UIRoot>,
 ) {
     let idle_frames: Vec<Handle<Image>> = PLAYER_IDLE_KEYS
@@ -167,18 +163,14 @@ pub fn setup(
     let tile_size = base_tile_size * scale;
     let map_actual_width = map_tile_dimensions.x as f32 * tile_size.x;
     let map_actual_height = map_tile_dimensions.y as f32 * tile_size.y;
-    let origin_offset = Vec2::new(
-        -map_actual_width / 2.0 + tile_size.x / 2.0,
-        -map_actual_height / 2.0 + tile_size.y / 2.0,
-    );
 
     commands.insert_resource(StageTileLayout {
         base_tile_size,
         map_tile_dimensions,
         current_scale: scale,
         last_viewport_size: viewport_size,
-        origin_offset,
     });
+
     commands.insert_resource(ScriptEditorState::default());
 
     tiled_map_assets.layers().for_each(|layer| {
@@ -188,25 +180,21 @@ pub fn setup(
                 if let Some(tile) = layer.tile(x, y)
                     && let Some(tile_sprite) = tileset.atlas_sprite(tile.id)
                 {
-                    let mut command = commands.spawn((
+                    let mut tile = commands.spawn((
                         StageTile {
                             coord: UVec2::new(x as u32, y as u32),
                         },
                         Sprite::from_atlas_image(tile_sprite.texture, tile_sprite.atlas),
-                        Transform::from_xyz(
-                            x as f32 * tile_size.x + origin_offset.x,
-                            -(y as f32 * tile_size.y + origin_offset.y),
-                            0.0,
-                        )
-                        .with_scale(Vec3::new(scale, scale, 1.0)),
+                        Transform::from_xyz(x as f32 * tile_size.x, -(y as f32 * tile_size.y), 0.0)
+                            .with_scale(Vec3::new(scale, scale, 1.0)),
                     ));
                     if layer.name.starts_with("Ground") {
-                        command.insert((
+                        tile.insert((
                             RigidBody::Static,
                             Collider::rectangle(base_tile_size.x * scale, base_tile_size.y * scale),
                             DebugRender::default().with_collider_color(Color::srgb(0.0, 1.0, 0.0)),
                         ));
-                    }
+                    };
                 }
             }
         }
@@ -240,6 +228,14 @@ pub fn setup(
 
     let ground_y = -100.0;
 
+    info!(
+        "Primary window width: {}, physical width: {}",
+        window.resolution.width(),
+        window.resolution.physical_size().x
+    );
+
+    let x = window.resolution.width() / 2.0 * 0.25;
+
     commands.spawn((
         Sprite::from_image(initial_frame),
         Player,
@@ -265,7 +261,7 @@ pub fn setup(
         LockedAxes::ROTATION_LOCKED,
         Collider::circle(4.5),
         DebugRender::default().with_collider_color(Color::srgb(1.0, 0.0, 0.0)),
-        Transform::from_xyz(0.0, ground_y, 1.0).with_scale(Vec3::splat(4.0)),
+        Transform::from_xyz(x, 0.0, 1.0).with_scale(Vec3::splat(4.0)),
     ));
 }
 
@@ -362,7 +358,6 @@ pub fn update_tiles_on_resize(
 
     layout.current_scale = new_scale;
     layout.last_viewport_size = viewport_size;
-    layout.origin_offset = origin_offset;
 }
 
 pub fn animate_character(
@@ -451,7 +446,6 @@ pub fn move_character(
 
 pub fn ui(
     mut contexts: EguiContexts,
-    _window: Single<&mut Window, With<PrimaryWindow>>,
     mut letterbox_offsets: ResMut<LetterboxOffsets>,
     mut editor: ResMut<ScriptEditorState>,
 ) {
