@@ -6,7 +6,7 @@ use bevy::{
 use bevy_egui::{EguiContexts, egui};
 
 use super::components::*;
-use crate::plugins::{TiledMapAssets, assets_loader::AssetStore, design_resolution::*};
+use crate::{plugins::{assets_loader::AssetStore, design_resolution::*, TiledMapAssets}, scenes::assets::ImageKey};
 use crate::scenes::assets::{PLAYER_IDLE_KEYS, PLAYER_RUN_KEYS};
 
 type StageCleanupFilter = Or<(With<StageBackground>, With<Player>, With<StageDebugMarker>)>;
@@ -263,6 +263,19 @@ pub fn setup(
         DebugRender::default().with_collider_color(Color::srgb(1.0, 0.0, 0.0)),
         Transform::from_xyz(x, 0.0, 1.0).with_scale(Vec3::splat(4.0)),
     ));
+
+    for x in 0..10 {
+        for y in 0..10 {
+            let x = window.resolution.width() as f32 / 10.0 * (x as f32);
+            let y = window.resolution.height() as f32 / 10.0 * (y as f32);
+
+            commands.spawn((
+                StageBackground,
+                Sprite::from_image(asset_store.image(ImageKey::Logo).unwrap()),
+                Transform::from_xyz(x, y, 0.5).with_scale(Vec3::splat(0.12)),
+            ));
+        }
+    }
 }
 
 pub fn cleanup(
