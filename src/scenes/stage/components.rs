@@ -1,6 +1,9 @@
 use bevy::prelude::*;
 
 #[derive(Component)]
+pub struct StageRoot;
+
+#[derive(Component)]
 pub struct StageBackground;
 
 #[derive(Component)]

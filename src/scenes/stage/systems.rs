@@ -83,6 +83,7 @@ pub fn setup(
     viewport: Res<ScaledViewport>,
     window: Single<&mut Window, With<PrimaryWindow>>,
     root: Res<UIRoot>,
+    cam: Query<&Projection, With<Camera2d>>,
 ) {
     let idle_frames: Vec<Handle<Image>> = PLAYER_IDLE_KEYS
         .iter()
@@ -229,10 +230,31 @@ pub fn setup(
     let ground_y = -100.0;
 
     info!(
-        "Primary window width: {}, physical width: {}",
+        "Primary window width: {}, physical width: {} window height: {}, physical height: {}",
         window.resolution.width(),
-        window.resolution.physical_size().x
+        window.resolution.physical_size().x,
+        window.resolution.height(),
+        window.resolution.physical_size().y
     );
+    info!("scale: {}", scale);
+
+    let projection = cam.single();
+    info!("Camera projection: {:?}", projection);
+
+    match projection {
+        Ok(Projection::Orthographic(p)) => {
+            info!(
+                "Camera projection is orthographic: {:?}",
+                p
+            );
+        }
+        Ok(other) => {
+            info!("Camera projection is not orthographic: {:?}", other);
+        }
+        Err(e) => {
+            info!("Failed to get camera projection: {:?}", e);
+        }
+    }
 
     let x = window.resolution.width() / 2.0 * 0.25;
 
@@ -264,16 +286,29 @@ pub fn setup(
         Transform::from_xyz(x, 0.0, 1.0).with_scale(Vec3::splat(4.0)),
     ));
 
+    let stage_root = commands.spawn((
+        StageRoot,
+        Transform::from_xyz(0.0, 0.0, 0.0),
+        GlobalTransform::default(),
+    )).id();
+
+    let viewport_height = 600.0; // config.min_height と同じ値
+    let cell_height = viewport_height / (10.0 - 1.0);
+
     for x in 0..10 {
         for y in 0..10 {
             let x = window.resolution.width() as f32 / 10.0 * (x as f32);
-            let y = window.resolution.height() as f32 / 10.0 * (y as f32);
+            // let y = (300 as f32 / 10.0 * (y as f32));
+            let y = -viewport_height / 2.0 + cell_height * y as f32;
+            info!("Spawning background at ({}, {})", x, y);
 
-            commands.spawn((
-                StageBackground,
-                Sprite::from_image(asset_store.image(ImageKey::Logo).unwrap()),
-                Transform::from_xyz(x, y, 0.5).with_scale(Vec3::splat(0.12)),
-            ));
+            commands.entity(stage_root).with_children(|parent| {
+                parent.spawn((
+                    StageBackground,
+                    Sprite::from_image(asset_store.image(ImageKey::Logo).unwrap()),
+                    Transform::from_xyz(x, y, 0.5).with_scale(Vec3::splat(0.12)),
+                ));
+            });
         }
     }
 }
@@ -461,6 +496,7 @@ pub fn ui(
     mut contexts: EguiContexts,
     mut letterbox_offsets: ResMut<LetterboxOffsets>,
     mut editor: ResMut<ScriptEditorState>,
+    mut stage_root: Query<(&StageRoot, &mut Transform)>,
 ) {
     let Ok(ctx) = contexts.ctx_mut() else {
         return;
@@ -551,4 +587,8 @@ pub fn ui(
     if (letterbox_offsets.left - left).abs() > f32::EPSILON {
         letterbox_offsets.left = left;
     }
+
+    stage_root.iter_mut().for_each(|(_root, mut transform)| {
+        transform.translation.x = left;
+    });
 }

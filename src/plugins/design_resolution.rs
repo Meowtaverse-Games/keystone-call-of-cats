@@ -98,7 +98,7 @@ fn setup_camera(mut commands: Commands, config: Res<AutoMinConfig>) {
     commands.spawn((
         MainCamera,
         Projection::from(OrthographicProjection {
-            scaling_mode: ScalingMode::WindowSize,
+            scaling_mode: ScalingMode::FixedVertical { viewport_height: config.min_height },
             ..OrthographicProjection::default_2d()
         }),
     ));
