@@ -6,8 +6,11 @@ use bevy::{
 use bevy_egui::{EguiContexts, egui};
 
 use super::components::*;
-use crate::{plugins::{assets_loader::AssetStore, design_resolution::*, TiledMapAssets}, scenes::assets::ImageKey};
 use crate::scenes::assets::{PLAYER_IDLE_KEYS, PLAYER_RUN_KEYS};
+use crate::{
+    plugins::{TiledMapAssets, assets_loader::AssetStore, design_resolution::*},
+    scenes::assets::ImageKey,
+};
 
 type StageCleanupFilter = Or<(With<StageBackground>, With<Player>, With<StageDebugMarker>)>;
 
@@ -162,8 +165,8 @@ pub fn setup(
     let scale_y = viewport_size.y / map_pixel_size.y;
     let scale = scale_x.min(scale_y).max(f32::EPSILON);
     let tile_size = base_tile_size * scale;
-    let map_actual_width = map_tile_dimensions.x as f32 * tile_size.x;
-    let map_actual_height = map_tile_dimensions.y as f32 * tile_size.y;
+    // let map_actual_width = map_tile_dimensions.x as f32 * tile_size.x;
+    //  let map_actual_height = map_tile_dimensions.y as f32 * tile_size.y;
 
     commands.insert_resource(StageTileLayout {
         base_tile_size,
@@ -243,10 +246,7 @@ pub fn setup(
 
     match projection {
         Ok(Projection::Orthographic(p)) => {
-            info!(
-                "Camera projection is orthographic: {:?}",
-                p
-            );
+            info!("Camera projection is orthographic: {:?}", p);
         }
         Ok(other) => {
             info!("Camera projection is not orthographic: {:?}", other);
@@ -286,11 +286,13 @@ pub fn setup(
         Transform::from_xyz(x, 0.0, 1.0).with_scale(Vec3::splat(4.0)),
     ));
 
-    let stage_root = commands.spawn((
-        StageRoot,
-        Transform::from_xyz(0.0, 0.0, 0.0),
-        GlobalTransform::default(),
-    )).id();
+    let stage_root = commands
+        .spawn((
+            StageRoot,
+            Transform::from_xyz(0.0, 0.0, 0.0),
+            GlobalTransform::default(),
+        ))
+        .id();
 
     let viewport_height = 600.0; // config.min_height と同じ値
     let cell_height = viewport_height / (10.0 - 1.0);
@@ -298,7 +300,6 @@ pub fn setup(
     for x in 0..10 {
         for y in 0..10 {
             let x = window.resolution.width() as f32 / 10.0 * (x as f32);
-            // let y = (300 as f32 / 10.0 * (y as f32));
             let y = -viewport_height / 2.0 + cell_height * y as f32;
             info!("Spawning background at ({}, {})", x, y);
 

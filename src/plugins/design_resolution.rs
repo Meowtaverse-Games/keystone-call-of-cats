@@ -1,23 +1,12 @@
 use bevy::{
-    camera::ScalingMode,
     prelude::*,
     window::{PrimaryWindow, WindowResized},
 };
 
 use crate::core::domain::graphics::design_resolution::DesignResolution;
 
-#[derive(Component)]
-#[require(Camera2d)]
-pub struct MainCamera;
-
 #[derive(Resource, Copy, Clone, Debug)]
 pub struct UIRoot(pub Entity);
-
-#[derive(Resource, Copy, Clone)]
-struct AutoMinConfig {
-    min_width: f32,
-    min_height: f32,
-}
 
 #[derive(Resource, Copy, Clone)]
 struct MaskColor(Color);
@@ -53,8 +42,6 @@ enum MaskSide {
 
 pub struct DesignResolutionPlugin {
     pub design: DesignResolution,
-    pub min_width: f32,
-    pub min_height: f32,
     pub mask_color: Color,
 }
 
@@ -62,16 +49,8 @@ impl DesignResolutionPlugin {
     pub fn new(width: f32, height: f32, mask_color: Color) -> Self {
         Self {
             design: DesignResolution::new(width, height),
-            min_width: width,
-            min_height: height,
             mask_color,
         }
-    }
-
-    pub fn fix_min(mut self, width: f32, height: f32) -> Self {
-        self.min_width = width;
-        self.min_height = height;
-        self
     }
 }
 
@@ -81,27 +60,12 @@ impl Plugin for DesignResolutionPlugin {
             width: self.design.width,
             height: self.design.height,
         })
-        .insert_resource(AutoMinConfig {
-            min_width: self.min_width,
-            min_height: self.min_height,
-        })
         .insert_resource(MaskColor(self.mask_color))
         .insert_resource(LetterboxOffsets::default())
         .insert_resource(ScaledViewport::default())
-        .add_systems(Startup, setup_camera)
         .add_systems(Startup, setup_ui_root)
         .add_systems(Update, update_letterbox);
     }
-}
-
-fn setup_camera(mut commands: Commands, config: Res<AutoMinConfig>) {
-    commands.spawn((
-        MainCamera,
-        Projection::from(OrthographicProjection {
-            scaling_mode: ScalingMode::FixedVertical { viewport_height: config.min_height },
-            ..OrthographicProjection::default_2d()
-        }),
-    ));
 }
 
 fn setup_ui_root(
