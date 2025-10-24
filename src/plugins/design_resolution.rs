@@ -3,16 +3,8 @@ use bevy::{
     window::{PrimaryWindow, WindowResized},
 };
 
-use crate::core::domain::graphics::design_resolution::DesignResolution;
-
 #[derive(Resource, Copy, Clone)]
 struct MaskColor(Color);
-
-#[derive(Resource, Copy, Clone)]
-struct VirtualResolution {
-    width: f32,
-    height: f32,
-}
 
 #[derive(Resource, Copy, Clone, Default, Debug)]
 pub struct LetterboxOffsets {
@@ -20,7 +12,7 @@ pub struct LetterboxOffsets {
     pub right: f32,
 }
 
-#[derive(Resource, Copy, Clone, Default, Debug)]
+#[derive(Resource, Copy, Clone, Debug)]
 pub struct ScaledViewport {
     pub center: Vec2,
     pub size: Vec2,
@@ -36,14 +28,14 @@ enum MaskSide {
 }
 
 pub struct DesignResolutionPlugin {
-    pub design: DesignResolution,
+    pub design_resolution_size: Vec2,
     pub mask_color: Color,
 }
 
 impl DesignResolutionPlugin {
     pub fn new(width: f32, height: f32, mask_color: Color) -> Self {
         Self {
-            design: DesignResolution::new(width, height),
+            design_resolution_size: Vec2::new(width, height),
             mask_color,
         }
     }
@@ -51,22 +43,19 @@ impl DesignResolutionPlugin {
 
 impl Plugin for DesignResolutionPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(VirtualResolution {
-            width: self.design.width,
-            height: self.design.height,
-        })
-        .insert_resource(MaskColor(self.mask_color))
-        .insert_resource(LetterboxOffsets::default())
-        .insert_resource(ScaledViewport::default())
-        .add_systems(Startup, setup_ui_root)
-        .add_systems(Update, update_letterbox);
+        app.insert_resource(MaskColor(self.mask_color))
+            .insert_resource(LetterboxOffsets::default())
+            .insert_resource(ScaledViewport {
+                center: self.design_resolution_size / 2.0,
+                size: self.design_resolution_size,
+                scale: 1.0,
+            })
+            .add_systems(Startup, setup)
+            .add_systems(Update, update_letterbox);
     }
 }
 
-fn setup_ui_root(
-    mut commands: Commands,
-    mask_color: Res<MaskColor>,
-) {
+fn setup(mut commands: Commands, mask_color: Res<MaskColor>) {
     let color = mask_color.0;
 
     let parent = commands
@@ -128,7 +117,6 @@ fn update_letterbox(
     mut first_run: Local<bool>,
     mut resize_events: MessageReader<WindowResized>,
     windows: Query<&Window, With<PrimaryWindow>>,
-    design: Res<VirtualResolution>,
     offsets: Res<LetterboxOffsets>,
     mut scaled_viewport: ResMut<ScaledViewport>,
     mut mask_sides: Query<(&MaskSide, &mut Node), With<MaskSide>>,
@@ -158,13 +146,10 @@ fn update_letterbox(
     let right_offset = offsets.right.max(0.0) * window.resolution.scale_factor();
 
     let available_width = (window_size.x - left_offset - right_offset).max(0.0);
-    if design.width <= 0.0 || design.height <= 0.0 {
-        return;
-    }
     let available_height = window_size.y;
 
-    let scale_x = available_width / design.width;
-    let scale_y = window_size.y / design.height;
+    let scale_x = available_width / scaled_viewport.size.x;
+    let scale_y = window_size.y / scaled_viewport.size.y;
 
     if !scale_x.is_finite() || !scale_y.is_finite() || scale_x <= 0.0 || scale_y <= 0.0 {
         return;
@@ -172,8 +157,8 @@ fn update_letterbox(
 
     let scale_min = scale_x.min(scale_y);
 
-    let width = design.width * scale_min;
-    let height = design.height * scale_min;
+    let width = scaled_viewport.size.x * scale_min;
+    let height = scaled_viewport.size.y * scale_min;
 
     let horizontal_overflow = if scale_x > scale_min {
         available_width - width
@@ -227,7 +212,8 @@ fn update_letterbox(
         size: Vec2::new(width, height),
         scale: scale_min,
     };
-    if scaled_viewport.size != new_viewport.size || scaled_viewport.scale != new_viewport.scale {
+    if scaled_viewport.center != new_viewport.center || scaled_viewport.size != new_viewport.size || scaled_viewport.scale != new_viewport.scale {
         *scaled_viewport = new_viewport;
     }
+    info!("Updated scaled viewport: center={:?}, size={:?}, scale={}", scaled_viewport.center, scaled_viewport.size, scaled_viewport.scale);
 }
