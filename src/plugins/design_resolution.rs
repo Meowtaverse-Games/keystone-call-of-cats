@@ -209,10 +209,10 @@ fn update_letterbox(
 
     let new_viewport = ScaledViewport {
         center: Vec2::new(content_left + width / 2.0, content_top + height / 2.0),
-        size: Vec2::new(width, height),
+        size: scaled_viewport.size,
         scale: scale_min,
     };
-    if scaled_viewport.center != new_viewport.center || scaled_viewport.size != new_viewport.size || scaled_viewport.scale != new_viewport.scale {
+    if scaled_viewport.center != new_viewport.center || scaled_viewport.scale != new_viewport.scale {
         *scaled_viewport = new_viewport;
     }
     info!("Updated scaled viewport: center={:?}, size={:?}, scale={}", scaled_viewport.center, scaled_viewport.size, scaled_viewport.scale);

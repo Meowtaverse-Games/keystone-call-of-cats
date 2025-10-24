@@ -42,8 +42,8 @@ pub fn setup(
     commands.insert_resource(BootTimer {
         // for testing, make it shorter
         timer: Timer::new(
-            // Duration::from_micros(100), //
-            Duration::from_secs(30),
+            Duration::from_millis(200),
+            // Duration::from_secs(30),
             TimerMode::Once,
         ),
     });
@@ -75,7 +75,7 @@ pub fn update(
     if boot_timer.timer.is_finished() && loaded.0 {
         // TODO; transition to the title scene
         info!("Boot timer finished");
-        next_state.set(GameState::Title);
+        next_state.set(GameState::Stage);
     }
 }
 
