@@ -136,14 +136,10 @@ fn update_letterbox(
         return;
     };
 
-    let window_size = Vec2::new(
-        window.resolution.physical_width() as f32,
-        window.resolution.physical_height() as f32,
-    );
-    let scale = window.resolution.scale_factor();
+    let window_size = Vec2::new(window.resolution.width(), window.resolution.height());
 
-    let left_offset = offsets.left.max(0.0) * window.resolution.scale_factor();
-    let right_offset = offsets.right.max(0.0) * window.resolution.scale_factor();
+    let left_offset = offsets.left.max(0.0);
+    let right_offset = offsets.right.max(0.0);
 
     let available_width = (window_size.x - left_offset - right_offset).max(0.0);
     let available_height = window_size.y;
@@ -175,7 +171,7 @@ fn update_letterbox(
     let vertical_overflow = vertical_overflow.max(0.0);
 
     let left_margin = left_offset + horizontal_overflow / 2.0;
-    let right_margin = right_offset / scale_min + horizontal_overflow / 2.0;
+    let right_margin = right_offset + horizontal_overflow / 2.0;
 
     let content_top = vertical_overflow / 2.0;
     let content_bottom = content_top + height;
@@ -185,23 +181,23 @@ fn update_letterbox(
     for (side, mut node) in mask_sides.iter_mut() {
         match side {
             MaskSide::Left => {
-                node.width = Val::Px(content_left.max(0.0)) / scale;
+                node.width = Val::Px(content_left.max(0.0));
                 node.height = Val::Px(available_height.max(0.0));
             }
             MaskSide::Right => {
-                node.left = Val::Px(content_right) / scale;
-                node.width = Val::Px(right_margin.max(0.0)) / scale;
+                node.left = Val::Px(content_right);
+                node.width = Val::Px(right_margin.max(0.0));
                 node.height = Val::Px(available_height.max(0.0));
             }
             MaskSide::Top => {
-                node.height = Val::Px(content_top.max(0.0) / scale);
+                node.height = Val::Px(content_top.max(0.0));
                 node.width = Val::Px(available_width.max(0.0));
             }
             MaskSide::Bottom => {
                 let bottom_height = (available_height - content_bottom).max(0.0);
 
-                node.top = Val::Px(content_bottom) / scale;
-                node.height = Val::Px(bottom_height) / scale;
+                node.top = Val::Px(content_bottom);
+                node.height = Val::Px(bottom_height);
                 node.width = Val::Px(available_width.max(0.0));
             }
         }
@@ -212,8 +208,12 @@ fn update_letterbox(
         size: scaled_viewport.size,
         scale: scale_min,
     };
-    if scaled_viewport.center != new_viewport.center || scaled_viewport.scale != new_viewport.scale {
+    if scaled_viewport.center != new_viewport.center || scaled_viewport.scale != new_viewport.scale
+    {
         *scaled_viewport = new_viewport;
     }
-    info!("Updated scaled viewport: center={:?}, size={:?}, scale={}", scaled_viewport.center, scaled_viewport.size, scaled_viewport.scale);
+    info!(
+        "Updated scaled viewport: center={:?}, size={:?}, scale={}",
+        scaled_viewport.center, scaled_viewport.size, scaled_viewport.scale
+    );
 }
