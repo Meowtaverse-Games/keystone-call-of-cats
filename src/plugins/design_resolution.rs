@@ -5,9 +5,6 @@ use bevy::{
 
 use crate::core::domain::graphics::design_resolution::DesignResolution;
 
-#[derive(Resource, Copy, Clone, Debug)]
-pub struct UIRoot(pub Entity);
-
 #[derive(Resource, Copy, Clone)]
 struct MaskColor(Color);
 
@@ -25,12 +22,10 @@ pub struct LetterboxOffsets {
 
 #[derive(Resource, Copy, Clone, Default, Debug)]
 pub struct ScaledViewport {
+    pub center: Vec2,
     pub size: Vec2,
     pub scale: f32,
 }
-
-#[derive(Component)]
-struct HudRoot;
 
 #[derive(Component, Clone, Copy, PartialEq, Eq)]
 enum MaskSide {
@@ -70,35 +65,19 @@ impl Plugin for DesignResolutionPlugin {
 
 fn setup_ui_root(
     mut commands: Commands,
-    design: Res<VirtualResolution>,
     mask_color: Res<MaskColor>,
 ) {
-    let parent = commands
-        .spawn((
-            Node {
-                width: Val::Percent(100.0),
-                height: Val::Percent(100.0),
-                position_type: PositionType::Absolute,
-                ..default()
-            },
-        ))
-        .id();
-
-    let hud = commands
-        .spawn((
-            HudRoot,
-            Node {
-                width: Val::Px(design.width),
-                height: Val::Px(design.height),
-                position_type: PositionType::Absolute,
-                ..default()
-            },
-        ))
-        .id();
-
-    commands.entity(parent).add_child(hud);
-
     let color = mask_color.0;
+
+    let parent = commands
+        .spawn((Node {
+            width: Val::Percent(100.0),
+            height: Val::Percent(100.0),
+            position_type: PositionType::Absolute,
+            ..default()
+        },))
+        .id();
+
     commands.entity(parent).with_children(|parent| {
         parent.spawn((
             MaskSide::Left,
@@ -142,8 +121,6 @@ fn setup_ui_root(
             BackgroundColor(color),
         ));
     });
-
-    commands.insert_resource(UIRoot(hud));
 }
 
 #[allow(clippy::too_many_arguments, clippy::type_complexity)]
@@ -154,10 +131,7 @@ fn update_letterbox(
     design: Res<VirtualResolution>,
     offsets: Res<LetterboxOffsets>,
     mut scaled_viewport: ResMut<ScaledViewport>,
-    mut hud_and_masks: ParamSet<(
-        Query<&mut Node, With<HudRoot>>,
-        Query<(&MaskSide, &mut Node), With<MaskSide>>,
-    )>,
+    mut mask_sides: Query<(&MaskSide, &mut Node), With<MaskSide>>,
 ) {
     let mut should_update = *first_run || offsets.is_changed();
     for _ in resize_events.read() {
@@ -174,7 +148,10 @@ fn update_letterbox(
         return;
     };
 
-    let window_size = Vec2::new(window.resolution.physical_width() as f32, window.resolution.physical_height() as f32);
+    let window_size = Vec2::new(
+        window.resolution.physical_width() as f32,
+        window.resolution.physical_height() as f32,
+    );
     let scale = window.resolution.scale_factor();
 
     let left_offset = offsets.left.max(0.0) * window.resolution.scale_factor();
@@ -195,24 +172,18 @@ fn update_letterbox(
 
     let scale_min = scale_x.min(scale_y);
 
-    let new_viewport = ScaledViewport {
-        size: Vec2::new(design.width * scale_min, design.height * scale_min),
-        scale: scale_min,
-    };
-    if scaled_viewport.size != new_viewport.size || scaled_viewport.scale != new_viewport.scale {
-        *scaled_viewport = new_viewport;
-    }
-
+    let width = design.width * scale_min;
+    let height = design.height * scale_min;
 
     let horizontal_overflow = if scale_x > scale_min {
-        available_width - new_viewport.size.x
+        available_width - width
     } else {
         0.0
     };
     let horizontal_overflow = horizontal_overflow.max(0.0);
 
     let vertical_overflow = if scale_y > scale_min {
-        available_height - new_viewport.size.y
+        available_height - height
     } else {
         0.0
     };
@@ -222,16 +193,11 @@ fn update_letterbox(
     let right_margin = right_offset / scale_min + horizontal_overflow / 2.0;
 
     let content_top = vertical_overflow / 2.0;
-    let content_bottom = content_top + new_viewport.size.y;
-    let content_left =left_margin;
-    let content_right = content_left + new_viewport.size.x;
+    let content_bottom = content_top + height;
+    let content_left = left_margin;
+    let content_right = content_left + width;
 
-    if let Ok(mut node) = hud_and_masks.p0().single_mut() {
-        // node.margin.left = Val::Px(content_left);
-        // node.margin.top = Val::Px(content_top);
-    }
-
-    for (side, mut node) in hud_and_masks.p1().iter_mut() {
+    for (side, mut node) in mask_sides.iter_mut() {
         match side {
             MaskSide::Left => {
                 node.width = Val::Px(content_left.max(0.0)) / scale;
@@ -254,5 +220,14 @@ fn update_letterbox(
                 node.width = Val::Px(available_width.max(0.0));
             }
         }
+    }
+
+    let new_viewport = ScaledViewport {
+        center: Vec2::new(content_left + width / 2.0, content_top + height / 2.0),
+        size: Vec2::new(width, height),
+        scale: scale_min,
+    };
+    if scaled_viewport.size != new_viewport.size || scaled_viewport.scale != new_viewport.scale {
+        *scaled_viewport = new_viewport;
     }
 }

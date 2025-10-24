@@ -6,7 +6,10 @@ use bevy::{
 use bevy_egui::{EguiContexts, egui};
 
 use super::components::*;
-use crate::scenes::assets::{PLAYER_IDLE_KEYS, PLAYER_RUN_KEYS};
+use crate::scenes::{
+    assets::{PLAYER_IDLE_KEYS, PLAYER_RUN_KEYS},
+    stage,
+};
 use crate::{
     plugins::{TiledMapAssets, assets_loader::AssetStore, design_resolution::*},
     scenes::assets::ImageKey,
@@ -85,7 +88,6 @@ pub fn setup(
     tiled_map_assets: Res<TiledMapAssets>,
     viewport: Res<ScaledViewport>,
     window: Single<&mut Window, With<PrimaryWindow>>,
-    root: Res<UIRoot>,
     cam: Query<&Projection, With<Camera2d>>,
 ) {
     let idle_frames: Vec<Handle<Image>> = PLAYER_IDLE_KEYS
@@ -204,32 +206,6 @@ pub fn setup(
         }
     });
 
-    commands.entity(root.0).with_children(|parent| {
-        parent
-            .spawn((
-                StageDebugMarker,
-                Node {
-                    width: Val::Percent(100.0),
-                    height: Val::Percent(100.0),
-                    justify_content: JustifyContent::Center,
-                    align_items: AlignItems::Center,
-                    ..default()
-                },
-                ZIndex(1),
-            ))
-            .with_children(|parent| {
-                parent.spawn((
-                    Node {
-                        width: Val::Px(8.0),
-                        height: Val::Px(8.0),
-                        ..default()
-                    },
-                    BackgroundColor(Color::srgb(1.0, 0.0, 0.0)),
-                    BorderRadius::all(Val::Percent(50.0)),
-                ));
-            });
-    });
-
     let ground_y = -100.0;
 
     info!(
@@ -286,28 +262,33 @@ pub fn setup(
         Transform::from_xyz(x, 0.0, 1.0).with_scale(Vec3::splat(4.0)),
     ));
 
+    info!("viewport: {:?}", viewport);
+
     let stage_root = commands
         .spawn((
             StageRoot,
-            Transform::from_xyz(0.0, 0.0, 0.0),
+            Transform::from_xyz(viewport.center.x / 4.0, viewport.center.y / 4.0, 10.0)
+                .with_scale(Vec3::splat(viewport.scale)),
             GlobalTransform::default(),
         ))
         .id();
 
-    let viewport_height = 600.0; // config.min_height と同じ値
+    let viewport_height = viewport.size.x;
     let cell_height = viewport_height / (10.0 - 1.0);
 
-    for x in 0..10 {
-        for y in 0..10 {
-            let x = window.resolution.width() as f32 / 10.0 * (x as f32);
-            let y = -viewport_height / 2.0 + cell_height * y as f32;
+    info!("viewport!!!: {:?}", viewport);
+
+    for x in 0..1 {
+        for y in 0..1 {
+            let x = viewport.size.x as f32 / 10.0 * (x as f32);
+            let y = 0.0; // -viewport_height / 2.0 + cell_height * y as f32;
             info!("Spawning background at ({}, {})", x, y);
 
             commands.entity(stage_root).with_children(|parent| {
                 parent.spawn((
                     StageBackground,
                     Sprite::from_image(asset_store.image(ImageKey::Logo).unwrap()),
-                    Transform::from_xyz(x, y, 0.5).with_scale(Vec3::splat(0.12)),
+                    Transform::from_xyz(x, y, 0.0).with_scale(Vec3::splat(1.0)),
                 ));
             });
         }
@@ -590,6 +571,23 @@ pub fn ui(
     }
 
     stage_root.iter_mut().for_each(|(_root, mut transform)| {
-        transform.translation.x = left;
+        // transform.translation.x = left;
     });
+}
+
+pub fn update_stage_root(
+    viewport: Res<ScaledViewport>,
+    mut stage_root: Query<(&StageRoot, &mut Transform)>,
+) {
+    if (!viewport.is_changed()) {
+        return;
+    }
+    info!("viewport: {:?}", viewport);
+
+    return;
+
+    let mut stage_root = stage_root.single_mut().unwrap();
+    stage_root.1.translation.x = viewport.center.x;
+    stage_root.1.translation.y = viewport.center.y;
+    stage_root.1.scale = Vec3::splat(viewport.scale);
 }
