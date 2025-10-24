@@ -33,11 +33,7 @@ pub fn setup(
                 ..Default::default()
             },
             Transform::default().with_scale(Vec3::splat(scaled_viewport.scale)),
-        ))
-        .with_children(|p| {
-            p.spawn((
-            ));
-        });
+        ));
 
     commands.insert_resource(BootTimer {
         // for testing, make it shorter
