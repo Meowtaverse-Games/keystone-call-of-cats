@@ -4,25 +4,16 @@ use bevy_egui::{EguiContexts, egui};
 
 use super::components::*;
 use crate::core::{
-    boundary::{ScriptCommand, ScriptExecutionError, ScriptRunner},
-    domain::script::ScriptExecutor,
+    boundary::{ScriptCommand},
 };
 use crate::scenes::assets::{PLAYER_IDLE_KEYS, PLAYER_RUN_KEYS};
 use crate::{
     plugins::{TiledMapAssets, assets_loader::AssetStore, design_resolution::*},
+    plugins::script::{ScriptExecutor, Language},
     scenes::assets::ImageKey,
 };
 
 type StageCleanupFilter = Or<(With<StageBackground>, With<Player>, With<StageDebugMarker>)>;
-
-#[derive(Resource, Default)]
-pub struct ScriptExecutorResource(ScriptExecutor);
-
-impl ScriptExecutorResource {
-    pub fn run(&self, source: &str) -> Result<Vec<ScriptCommand>, ScriptExecutionError> {
-        self.0.run(source)
-    }
-}
 
 #[derive(Resource, Default)]
 pub struct ScriptEditorState {
@@ -428,7 +419,7 @@ pub fn ui(
     mut contexts: EguiContexts,
     mut letterbox_offsets: ResMut<LetterboxOffsets>,
     mut editor: ResMut<ScriptEditorState>,
-    script_executor: Res<ScriptExecutorResource>,
+    script_executor: Res<ScriptExecutor>,
 ) {
     let Ok(ctx) = contexts.ctx_mut() else {
         return;
@@ -487,7 +478,7 @@ pub fn ui(
 
                 if let Some(action) = pending_action {
                     if action == EditorMenuAction::RunScript {
-                        match script_executor.run(&editor.buffer) {
+                        match script_executor.run(Language::Rhai, &editor.buffer) {
                             Ok(commands) => {
                                 let summary = if commands.is_empty() {
                                     "命令は返されませんでした。".to_string()

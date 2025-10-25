@@ -71,11 +71,7 @@ fn setup_camera(mut commands: Commands) {
     ));
 }
 
-
-fn set_font(
-    mut contexts: EguiContexts,
-    mut loaded: Local<bool>,
-) {
+fn set_font(mut contexts: EguiContexts, mut loaded: Local<bool>) {
     if *loaded {
         return;
     }
@@ -91,10 +87,8 @@ fn set_font(
         .insert(0, "pixel_mplus".to_owned());
     defs.font_data.insert(
         "pixel_mplus".to_owned(),
-        egui::FontData::from_static(include_bytes!(
-            "../assets/fonts/PixelMplus12-Regular.ttf"
-        ))
-        .into(),
+        egui::FontData::from_static(include_bytes!("../assets/fonts/PixelMplus12-Regular.ttf"))
+            .into(),
     );
     ctx.set_fonts(defs);
 

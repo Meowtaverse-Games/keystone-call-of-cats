@@ -45,6 +45,7 @@ pub enum ScriptExecutionError {
     EmptyScript,
     InvalidCommand(String),
     Engine(String),
+    UnsupportedLanguage(String),
 }
 
 impl fmt::Display for ScriptExecutionError {
@@ -55,6 +56,9 @@ impl fmt::Display for ScriptExecutionError {
                 write!(f, "スクリプト命令が不正です: {msg}")
             }
             ScriptExecutionError::Engine(msg) => write!(f, "スクリプト実行エラー: {msg}"),
+            ScriptExecutionError::UnsupportedLanguage(lang) => {
+                write!(f, "サポートされていないスクリプト言語です: {lang}")
+            }
         }
     }
 }
