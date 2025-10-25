@@ -44,7 +44,6 @@ pub fn spawn_tiles(
     let scale = scale_x.min(scale_y).max(f32::EPSILON);
     let tile_size = base_tile_size * scale;
 
-    let mut z = 1.0;
     commands.entity(stage_root).with_children(|parent| {
         tiled_map_assets.layers().for_each(|layer| {
             info!("Layer name: {}, type: {:?}", layer.name, layer.layer_type);
@@ -60,21 +59,17 @@ pub fn spawn_tiles(
                             StageTile,
                             Sprite::from_atlas_image(tile_sprite.texture, tile_sprite.atlas),
                             Transform::from_xyz(tile_x, tile_y, 0.0)
-                                .with_scale(Vec3::new(scale, scale, z)),
+                                .with_scale(Vec3::new(scale, scale, 1.0)),
                         ));
                         if layer.name.starts_with("Ground") {
                             tile.insert((
                                 RigidBody::Static,
-                                Collider::rectangle(
-                                    tile_size.x * 0.5,
-                                    tile_size.y * 0.5,
-                                ),
+                                Collider::rectangle(tile_size.x * 0.5, tile_size.y * 0.5),
                             ));
                         };
                     }
                 }
             }
-            // z += 1.0;
         });
     });
 }

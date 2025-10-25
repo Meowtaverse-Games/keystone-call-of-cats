@@ -5,18 +5,22 @@ use crate::{
     plugins::assets_loader::AssetStore,
     scenes::{
         assets::{PLAYER_IDLE_KEYS, PLAYER_RUN_KEYS},
-        stage::{self, components::{
+        stage::components::{
             Player, PlayerAnimation, PlayerAnimationClips, PlayerAnimationState, PlayerMotion,
-        }},
+        },
     },
 };
 
 const PLAYER_SCALE: f32 = 4.0;
 const PLAYER_GROUND_Y: f32 = -100.0;
 
-pub fn spawn_player(commands: &mut Commands,
-        stage_root: Entity,
-     asset_store: &AssetStore, spawn_x: f32, spawn_y: f32) -> bool {
+pub fn spawn_player(
+    commands: &mut Commands,
+    stage_root: Entity,
+    asset_store: &AssetStore,
+    spawn_x: f32,
+    spawn_y: f32,
+) -> bool {
     let idle_frames: Vec<Handle<Image>> = PLAYER_IDLE_KEYS
         .iter()
         .filter_map(|key| asset_store.image(*key))
@@ -67,30 +71,30 @@ pub fn spawn_player(commands: &mut Commands,
             Sprite::from_image(initial_frame),
             Player,
             PlayerAnimation {
-            timer: Timer::from_seconds(0.12, TimerMode::Repeating),
-            clips,
-            state: initial_state,
-            frame_index: 0,
-        },
-        PlayerMotion {
-            speed: 90.0,
-            direction: 1.0,
-            min_x: -150.0,
-            max_x: 150.0,
-            is_moving: matches!(initial_state, PlayerAnimationState::Run),
-            vertical_velocity: 0.0,
-            gravity: -600.0,
-            jump_speed: 280.0,
-            ground_y: PLAYER_GROUND_Y,
-            is_jumping: false,
-        },
-        RigidBody::Dynamic,
-        LockedAxes::ROTATION_LOCKED,
-        Collider::circle(4.5),
-        DebugRender::default().with_collider_color(Color::srgb(1.0, 0.0, 0.0)),
-        Transform::from_xyz(spawn_x, spawn_y, 1.0).with_scale(Vec3::splat(PLAYER_SCALE)),
-    ));
-});
+                timer: Timer::from_seconds(0.12, TimerMode::Repeating),
+                clips,
+                state: initial_state,
+                frame_index: 0,
+            },
+            PlayerMotion {
+                speed: 90.0,
+                direction: 1.0,
+                min_x: -150.0,
+                max_x: 150.0,
+                is_moving: matches!(initial_state, PlayerAnimationState::Run),
+                vertical_velocity: 0.0,
+                gravity: -600.0,
+                jump_speed: 280.0,
+                ground_y: PLAYER_GROUND_Y,
+                is_jumping: false,
+            },
+            RigidBody::Dynamic,
+            LockedAxes::ROTATION_LOCKED,
+            Collider::circle(4.5),
+            DebugRender::default().with_collider_color(Color::srgb(1.0, 0.0, 0.0)),
+            Transform::from_xyz(spawn_x, spawn_y, 1.0).with_scale(Vec3::splat(PLAYER_SCALE)),
+        ));
+    });
 
     true
 }

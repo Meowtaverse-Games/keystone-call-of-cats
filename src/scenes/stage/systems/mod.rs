@@ -48,21 +48,19 @@ pub fn setup(
 
     tiles::spawn_tiles(&mut commands, stage_root, &tiled_map_assets, &viewport);
 
-        let player_spawn_x = 0.0;
+    let player_spawn_x = 0.0;
     let player_spawn_y = window.resolution.height() / 2.0 * 0.75;
-    if !player::spawn_player(&mut commands, stage_root, &asset_store, player_spawn_x, player_spawn_y) {
+    if !player::spawn_player(
+        &mut commands,
+        stage_root,
+        &asset_store,
+        player_spawn_x,
+        player_spawn_y,
+    ) {
         return;
     }
 
-
-
-    stone::spawn_stone_display(
-        &mut commands,
-        stage_root,
-        &viewport,
-        &asset_server,
-        &mut atlas_layouts,
-    );
+    stone::spawn_stone_display(&mut commands, stage_root, &asset_server, &mut atlas_layouts);
 }
 
 pub fn cleanup(

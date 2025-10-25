@@ -1,10 +1,9 @@
 use avian2d::prelude::*;
 use bevy::prelude::*;
 
-use crate::{plugins::design_resolution::ScaledViewport, scenes::stage::components::StoneRune};
+use crate::scenes::stage::components::StoneRune;
 
-const STONE_ATLAS_PATH: &str =
-    "images/spr_allrunes_spritesheet_xx.png";
+const STONE_ATLAS_PATH: &str = "images/spr_allrunes_spritesheet_xx.png";
 const STONE_TILE_SIZE: UVec2 = UVec2::new(64, 64);
 const STONE_SHEET_COLUMNS: u32 = 10;
 const STONE_SHEET_ROWS: u32 = 7;
@@ -14,7 +13,6 @@ const STONE_SCALE: f32 = 1.6;
 pub fn spawn_stone_display(
     commands: &mut Commands,
     stage_root: Entity,
-    viewport: &ScaledViewport,
     asset_server: &AssetServer,
     layouts: &mut Assets<TextureAtlasLayout>,
 ) {
@@ -43,8 +41,7 @@ pub fn spawn_stone_display(
                 (STONE_TILE_SIZE.x as f32) * 0.5,
                 (STONE_TILE_SIZE.y as f32) * 0.5,
             ),
-                    DebugRender::default().with_collider_color(Color::srgb(1.0, 0.0, 0.0)),
-
+            DebugRender::default().with_collider_color(Color::srgb(1.0, 0.0, 0.0)),
         ));
     });
 }
