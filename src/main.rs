@@ -4,7 +4,7 @@ mod plugins;
 mod scenes;
 
 use bevy::asset::AssetPlugin;
-use bevy::prelude::*;
+use bevy::{camera::ScalingMode, prelude::*};
 
 use bevy_egui::EguiPlugin;
 
@@ -14,6 +14,10 @@ use avian2d::prelude::*;
 use crate::adapter::{VisibilityPlugin, game_state::GameState};
 use crate::plugins::*;
 use crate::scenes::ScenesPlugin;
+
+#[derive(Component)]
+#[require(Camera2d)]
+pub struct MainCamera;
 
 fn main() {
     App::new()
@@ -37,10 +41,12 @@ fn main() {
             PhysicsDebugPlugin,
         ))
         .add_plugins(VisibilityPlugin)
-        .add_plugins(
-            DesignResolutionPlugin::new(1600.0, 1200.0, Color::linear_rgb(0.02, 0.02, 0.02))
-                .fix_min(800.0 * 2.0, 600.0),
-        )
+        .add_systems(Startup, setup_camera)
+        .add_plugins(DesignResolutionPlugin::new(
+            1600.0,
+            1200.0,
+            Color::linear_rgb(0.02, 0.02, 0.02),
+        ))
         .add_plugins(TiledPlugin::new(
             "assets/tiled/stage1-1.tmx",
             "assets/tiled/super-platfomer-assets.tsx",
@@ -50,4 +56,14 @@ fn main() {
         .add_plugins(ScenesPlugin)
         .init_state::<GameState>()
         .run();
+}
+
+fn setup_camera(mut commands: Commands) {
+    commands.spawn((
+        MainCamera,
+        Projection::from(OrthographicProjection {
+            scaling_mode: ScalingMode::WindowSize,
+            ..OrthographicProjection::default_2d()
+        }),
+    ));
 }

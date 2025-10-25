@@ -2,18 +2,31 @@ use bevy::color::palettes::css::*;
 use bevy::prelude::*;
 
 use super::components::TitleUI;
-use crate::plugins::{UIRoot, assets_loader::AssetStore};
+use crate::plugins::assets_loader::AssetStore;
+use crate::plugins::design_resolution::LetterboxOffsets;
 use crate::scenes::assets::FontKey;
 
 pub fn setup(
     mut commands: Commands,
-    ui_root: Res<UIRoot>,
-    asset_store: Res<AssetStore>,
     mut clear_color: ResMut<ClearColor>,
+    mut letterbox_offsets: ResMut<LetterboxOffsets>,
+    asset_store: Res<AssetStore>,
 ) {
     clear_color.0 = Color::WHITE;
+    letterbox_offsets.left = 0.0;
+    letterbox_offsets.right = 0.0;
 
-    commands.entity(ui_root.0).with_children(|parent| {
+    let ui_root = commands
+        .spawn(Node {
+            width: Val::Percent(100.0),
+            height: Val::Percent(100.0),
+            justify_content: JustifyContent::Center,
+            align_items: AlignItems::Center,
+            ..default()
+        })
+        .id();
+
+    commands.entity(ui_root).with_children(|parent| {
         parent
             .spawn(Node {
                 width: Val::Percent(100.0),

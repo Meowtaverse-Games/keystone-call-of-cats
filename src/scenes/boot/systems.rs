@@ -4,17 +4,19 @@ use bevy::prelude::*;
 
 use crate::adapter::*;
 use crate::plugins::assets_loader::*;
+use crate::plugins::design_resolution::ScaledViewport;
 use crate::scenes::assets::DEFAULT_GROUP;
 
-use super::components::BootUI;
+use super::components::BootRoot;
 #[derive(Resource, Default)]
 pub struct BootTimer {
     timer: Timer,
 }
 
 pub fn setup(
-    mut commands: Commands,
     asset_server: Res<AssetServer>,
+    scaled_viewport: Res<ScaledViewport>,
+    mut commands: Commands,
     mut load_writer: MessageWriter<LoadAssetGroup>,
 ) {
     load_writer.write(DEFAULT_GROUP);
@@ -22,20 +24,21 @@ pub fn setup(
     let fixed_width = 180.0;
     let custom_size = Vec2::new(fixed_width, fixed_width);
 
-    commands
-        .spawn((Node { ..default() }, BootUI))
-        .with_children(|p| {
-            p.spawn(Sprite {
-                image: asset_server.load("images/logo_with_black.png"),
-                custom_size: Some(custom_size),
-                ..Default::default()
-            });
-        });
+    commands.spawn((
+        BootRoot,
+        Sprite {
+            image: asset_server.load("images/logo_with_black.png"),
+            custom_size: Some(custom_size),
+            ..Default::default()
+        },
+        Transform::default().with_scale(Vec3::splat(scaled_viewport.scale)),
+    ));
 
     commands.insert_resource(BootTimer {
         // for testing, make it shorter
         timer: Timer::new(
-            Duration::from_micros(100), // Duration::from_secs(3),
+            Duration::from_millis(200),
+            // Duration::from_secs(30),
             TimerMode::Once,
         ),
     });
@@ -49,8 +52,15 @@ pub fn update(
     mut loaded: Local<Loaded>,
     mut boot_timer: ResMut<BootTimer>,
     time: Res<Time>,
+    scaled_viewport: ResMut<ScaledViewport>,
     mut next_state: ResMut<NextState<GameState>>,
+    mut boot_ui: Query<(&BootRoot, &mut Transform)>,
 ) {
+    if let Ok((_, mut transform)) = boot_ui.single_mut() {
+        transform.scale = Vec3::splat(scaled_viewport.scale);
+        info!("Boot UI scale updated to {}", scaled_viewport.scale);
+    }
+
     for _event in reader.read() {
         info!("Assets loaded event received");
         loaded.0 = true;
@@ -64,7 +74,7 @@ pub fn update(
     }
 }
 
-pub fn cleanup(mut commands: Commands, query: Query<Entity, With<BootUI>>) {
+pub fn cleanup(mut commands: Commands, query: Query<Entity, With<BootRoot>>) {
     for ent in query.iter() {
         commands.entity(ent).despawn();
     }

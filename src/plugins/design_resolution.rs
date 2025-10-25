@@ -1,32 +1,10 @@
 use bevy::{
-    camera::ScalingMode,
     prelude::*,
     window::{PrimaryWindow, WindowResized},
 };
 
-use crate::core::domain::graphics::design_resolution::DesignResolution;
-
-#[derive(Component)]
-#[require(Camera2d)]
-pub struct MainCamera;
-
-#[derive(Resource, Copy, Clone, Debug)]
-pub struct UIRoot(pub Entity);
-
-#[derive(Resource, Copy, Clone)]
-struct AutoMinConfig {
-    min_width: f32,
-    min_height: f32,
-}
-
 #[derive(Resource, Copy, Clone)]
 struct MaskColor(Color);
-
-#[derive(Resource, Copy, Clone)]
-struct VirtualResolution {
-    width: f32,
-    height: f32,
-}
 
 #[derive(Resource, Copy, Clone, Default, Debug)]
 pub struct LetterboxOffsets {
@@ -34,14 +12,12 @@ pub struct LetterboxOffsets {
     pub right: f32,
 }
 
-#[derive(Resource, Copy, Clone, Default, Debug)]
-pub struct StageViewport {
+#[derive(Resource, Copy, Clone, Debug)]
+pub struct ScaledViewport {
+    pub center: Vec2,
     pub size: Vec2,
     pub scale: f32,
 }
-
-#[derive(Component)]
-struct HudRoot;
 
 #[derive(Component, Clone, Copy, PartialEq, Eq)]
 enum MaskSide {
@@ -52,123 +28,61 @@ enum MaskSide {
 }
 
 pub struct DesignResolutionPlugin {
-    pub design: DesignResolution,
-    pub min_width: f32,
-    pub min_height: f32,
+    pub design_resolution_size: Vec2,
     pub mask_color: Color,
 }
 
 impl DesignResolutionPlugin {
     pub fn new(width: f32, height: f32, mask_color: Color) -> Self {
         Self {
-            design: DesignResolution::new(width, height),
-            min_width: width,
-            min_height: height,
+            design_resolution_size: Vec2::new(width, height),
             mask_color,
         }
-    }
-
-    pub fn fix_min(mut self, width: f32, height: f32) -> Self {
-        self.min_width = width;
-        self.min_height = height;
-        self
     }
 }
 
 impl Plugin for DesignResolutionPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(VirtualResolution {
-            width: self.design.width,
-            height: self.design.height,
-        })
-        .insert_resource(AutoMinConfig {
-            min_width: self.min_width,
-            min_height: self.min_height,
-        })
-        .insert_resource(MaskColor(self.mask_color))
-        .insert_resource(LetterboxOffsets::default())
-        .insert_resource(StageViewport::default())
-        .add_systems(Startup, setup_camera)
-        .add_systems(Startup, setup_ui_root)
-        .add_systems(Update, update_letterbox);
+        app.insert_resource(MaskColor(self.mask_color))
+            .insert_resource(LetterboxOffsets::default())
+            .insert_resource(ScaledViewport {
+                center: self.design_resolution_size / 2.0,
+                size: self.design_resolution_size,
+                scale: 1.0,
+            })
+            .add_systems(Startup, setup)
+            .add_systems(Update, update_letterbox);
     }
 }
 
-fn setup_camera(mut commands: Commands, config: Res<AutoMinConfig>) {
-    commands.spawn((
-        MainCamera,
-        Projection::from(OrthographicProjection {
-            scaling_mode: ScalingMode::AutoMin {
-                min_width: config.min_width,
-                min_height: config.min_height,
-            },
-            ..OrthographicProjection::default_2d()
-        }),
-    ));
-}
-
-fn setup_ui_root(
-    mut commands: Commands,
-    design: Res<VirtualResolution>,
-    mask_color: Res<MaskColor>,
-) {
-    let parent = commands
-        .spawn((
-            Name::new("Design Resolution Root"),
-            Node {
-                width: Val::Percent(100.0),
-                height: Val::Percent(100.0),
-                position_type: PositionType::Absolute,
-                ..default()
-            },
-        ))
-        .id();
-
-    let hud = commands
-        .spawn((
-            Name::new("UI Root"),
-            HudRoot,
-            Node {
-                width: Val::Px(design.width),
-                height: Val::Px(design.height),
-                position_type: PositionType::Absolute,
-                ..default()
-            },
-        ))
-        .id();
-
-    commands.entity(parent).add_child(hud);
-
+fn setup(mut commands: Commands, mask_color: Res<MaskColor>) {
     let color = mask_color.0;
+
+    let parent = commands
+        .spawn((Node {
+            width: Val::Percent(100.0),
+            height: Val::Percent(100.0),
+            position_type: PositionType::Absolute,
+            ..default()
+        },))
+        .id();
 
     commands.entity(parent).with_children(|parent| {
         parent.spawn((
-            Name::new("Letterbox Mask Left"),
             MaskSide::Left,
             Node {
                 width: Val::Px(0.0),
-                height: Val::Percent(100.0),
+                height: Val::Px(0.0),
                 position_type: PositionType::Absolute,
                 ..default()
             },
             BackgroundColor(color),
         ));
+
         parent.spawn((
-            Name::new("Letterbox Mask Right"),
             MaskSide::Right,
             Node {
                 width: Val::Px(0.0),
-                height: Val::Percent(100.0),
-                position_type: PositionType::Absolute,
-                ..default()
-            },
-            BackgroundColor(color),
-        ));
-        parent.spawn((
-            Name::new("Letterbox Mask Top"),
-            MaskSide::Top,
-            Node {
-                width: Val::Percent(100.0),
                 height: Val::Px(0.0),
                 position_type: PositionType::Absolute,
                 ..default()
@@ -176,10 +90,19 @@ fn setup_ui_root(
             BackgroundColor(color),
         ));
         parent.spawn((
-            Name::new("Letterbox Mask Bottom"),
+            MaskSide::Top,
+            Node {
+                width: Val::Px(0.0),
+                height: Val::Px(0.0),
+                position_type: PositionType::Absolute,
+                ..default()
+            },
+            BackgroundColor(color),
+        ));
+        parent.spawn((
             MaskSide::Bottom,
             Node {
-                width: Val::Percent(100.0),
+                width: Val::Px(0.0),
                 height: Val::Px(0.0),
                 position_type: PositionType::Absolute,
                 ..default()
@@ -187,8 +110,6 @@ fn setup_ui_root(
             BackgroundColor(color),
         ));
     });
-
-    commands.insert_resource(UIRoot(hud));
 }
 
 #[allow(clippy::too_many_arguments, clippy::type_complexity)]
@@ -196,14 +117,9 @@ fn update_letterbox(
     mut first_run: Local<bool>,
     mut resize_events: MessageReader<WindowResized>,
     windows: Query<&Window, With<PrimaryWindow>>,
-    design: Res<VirtualResolution>,
-    mut ui_scale: ResMut<UiScale>,
     offsets: Res<LetterboxOffsets>,
-    mut stage_viewport: ResMut<StageViewport>,
-    mut hud_and_masks: ParamSet<(
-        Query<&mut Node, With<HudRoot>>,
-        Query<(&MaskSide, &mut Node), With<MaskSide>>,
-    )>,
+    mut scaled_viewport: ResMut<ScaledViewport>,
+    mut mask_sides: Query<(&MaskSide, &mut Node), With<MaskSide>>,
 ) {
     let mut should_update = *first_run || offsets.is_changed();
     for _ in resize_events.read() {
@@ -220,97 +136,84 @@ fn update_letterbox(
         return;
     };
 
-    let window_size = window.resolution.size();
-    if window_size.x <= 0.0 || window_size.y <= 0.0 {
-        return;
-    }
+    let window_size = Vec2::new(window.resolution.width(), window.resolution.height());
 
     let left_offset = offsets.left.max(0.0);
     let right_offset = offsets.right.max(0.0);
 
     let available_width = (window_size.x - left_offset - right_offset).max(0.0);
-    if design.width <= 0.0 || design.height <= 0.0 {
-        return;
-    }
+    let available_height = window_size.y;
 
-    let scale_x = available_width / design.width;
-    let scale_y = window_size.y / design.height;
+    let scale_x = available_width / scaled_viewport.size.x;
+    let scale_y = window_size.y / scaled_viewport.size.y;
 
     if !scale_x.is_finite() || !scale_y.is_finite() || scale_x <= 0.0 || scale_y <= 0.0 {
         return;
     }
 
-    let min_scale = scale_x.min(scale_y);
-    if !min_scale.is_finite() || min_scale <= 0.0 {
-        return;
-    }
+    let scale_min = scale_x.min(scale_y);
 
-    ui_scale.0 = min_scale;
+    let width = scaled_viewport.size.x * scale_min;
+    let height = scaled_viewport.size.y * scale_min;
 
-    let new_viewport = StageViewport {
-        size: Vec2::new(design.width * min_scale, design.height * min_scale),
-        scale: min_scale,
-    };
-    if stage_viewport.size != new_viewport.size || stage_viewport.scale != new_viewport.scale {
-        *stage_viewport = new_viewport;
-    }
-
-    let horizontal_overflow = if scale_x > min_scale {
-        design.width * (scale_x / min_scale - 1.0)
+    let horizontal_overflow = if scale_x > scale_min {
+        available_width - width
     } else {
         0.0
     };
     let horizontal_overflow = horizontal_overflow.max(0.0);
 
-    let vertical_overflow = if scale_y > min_scale {
-        design.height * (scale_y / min_scale - 1.0)
+    let vertical_overflow = if scale_y > scale_min {
+        available_height - height
     } else {
         0.0
     };
     let vertical_overflow = vertical_overflow.max(0.0);
 
-    let left_margin = left_offset / min_scale + horizontal_overflow / 2.0;
-    let right_margin = right_offset / min_scale + horizontal_overflow / 2.0;
+    let left_margin = left_offset + horizontal_overflow / 2.0;
+    let right_margin = right_offset + horizontal_overflow / 2.0;
 
-    let stage_top = vertical_overflow / 2.0;
-    let stage_bottom = stage_top + design.height;
-    let stage_left = left_margin;
-    let stage_right = stage_left + design.width;
-    let total_width = stage_left + design.width + right_margin;
-    let total_height = design.height + vertical_overflow;
+    let content_top = vertical_overflow / 2.0;
+    let content_bottom = content_top + height;
+    let content_left = left_margin;
+    let content_right = content_left + width;
 
-    if let Ok(mut node) = hud_and_masks.p0().single_mut() {
-        node.margin.left = Val::Px(stage_left);
-        node.margin.top = Val::Px(stage_top);
-    }
-
-    for (side, mut node) in hud_and_masks.p1().iter_mut() {
+    for (side, mut node) in mask_sides.iter_mut() {
         match side {
             MaskSide::Left => {
-                node.width = Val::Px(stage_left.max(0.0));
-                node.left = Val::Px(0.0);
-                node.top = Val::Px(0.0);
-                node.height = Val::Px(total_height.max(0.0));
+                node.width = Val::Px(content_left.max(0.0));
+                node.height = Val::Px(available_height.max(0.0));
             }
             MaskSide::Right => {
+                node.left = Val::Px(content_right);
                 node.width = Val::Px(right_margin.max(0.0));
-                node.left = Val::Px(stage_right);
-                node.top = Val::Px(0.0);
-                node.height = Val::Px(total_height.max(0.0));
+                node.height = Val::Px(available_height.max(0.0));
             }
             MaskSide::Top => {
-                node.height = Val::Px(stage_top.max(0.0));
-                node.top = Val::Px(0.0);
-                node.width = Val::Px(total_width.max(0.0));
-                node.left = Val::Px(0.0);
+                node.height = Val::Px(content_top.max(0.0));
+                node.width = Val::Px((available_width + content_left).max(0.0));
             }
             MaskSide::Bottom => {
-                let bottom_height = (total_height - stage_bottom).max(0.0);
+                let bottom_height = (available_height - content_bottom).max(0.0);
+
+                node.top = Val::Px(content_bottom);
                 node.height = Val::Px(bottom_height);
-                node.top = Val::Px(stage_bottom);
-                node.width = Val::Px(total_width.max(0.0));
-                node.left = Val::Px(0.0);
+                node.width = Val::Px((available_width + content_left).max(0.0));
             }
         }
     }
+
+    let new_viewport = ScaledViewport {
+        center: Vec2::new(content_left + width / 2.0, content_top + height / 2.0),
+        size: scaled_viewport.size,
+        scale: scale_min,
+    };
+    if scaled_viewport.center != new_viewport.center || scaled_viewport.scale != new_viewport.scale
+    {
+        *scaled_viewport = new_viewport;
+    }
+    info!(
+        "Updated scaled viewport: center={:?}, size={:?}, scale={}",
+        scaled_viewport.center, scaled_viewport.size, scaled_viewport.scale
+    );
 }

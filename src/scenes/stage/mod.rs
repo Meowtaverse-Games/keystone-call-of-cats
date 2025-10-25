@@ -14,9 +14,9 @@ impl Plugin for StagePlugin {
             .add_systems(
                 Update,
                 (
+                    systems::update_stage_root,
                     systems::animate_character,
                     systems::move_character,
-                    systems::update_tiles_on_resize,
                 )
                     .run_if(in_state(GameState::Stage)),
             )
