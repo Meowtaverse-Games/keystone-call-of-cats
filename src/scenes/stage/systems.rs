@@ -1,5 +1,6 @@
 use avian2d::prelude::*;
 use bevy::{prelude::*, window::PrimaryWindow};
+use bevy_egui::egui::{FontId, FontSelection};
 use bevy_egui::{EguiContexts, egui};
 
 use super::components::*;
@@ -189,8 +190,6 @@ pub fn setup(
         Transform::from_xyz(x, 0.0, 1.0).with_scale(Vec3::splat(4.0)),
     ));
 
-    info!("viewport: {:?}", viewport);
-
     let window_size = window.resolution.size();
     let stage_root_position = compute_stage_root_translation(&viewport, window_size);
 
@@ -203,8 +202,6 @@ pub fn setup(
             GlobalTransform::default(),
         ))
         .id();
-
-    info!("viewport!!!: {:?}", viewport);
 
     for x in 0..10 {
         for y in 0..10 {
@@ -241,8 +238,6 @@ pub fn setup(
         .map(|image| image.tile_size)
         .unwrap_or(UVec2::new(32, 32));
 
-    info!("Tileset base tile size: {:?}", raw_tile_size,);
-
     let base_tile_size = Vec2::new(raw_tile_size.x.max(1) as f32, raw_tile_size.y.max(1) as f32);
 
     let viewport_size = viewport.size;
@@ -257,13 +252,6 @@ pub fn setup(
     let scale = scale_x.min(scale_y).max(f32::EPSILON);
     let tile_size = base_tile_size * scale;
 
-    info!(
-        "Placing tiles with scale {}, tile size {:?}",
-        scale, tile_size
-    );
-
-    info!("viewport: {:?}", viewport);
-
     commands.entity(stage_root).with_children(|parent| {
         tiled_map_assets.layers().for_each(|layer| {
             info!("Layer name: {}, type: {:?}", layer.name, layer.layer_type);
@@ -272,21 +260,8 @@ pub fn setup(
                     if let Some(tile) = layer.tile(x, y)
                         && let Some(tile_sprite) = tileset.atlas_sprite(tile.id)
                     {
-                        if x == 0 {
-                            info!("Spawning tile at ({}, {})", x, y);
-                            info!("view port size: {}", viewport_size.x / 2.0);
-                            info!(
-                                "tile position: {}",
-                                x as f32 * tile_size.x - viewport_size.x / 2.0
-                            );
-                        }
-
                         let tile_x = (x as f32 + 0.5) * tile_size.x - viewport_size.x / 2.0;
                         let tile_y = -((y as f32 + 0.5) * tile_size.y - viewport_size.y / 2.0);
-
-                        if x == 0 {
-                            info!("Spawning tile id {} at ({}, {})", tile.id, tile_x, tile_y);
-                        }
 
                         let mut tile = parent.spawn((
                             StageTile,
@@ -530,6 +505,8 @@ pub fn ui(
                 ui.add_sized(
                     available_size,
                     egui::TextEdit::multiline(&mut editor.buffer)
+                        // TODO: Use a pixel font
+                        .font(FontSelection::FontId(FontId::new(14.0, egui::FontFamily::Name("pixel_mplus".into()))))
                         .code_editor()
                         .desired_width(f32::INFINITY),
                 );
