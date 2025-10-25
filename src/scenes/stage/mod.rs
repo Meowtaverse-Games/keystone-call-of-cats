@@ -16,7 +16,7 @@ impl Plugin for StagePlugin {
                 (
                     systems::update_stage_root,
                     systems::animate_character,
-                    systems::move_character,
+                    // systems::move_character,
                 )
                     .run_if(in_state(GameState::Stage)),
             )

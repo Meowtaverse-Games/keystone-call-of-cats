@@ -90,7 +90,7 @@ pub fn spawn_player(
             },
             RigidBody::Dynamic,
             LockedAxes::ROTATION_LOCKED,
-            Collider::circle(4.5),
+            Collider::circle(PLAYER_SCALE * 2.5),
             DebugRender::default().with_collider_color(Color::srgb(1.0, 0.0, 0.0)),
             Transform::from_xyz(spawn_x, spawn_y, 1.0).with_scale(Vec3::splat(PLAYER_SCALE)),
         ));
@@ -134,6 +134,7 @@ pub fn animate_character(
     }
 }
 
+#[allow(dead_code)]
 pub fn move_character(
     time: Res<Time>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
