@@ -191,14 +191,14 @@ fn update_letterbox(
             }
             MaskSide::Top => {
                 node.height = Val::Px(content_top.max(0.0));
-                node.width = Val::Px(available_width.max(0.0));
+                node.width = Val::Px((available_width + content_left).max(0.0));
             }
             MaskSide::Bottom => {
                 let bottom_height = (available_height - content_bottom).max(0.0);
 
                 node.top = Val::Px(content_bottom);
                 node.height = Val::Px(bottom_height);
-                node.width = Val::Px(available_width.max(0.0));
+                node.width = Val::Px((available_width + content_left).max(0.0));
             }
         }
     }
