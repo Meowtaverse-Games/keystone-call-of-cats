@@ -31,11 +31,6 @@ pub fn setup(
     mut atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     window: Single<&mut Window, With<PrimaryWindow>>,
 ) {
-    let player_spawn_x = window.resolution.width() / 2.0 * 0.25;
-    if !player::spawn_player(&mut commands, &asset_store, player_spawn_x) {
-        return;
-    }
-
     ui::init_editor_state(&mut commands);
 
     let window_size = window.resolution.size();
@@ -51,12 +46,15 @@ pub fn setup(
         ))
         .id();
 
-    tiles::spawn_tiles(
-        &mut commands,
-        stage_root,
-        &tiled_map_assets,
-        &viewport,
-    );
+    tiles::spawn_tiles(&mut commands, stage_root, &tiled_map_assets, &viewport);
+
+        let player_spawn_x = 0.0;
+    let player_spawn_y = window.resolution.height() / 2.0 * 0.75;
+    if !player::spawn_player(&mut commands, stage_root, &asset_store, player_spawn_x, player_spawn_y) {
+        return;
+    }
+
+
 
     stone::spawn_stone_display(
         &mut commands,
