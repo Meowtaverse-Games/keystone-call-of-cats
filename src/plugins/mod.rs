@@ -8,4 +8,4 @@ pub mod tiled;
 pub use tiled::{TiledMapAssets, TiledPlugin};
 
 pub mod script;
-pub use script::{ScriptExecutor, ScriptPlugin};
+pub use script::{ScriptPlugin};

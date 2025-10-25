@@ -3,13 +3,11 @@ use bevy::{prelude::*, window::PrimaryWindow};
 use bevy_egui::{EguiContexts, egui};
 
 use super::components::*;
-use crate::core::{
-    boundary::{ScriptCommand},
-};
+use crate::core::boundary::ScriptCommand;
 use crate::scenes::assets::{PLAYER_IDLE_KEYS, PLAYER_RUN_KEYS};
 use crate::{
+    plugins::script::{Language, ScriptExecutor},
     plugins::{TiledMapAssets, assets_loader::AssetStore, design_resolution::*},
-    plugins::script::{ScriptExecutor, Language},
     scenes::assets::ImageKey,
 };
 
