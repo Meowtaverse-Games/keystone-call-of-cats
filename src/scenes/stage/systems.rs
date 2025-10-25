@@ -281,38 +281,28 @@ pub fn setup(
         ))
         .id();
 
-    commands.entity(stage_root).with_children(|parent| {
-        parent.spawn((
-            Sprite::from_image(asset_store.image(ImageKey::PlayerIdle1).unwrap()),
-            Transform::from_xyz(0.0, 0.0, 4.0).with_scale(Vec3::splat(40.0)),
-        ));
-    });
+    // commands.entity(stage_root).with_children(|parent| {
+    //     parent.spawn((
+    //         Sprite::from_image(asset_store.image(ImageKey::PlayerIdle1).unwrap()),
+    //         Transform::from_xyz(0.0, 0.0, 4.0).with_scale(Vec3::splat(40.0)),
+    //     ));
+    // });
 
     let viewport_height = viewport.size.x;
     let cell_height = viewport_height / (10.0 - 1.0);
 
     info!("viewport!!!: {:?}", viewport);
 
-    commands.entity(stage_root).with_children(|parent| {
-        parent.spawn((
-            StageBackground,
-            Sprite::from_image(asset_store.image(ImageKey::Logo).unwrap()),
-            Transform::from_xyz(0.0, -viewport_height / 2.0, 0.0).with_scale(Vec3::splat(1.0)),
-        ));
-    });
-    
-
     for x in 0..10 {
         for y in 0..10 {
-            let x = viewport.size.x as f32 / 10.0 * (x as f32);
-            let y = -viewport_height / 2.0 + cell_height * y as f32;
+            let x = viewport.size.x as f32 / 2.0 / 9.0 * (x as f32);
+            let y = viewport.size.y as f32 / 2.0 / 9.0 * (y as f32);
             info!("Spawning background at ({}, {})", x, y);
 
             commands.entity(stage_root).with_children(|parent| {
                 parent.spawn((
-                    StageBackground,
                     Sprite::from_image(asset_store.image(ImageKey::Logo).unwrap()),
-                    Transform::from_xyz(x, y, 0.0).with_scale(Vec3::splat(1.0)),
+                    Transform::from_xyz(x, y, 0.0).with_scale(Vec3::splat(0.2)),
                 ));
             });
         }
