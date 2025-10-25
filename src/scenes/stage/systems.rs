@@ -247,11 +247,14 @@ pub fn setup(
                         if x == 0 {
                             info!("Spawning tile at ({}, {})", x, y);
                             info!("view port size: {}", viewport_size.x / 2.0);
-                            info!("tile position: {}", x as f32 * tile_size.x - viewport_size.x / 2.0);
+                            info!(
+                                "tile position: {}",
+                                x as f32 * tile_size.x - viewport_size.x / 2.0
+                            );
                         }
 
                         let tile_x = (x as f32 + 0.5) * tile_size.x - viewport_size.x / 2.0;
-                        let tile_y = - ((y as f32 + 0.5) * tile_size.y - viewport_size.y / 2.0);
+                        let tile_y = -((y as f32 + 0.5) * tile_size.y - viewport_size.y / 2.0);
 
                         if x == 0 {
                             info!("Spawning tile id {} at ({}, {})", tile.id, tile_x, tile_y);
@@ -260,7 +263,8 @@ pub fn setup(
                         let mut tile = parent.spawn((
                             StageTile,
                             Sprite::from_atlas_image(tile_sprite.texture, tile_sprite.atlas),
-                            Transform::from_xyz(tile_x, tile_y, 0.0).with_scale(Vec3::new(scale, scale, 1.0)),
+                            Transform::from_xyz(tile_x, tile_y, 0.0)
+                                .with_scale(Vec3::new(scale, scale, 1.0)),
                         ));
                         if layer.name.starts_with("Ground") {
                             tile.insert((
@@ -269,8 +273,9 @@ pub fn setup(
                                     base_tile_size.x * scale,
                                     base_tile_size.y * scale,
                                 ),
-                                DebugRender::default()
-                                    .with_collider_color(Color::srgb(0.0, 1.0, 0.0).with_alpha(0.01)),
+                                DebugRender::default().with_collider_color(
+                                    Color::srgb(0.0, 1.0, 0.0).with_alpha(0.01),
+                                ),
                             ));
                         };
                     }
