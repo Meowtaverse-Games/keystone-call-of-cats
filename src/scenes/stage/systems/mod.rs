@@ -8,6 +8,7 @@ use bevy::{prelude::*, window::PrimaryWindow};
 use super::components::*;
 use crate::plugins::{TiledMapAssets, assets_loader::AssetStore, design_resolution::*};
 
+#[allow(unused_imports)]
 pub use player::{animate_character, move_character};
 use ui::ScriptEditorState;
 pub use ui::ui;
