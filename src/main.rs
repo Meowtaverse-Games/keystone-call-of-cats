@@ -7,6 +7,7 @@ use bevy::asset::AssetPlugin;
 use bevy::{camera::ScalingMode, prelude::*};
 
 use bevy_egui::EguiPlugin;
+use bevy_egui::{EguiContexts, egui};
 
 use avian2d::debug_render::PhysicsDebugPlugin;
 use avian2d::prelude::*;
@@ -54,6 +55,7 @@ fn main() {
         ))
         .add_plugins(AssetLoaderPlugin)
         .add_plugins(EguiPlugin::default())
+        .add_systems(Update, set_font)
         .add_plugins(ScenesPlugin)
         .init_state::<GameState>()
         .run();
@@ -67,4 +69,34 @@ fn setup_camera(mut commands: Commands) {
             ..OrthographicProjection::default_2d()
         }),
     ));
+}
+
+
+fn set_font(
+    mut contexts: EguiContexts,
+    mut loaded: Local<bool>,
+) {
+    if *loaded {
+        return;
+    }
+
+    let Ok(ctx) = contexts.ctx_mut() else {
+        return;
+    };
+
+    let mut defs = egui::FontDefinitions::default();
+    defs.families
+        .get_mut(&egui::FontFamily::Proportional)
+        .unwrap()
+        .insert(0, "pixel_mplus".to_owned());
+    defs.font_data.insert(
+        "pixel_mplus".to_owned(),
+        egui::FontData::from_static(include_bytes!(
+            "../assets/fonts/PixelMplus12-Regular.ttf"
+        ))
+        .into(),
+    );
+    ctx.set_fonts(defs);
+
+    *loaded = true;
 }
