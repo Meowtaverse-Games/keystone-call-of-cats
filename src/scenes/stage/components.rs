@@ -10,9 +10,7 @@ pub struct StageBackground;
 pub struct StageDebugMarker;
 
 #[derive(Component, Clone, Copy)]
-pub struct StageTile {
-    pub coord: UVec2,
-}
+pub struct StageTile;
 
 #[derive(Component)]
 pub struct Player;
