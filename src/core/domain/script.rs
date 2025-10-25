@@ -1,5 +1,5 @@
 use crate::core::boundary::{MoveDirection, ScriptCommand, ScriptExecutionError, ScriptRunner};
-use rhai::{Dynamic, Engine, EvalAltResult, FLOAT as RhaiFloat, ImmutableString, Position};
+use rhai::{Dynamic, Engine, EvalAltResult, FLOAT as RhaiFloat, Position};
 use std::sync::{Arc, Mutex};
 
 /// Rhai-based implementation of the `ScriptRunner` boundary.
@@ -96,7 +96,7 @@ fn register_commands(engine: &mut Engine, recorder: CommandRecorder) {
     }
     {
         let recorder = recorder.clone();
-        engine.register_fn("move", move |direction: ImmutableString| {
+        engine.register_fn("move", move |direction: &str| {
             move_named(direction, &recorder)
         });
     }
@@ -115,10 +115,10 @@ fn record_move(recorder: &CommandRecorder, direction: MoveDirection) -> CommandV
 }
 
 fn move_named(
-    direction: ImmutableString,
+    direction: &str,
     recorder: &CommandRecorder,
 ) -> Result<CommandValue, Box<EvalAltResult>> {
-    MoveDirection::from_str(direction.as_str())
+    MoveDirection::from_str(direction)
         .map(|dir| record_move(recorder, dir))
         .ok_or_else(|| {
             EvalAltResult::ErrorRuntime(
