@@ -1,8 +1,5 @@
 use avian2d::prelude::*;
-use bevy::{
-    prelude::*,
-    window::{PrimaryWindow},
-};
+use bevy::{prelude::*, window::PrimaryWindow};
 use bevy_egui::{EguiContexts, egui};
 
 use super::components::*;
@@ -136,33 +133,33 @@ pub fn setup(
     let ground_y = -100.0;
     let x = window.resolution.width() / 2.0 * 0.25;
 
-    // commands.spawn((
-    //     Sprite::from_image(initial_frame),
-    //     Player,
-    //     PlayerAnimation {
-    //         timer: Timer::from_seconds(0.12, TimerMode::Repeating),
-    //         clips,
-    //         state: initial_state,
-    //         frame_index: 0,
-    //     },
-    //     PlayerMotion {
-    //         speed: 90.0,
-    //         direction: 1.0,
-    //         min_x: -150.0,
-    //         max_x: 150.0,
-    //         is_moving: matches!(initial_state, PlayerAnimationState::Run),
-    //         vertical_velocity: 0.0,
-    //         gravity: -600.0,
-    //         jump_speed: 280.0,
-    //         ground_y,
-    //         is_jumping: false,
-    //     },
-    //     RigidBody::Dynamic,
-    //     LockedAxes::ROTATION_LOCKED,
-    //     Collider::circle(4.5),
-    //     DebugRender::default().with_collider_color(Color::srgb(1.0, 0.0, 0.0)),
-    //     Transform::from_xyz(x, 0.0, 1.0).with_scale(Vec3::splat(4.0)),
-    // ));
+    commands.spawn((
+        Sprite::from_image(initial_frame),
+        Player,
+        PlayerAnimation {
+            timer: Timer::from_seconds(0.12, TimerMode::Repeating),
+            clips,
+            state: initial_state,
+            frame_index: 0,
+        },
+        PlayerMotion {
+            speed: 90.0,
+            direction: 1.0,
+            min_x: -150.0,
+            max_x: 150.0,
+            is_moving: matches!(initial_state, PlayerAnimationState::Run),
+            vertical_velocity: 0.0,
+            gravity: -600.0,
+            jump_speed: 280.0,
+            ground_y,
+            is_jumping: false,
+        },
+        RigidBody::Dynamic,
+        LockedAxes::ROTATION_LOCKED,
+        Collider::circle(4.5),
+        DebugRender::default().with_collider_color(Color::srgb(1.0, 0.0, 0.0)),
+        Transform::from_xyz(x, 0.0, 1.0).with_scale(Vec3::splat(4.0)),
+    ));
 
     info!("viewport: {:?}", viewport);
 
@@ -185,7 +182,6 @@ pub fn setup(
         for y in 0..10 {
             let x = viewport.size.x / 2.0 / 9.0 * (x as f32);
             let y = viewport.size.y / 2.0 / 9.0 * (y as f32);
-            info!("Spawning background at ({}, {})", x, y);
 
             commands.entity(stage_root).with_children(|parent| {
                 parent.spawn((
@@ -210,15 +206,14 @@ pub fn setup(
         UVec2::new(acc.x.max(width), acc.y.max(height))
     });
 
-    info!(
-        "Map tile dimensions: {:?}",
-        map_tile_dimensions,
-    );
+    info!("Map tile dimensions: {:?}", map_tile_dimensions,);
 
     let raw_tile_size = tileset
         .image()
         .map(|image| image.tile_size)
         .unwrap_or(UVec2::new(32, 32));
+
+    info!("Tileset base tile size: {:?}", raw_tile_size,);
 
     let base_tile_size = Vec2::new(raw_tile_size.x.max(1) as f32, raw_tile_size.y.max(1) as f32);
 
@@ -234,6 +229,13 @@ pub fn setup(
     let scale = scale_x.min(scale_y).max(f32::EPSILON);
     let tile_size = base_tile_size * scale;
 
+    info!(
+        "Placing tiles with scale {}, tile size {:?}",
+        scale, tile_size
+    );
+
+    info!("viewport: {:?}", viewport);
+
     commands.entity(stage_root).with_children(|parent| {
         tiled_map_assets.layers().for_each(|layer| {
             info!("Layer name: {}, type: {:?}", layer.name, layer.layer_type);
@@ -242,17 +244,33 @@ pub fn setup(
                     if let Some(tile) = layer.tile(x, y)
                         && let Some(tile_sprite) = tileset.atlas_sprite(tile.id)
                     {
+                        if x == 0 {
+                            info!("Spawning tile at ({}, {})", x, y);
+                            info!("view port size: {}", viewport_size.x / 2.0);
+                            info!("tile position: {}", x as f32 * tile_size.x - viewport_size.x / 2.0);
+                        }
+
+                        let tile_x = (x as f32 + 0.5) * tile_size.x - viewport_size.x / 2.0;
+                        let tile_y = - ((y as f32 + 0.5) * tile_size.y - viewport_size.y / 2.0);
+
+                        if x == 0 {
+                            info!("Spawning tile id {} at ({}, {})", tile.id, tile_x, tile_y);
+                        }
+
                         let mut tile = parent.spawn((
                             StageTile,
                             Sprite::from_atlas_image(tile_sprite.texture, tile_sprite.atlas),
-                            Transform::from_xyz(x as f32 * tile_size.x, -(y as f32 * tile_size.y), 0.0)
-                                .with_scale(Vec3::new(scale, scale, 1.0)),
+                            Transform::from_xyz(tile_x, tile_y, 0.0).with_scale(Vec3::new(scale, scale, 1.0)),
                         ));
                         if layer.name.starts_with("Ground") {
                             tile.insert((
                                 RigidBody::Static,
-                                Collider::rectangle(base_tile_size.x * scale, base_tile_size.y * scale),
-                                DebugRender::default().with_collider_color(Color::srgb(0.0, 1.0, 0.0)),
+                                Collider::rectangle(
+                                    base_tile_size.x * scale,
+                                    base_tile_size.y * scale,
+                                ),
+                                DebugRender::default()
+                                    .with_collider_color(Color::srgb(0.0, 1.0, 0.0).with_alpha(0.01)),
                             ));
                         };
                     }

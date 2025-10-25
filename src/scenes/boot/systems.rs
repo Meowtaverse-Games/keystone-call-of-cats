@@ -24,16 +24,15 @@ pub fn setup(
     let fixed_width = 180.0;
     let custom_size = Vec2::new(fixed_width, fixed_width);
 
-    commands
-        .spawn((
-            BootRoot,
-            Sprite {
-                image: asset_server.load("images/logo_with_black.png"),
-                custom_size: Some(custom_size),
-                ..Default::default()
-            },
-            Transform::default().with_scale(Vec3::splat(scaled_viewport.scale)),
-        ));
+    commands.spawn((
+        BootRoot,
+        Sprite {
+            image: asset_server.load("images/logo_with_black.png"),
+            custom_size: Some(custom_size),
+            ..Default::default()
+        },
+        Transform::default().with_scale(Vec3::splat(scaled_viewport.scale)),
+    ));
 
     commands.insert_resource(BootTimer {
         // for testing, make it shorter
