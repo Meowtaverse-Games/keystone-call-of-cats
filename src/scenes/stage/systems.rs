@@ -450,7 +450,12 @@ pub fn ui(
                 }
 
                 if let Some(action) = editor.last_action {
-                    ui.label(action.status_text());
+                    info!("Editor action: {:?}", action);
+                    if action == EditorMenuAction::RunScript {
+                        ui.label(action.status_text());
+                        
+                    }
+                    editor.last_action = None;
                 }
 
                 ui.separator();
@@ -489,7 +494,6 @@ pub fn update_stage_root(
     if !viewport.is_changed() {
         return;
     }
-    info!("viewport: {:?}", viewport);
 
     let Ok(window) = window_query.single() else {
         return;
