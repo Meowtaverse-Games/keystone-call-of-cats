@@ -506,7 +506,10 @@ pub fn ui(
                     available_size,
                     egui::TextEdit::multiline(&mut editor.buffer)
                         // TODO: Use a pixel font
-                        .font(FontSelection::FontId(FontId::new(14.0, egui::FontFamily::Name("pixel_mplus".into()))))
+                        .font(FontSelection::FontId(FontId::new(
+                            14.0,
+                            egui::FontFamily::Name("pixel_mplus".into()),
+                        )))
                         .code_editor()
                         .desired_width(f32::INFINITY),
                 );
