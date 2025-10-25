@@ -430,7 +430,7 @@ pub fn ui(
         .min_width(min_width)
         .max_width(max_width)
         .frame(egui::Frame {
-            fill: egui::Color32::from_rgb(255, 255, 255),
+            fill: egui::Color32::from_rgb(0xe0, 0xe1, 0xe4),
             inner_margin: egui::Margin::same(5),
             stroke: egui::Stroke::new(1.0, egui::Color32::from_rgb(100, 100, 150)),
             ..Default::default()
