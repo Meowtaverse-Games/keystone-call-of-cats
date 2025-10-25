@@ -150,10 +150,10 @@ pub fn setup(
 
     commands.insert_resource(ScriptEditorState {
         buffer: String::from(
-            "move(1)\n\
-             sleep(1.0)\n\
-             move(1)\n\
-             sleep(1.0)\n\
+            "move(1);\n\
+             sleep(1.0);\n\
+             move(1);\n\
+             sleep(1.0);\n\
             ",
         ),
         ..default()

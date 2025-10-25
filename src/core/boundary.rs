@@ -43,6 +43,7 @@ impl fmt::Display for MoveDirection {
 #[derive(Debug)]
 pub enum ScriptExecutionError {
     EmptyScript,
+    #[allow(dead_code)]
     InvalidCommand(String),
     Engine(String),
     UnsupportedLanguage(String),
