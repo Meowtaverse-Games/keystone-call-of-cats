@@ -3,6 +3,10 @@ use bevy::{prelude::*, window::PrimaryWindow};
 use bevy_egui::{EguiContexts, egui};
 
 use super::components::*;
+use crate::core::{
+    boundary::{ScriptCommand, ScriptExecutionError, ScriptRunner},
+    domain::script::ScriptExecutor,
+};
 use crate::scenes::assets::{PLAYER_IDLE_KEYS, PLAYER_RUN_KEYS};
 use crate::{
     plugins::{TiledMapAssets, assets_loader::AssetStore, design_resolution::*},
@@ -12,9 +16,20 @@ use crate::{
 type StageCleanupFilter = Or<(With<StageBackground>, With<Player>, With<StageDebugMarker>)>;
 
 #[derive(Resource, Default)]
+pub struct ScriptExecutorResource(ScriptExecutor);
+
+impl ScriptExecutorResource {
+    pub fn run(&self, source: &str) -> Result<Vec<ScriptCommand>, ScriptExecutionError> {
+        self.0.run(source)
+    }
+}
+
+#[derive(Resource, Default)]
 pub struct ScriptEditorState {
     pub buffer: String,
     pub last_action: Option<EditorMenuAction>,
+    pub last_run_feedback: Option<String>,
+    pub last_commands: Vec<ScriptCommand>,
 }
 
 impl ScriptEditorState {
@@ -31,6 +46,21 @@ fn compute_stage_root_translation(viewport: &ScaledViewport, window_size: Vec2) 
         viewport.center.y - window_size.y * 0.5,
     );
     Vec3::new(translation.x, translation.y, 1.0)
+}
+
+fn describe_command(command: &ScriptCommand) -> String {
+    match command {
+        ScriptCommand::Move(direction) => format!("move({direction})"),
+        ScriptCommand::Sleep(seconds) => format!("sleep({:.2}s)", seconds),
+    }
+}
+
+fn summarize_commands(commands: &[ScriptCommand]) -> String {
+    commands
+        .iter()
+        .map(describe_command)
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -128,7 +158,16 @@ pub fn setup(
         return;
     };
 
-    commands.insert_resource(ScriptEditorState::default());
+    commands.insert_resource(ScriptEditorState {
+        buffer: String::from(
+            "move(1)\n\
+             sleep(1.0)\n\
+             move(1)\n\
+             sleep(1.0)\n\
+            ",
+        ),
+        ..default()
+    });
 
     let ground_y = -100.0;
     let x = window.resolution.width() / 2.0 * 0.25;
@@ -389,6 +428,7 @@ pub fn ui(
     mut contexts: EguiContexts,
     mut letterbox_offsets: ResMut<LetterboxOffsets>,
     mut editor: ResMut<ScriptEditorState>,
+    script_executor: Res<ScriptExecutorResource>,
 ) {
     let Ok(ctx) = contexts.ctx_mut() else {
         return;
@@ -431,6 +471,7 @@ pub fn ui(
             ..Default::default()
         })
         .show(ctx, |ui| {
+
             ui.vertical(|ui| {
                 let mut pending_action = action_from_keys;
 
@@ -446,16 +487,46 @@ pub fn ui(
                 });
 
                 if let Some(action) = pending_action {
+                    if action == EditorMenuAction::RunScript {
+                        match script_executor.run(&editor.buffer) {
+                            Ok(commands) => {
+                                let summary = if commands.is_empty() {
+                                    "命令は返されませんでした。".to_string()
+                                } else {
+                                    format!(
+                                        "{}件の命令: {}",
+                                        commands.len(),
+                                        summarize_commands(&commands)
+                                    )
+                                };
+                                editor.last_commands = commands;
+                                editor.last_run_feedback = Some(summary);
+                            }
+                            Err(err) => {
+                                editor.last_commands.clear();
+                                editor.last_run_feedback = Some(err.to_string());
+                                warn!("Failed to execute script: {}", err);
+                            }
+                        }
+                    }
                     editor.apply_action(action);
                 }
 
                 if let Some(action) = editor.last_action {
                     info!("Editor action: {:?}", action);
-                    if action == EditorMenuAction::RunScript {
-                        ui.label(action.status_text());
-                        
-                    }
+                    ui.label(action.status_text());
                     editor.last_action = None;
+                }
+
+                if let Some(feedback) = &editor.last_run_feedback {
+                    ui.label(feedback);
+                }
+
+                if !editor.last_commands.is_empty() {
+                    ui.label(format!(
+                        "命令: {}",
+                        summarize_commands(&editor.last_commands)
+                    ));
                 }
 
                 ui.separator();

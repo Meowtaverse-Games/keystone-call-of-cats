@@ -40,6 +40,7 @@ fn main() {
             PhysicsPlugins::default(),
             PhysicsDebugPlugin,
         ))
+        .add_plugins(ScriptPlugin)
         .add_plugins(VisibilityPlugin)
         .add_systems(Startup, setup_camera)
         .add_plugins(DesignResolutionPlugin::new(
