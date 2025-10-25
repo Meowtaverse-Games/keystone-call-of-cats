@@ -2,31 +2,16 @@ use avian2d::prelude::*;
 use bevy::prelude::*;
 
 use crate::{
-    plugins::{TiledMapAssets, assets_loader::AssetStore, design_resolution::ScaledViewport},
-    scenes::{assets::ImageKey, stage::components::StageTile},
+    plugins::{TiledMapAssets, design_resolution::ScaledViewport},
+    scenes::stage::components::StageTile,
 };
 
 pub fn spawn_tiles(
     commands: &mut Commands,
     stage_root: Entity,
-    asset_store: &AssetStore,
     tiled_map_assets: &TiledMapAssets,
     viewport: &ScaledViewport,
 ) {
-    for x in 0..10 {
-        for y in 0..10 {
-            let x = viewport.size.x / 2.0 / 9.0 * (x as f32);
-            let y = viewport.size.y / 2.0 / 9.0 * (y as f32);
-
-            commands.entity(stage_root).with_children(|parent| {
-                parent.spawn((
-                    Sprite::from_image(asset_store.image(ImageKey::Logo).unwrap()),
-                    Transform::from_xyz(x, y, 0.0).with_scale(Vec3::splat(0.2)),
-                ));
-            });
-        }
-    }
-
     let Some(tileset) = tiled_map_assets.tilesets().first() else {
         warn!("Stage setup: no tilesets available");
         return;

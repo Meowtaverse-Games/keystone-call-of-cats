@@ -13,6 +13,9 @@ pub struct StageDebugMarker;
 pub struct StageTile;
 
 #[derive(Component)]
+pub struct StoneRune;
+
+#[derive(Component)]
 pub struct Player;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

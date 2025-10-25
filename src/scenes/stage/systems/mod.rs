@@ -1,4 +1,5 @@
 mod player;
+mod stone;
 mod tiles;
 mod ui;
 
@@ -26,6 +27,8 @@ pub fn setup(
     asset_store: Res<AssetStore>,
     tiled_map_assets: Res<TiledMapAssets>,
     viewport: Res<ScaledViewport>,
+    asset_server: Res<AssetServer>,
+    mut atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     window: Single<&mut Window, With<PrimaryWindow>>,
 ) {
     let player_spawn_x = window.resolution.width() / 2.0 * 0.25;
@@ -51,9 +54,16 @@ pub fn setup(
     tiles::spawn_tiles(
         &mut commands,
         stage_root,
-        &asset_store,
         &tiled_map_assets,
         &viewport,
+    );
+
+    stone::spawn_stone_display(
+        &mut commands,
+        stage_root,
+        &viewport,
+        &asset_server,
+        &mut atlas_layouts,
     );
 }
 
@@ -61,12 +71,17 @@ pub fn cleanup(
     mut commands: Commands,
     query: Query<Entity, StageCleanupFilter>,
     tiles: Query<Entity, With<StageTile>>,
+    stones: Query<Entity, With<StoneRune>>,
 ) {
     for entity in &query {
         commands.entity(entity).despawn();
     }
 
     for entity in &tiles {
+        commands.entity(entity).despawn();
+    }
+
+    for entity in &stones {
         commands.entity(entity).despawn();
     }
 
