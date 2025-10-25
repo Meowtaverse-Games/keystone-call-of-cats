@@ -53,7 +53,7 @@ pub fn update(
     mut loaded: Local<Loaded>,
     mut boot_timer: ResMut<BootTimer>,
     time: Res<Time>,
-    mut scaled_viewport: ResMut<ScaledViewport>,
+    scaled_viewport: ResMut<ScaledViewport>,
     mut next_state: ResMut<NextState<GameState>>,
     mut boot_ui: Query<(&BootRoot, &mut Transform)>,
 ) {

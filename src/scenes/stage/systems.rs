@@ -288,15 +288,12 @@ pub fn setup(
     //     ));
     // });
 
-    let viewport_height = viewport.size.x;
-    let cell_height = viewport_height / (10.0 - 1.0);
-
     info!("viewport!!!: {:?}", viewport);
 
     for x in 0..10 {
         for y in 0..10 {
-            let x = viewport.size.x as f32 / 2.0 / 9.0 * (x as f32);
-            let y = viewport.size.y as f32 / 2.0 / 9.0 * (y as f32);
+            let x = viewport.size.x / 2.0 / 9.0 * (x as f32);
+            let y = viewport.size.y / 2.0 / 9.0 * (y as f32);
             info!("Spawning background at ({}, {})", x, y);
 
             commands.entity(stage_root).with_children(|parent| {
@@ -492,7 +489,6 @@ pub fn ui(
     mut contexts: EguiContexts,
     mut letterbox_offsets: ResMut<LetterboxOffsets>,
     mut editor: ResMut<ScriptEditorState>,
-    mut stage_root: Query<(&StageRoot, &mut Transform)>,
 ) {
     let Ok(ctx) = contexts.ctx_mut() else {
         return;
@@ -583,10 +579,6 @@ pub fn ui(
     if (letterbox_offsets.left - left).abs() > f32::EPSILON {
         letterbox_offsets.left = left;
     }
-
-    stage_root.iter_mut().for_each(|(_root, mut transform)| {
-        // transform.translation.x = left;
-    });
 }
 
 pub fn update_stage_root(
@@ -594,7 +586,7 @@ pub fn update_stage_root(
     window_query: Query<&Window, With<PrimaryWindow>>,
     mut stage_root: Query<(&StageRoot, &mut Transform)>,
 ) {
-    if (!viewport.is_changed()) {
+    if !viewport.is_changed() {
         return;
     }
     info!("viewport: {:?}", viewport);
