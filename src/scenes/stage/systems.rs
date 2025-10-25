@@ -471,7 +471,6 @@ pub fn ui(
             ..Default::default()
         })
         .show(ctx, |ui| {
-
             ui.vertical(|ui| {
                 let mut pending_action = action_from_keys;
 
