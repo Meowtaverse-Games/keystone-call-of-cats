@@ -85,6 +85,10 @@ fn set_font(mut contexts: EguiContexts, mut loaded: Local<bool>) {
         .get_mut(&egui::FontFamily::Proportional)
         .unwrap()
         .insert(0, "pixel_mplus".to_owned());
+    defs.families
+        .get_mut(&egui::FontFamily::Monospace)
+        .unwrap()
+        .insert(0, "pixel_mplus".to_owned());
     defs.font_data.insert(
         "pixel_mplus".to_owned(),
         egui::FontData::from_static(include_bytes!("../assets/fonts/PixelMplus12-Regular.ttf"))

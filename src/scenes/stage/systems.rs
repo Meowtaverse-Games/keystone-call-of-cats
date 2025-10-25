@@ -150,11 +150,12 @@ pub fn setup(
 
     commands.insert_resource(ScriptEditorState {
         buffer: String::from(
-            "move(1);\n\
+            "move(\"left\");\n\
              sleep(1.0);\n\
-             move(1);\n\
+             move(\"right\");\n\
              sleep(1.0);\n\
-            ",
+             for i in 1..=5 {\n  move(\"up\");\n  sleep(0.5);\n  move(\"down\");\n  sleep(0.5);\n\
+             }\n",
         ),
         ..default()
     });
@@ -505,9 +506,8 @@ pub fn ui(
                 ui.add_sized(
                     available_size,
                     egui::TextEdit::multiline(&mut editor.buffer)
-                        // TODO: Use a pixel font
                         .font(FontSelection::FontId(FontId::new(
-                            14.0,
+                            16.0,
                             egui::FontFamily::Name("pixel_mplus".into()),
                         )))
                         .code_editor()
