@@ -65,12 +65,12 @@ pub fn spawn_stone_display(
             Sprite::from_atlas_image(texture, atlas),
             Transform::from_xyz(0.0, 0.0, 1.0).with_scale(Vec3::splat(STONE_SCALE)),
             StoneCommandState::default(),
-            RigidBody::Dynamic,
+            RigidBody::Kinematic,
             Collider::rectangle(
                 (STONE_TILE_SIZE.x as f32) * 0.5,
                 (STONE_TILE_SIZE.y as f32) * 0.5,
             ),
-            DebugRender::default().with_collider_color(Color::srgb(1.0, 0.0, 0.0)),
+            LockedAxes::ROTATION_LOCKED,
         ));
     });
 }
