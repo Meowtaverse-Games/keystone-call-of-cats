@@ -10,6 +10,7 @@ use crate::{
         design_resolution::LetterboxOffsets,
         script::{Language, ScriptExecutor},
     },
+    scenes::stage::systems::StoneCommandMessage,
 };
 
 #[derive(Resource, Default)]
@@ -91,7 +92,7 @@ pub fn init_editor_state(commands: &mut Commands) {
              sleep(1.0);\n\
              move(\"right\");\n\
              sleep(1.0);\n\
-             for i in 1..=5 {\n  move(\"up\");\n  sleep(0.5);\n  move(\"down\");\n  sleep(0.5);\n\
+             for i in 1..=2 {\n  move(\"up\");\n  sleep(0.5);\n\
              }\n",
         ),
         ..default()
@@ -103,6 +104,7 @@ pub fn ui(
     mut letterbox_offsets: ResMut<LetterboxOffsets>,
     mut editor: ResMut<ScriptEditorState>,
     script_executor: Res<ScriptExecutor>,
+    mut stone_writer: MessageWriter<StoneCommandMessage>,
 ) {
     let Ok(ctx) = contexts.ctx_mut() else {
         return;
@@ -172,6 +174,9 @@ pub fn ui(
                                         summarize_commands(&commands)
                                     )
                                 };
+                                stone_writer.write(StoneCommandMessage {
+                                    commands: commands.clone(),
+                                });
                                 editor.last_commands = commands;
                                 editor.last_run_feedback = Some(summary);
                             }
