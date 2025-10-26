@@ -12,7 +12,7 @@ use bevy_egui::{EguiContexts, egui};
 use avian2d::debug_render::PhysicsDebugPlugin;
 use avian2d::prelude::*;
 
-use crate::adapter::{VisibilityPlugin, game_state::GameState};
+use crate::adapter::game_state::GameState;
 use crate::plugins::*;
 use crate::scenes::ScenesPlugin;
 
