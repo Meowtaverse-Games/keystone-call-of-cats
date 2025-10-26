@@ -134,18 +134,17 @@ pub fn animate_character(
     }
 }
 
+type MoveCharacterComponents<'w> = (
+    &'w Transform,
+    &'w mut LinearVelocity,
+    &'w mut PlayerMotion,
+    &'w mut Sprite,
+    Option<&'w CollidingEntities>,
+);
+
 pub fn move_character(
     keyboard_input: Res<ButtonInput<KeyCode>>,
-    mut query: Query<
-        (
-            &Transform,
-            &mut LinearVelocity,
-            &mut PlayerMotion,
-            &mut Sprite,
-            Option<&CollidingEntities>,
-        ),
-        With<Player>,
-    >,
+    mut query: Query<MoveCharacterComponents<'_>, With<Player>>,
 ) {
     for (transform, mut velocity, mut motion, mut sprite, colliding) in &mut query {
         let mut input_direction: f32 = 0.0;
