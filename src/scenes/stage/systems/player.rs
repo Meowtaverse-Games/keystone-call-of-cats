@@ -89,6 +89,7 @@ pub fn spawn_player(
                 is_jumping: false,
             },
             RigidBody::Dynamic,
+            GravityScale(40.0),
             LockedAxes::ROTATION_LOCKED,
             Collider::circle(PLAYER_SCALE * 2.5),
             DebugRender::default().with_collider_color(Color::srgb(1.0, 0.0, 0.0)),
