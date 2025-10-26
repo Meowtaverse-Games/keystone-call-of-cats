@@ -82,8 +82,6 @@ pub fn spawn_player(
                 min_x: -150.0,
                 max_x: 150.0,
                 is_moving: matches!(initial_state, PlayerAnimationState::Run),
-                vertical_velocity: 0.0,
-                gravity: -600.0,
                 jump_speed: 280.0,
                 ground_y: PLAYER_GROUND_Y,
                 is_jumping: false,
@@ -92,6 +90,7 @@ pub fn spawn_player(
             GravityScale(40.0),
             LockedAxes::ROTATION_LOCKED,
             Collider::circle(PLAYER_SCALE * 2.5),
+            CollidingEntities::default(),
             DebugRender::default().with_collider_color(Color::srgb(1.0, 0.0, 0.0)),
             Transform::from_xyz(spawn_x, spawn_y, 1.0).with_scale(Vec3::splat(PLAYER_SCALE)),
         ));
@@ -135,13 +134,20 @@ pub fn animate_character(
     }
 }
 
-#[allow(dead_code)]
 pub fn move_character(
-    time: Res<Time>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
-    mut query: Query<(&mut Transform, &mut PlayerMotion, &mut Sprite), With<Player>>,
+    mut query: Query<
+        (
+            &Transform,
+            &mut LinearVelocity,
+            &mut PlayerMotion,
+            &mut Sprite,
+            Option<&CollidingEntities>,
+        ),
+        With<Player>,
+    >,
 ) {
-    for (mut transform, mut motion, mut sprite) in &mut query {
+    for (transform, mut velocity, mut motion, mut sprite, colliding) in &mut query {
         let mut input_direction: f32 = 0.0;
 
         if keyboard_input.pressed(KeyCode::ArrowRight) {
@@ -152,35 +158,38 @@ pub fn move_character(
             input_direction -= 1.0;
         }
 
-        let mut moved = false;
+        let mut desired_velocity_x = 0.0;
+        let mut facing_direction = motion.direction;
 
         if input_direction.abs() > f32::EPSILON {
             let direction = input_direction.signum();
-            let delta = direction * motion.speed * time.delta_secs();
-            let target_x = (transform.translation.x + delta).clamp(motion.min_x, motion.max_x);
+            let blocked_left = direction < 0.0 && transform.translation.x <= motion.min_x;
+            let blocked_right = direction > 0.0 && transform.translation.x >= motion.max_x;
 
-            moved = (target_x - transform.translation.x).abs() > f32::EPSILON;
-            transform.translation.x = target_x;
-            motion.direction = direction;
-        }
-
-        if keyboard_input.just_pressed(KeyCode::Space) && !motion.is_jumping {
-            motion.is_jumping = true;
-            motion.vertical_velocity = motion.jump_speed;
-        }
-
-        if motion.is_jumping || transform.translation.y > motion.ground_y {
-            motion.vertical_velocity += motion.gravity * time.delta_secs();
-            transform.translation.y += motion.vertical_velocity * time.delta_secs();
-
-            if transform.translation.y <= motion.ground_y {
-                transform.translation.y = motion.ground_y;
-                motion.vertical_velocity = 0.0;
-                motion.is_jumping = false;
+            if !(blocked_left || blocked_right) {
+                desired_velocity_x = direction * motion.speed;
+                facing_direction = direction;
             }
         }
 
-        motion.is_moving = moved;
+        velocity.x = desired_velocity_x;
+        motion.is_moving = desired_velocity_x.abs() > f32::EPSILON;
+        motion.direction = facing_direction;
+
+        let grounded = colliding
+            .map(|contacts| !contacts.is_empty())
+            .unwrap_or(false)
+            || transform.translation.y <= motion.ground_y + 1.0;
+
+        if grounded && velocity.y.abs() < 1.0 {
+            motion.is_jumping = false;
+        }
+
+        if keyboard_input.just_pressed(KeyCode::Space) && !motion.is_jumping && grounded {
+            velocity.y = motion.jump_speed;
+            motion.is_jumping = true;
+        }
+
         sprite.flip_x = motion.direction < 0.0;
     }
 }

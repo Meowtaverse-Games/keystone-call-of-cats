@@ -17,7 +17,7 @@ impl Plugin for StagePlugin {
                 (
                     systems::update_stage_root,
                     systems::animate_character,
-                    // systems::move_character,
+                    systems::move_character,
                     systems::handle_stone_messages,
                     systems::update_stone_behavior,
                 )
