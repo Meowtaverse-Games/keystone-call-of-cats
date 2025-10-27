@@ -5,7 +5,7 @@ use bevy::prelude::*;
 
 use crate::{
     core::boundary::{MoveDirection, ScriptCommand},
-    scenes::stage::components::StoneRune,
+    scenes::stage::components::{Player, StoneRune},
 };
 
 #[derive(Message, Clone)]
@@ -168,9 +168,10 @@ fn direction_to_vec(direction: MoveDirection) -> Vec2 {
     }
 }
 
+#[allow(clippy::type_complexity)]
 pub fn carry_riders_with_stone(
     mut param_set: ParamSet<(
-        Query<&mut Transform, With<crate::scenes::stage::components::Player>>,
+        Query<&mut Transform, With<Player>>,
         Query<(&Transform, &StoneMotion), With<StoneRune>>,
     )>,
 ) {
