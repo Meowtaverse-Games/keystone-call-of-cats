@@ -21,11 +21,13 @@ impl Plugin for StagePlugin {
                     systems::handle_stone_messages,
                     systems::update_stone_behavior,
                 )
-                    .run_if(in_state(GameState::Stage)),
+                .run_if(in_state(GameState::Stage)),
             )
             .add_systems(
-                EguiPrimaryContextPass,
-                systems::ui.run_if(in_state(GameState::Stage)),
-            );
+                Update,
+                systems::carry_riders_with_stone
+                    .after(systems::update_stone_behavior)
+                    .run_if(in_state(GameState::Stage)),
+            ).add_systems(EguiPrimaryContextPass, systems::ui.run_if(in_state(GameState::Stage)));
     }
 }

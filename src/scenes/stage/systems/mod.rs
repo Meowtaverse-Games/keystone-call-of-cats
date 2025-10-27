@@ -10,7 +10,7 @@ use crate::plugins::{TiledMapAssets, assets_loader::AssetStore, design_resolutio
 
 #[allow(unused_imports)]
 pub use player::{animate_character, move_character};
-pub use stone::{StoneCommandMessage, handle_stone_messages, update_stone_behavior};
+pub use stone::{StoneCommandMessage, handle_stone_messages, update_stone_behavior, carry_riders_with_stone};
 use ui::ScriptEditorState;
 pub use ui::ui;
 
