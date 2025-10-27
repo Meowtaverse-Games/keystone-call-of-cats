@@ -44,7 +44,7 @@ const STONE_SCALE: f32 = 1.6;
 const STONE_MOVE_SPEED: f32 = 80.0;
 const STONE_STEP_DISTANCE: f32 = 64.0;
 const CARRY_VERTICAL_EPS: f32 = 3.0; // 乗っているとみなす高さ誤差
-const CARRY_X_MARGIN: f32 = 2.0;     // 横方向の許容マージン
+const CARRY_X_MARGIN: f32 = 2.0; // 横方向の許容マージン
 
 pub fn spawn_stone_display(
     commands: &mut Commands,
@@ -104,8 +104,8 @@ pub fn update_stone_behavior(
     mut query: Query<(&mut StoneCommandState, &mut Transform, &mut StoneMotion), With<StoneRune>>,
 ) {
     let Ok((mut state, mut transform, mut motion)) = query.single_mut() else {
-         return;
-     };
+        return;
+    };
     // 前フレーム位置（ローカル空間）
     let prev = transform.translation;
 
