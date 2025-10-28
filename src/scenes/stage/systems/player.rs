@@ -79,8 +79,6 @@ pub fn spawn_player(
             PlayerMotion {
                 speed: 90.0,
                 direction: 1.0,
-                min_x: -150.0,
-                max_x: 150.0,
                 is_moving: matches!(initial_state, PlayerAnimationState::Run),
                 jump_speed: 280.0,
                 ground_y: PLAYER_GROUND_Y,
@@ -162,13 +160,8 @@ pub fn move_character(
 
         if input_direction.abs() > f32::EPSILON {
             let direction = input_direction.signum();
-            let blocked_left = direction < 0.0 && transform.translation.x <= motion.min_x;
-            let blocked_right = direction > 0.0 && transform.translation.x >= motion.max_x;
-
-            if !(blocked_left || blocked_right) {
-                desired_velocity_x = direction * motion.speed;
-                facing_direction = direction;
-            }
+            desired_velocity_x = direction * motion.speed;
+            facing_direction = direction;
         }
 
         velocity.x = desired_velocity_x;
