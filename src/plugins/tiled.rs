@@ -1,10 +1,11 @@
 use std::sync::Arc;
 
-use bevy::asset::Assets;
+use avian2d::parry::shape::Shape;
+use bevy::asset::{Assets, ron::de};
 use bevy::math::UVec2;
 use bevy::prelude::*;
 
-use tiled as tiled_rs;
+use tiled::{self as tiled_rs, ObjectShape};
 
 /// Configures how the [`TiledPlugin`] loads Tiled data.
 #[derive(Resource, Clone)]
@@ -64,6 +65,92 @@ impl TiledMapAssets {
             }
         })
     }
+
+    pub fn tile(&self, id: u32) -> Option<Tile> {
+        let tileset = self.map.tilesets().first().unwrap();
+        let Some(tile) = tileset.get_tile(id) else {
+            info!("Tile ID {} not found in tileset {}.", id, tileset.name);
+            return None;
+        };
+
+        // info!("Tile ID {} found in tileset {:?}.", id, *tile);
+
+        if let Some(collision) = &tile.collision {
+            info!("Tile ID {} has collision data.", id);
+            let object_data = collision.object_data();
+
+            Some(Tile {
+                id,
+                collision: tile.properties.get("collision").and_then(|v| {
+                    if let tiled_rs::PropertyValue::BoolValue(b) = v {
+                        Some(*b)
+                    } else {
+                        None
+                    }
+                }),
+                shapes: object_data
+                    .into_iter()
+                    .map(|data| {
+                        match data.shape {
+                            tiled_rs::ObjectShape::Rect { width, height } => TileShape::Rect {
+                                width,
+                                height,
+                                x: data.x,
+                                y: data.y,
+                            },
+                            _ => {
+                                // Handle other shapes as needed
+                                unimplemented!()
+                            }
+                        }
+                    })
+                    .collect(),
+            })
+        } else {
+            info!("Tile ID {} has no collision data.", id);
+            None
+        }
+
+        /*
+            Some(Tile {
+                id: tile.id(),
+                shapes: tile.shapes().map(|shape|
+                    match shape {
+                        tiled_rs::ObjectShape::Rect { width, height } => {
+                            TileShape::Rect { width, height, x, y }
+                        }
+                        _ => {
+                            // Handle other shapes as needed
+                            unimplemented!()
+                        }
+                    })
+                })
+        } */
+    }
+}
+//         for object_data in layer_data.object_data() {
+//             info!("  Object: {:?}", object_data);
+//             match object_data.shape {
+//                 ObjectShape::Rect { width, height } => {
+//                     info!("    x, y: {}, {}", object_data.x, object_data.y);
+//                     info!("    Rect: width {}, height {}", width, height);
+//                 }
+//                 _ => {
+//                     info!("    Other shape");
+//                 }
+//             }
+//         }
+//     }
+// });
+
+#[derive(Debug)]
+pub enum TileShape {
+    Rect {
+        width: f32,
+        height: f32,
+        x: f32,
+        y: f32,
+    },
 }
 
 #[derive(Debug)]
@@ -74,10 +161,11 @@ pub enum LayerType {
     Group,
 }
 
-#[allow(dead_code)]
+#[derive(Debug)]
 pub struct Tile {
     pub id: u32,
     pub collision: Option<bool>,
+    pub shapes: Vec<TileShape>,
 }
 
 pub struct Layer<'map> {
@@ -107,6 +195,7 @@ impl<'a> Layer<'a> {
                         None
                     }
                 }),
+                shapes: vec![], // Shape extraction can be implemented here
             })
         } else {
             None
@@ -171,7 +260,7 @@ fn load_tiled_assets(
     };
 
     let tsx = match loader.load_tsx_tileset(&config.tsx_path) {
-        Ok(tilesets) => tilesets,
+        Ok(tileset) => tileset,
         Err(err) => {
             error!(target: "tiled", "Failed to load TSX tilesets from '{}': {err}", config.tsx_path);
             return;
