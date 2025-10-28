@@ -69,7 +69,7 @@ pub fn spawn_tiles(
                         let transform = Transform::from_xyz(tile_x, tile_y, layer_z)
                             .with_scale(Vec3::new(scale, scale, 1.0));
 
-                        if layer.name.starts_with("Ground") {
+                        if layer.name == "Ground" {
                             parent.spawn((
                                 StageTile,
                                 image,
