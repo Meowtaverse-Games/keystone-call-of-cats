@@ -45,31 +45,44 @@ pub fn spawn_tiles(
     let tile_size = base_tile_size * scale;
 
     commands.entity(stage_root).with_children(|parent| {
-        tiled_map_assets.layers().for_each(|layer| {
-            info!("Layer name: {}, type: {:?}", layer.name, layer.layer_type);
-            for y in 0..layer.height() {
-                for x in 0..layer.width() {
+        for (layer_index, layer) in tiled_map_assets.layers().enumerate() {
+            let layer_z = match layer.name.as_str() {
+                n if n.starts_with("Background") => -10.0 + layer_index as f32 * 0.01,
+                n if n.starts_with("Ground") => 0.0 + layer_index as f32 * 0.01,
+                _ => layer_index as f32 * 0.01,
+            };
+
+            info!(
+                "Layer name: {}, type: {:?}, z: {}",
+                layer.name, layer.layer_type, layer_z
+            );
+
+            for x in 0..layer.width() {
+                for y in 0..layer.height() {
                     if let Some(tile) = layer.tile(x, y)
                         && let Some(tile_sprite) = tileset.atlas_sprite(tile.id)
                     {
                         let tile_x = (x as f32 + 0.5) * tile_size.x - viewport_size.x / 2.0;
                         let tile_y = -((y as f32 + 0.5) * tile_size.y - viewport_size.y / 2.0);
+                        let image =
+                            Sprite::from_atlas_image(tile_sprite.texture, tile_sprite.atlas);
+                        let transform = Transform::from_xyz(tile_x, tile_y, layer_z)
+                            .with_scale(Vec3::new(scale, scale, 1.0));
 
-                        let mut tile = parent.spawn((
-                            StageTile,
-                            Sprite::from_atlas_image(tile_sprite.texture, tile_sprite.atlas),
-                            Transform::from_xyz(tile_x, tile_y, 0.0)
-                                .with_scale(Vec3::new(scale, scale, 1.0)),
-                        ));
                         if layer.name.starts_with("Ground") {
-                            tile.insert((
+                            parent.spawn((
+                                StageTile,
+                                image,
+                                transform,
                                 RigidBody::Static,
                                 Collider::rectangle(tile_size.x * 0.5, tile_size.y * 0.5),
                             ));
+                        } else {
+                            parent.spawn((StageTile, image, transform));
                         };
                     }
                 }
             }
-        });
+        }
     });
 }
