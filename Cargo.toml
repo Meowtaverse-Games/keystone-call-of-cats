@@ -12,6 +12,7 @@ bevy_render = "0.17.2"
 bevy_camera = "0.17.2"
 tiled = "0.15.0"
 avian2d = "0.4.0"
+rhai = { version = "1.23.4", features = ["sync"] }
 
 [package.metadata.bundle.mac]
 identifier = "com.meowtaverse-games.com.keystone-cc"

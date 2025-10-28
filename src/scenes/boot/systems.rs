@@ -1,11 +1,12 @@
 use std::time::Duration;
 
 use bevy::prelude::*;
+use bevy_egui::{EguiContexts, egui};
 
 use crate::adapter::*;
 use crate::plugins::assets_loader::*;
 use crate::plugins::design_resolution::ScaledViewport;
-use crate::scenes::assets::DEFAULT_GROUP;
+use crate::scenes::assets::{DEFAULT_GROUP, FontKey};
 
 use super::components::BootRoot;
 #[derive(Resource, Default)]
@@ -42,6 +43,52 @@ pub fn setup(
             TimerMode::Once,
         ),
     });
+}
+
+const UI_FONT_ID: &str = "pixel_mplus";
+
+pub fn setup_font(
+    mut contexts: EguiContexts,
+    mut loaded: Local<bool>,
+    asset_store: Res<AssetStore>,
+    fonts: Res<Assets<Font>>,
+) {
+    info!("Setting up UI font");
+
+    if *loaded {
+        return;
+    }
+
+    let Some(handle) = asset_store.font(FontKey::Default) else {
+        warn!("UI font '{}' not found in asset store", UI_FONT_ID);
+        return;
+    };
+
+    let Some(font) = fonts.get(&handle) else {
+        return;
+    };
+
+    let Ok(ctx) = contexts.ctx_mut() else {
+        return;
+    };
+
+    let mut defs = egui::FontDefinitions::default();
+    defs.families
+        .get_mut(&egui::FontFamily::Proportional)
+        .unwrap()
+        .insert(0, UI_FONT_ID.to_owned());
+    defs.families
+        .get_mut(&egui::FontFamily::Monospace)
+        .unwrap()
+        .insert(0, UI_FONT_ID.to_owned());
+
+    defs.font_data.insert(
+        UI_FONT_ID.to_owned(),
+        egui::FontData::from_owned(font.data.as_ref().clone()).into(),
+    );
+    ctx.set_fonts(defs);
+
+    *loaded = true;
 }
 
 #[derive(Default)]

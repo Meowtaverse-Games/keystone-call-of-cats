@@ -11,7 +11,7 @@ use bevy_egui::EguiPlugin;
 use avian2d::debug_render::PhysicsDebugPlugin;
 use avian2d::prelude::*;
 
-use crate::adapter::{VisibilityPlugin, game_state::GameState};
+use crate::adapter::game_state::GameState;
 use crate::plugins::*;
 use crate::scenes::ScenesPlugin;
 
@@ -40,6 +40,7 @@ fn main() {
             PhysicsPlugins::default(),
             PhysicsDebugPlugin,
         ))
+        .add_plugins(ScriptPlugin)
         .add_plugins(VisibilityPlugin)
         .add_systems(Startup, setup_camera)
         .add_plugins(DesignResolutionPlugin::new(

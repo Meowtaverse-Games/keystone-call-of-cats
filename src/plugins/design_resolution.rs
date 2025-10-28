@@ -212,8 +212,4 @@ fn update_letterbox(
     {
         *scaled_viewport = new_viewport;
     }
-    info!(
-        "Updated scaled viewport: center={:?}, size={:?}, scale={}",
-        scaled_viewport.center, scaled_viewport.size, scaled_viewport.scale
-    );
 }
