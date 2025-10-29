@@ -188,24 +188,27 @@ impl<'a> Layer<'a> {
         tile.get_tile().map(|tile_data| {
             let Some(collision) = tile_data.collision.as_ref() else {
                 return Tile {
-                    id: tile.id(), collision: None, shapes: vec![],
+                    id: tile.id(),
+                    collision: None,
+                    shapes: vec![],
                 };
             };
-            
+
             let object_data = collision.object_data();
             let shapes = object_data
-                    .into_iter()
-                    .map(|data| match data.shape {
-                        tiled_rs::ObjectShape::Rect { width, height } => TileShape::Rect {
-                            width,
-                            height,
-                            x: data.x,
-                            y: data.y,
-                        },
-                        _ => {
-                            unimplemented!()
-                        }
-                    }).collect();
+                .into_iter()
+                .map(|data| match data.shape {
+                    tiled_rs::ObjectShape::Rect { width, height } => TileShape::Rect {
+                        width,
+                        height,
+                        x: data.x,
+                        y: data.y,
+                    },
+                    _ => {
+                        unimplemented!()
+                    }
+                })
+                .collect();
 
             Tile {
                 id: tile.id(),

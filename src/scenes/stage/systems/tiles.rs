@@ -2,7 +2,7 @@ use avian2d::prelude::*;
 use bevy::prelude::*;
 
 use crate::{
-    plugins::{TiledMapAssets, design_resolution::ScaledViewport},
+    plugins::{TileShape, TiledMapAssets, design_resolution::ScaledViewport},
     scenes::stage::components::StageTile,
 };
 
@@ -69,13 +69,47 @@ pub fn spawn_tiles(
                         let transform = Transform::from_xyz(tile_x, tile_y, layer_z)
                             .with_scale(Vec3::new(scale, scale, 1.0));
 
-                        if layer.name == "Ground" {
+                        if tile.shapes.len() > 0 {
+                            tile.shapes.iter().for_each(|shape| {
+                                info!("Tile ID {} has shape: {:?}", tile.id, shape);
+                            });
+
+                            let colliders = tile
+                                .shapes
+                                .iter()
+                                .map(|shape| match shape {
+                                    TileShape::Rect {
+                                        width,
+                                        height,
+                                        x,
+                                        y,
+                                    } => {
+                                        info!(
+                                            "Creating rectangle collider: w={}, h={}, x={}, y={}",
+                                            width, height, x, y
+                                        );
+                                        let collider =
+                                            Collider::rectangle(*width as f32, *height as f32);
+                                        // convert and scale shape offsets to f32 so Position::from_xy is satisfied
+                                        let pos = Position::from_xy(
+                                            -base_tile_size.x / 2.0 + (*width + *x) / 2.0 + *x / 2.0,
+                                            base_tile_size.y / 2.0 - (*height + *y) / 2.0 - *y / 2.0
+                                        );
+                                        let rot = Rotation::degrees(0.0);
+                                        (pos, rot, collider)
+                                    }
+                                    _ => {
+                                        unimplemented!()
+                                    }
+                                })
+                                .collect::<Vec<_>>();
+
                             parent.spawn((
                                 StageTile,
                                 image,
                                 transform,
                                 RigidBody::Static,
-                                Collider::rectangle(tile_size.x * 0.5, tile_size.y * 0.5),
+                                Collider::compound(colliders),
                             ));
                         } else {
                             parent.spawn((StageTile, image, transform));
