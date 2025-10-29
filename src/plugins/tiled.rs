@@ -90,18 +90,15 @@ impl TiledMapAssets {
                 }),
                 shapes: object_data
                     .into_iter()
-                    .map(|data| {
-                        match data.shape {
-                            tiled_rs::ObjectShape::Rect { width, height } => TileShape::Rect {
-                                width,
-                                height,
-                                x: data.x,
-                                y: data.y,
-                            },
-                            _ => {
-                                // Handle other shapes as needed
-                                unimplemented!()
-                            }
+                    .map(|data| match data.shape {
+                        tiled_rs::ObjectShape::Rect { width, height } => TileShape::Rect {
+                            width,
+                            height,
+                            x: data.x,
+                            y: data.y,
+                        },
+                        _ => {
+                            unimplemented!()
                         }
                     })
                     .collect(),
@@ -184,8 +181,33 @@ impl<'a> Layer<'a> {
     }
 
     pub fn tile(&self, x: i32, y: i32) -> Option<Tile> {
-        if let Some(tile) = self.tiled_tile_layer.get_tile(x, y) {
-            tile.get_tile().map(|tile_data| Tile {
+        let Some(tile) = self.tiled_tile_layer.get_tile(x, y) else {
+            return None;
+        };
+
+        tile.get_tile().map(|tile_data| {
+            let Some(collision) = tile_data.collision.as_ref() else {
+                return Tile {
+                    id: tile.id(), collision: None, shapes: vec![],
+                };
+            };
+            
+            let object_data = collision.object_data();
+            let shapes = object_data
+                    .into_iter()
+                    .map(|data| match data.shape {
+                        tiled_rs::ObjectShape::Rect { width, height } => TileShape::Rect {
+                            width,
+                            height,
+                            x: data.x,
+                            y: data.y,
+                        },
+                        _ => {
+                            unimplemented!()
+                        }
+                    }).collect();
+
+            Tile {
                 id: tile.id(),
                 // Retrieving a custom property named "collision" only if it exists and is a boolean
                 collision: tile_data.properties.get("collision").and_then(|v| {
@@ -195,11 +217,9 @@ impl<'a> Layer<'a> {
                         None
                     }
                 }),
-                shapes: vec![], // Shape extraction can be implemented here
-            })
-        } else {
-            None
-        }
+                shapes,
+            }
+        })
     }
 }
 
