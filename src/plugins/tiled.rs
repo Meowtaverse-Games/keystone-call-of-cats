@@ -1,11 +1,10 @@
 use std::sync::Arc;
 
-use avian2d::parry::shape::Shape;
-use bevy::asset::{Assets, ron::de};
+use bevy::asset::Assets;
 use bevy::math::UVec2;
 use bevy::prelude::*;
 
-use tiled::{self as tiled_rs, ObjectShape};
+use tiled::{self as tiled_rs};
 
 /// Configures how the [`TiledPlugin`] loads Tiled data.
 #[derive(Resource, Clone)]
@@ -66,79 +65,65 @@ impl TiledMapAssets {
         })
     }
 
-    pub fn tile(&self, id: u32) -> Option<Tile> {
-        let tileset = self.map.tilesets().first().unwrap();
-        let Some(tile) = tileset.get_tile(id) else {
-            info!("Tile ID {} not found in tileset {}.", id, tileset.name);
-            return None;
-        };
+    // pub fn tile(&self, id: u32) -> Option<Tile> {
+    //     let tileset = self.map.tilesets().first().unwrap();
+    //     let Some(tile) = tileset.get_tile(id) else {
+    //         info!("Tile ID {} not found in tileset {}.", id, tileset.name);
+    //         return None;
+    //     };
 
-        // info!("Tile ID {} found in tileset {:?}.", id, *tile);
+    //     // info!("Tile ID {} found in tileset {:?}.", id, *tile);
 
-        if let Some(collision) = &tile.collision {
-            info!("Tile ID {} has collision data.", id);
-            let object_data = collision.object_data();
+    //     if let Some(collision) = &tile.collision {
+    //         info!("Tile ID {} has collision data.", id);
+    //         let object_data = collision.object_data();
 
-            Some(Tile {
-                id,
-                collision: tile.properties.get("collision").and_then(|v| {
-                    if let tiled_rs::PropertyValue::BoolValue(b) = v {
-                        Some(*b)
-                    } else {
-                        None
-                    }
-                }),
-                shapes: object_data
-                    .into_iter()
-                    .map(|data| match data.shape {
-                        tiled_rs::ObjectShape::Rect { width, height } => TileShape::Rect {
-                            width,
-                            height,
-                            x: data.x,
-                            y: data.y,
-                        },
-                        _ => {
-                            unimplemented!()
-                        }
-                    })
-                    .collect(),
-            })
-        } else {
-            info!("Tile ID {} has no collision data.", id);
-            None
-        }
+    //         Some(Tile {
+    //             id,
+    //             collision: tile.properties.get("collision").and_then(|v| {
+    //                 if let tiled_rs::PropertyValue::BoolValue(b) = v {
+    //                     Some(*b)
+    //                 } else {
+    //                     None
+    //                 }
+    //             }),
+    //             shapes: object_data
+    //                 .iter()
+    //                 .map(|data| match data.shape {
+    //                     tiled_rs::ObjectShape::Rect { width, height } => TileShape::Rect {
+    //                         width,
+    //                         height,
+    //                         x: data.x,
+    //                         y: data.y,
+    //                     },
+    //                     _ => {
+    //                         unimplemented!()
+    //                     }
+    //                 })
+    //                 .collect(),
+    //         })
+    //     } else {
+    //         info!("Tile ID {} has no collision data.", id);
+    //         None
+    //     }
 
-        /*
-            Some(Tile {
-                id: tile.id(),
-                shapes: tile.shapes().map(|shape|
-                    match shape {
-                        tiled_rs::ObjectShape::Rect { width, height } => {
-                            TileShape::Rect { width, height, x, y }
-                        }
-                        _ => {
-                            // Handle other shapes as needed
-                            unimplemented!()
-                        }
-                    })
-                })
-        } */
-    }
+    //     /*
+    //         Some(Tile {
+    //             id: tile.id(),
+    //             shapes: tile.shapes().map(|shape|
+    //                 match shape {
+    //                     tiled_rs::ObjectShape::Rect { width, height } => {
+    //                         TileShape::Rect { width, height, x, y }
+    //                     }
+    //                     _ => {
+    //                         // Handle other shapes as needed
+    //                         unimplemented!()
+    //                     }
+    //                 })
+    //             })
+    //     } */
+    // }
 }
-//         for object_data in layer_data.object_data() {
-//             info!("  Object: {:?}", object_data);
-//             match object_data.shape {
-//                 ObjectShape::Rect { width, height } => {
-//                     info!("    x, y: {}, {}", object_data.x, object_data.y);
-//                     info!("    Rect: width {}, height {}", width, height);
-//                 }
-//                 _ => {
-//                     info!("    Other shape");
-//                 }
-//             }
-//         }
-//     }
-// });
 
 #[derive(Debug)]
 pub enum TileShape {
@@ -161,6 +146,7 @@ pub enum LayerType {
 #[derive(Debug)]
 pub struct Tile {
     pub id: u32,
+    #[allow(dead_code)]
     pub collision: Option<bool>,
     pub shapes: Vec<TileShape>,
 }
@@ -181,9 +167,7 @@ impl<'a> Layer<'a> {
     }
 
     pub fn tile(&self, x: i32, y: i32) -> Option<Tile> {
-        let Some(tile) = self.tiled_tile_layer.get_tile(x, y) else {
-            return None;
-        };
+        let tile = self.tiled_tile_layer.get_tile(x, y)?;
 
         tile.get_tile().map(|tile_data| {
             let Some(collision) = tile_data.collision.as_ref() else {
@@ -196,7 +180,7 @@ impl<'a> Layer<'a> {
 
             let object_data = collision.object_data();
             let shapes = object_data
-                .into_iter()
+                .iter()
                 .map(|data| match data.shape {
                     tiled_rs::ObjectShape::Rect { width, height } => TileShape::Rect {
                         width,

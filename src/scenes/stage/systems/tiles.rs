@@ -69,7 +69,7 @@ pub fn spawn_tiles(
                         let transform = Transform::from_xyz(tile_x, tile_y, layer_z)
                             .with_scale(Vec3::new(scale, scale, 1.0));
 
-                        if tile.shapes.len() > 0 {
+                        if !tile.shapes.is_empty() {
                             tile.shapes.iter().for_each(|shape| {
                                 info!("Tile ID {} has shape: {:?}", tile.id, shape);
                             });
@@ -88,19 +88,21 @@ pub fn spawn_tiles(
                                             "Creating rectangle collider: w={}, h={}, x={}, y={}",
                                             width, height, x, y
                                         );
-                                        let collider =
-                                            Collider::rectangle(*width as f32, *height as f32);
+                                        let collider = Collider::rectangle(*width, *height);
                                         // convert and scale shape offsets to f32 so Position::from_xy is satisfied
                                         let pos = Position::from_xy(
-                                            -base_tile_size.x / 2.0 + (*width + *x) / 2.0 + *x / 2.0,
-                                            base_tile_size.y / 2.0 - (*height + *y) / 2.0 - *y / 2.0
+                                            -base_tile_size.x / 2.0
+                                                + (*width + *x) / 2.0
+                                                + *x / 2.0,
+                                            base_tile_size.y / 2.0
+                                                - (*height + *y) / 2.0
+                                                - *y / 2.0,
                                         );
                                         let rot = Rotation::degrees(0.0);
                                         (pos, rot, collider)
-                                    }
-                                    _ => {
-                                        unimplemented!()
-                                    }
+                                    } // _ => {
+                                      //     unimplemented!()
+                                      // }
                                 })
                                 .collect::<Vec<_>>();
 

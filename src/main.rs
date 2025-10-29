@@ -46,7 +46,7 @@ fn main() {
         .add_plugins(DesignResolutionPlugin::new(
             1600.0,
             1200.0,
-            Color::linear_rgb(0.02, 0.02, 0.02),
+            Color::linear_rgb(0.0, 0.0, 0.0),
         ))
         .add_plugins(TiledPlugin::new(
             "assets/tiled/stage1-1.tmx",
