@@ -63,15 +63,36 @@ pub fn spawn_tiles(
         },
     );
 
-    commands.entity(stage_root).with_children(|_parent| {
+    commands.entity(stage_root).with_children(|parent| {
         for object_layer in tiled_map_assets.object_layers() {
             for index in object_layer.object_indexes() {
-                if let Some(object) = object_layer.object(index) {
-                    info!("Spawned object '{:?}' at index {}", object, index);
-                }
+                let object = object_layer.object(index);
+                info!(
+                    "Spawned object '{:?}' at index {}: id={}, position={:?}",
+                    object, index, object.id, object.position
+                );
+
+                let tile_x = object.position.x * scale + tile_size.x / 2.0 - viewport_size.x / 2.0;
+                let tile_y =
+                    -((object.position.y * scale - tile_size.y / 2.0) - viewport_size.y / 2.0);
+                let transform = Transform::from_xyz(tile_x, tile_y, 0.0)
+                    .with_scale(Vec3::new(scale, scale, 1.0));
+
+                parent.spawn((
+                    image_from_tileset(tileset, object.id).unwrap(),
+                    transform,
+                    RigidBody::Static,
+                    // Collider::compound(colliders),
+                ));
             }
         }
     });
+}
+
+fn image_from_tileset(tileset: &Tileset, id: u32) -> Option<Sprite> {
+    let tile_sprite = tileset.atlas_sprite(id)?;
+    let image = Sprite::from_atlas_image(tile_sprite.texture, tile_sprite.atlas);
+    Some(image)
 }
 
 fn spawn_tile_entity(
@@ -84,7 +105,7 @@ fn spawn_tile_entity(
     let Some(tile) = layer.tile(x, y) else {
         return;
     };
-    let Some(tile_sprite) = tileset.atlas_sprite(tile.id) else {
+    let Some(image) = image_from_tileset(tileset, tile.id) else {
         return;
     };
 
@@ -98,7 +119,6 @@ fn spawn_tile_entity(
 
     let tile_x = (x as f32 + 0.5) * tile_size.x - viewport_size.x / 2.0;
     let tile_y = -((y as f32 + 0.5) * tile_size.y - viewport_size.y / 2.0);
-    let image = Sprite::from_atlas_image(tile_sprite.texture, tile_sprite.atlas);
     let transform =
         Transform::from_xyz(tile_x, tile_y, layer_z).with_scale(Vec3::new(scale, scale, 1.0));
 

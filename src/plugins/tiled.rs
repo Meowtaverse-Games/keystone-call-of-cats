@@ -85,6 +85,12 @@ pub struct Tile {
     pub shapes: Vec<TileShape>,
 }
 
+#[derive(Debug)]
+pub struct Object {
+    pub id: u32,
+    pub position: Vec2,
+}
+
 pub struct TileLayer<'map> {
     pub name: String,
     pub inner_layer: tiled_rs::TileLayer<'map>,
@@ -193,56 +199,14 @@ impl<'map> ObjectLayer<'map> {
         (0..self.inner_layer.objects().count()).collect()
     }
 
-    pub fn object(&self, index: usize) -> Option<Tile> {
-        let object = self.inner_layer.get_object(index)?;
-        let tile_data = object.tile_data()?;
+    pub fn object(&self, index: usize) -> Object {
+        let object = self.inner_layer.get_object(index).unwrap();
+        let tile_data = object.tile_data().unwrap();
 
-        info!("Object Props: {:?}", object.properties);
-        info!("Tile Props: {:?}", object);
-        info!("Tile Data Props: {:?}", tile_data);
-
-        let object_tile = object.get_tile();
-
-        object_tile.and_then(|tile| {
-            tile.get_tile().map(|tile_data| {
-                let Some(collision) = tile_data.collision.as_ref() else {
-                    return Tile {
-                        id: tile.id(),
-                        collision: None,
-                        shapes: vec![],
-                    };
-                };
-
-                let object_data = collision.object_data();
-                let shapes = object_data
-                    .iter()
-                    .map(|data| match data.shape {
-                        tiled_rs::ObjectShape::Rect { width, height } => TileShape::Rect {
-                            width,
-                            height,
-                            x: data.x,
-                            y: data.y,
-                        },
-                        _ => {
-                            unimplemented!()
-                        }
-                    })
-                    .collect();
-
-                Tile {
-                    id: tile.id(),
-                    // Retrieving a custom property named "collision" only if it exists and is a boolean
-                    collision: tile_data.properties.get("collision").and_then(|v| {
-                        if let tiled_rs::PropertyValue::BoolValue(b) = v {
-                            Some(*b)
-                        } else {
-                            None
-                        }
-                    }),
-                    shapes,
-                }
-            })
-        })
+        Object {
+            id: tile_data.id(),
+            position: Vec2::new(object.x, object.y),
+        }
     }
 }
 
