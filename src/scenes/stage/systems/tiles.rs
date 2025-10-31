@@ -72,7 +72,8 @@ pub fn spawn_tiles(
                     object, index, object.id, object.position
                 );
 
-                let object_x = object.position.x * scale + tile_size.x / 2.0 - viewport_size.x / 2.0;
+                let object_x =
+                    object.position.x * scale + tile_size.x / 2.0 - viewport_size.x / 2.0;
                 let object_y =
                     -((object.position.y * scale - tile_size.y / 2.0) - viewport_size.y / 2.0);
                 let transform = Transform::from_xyz(object_x, object_y, 0.0)
