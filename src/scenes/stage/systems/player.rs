@@ -11,7 +11,7 @@ use crate::{
     },
 };
 
-const PLAYER_SCALE: f32 = 4.0;
+const PLAYER_SCALE: f32 = 3.3;
 const PLAYER_GROUND_Y: f32 = -100.0;
 
 pub fn spawn_player(

@@ -44,7 +44,7 @@ pub fn spawn_tiles(
 
     let scale_x = viewport_size.x / map_pixel_size.x;
     let scale_y = viewport_size.y / map_pixel_size.y;
-    let scale = scale_x.min(scale_y).max(f32::EPSILON);
+    let scale = scale_x.min(scale_y);
     let tile_size = base_tile_size * scale;
 
     commands.entity(stage_root).with_children(
@@ -72,10 +72,10 @@ pub fn spawn_tiles(
                     object, index, object.id, object.position
                 );
 
-                let tile_x = object.position.x * scale + tile_size.x / 2.0 - viewport_size.x / 2.0;
-                let tile_y =
+                let object_x = object.position.x * scale + tile_size.x / 2.0 - viewport_size.x / 2.0;
+                let object_y =
                     -((object.position.y * scale - tile_size.y / 2.0) - viewport_size.y / 2.0);
-                let transform = Transform::from_xyz(tile_x, tile_y, 0.0)
+                let transform = Transform::from_xyz(object_x, object_y, 0.0)
                     .with_scale(Vec3::new(scale, scale, 1.0));
 
                 parent.spawn((
