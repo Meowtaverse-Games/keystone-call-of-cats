@@ -52,14 +52,14 @@ impl TiledMapAssets {
         self.map.layers().map(|layer| {
             let name = layer.name.clone();
             match layer.layer_type() {
-                tiled_rs::LayerType::Tiles(_tile_layer) => Box::new(TileLayer::new(
-                    name,
-                    layer.as_tile_layer().unwrap(),
-                )) as Box<dyn LayerTrait + 'a>,
-                tiled_rs::LayerType::Objects(_object_layer) => Box::new(ObjectLayer::new(
-                    name,
-                    layer.as_object_layer().unwrap(),
-                )) as Box<dyn LayerTrait + 'a>,
+                tiled_rs::LayerType::Tiles(_tile_layer) => {
+                    Box::new(TileLayer::new(name, layer.as_tile_layer().unwrap()))
+                        as Box<dyn LayerTrait + 'a>
+                }
+                tiled_rs::LayerType::Objects(_object_layer) => {
+                    Box::new(ObjectLayer::new(name, layer.as_object_layer().unwrap()))
+                        as Box<dyn LayerTrait + 'a>
+                }
                 _ => {
                     unimplemented!()
                 }
@@ -138,14 +138,9 @@ pub enum TileShape {
 }
 
 #[derive(Debug)]
-pub enum LayerType {
-    Tile,
-    Object,
-}
-
 pub enum TileIndex {
-    TilePosition (i32, i32),
-    ObjectIndex (usize),
+    TilePosition(i32, i32),
+    ObjectIndex(usize),
 }
 
 #[derive(Debug)]
@@ -176,9 +171,7 @@ pub struct TileLayer<'map> {
 impl<'map> TileLayer<'map> {
     fn new(name: String, tile_layer: tiled_rs::TileLayer<'map>) -> Self {
         Self {
-            layer: Layer {
-                name,
-            },
+            layer: Layer { name },
             inner_layer: tile_layer,
         }
     }
@@ -264,9 +257,7 @@ pub struct ObjectLayer<'map> {
 impl<'map> ObjectLayer<'map> {
     fn new(name: String, object_layer: tiled_rs::ObjectLayer<'map>) -> Self {
         Self {
-            layer: Layer {
-                name,
-            },
+            layer: Layer { name },
             inner_layer: object_layer,
         }
     }
@@ -383,11 +374,9 @@ impl<'map> LayerTrait for ObjectLayer<'map> {
         //         }),
         //         shapes,
         //     }
-        // })          
+        // })
     }
 }
-
-
 
 #[derive(Clone)]
 pub struct Tileset {

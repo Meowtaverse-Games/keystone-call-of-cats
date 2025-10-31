@@ -2,7 +2,8 @@ use avian2d::prelude::*;
 use bevy::prelude::*;
 
 use crate::{
-    plugins::{TileShape, TiledMapAssets, design_resolution::ScaledViewport},
+    plugins::tiled::*,
+    plugins::{design_resolution::ScaledViewport, tiled::TileShape},
     scenes::stage::components::StageTile,
 };
 
@@ -46,20 +47,18 @@ pub fn spawn_tiles(
 
     commands.entity(stage_root).with_children(|parent| {
         for (layer_index, layer) in tiled_map_assets.layers().enumerate() {
-            let layer_z = match layer.name.as_str() {
+            let layer_z = match layer.name() {
                 n if n.starts_with("Background") => -10.0 + layer_index as f32 * 0.01,
                 n if n.starts_with("Ground") => 0.0 + layer_index as f32 * 0.01,
                 _ => layer_index as f32 * 0.01,
             };
 
-            info!(
-                "Layer name: {}, type: {:?}, z: {}",
-                layer.name, layer.layer_type, layer_z
-            );
+            info!("Layer name: {}, z: {}", layer.name(), layer_z);
 
-            for x in 0..layer.width() {
-                for y in 0..layer.height() {
-                    if let Some(tile) = layer.tile(x, y)
+            layer.tile_indexes().for_each(|index| match index {
+                TileIndex::TilePosition(x, y) => {
+                    if let Some(tile) =
+                        layer.tile(crate::plugins::tiled::TileIndex::TilePosition(x, y))
                         && let Some(tile_sprite) = tileset.atlas_sprite(tile.id)
                     {
                         let tile_x = (x as f32 + 0.5) * tile_size.x - viewport_size.x / 2.0;
@@ -84,10 +83,6 @@ pub fn spawn_tiles(
                                     x,
                                     y,
                                 } => {
-                                    info!(
-                                        "Creating rectangle collider: w={}, h={}, x={}, y={}",
-                                        width, height, x, y
-                                    );
                                     let collider = Collider::rectangle(*width, *height);
                                     let pos = Position::from_xy(
                                         -base_tile_size.x / 2.0 + (*width + *x) / 2.0 + *x / 2.0,
@@ -106,9 +101,15 @@ pub fn spawn_tiles(
                             RigidBody::Static,
                             Collider::compound(colliders),
                         ));
+                    };
+                }
+                TileIndex::ObjectIndex(i) => {
+                    info!("  Object index: {}", i);
+                    if let Some(tile) = layer.tile(index) {
+                        info!("  Tile found for object index {:?}", tile);
                     }
                 }
-            }
+            });
         }
     });
 }
