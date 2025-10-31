@@ -190,8 +190,7 @@ impl<'map> ObjectLayer<'map> {
     }
 
     pub fn object_indexes(&self) -> Vec<usize> {
-        (0..self.inner_layer.objects().count())
-            .collect()
+        (0..self.inner_layer.objects().count()).collect()
     }
 
     pub fn object(&self, index: usize) -> Option<Tile> {

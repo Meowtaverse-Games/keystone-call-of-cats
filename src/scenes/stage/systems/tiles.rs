@@ -67,11 +67,7 @@ pub fn spawn_tiles(
         for object_layer in tiled_map_assets.object_layers() {
             for index in object_layer.object_indexes() {
                 if let Some(object) = object_layer.object(index) {
-                    info!(
-                        "Spawned object '{:?}' at index {}",
-                        object,
-                        index
-                    );
+                    info!("Spawned object '{:?}' at index {}", object, index);
                 }
             }
         }
@@ -83,14 +79,7 @@ fn spawn_tile_entity(
     layer_index: usize,
     layer: &TileLayer,
     tileset: &Tileset,
-    (x, y, tile_size, base_tile_size, viewport_size, scale): (
-        u32,
-        u32,
-        Vec2,
-        Vec2,
-        Vec2,
-        f32,
-    ),
+    (x, y, tile_size, base_tile_size, viewport_size, scale): (u32, u32, Vec2, Vec2, Vec2, f32),
 ) {
     let Some(tile) = layer.tile(x, y) else {
         return;
