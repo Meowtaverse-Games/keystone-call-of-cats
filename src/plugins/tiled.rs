@@ -71,6 +71,24 @@ impl TiledMapAssets {
             Some(ObjectLayer::new(layer.name.clone(), object_layer))
         })
     }
+
+    pub fn map_size(&self) -> Vec2 {
+        self.tile_layers().fold(Vec2::ZERO, |acc, layer| {
+            let width = layer.width() as f32;
+            let height = layer.height() as f32;
+            Vec2::new(acc.x.max(width), acc.y.max(height))
+        })
+    }
+
+    fn map_pixel_size(&self, tile_size: Vec2) -> Vec2 {
+        let map_size = self.map_size();
+        Vec2::new(map_size.x * tile_size.x, map_size.y * tile_size.y)
+    }
+
+    pub fn scaled_tile_size_and_scale(&self, viewport_size: Vec2, tile_size: Vec2) -> (Vec2, f32) {
+        let scale = (viewport_size / self.map_pixel_size(tile_size)).min_element();
+        (tile_size * scale, scale)
+    }
 }
 
 #[derive(Clone)]
@@ -97,6 +115,15 @@ impl Tileset {
                 index: local_id as usize,
             },
         })
+    }
+
+    pub fn tile_size(&self) -> Vec2 {
+        let raw_tile_size = self
+            .image()
+            .map(|image| image.tile_size)
+            .expect("Failed to get tile size from tileset image");
+
+        Vec2::new(raw_tile_size.x as f32, raw_tile_size.y as f32)
     }
 }
 

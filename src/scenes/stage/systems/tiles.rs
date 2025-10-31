@@ -18,34 +18,10 @@ pub fn spawn_tiles(
         return;
     };
 
-    let map_tile_dimensions = tiled_map_assets
-        .tile_layers()
-        .fold(UVec2::ZERO, |acc, layer| {
-            let width = layer.width();
-            let height = layer.height();
-            UVec2::new(acc.x.max(width), acc.y.max(height))
-        });
-
-    info!("Map tile dimensions: {:?}", map_tile_dimensions);
-
-    let raw_tile_size = tileset
-        .image()
-        .map(|image| image.tile_size)
-        .unwrap_or(UVec2::new(32, 32));
-
-    let base_tile_size = Vec2::new(raw_tile_size.x.max(1) as f32, raw_tile_size.y.max(1) as f32);
-
     let viewport_size = viewport.size;
-
-    let map_pixel_size = Vec2::new(
-        map_tile_dimensions.x as f32 * base_tile_size.x,
-        map_tile_dimensions.y as f32 * base_tile_size.y,
-    );
-
-    let scale_x = viewport_size.x / map_pixel_size.x;
-    let scale_y = viewport_size.y / map_pixel_size.y;
-    let scale = scale_x.min(scale_y);
-    let tile_size = base_tile_size * scale;
+    let tile_size = tileset.tile_size();
+    let (real_tile_size, scale) =
+        tiled_map_assets.scaled_tile_size_and_scale(viewport_size, tile_size);
 
     commands.entity(stage_root).with_children(
         |parent: &mut bevy_ecs::relationship::RelatedSpawnerCommands<'_, ChildOf>| {
@@ -56,7 +32,7 @@ pub fn spawn_tiles(
                         layer_index,
                         &layer,
                         tileset,
-                        (x, y, tile_size, base_tile_size, viewport_size, scale),
+                        (x, y, real_tile_size, tile_size, viewport_size, scale),
                     );
                 }
             }
@@ -73,9 +49,9 @@ pub fn spawn_tiles(
                 );
 
                 let object_x =
-                    object.position.x * scale + tile_size.x / 2.0 - viewport_size.x / 2.0;
+                    object.position.x * scale + real_tile_size.x / 2.0 - viewport_size.x / 2.0;
                 let object_y =
-                    -((object.position.y * scale - tile_size.y / 2.0) - viewport_size.y / 2.0);
+                    -((object.position.y * scale - real_tile_size.y / 2.0) - viewport_size.y / 2.0);
                 let transform = Transform::from_xyz(object_x, object_y, 0.0)
                     .with_scale(Vec3::new(scale, scale, 1.0));
 
