@@ -9,8 +9,8 @@ use tiled::{self as tiled_rs};
 mod object_layer;
 mod tile_layer;
 
-pub use object_layer::{Object, ObjectLayer};
-pub use tile_layer::{Tile, TileLayer, TileShape};
+pub use object_layer::ObjectLayer;
+pub use tile_layer::{TileLayer, TileShape};
 
 /// Configures how the [`TiledPlugin`] loads Tiled data.
 #[derive(Resource, Clone)]
