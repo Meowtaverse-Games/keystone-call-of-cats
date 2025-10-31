@@ -63,13 +63,17 @@ impl TiledMapAssets {
         })
     }
 
-    pub fn object_layers<'a>(&'a self) -> impl Iterator<Item = ObjectLayer<'a>> + 'a {
-        self.map.layers().filter_map(|layer| {
-            let tiled_rs::LayerType::Objects(object_layer) = layer.layer_type() else {
-                return None;
-            };
-            Some(ObjectLayer::new(layer.name.clone(), object_layer))
-        })
+    pub fn object_layer<'a>(&'a self) -> ObjectLayer<'a> {
+        self.map
+            .layers()
+            .filter_map(|layer| {
+                let tiled_rs::LayerType::Objects(object_layer) = layer.layer_type() else {
+                    return None;
+                };
+                Some(ObjectLayer::new(layer.name.clone(), object_layer))
+            })
+            .next()
+            .expect("No object layers found in Tiled map")
     }
 
     pub fn map_size(&self) -> Vec2 {
@@ -80,7 +84,7 @@ impl TiledMapAssets {
         })
     }
 
-    fn map_pixel_size(&self, tile_size: Vec2) -> Vec2 {
+    pub fn map_pixel_size(&self, tile_size: Vec2) -> Vec2 {
         let map_size = self.map_size();
         Vec2::new(map_size.x * tile_size.x, map_size.y * tile_size.y)
     }

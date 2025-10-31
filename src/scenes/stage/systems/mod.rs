@@ -1,3 +1,4 @@
+mod goal;
 mod player;
 mod stone;
 mod tiles;
@@ -8,8 +9,7 @@ use bevy::{prelude::*, window::PrimaryWindow};
 use super::components::*;
 use crate::plugins::{TiledMapAssets, assets_loader::AssetStore, design_resolution::*};
 
-#[allow(unused_imports)]
-pub use player::{animate_character, move_character};
+pub use player::{PLAYER_OBJECT_ID, animate_character, move_character};
 pub use stone::{
     StoneCommandMessage, carry_riders_with_stone, handle_stone_messages, update_stone_behavior,
 };
@@ -52,17 +52,43 @@ pub fn setup(
 
     tiles::spawn_tiles(&mut commands, stage_root, &tiled_map_assets, &viewport);
 
-    let player_spawn_x = 0.0;
-    let player_spawn_y = window.resolution.height() / 2.0 * 0.75;
-    if !player::spawn_player(
+    let Some(tileset) = tiled_map_assets.tilesets().first() else {
+        warn!("Stage setup: no tilesets available");
+        return;
+    };
+
+    let (_, scale) =
+        tiled_map_assets.scaled_tile_size_and_scale(viewport.size, tileset.tile_size());
+    info!(
+        "Computed player scale: {}, viewport size: {}",
+        scale, viewport.size
+    );
+
+    let tile_size = tileset.tile_size();
+    let viewport_size = viewport.size;
+    let (real_tile_size, scale) =
+        tiled_map_assets.scaled_tile_size_and_scale(viewport_size, tile_size);
+
+    let object_layer = tiled_map_assets.object_layer();
+
+    let Some(player_object) = object_layer.object_by_id(PLAYER_OBJECT_ID) else {
+        warn!("Stage setup: no player object found in object layer");
+        return;
+    };
+
+    let player_x =
+        player_object.position.x * scale + real_tile_size.x / 2.0 - viewport_size.x / 2.0;
+    let player_y =
+        -((player_object.position.y * scale - real_tile_size.y / 2.0) - viewport_size.y / 2.0);
+
+    player::spawn_player(
         &mut commands,
         stage_root,
         &asset_store,
-        player_spawn_x,
-        player_spawn_y,
-    ) {
-        return;
-    }
+        (player_x, player_y, scale),
+    );
+
+    goal::spawn_goal(&mut commands, stage_root, &tiled_map_assets, &viewport);
 
     stone::spawn_stone_display(&mut commands, stage_root, &asset_server, &mut atlas_layouts);
 }

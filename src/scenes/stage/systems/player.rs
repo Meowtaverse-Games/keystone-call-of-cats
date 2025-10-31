@@ -1,6 +1,8 @@
 use avian2d::prelude::*;
 use bevy::{input::ButtonInput, prelude::*};
 
+pub const PLAYER_OBJECT_ID: u32 = 408;
+
 use crate::{
     plugins::assets_loader::AssetStore,
     scenes::{
@@ -11,15 +13,11 @@ use crate::{
     },
 };
 
-const PLAYER_SCALE: f32 = 3.3;
-const PLAYER_GROUND_Y: f32 = -100.0;
-
 pub fn spawn_player(
     commands: &mut Commands,
     stage_root: Entity,
     asset_store: &AssetStore,
-    spawn_x: f32,
-    spawn_y: f32,
+    (x, y, scale): (f32, f32, f32),
 ) -> bool {
     let idle_frames: Vec<Handle<Image>> = PLAYER_IDLE_KEYS
         .iter()
@@ -81,16 +79,16 @@ pub fn spawn_player(
                 direction: 1.0,
                 is_moving: matches!(initial_state, PlayerAnimationState::Run),
                 jump_speed: 280.0,
-                ground_y: PLAYER_GROUND_Y,
+                ground_y: y,
                 is_jumping: false,
             },
             RigidBody::Dynamic,
             GravityScale(40.0),
             LockedAxes::ROTATION_LOCKED,
-            Collider::circle(PLAYER_SCALE * 2.5),
+            Collider::circle(scale * 2.5),
             CollidingEntities::default(),
             DebugRender::default().with_collider_color(Color::srgb(1.0, 0.0, 0.0)),
-            Transform::from_xyz(spawn_x, spawn_y, 1.0).with_scale(Vec3::splat(PLAYER_SCALE)),
+            Transform::from_xyz(x, y, 1.0).with_scale(Vec3::splat(scale)),
         ));
     });
 

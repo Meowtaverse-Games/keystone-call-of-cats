@@ -38,32 +38,6 @@ pub fn spawn_tiles(
             }
         },
     );
-
-    commands.entity(stage_root).with_children(|parent| {
-        for object_layer in tiled_map_assets.object_layers() {
-            for index in object_layer.object_indexes() {
-                let object = object_layer.object(index);
-                info!(
-                    "Spawned object '{:?}' at index {}: id={}, position={:?}",
-                    object, index, object.id, object.position
-                );
-
-                let object_x =
-                    object.position.x * scale + real_tile_size.x / 2.0 - viewport_size.x / 2.0;
-                let object_y =
-                    -((object.position.y * scale - real_tile_size.y / 2.0) - viewport_size.y / 2.0);
-                let transform = Transform::from_xyz(object_x, object_y, 0.0)
-                    .with_scale(Vec3::new(scale, scale, 1.0));
-
-                parent.spawn((
-                    image_from_tileset(tileset, object.id).unwrap(),
-                    transform,
-                    RigidBody::Static,
-                    // Collider::compound(colliders),
-                ));
-            }
-        }
-    });
 }
 
 fn image_from_tileset(tileset: &Tileset, id: u32) -> Option<Sprite> {

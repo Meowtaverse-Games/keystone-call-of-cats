@@ -1,4 +1,4 @@
-use bevy::prelude::Vec2;
+use bevy::prelude::*;
 use tiled::{self as tiled_rs};
 
 #[derive(Debug)]
@@ -39,5 +39,15 @@ impl<'map> ObjectLayer<'map> {
             id: tile_data.id(),
             position: Vec2::new(object.x, object.y),
         }
+    }
+
+    pub fn object_by_id(&self, id: u32) -> Option<Object> {
+        for index in self.object_indexes() {
+            let object = self.object(index);
+            if object.id == id {
+                return Some(object);
+            }
+        }
+        None
     }
 }
