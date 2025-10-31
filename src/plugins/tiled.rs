@@ -48,19 +48,21 @@ impl TiledMapAssets {
         &self.tilesets
     }
 
-    pub fn layers<'a>(&'a self) -> impl Iterator<Item = Layer<'a>> + 'a {
+    pub fn layers<'a>(&'a self) -> impl Iterator<Item = Box<dyn LayerTrait + 'a>> + 'a {
         self.map.layers().map(|layer| {
-            let layer_type = match layer.layer_type() {
-                tiled_rs::LayerType::Tiles(_) => LayerType::Tile,
-                tiled_rs::LayerType::Objects(_) => LayerType::Object,
-                tiled_rs::LayerType::Image(_) => LayerType::Image,
-                tiled_rs::LayerType::Group(_) => LayerType::Group,
-            };
-
-            Layer {
-                name: layer.name.clone(),
-                layer_type,
-                tiled_tile_layer: layer.as_tile_layer().unwrap(),
+            let name = layer.name.clone();
+            match layer.layer_type() {
+                tiled_rs::LayerType::Tiles(_tile_layer) => Box::new(TileLayer::new(
+                    name,
+                    layer.as_tile_layer().unwrap(),
+                )) as Box<dyn LayerTrait + 'a>,
+                tiled_rs::LayerType::Objects(_object_layer) => Box::new(ObjectLayer::new(
+                    name,
+                    layer.as_object_layer().unwrap(),
+                )) as Box<dyn LayerTrait + 'a>,
+                _ => {
+                    unimplemented!()
+                }
             }
         })
     }
@@ -139,8 +141,11 @@ pub enum TileShape {
 pub enum LayerType {
     Tile,
     Object,
-    Image,
-    Group,
+}
+
+pub enum TileIndex {
+    TilePosition (i32, i32),
+    ObjectIndex (usize),
 }
 
 #[derive(Debug)]
@@ -151,23 +156,64 @@ pub struct Tile {
     pub shapes: Vec<TileShape>,
 }
 
-pub struct Layer<'map> {
+pub struct Layer {
     pub name: String,
-    pub layer_type: LayerType,
-    tiled_tile_layer: tiled_rs::TileLayer<'map>,
 }
 
-impl<'a> Layer<'a> {
-    pub fn width(&self) -> i32 {
-        self.tiled_tile_layer.width().unwrap() as i32
+pub trait LayerTrait {
+    fn name(&self) -> &str;
+    fn width(&self) -> i32;
+    fn height(&self) -> i32;
+    fn tile_indexes(&self) -> Box<dyn Iterator<Item = TileIndex> + '_>;
+    fn tile(&self, tile_index: TileIndex) -> Option<Tile>;
+}
+
+pub struct TileLayer<'map> {
+    pub layer: Layer,
+    pub inner_layer: tiled_rs::TileLayer<'map>,
+}
+
+impl<'map> TileLayer<'map> {
+    fn new(name: String, tile_layer: tiled_rs::TileLayer<'map>) -> Self {
+        Self {
+            layer: Layer {
+                name,
+            },
+            inner_layer: tile_layer,
+        }
+    }
+}
+
+impl<'map> LayerTrait for TileLayer<'map> {
+    fn name(&self) -> &str {
+        &self.layer.name
     }
 
-    pub fn height(&self) -> i32 {
-        self.tiled_tile_layer.height().unwrap() as i32
+    fn width(&self) -> i32 {
+        self.inner_layer.width().map(|w| w as i32).unwrap_or(0)
     }
 
-    pub fn tile(&self, x: i32, y: i32) -> Option<Tile> {
-        let tile = self.tiled_tile_layer.get_tile(x, y)?;
+    fn height(&self) -> i32 {
+        self.inner_layer.height().map(|h| h as i32).unwrap_or(0)
+    }
+
+    fn tile_indexes(&self) -> Box<dyn Iterator<Item = TileIndex> + '_> {
+        let mut indexes = vec![];
+        for x in 0..self.inner_layer.width().unwrap() as i32 {
+            for y in 0..self.inner_layer.height().unwrap() as i32 {
+                if let Some(_tile) = self.inner_layer.get_tile(x, y) {
+                    indexes.push(TileIndex::TilePosition(x, y));
+                }
+            }
+        }
+        Box::new(indexes.into_iter())
+    }
+
+    fn tile(&self, tile_index: TileIndex) -> Option<Tile> {
+        let tile = match tile_index {
+            TileIndex::TilePosition(x, y) => self.inner_layer.get_tile(x, y)?,
+            _ => return None,
+        };
 
         tile.get_tile().map(|tile_data| {
             let Some(collision) = tile_data.collision.as_ref() else {
@@ -209,6 +255,139 @@ impl<'a> Layer<'a> {
         })
     }
 }
+
+pub struct ObjectLayer<'map> {
+    pub layer: Layer,
+    pub inner_layer: tiled_rs::ObjectLayer<'map>,
+}
+
+impl<'map> ObjectLayer<'map> {
+    fn new(name: String, object_layer: tiled_rs::ObjectLayer<'map>) -> Self {
+        Self {
+            layer: Layer {
+                name,
+            },
+            inner_layer: object_layer,
+        }
+    }
+}
+
+impl<'map> LayerTrait for ObjectLayer<'map> {
+    fn name(&self) -> &str {
+        &self.layer.name
+    }
+
+    fn width(&self) -> i32 {
+        self.inner_layer.map().width as i32
+    }
+
+    fn height(&self) -> i32 {
+        self.inner_layer.map().height as i32
+    }
+
+    fn tile_indexes(&self) -> Box<dyn Iterator<Item = TileIndex> + '_> {
+        let mut indexes = vec![];
+        for (index, _object) in self.inner_layer.objects().enumerate() {
+            indexes.push(TileIndex::ObjectIndex(index));
+        }
+        Box::new(indexes.into_iter())
+    }
+
+    fn tile(&self, tile_index: TileIndex) -> Option<Tile> {
+        let index = match tile_index {
+            TileIndex::ObjectIndex(index) => index,
+            _ => return None,
+        };
+
+        let object = self.inner_layer.get_object(index)?;
+        info!("Object Props: {:?}", object.properties);
+        let object_tile = object.get_tile();
+
+        object_tile.and_then(|tile| {
+            tile.get_tile().map(|tile_data| {
+                let Some(collision) = tile_data.collision.as_ref() else {
+                    return Tile {
+                        id: tile.id(),
+                        collision: None,
+                        shapes: vec![],
+                    };
+                };
+
+                let object_data = collision.object_data();
+                let shapes = object_data
+                    .iter()
+                    .map(|data| match data.shape {
+                        tiled_rs::ObjectShape::Rect { width, height } => TileShape::Rect {
+                            width,
+                            height,
+                            x: data.x,
+                            y: data.y,
+                        },
+                        _ => {
+                            unimplemented!()
+                        }
+                    })
+                    .collect();
+
+                Tile {
+                    id: tile.id(),
+                    // Retrieving a custom property named "collision" only if it exists and is a boolean
+                    collision: tile_data.properties.get("collision").and_then(|v| {
+                        if let tiled_rs::PropertyValue::BoolValue(b) = v {
+                            Some(*b)
+                        } else {
+                            None
+                        }
+                    }),
+                    shapes,
+                }
+            })
+        })
+
+        // object_tile.and_then(|tile| {
+        //     tile.
+        //     tile.get_tile().map(|tile_data| {
+        //         let Some(collision) = tile_data.collision.as_ref() else {
+        //             return Tile {
+        //                 id: tile.id(),
+        //             collision: None,
+        //             shapes: vec![],
+        //         };
+        //     };
+
+        //     let object_data = collision.object_data();
+        //     let shapes = object_data
+        //         .iter()
+        //         .map(|data| match data.shape {
+        //             tiled_rs::ObjectShape::Rect { width, height } => TileShape::Rect {
+        //                 width,
+        //                 height,
+        //                 x: data.x,
+        //                 y: data.y,
+        //             },
+        //             _ => {
+        //                 unimplemented!()
+        //             }
+        //         })
+        //         .collect();
+
+        //     Tile {
+        //         id: tile.id(),
+        //         // Retrieving a custom property named "collision" only if it exists and is a boolean
+        //         collision: tile_data.properties.get("collision").and_then(|v| {
+        //             if let tiled_rs::PropertyValue::BoolValue(b) = v {
+        //                 Some(*b)
+        //             } else {
+        //                 None
+        //             }
+        //         }),
+        //         shapes,
+        //     }
+        // })          
+    }
+}
+
+
 
 #[derive(Clone)]
 pub struct Tileset {
