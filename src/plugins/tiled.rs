@@ -48,83 +48,26 @@ impl TiledMapAssets {
         &self.tilesets
     }
 
-    pub fn layers<'a>(&'a self) -> impl Iterator<Item = Box<dyn LayerTrait + 'a>> + 'a {
-        self.map.layers().map(|layer| {
-            let name = layer.name.clone();
-            match layer.layer_type() {
-                tiled_rs::LayerType::Tiles(_tile_layer) => {
-                    Box::new(TileLayer::new(name, layer.as_tile_layer().unwrap()))
-                        as Box<dyn LayerTrait + 'a>
-                }
-                tiled_rs::LayerType::Objects(_object_layer) => {
-                    Box::new(ObjectLayer::new(name, layer.as_object_layer().unwrap()))
-                        as Box<dyn LayerTrait + 'a>
-                }
-                _ => {
-                    unimplemented!()
-                }
-            }
+    pub fn tile_layers<'a>(&'a self) -> impl Iterator<Item = TileLayer<'a>> + 'a {
+        self.map.layers().filter_map(|layer| {
+            let tiled_rs::LayerType::Tiles(tile_layer) = layer.layer_type() else {
+                return None;
+            };
+            Some(TileLayer::new(layer.name.clone(), tile_layer))
         })
     }
 
-    // pub fn tile(&self, id: u32) -> Option<Tile> {
-    //     let tileset = self.map.tilesets().first().unwrap();
-    //     let Some(tile) = tileset.get_tile(id) else {
-    //         info!("Tile ID {} not found in tileset {}.", id, tileset.name);
-    //         return None;
-    //     };
-
-    //     // info!("Tile ID {} found in tileset {:?}.", id, *tile);
-
-    //     if let Some(collision) = &tile.collision {
-    //         info!("Tile ID {} has collision data.", id);
-    //         let object_data = collision.object_data();
-
-    //         Some(Tile {
-    //             id,
-    //             collision: tile.properties.get("collision").and_then(|v| {
-    //                 if let tiled_rs::PropertyValue::BoolValue(b) = v {
-    //                     Some(*b)
-    //                 } else {
-    //                     None
-    //                 }
-    //             }),
-    //             shapes: object_data
-    //                 .iter()
-    //                 .map(|data| match data.shape {
-    //                     tiled_rs::ObjectShape::Rect { width, height } => TileShape::Rect {
-    //                         width,
-    //                         height,
-    //                         x: data.x,
-    //                         y: data.y,
-    //                     },
-    //                     _ => {
-    //                         unimplemented!()
-    //                     }
-    //                 })
-    //                 .collect(),
-    //         })
-    //     } else {
-    //         info!("Tile ID {} has no collision data.", id);
-    //         None
-    //     }
-
-    //     /*
-    //         Some(Tile {
-    //             id: tile.id(),
-    //             shapes: tile.shapes().map(|shape|
-    //                 match shape {
-    //                     tiled_rs::ObjectShape::Rect { width, height } => {
-    //                         TileShape::Rect { width, height, x, y }
-    //                     }
-    //                     _ => {
-    //                         // Handle other shapes as needed
-    //                         unimplemented!()
-    //                     }
-    //                 })
-    //             })
-    //     } */
-    // }
+    pub fn object_layers<'a>(&'a self) -> impl Iterator<Item = ObjectLayer<'a>> + 'a {
+        self.map.layers().filter_map(|layer| {
+            let tiled_rs::LayerType::Objects(object_layer) = layer.layer_type() else {
+                return None;
+            };
+            Some(ObjectLayer::new(
+                layer.name.clone(),
+                layer.as_object_layer().unwrap(),
+            ))
+        })
+    }
 }
 
 #[derive(Debug)]
@@ -138,12 +81,6 @@ pub enum TileShape {
 }
 
 #[derive(Debug)]
-pub enum TileIndex {
-    TilePosition(i32, i32),
-    ObjectIndex(usize),
-}
-
-#[derive(Debug)]
 pub struct Tile {
     pub id: u32,
     #[allow(dead_code)]
@@ -151,61 +88,48 @@ pub struct Tile {
     pub shapes: Vec<TileShape>,
 }
 
-pub struct Layer {
-    pub name: String,
-}
-
-pub trait LayerTrait {
-    fn name(&self) -> &str;
-    fn width(&self) -> i32;
-    fn height(&self) -> i32;
-    fn tile_indexes(&self) -> Box<dyn Iterator<Item = TileIndex> + '_>;
-    fn tile(&self, tile_index: TileIndex) -> Option<Tile>;
-}
-
 pub struct TileLayer<'map> {
-    pub layer: Layer,
+    pub name: String,
     pub inner_layer: tiled_rs::TileLayer<'map>,
 }
 
 impl<'map> TileLayer<'map> {
     fn new(name: String, tile_layer: tiled_rs::TileLayer<'map>) -> Self {
         Self {
-            layer: Layer { name },
+            name,
             inner_layer: tile_layer,
         }
     }
 }
 
-impl<'map> LayerTrait for TileLayer<'map> {
+impl<'map> TileLayer<'map> {
     fn name(&self) -> &str {
-        &self.layer.name
+        &self.name
     }
 
-    fn width(&self) -> i32 {
-        self.inner_layer.width().map(|w| w as i32).unwrap_or(0)
+    pub fn width(&self) -> u32 {
+        self.inner_layer.width().map(|w| w as u32).unwrap_or(0)
     }
 
-    fn height(&self) -> i32 {
-        self.inner_layer.height().map(|h| h as i32).unwrap_or(0)
+    pub fn height(&self) -> u32 {
+        self.inner_layer.height().map(|h| h as u32).unwrap_or(0)
     }
 
-    fn tile_indexes(&self) -> Box<dyn Iterator<Item = TileIndex> + '_> {
-        let mut indexes = vec![];
+    pub fn tile_positions(&self) -> Vec<(u32, u32)> {
+        let mut indexes = vec![(0u32, 0u32)];
         for x in 0..self.inner_layer.width().unwrap() as i32 {
             for y in 0..self.inner_layer.height().unwrap() as i32 {
                 if let Some(_tile) = self.inner_layer.get_tile(x, y) {
-                    indexes.push(TileIndex::TilePosition(x, y));
+                    indexes.push((x as u32, y as u32));
                 }
             }
         }
-        Box::new(indexes.into_iter())
+        indexes
     }
 
-    fn tile(&self, tile_index: TileIndex) -> Option<Tile> {
-        let tile = match tile_index {
-            TileIndex::TilePosition(x, y) => self.inner_layer.get_tile(x, y)?,
-            _ => return None,
+    pub fn tile(&self, x: u32, y: u32) -> Option<Tile> {
+        let Some(tile) = self.inner_layer.get_tile(x as i32, y as i32) else {
+            return None;
         };
 
         tile.get_tile().map(|tile_data| {
@@ -250,22 +174,22 @@ impl<'map> LayerTrait for TileLayer<'map> {
 }
 
 pub struct ObjectLayer<'map> {
-    pub layer: Layer,
+    pub name: String,
     pub inner_layer: tiled_rs::ObjectLayer<'map>,
 }
 
 impl<'map> ObjectLayer<'map> {
     fn new(name: String, object_layer: tiled_rs::ObjectLayer<'map>) -> Self {
         Self {
-            layer: Layer { name },
+            name,
             inner_layer: object_layer,
         }
     }
 }
 
-impl<'map> LayerTrait for ObjectLayer<'map> {
+impl<'map> ObjectLayer<'map> {
     fn name(&self) -> &str {
-        &self.layer.name
+        &self.name
     }
 
     fn width(&self) -> i32 {
@@ -276,22 +200,23 @@ impl<'map> LayerTrait for ObjectLayer<'map> {
         self.inner_layer.map().height as i32
     }
 
-    fn tile_indexes(&self) -> Box<dyn Iterator<Item = TileIndex> + '_> {
-        let mut indexes = vec![];
-        for (index, _object) in self.inner_layer.objects().enumerate() {
-            indexes.push(TileIndex::ObjectIndex(index));
-        }
-        Box::new(indexes.into_iter())
+    fn object_indexes(&self) -> Vec<usize> {
+        (0..self.inner_layer.objects().count())
+            .map(|i| i as usize)
+            .collect()
     }
 
-    fn tile(&self, tile_index: TileIndex) -> Option<Tile> {
-        let index = match tile_index {
-            TileIndex::ObjectIndex(index) => index,
-            _ => return None,
+    fn object(&self, index: usize) -> Option<Tile> {
+        let object = self.inner_layer.get_object(index)?;
+
+        let Some(tile_data) = object.tile_data() else {
+            return None;
         };
 
-        let object = self.inner_layer.get_object(index)?;
         info!("Object Props: {:?}", object.properties);
+        info!("Tile Props: {:?}", object);
+        info!("Tile Data Props: {:?}", tile_data);
+
         let object_tile = object.get_tile();
 
         object_tile.and_then(|tile| {
@@ -334,47 +259,6 @@ impl<'map> LayerTrait for ObjectLayer<'map> {
                 }
             })
         })
-
-        // object_tile.and_then(|tile| {
-        //     tile.
-        //     tile.get_tile().map(|tile_data| {
-        //         let Some(collision) = tile_data.collision.as_ref() else {
-        //             return Tile {
-        //                 id: tile.id(),
-        //             collision: None,
-        //             shapes: vec![],
-        //         };
-        //     };
-
-        //     let object_data = collision.object_data();
-        //     let shapes = object_data
-        //         .iter()
-        //         .map(|data| match data.shape {
-        //             tiled_rs::ObjectShape::Rect { width, height } => TileShape::Rect {
-        //                 width,
-        //                 height,
-        //                 x: data.x,
-        //                 y: data.y,
-        //             },
-        //             _ => {
-        //                 unimplemented!()
-        //             }
-        //         })
-        //         .collect();
-
-        //     Tile {
-        //         id: tile.id(),
-        //         // Retrieving a custom property named "collision" only if it exists and is a boolean
-        //         collision: tile_data.properties.get("collision").and_then(|v| {
-        //             if let tiled_rs::PropertyValue::BoolValue(b) = v {
-        //                 Some(*b)
-        //             } else {
-        //                 None
-        //             }
-        //         }),
-        //         shapes,
-        //     }
-        // })
     }
 }
 
