@@ -21,8 +21,8 @@ pub fn spawn_tiles(
     let map_tile_dimensions = tiled_map_assets
         .tile_layers()
         .fold(UVec2::ZERO, |acc, layer| {
-            let width = layer.width().max(0);
-            let height = layer.height().max(0);
+            let width = layer.width();
+            let height = layer.height();
             UVec2::new(acc.x.max(width), acc.y.max(height))
         });
 
@@ -47,31 +47,32 @@ pub fn spawn_tiles(
     let scale = scale_x.min(scale_y).max(f32::EPSILON);
     let tile_size = base_tile_size * scale;
 
-    commands.entity(stage_root).with_children(|parent: &mut bevy_ecs::relationship::RelatedSpawnerCommands<'_, ChildOf>| {
-        for (layer_index, layer) in tiled_map_assets.tile_layers().enumerate() {
-            let name = &layer.name;
+    commands.entity(stage_root).with_children(
+        |parent: &mut bevy_ecs::relationship::RelatedSpawnerCommands<'_, ChildOf>| {
+            for (layer_index, layer) in tiled_map_assets.tile_layers().enumerate() {
+                for (x, y) in layer.tile_positions() {
+                    spawn_tile_entity(
+                        parent,
+                        layer_index,
+                        &layer,
+                        tileset,
+                        (x, y, tile_size, base_tile_size, viewport_size, scale),
+                    );
+                }
+            }
+        },
+    );
 
-            let layer_z = match name {
-                n if n.starts_with("Background") => -10.0 + layer_index as f32 * 0.01,
-                n if n.starts_with("Ground") => 0.0 + layer_index as f32 * 0.01,
-                _ => layer_index as f32 * 0.01,
-            };
-
-            info!("Layer name: {}, z: {}", name, layer_z);
-
-            for (x, y) in layer.tile_positions() {
-                spawn_tile_entity(
-                    parent,
-                    &layer,
-                    tileset,
-                    x,
-                    y,
-                    tile_size,
-                    base_tile_size,
-                    viewport_size,
-                    scale,
-                    layer_z,
-                );
+    commands.entity(stage_root).with_children(|_parent| {
+        for object_layer in tiled_map_assets.object_layers() {
+            for index in object_layer.object_indexes() {
+                if let Some(object) = object_layer.object(index) {
+                    info!(
+                        "Spawned object '{:?}' at index {}",
+                        object,
+                        index
+                    );
+                }
             }
         }
     });
@@ -79,15 +80,17 @@ pub fn spawn_tiles(
 
 fn spawn_tile_entity(
     parent: &mut bevy_ecs::relationship::RelatedSpawnerCommands<'_, ChildOf>,
+    layer_index: usize,
     layer: &TileLayer,
     tileset: &Tileset,
-    x: u32,
-    y: u32,
-    tile_size: Vec2,
-    base_tile_size: Vec2,
-    viewport_size: Vec2,
-    scale: f32,
-    layer_z: f32,
+    (x, y, tile_size, base_tile_size, viewport_size, scale): (
+        u32,
+        u32,
+        Vec2,
+        Vec2,
+        Vec2,
+        f32,
+    ),
 ) {
     let Some(tile) = layer.tile(x, y) else {
         return;
@@ -96,11 +99,19 @@ fn spawn_tile_entity(
         return;
     };
 
+    let name = &layer.name;
+
+    let layer_z = match name {
+        n if n.starts_with("Background") => -10.0 + layer_index as f32 * 0.01,
+        n if n.starts_with("Ground") => 0.0 + layer_index as f32 * 0.01,
+        _ => layer_index as f32 * 0.01,
+    };
+
     let tile_x = (x as f32 + 0.5) * tile_size.x - viewport_size.x / 2.0;
     let tile_y = -((y as f32 + 0.5) * tile_size.y - viewport_size.y / 2.0);
     let image = Sprite::from_atlas_image(tile_sprite.texture, tile_sprite.atlas);
-    let transform = Transform::from_xyz(tile_x, tile_y, layer_z)
-        .with_scale(Vec3::new(scale, scale, 1.0));
+    let transform =
+        Transform::from_xyz(tile_x, tile_y, layer_z).with_scale(Vec3::new(scale, scale, 1.0));
 
     if tile.shapes.is_empty() {
         parent.spawn((StageTile, image, transform));

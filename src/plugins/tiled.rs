@@ -62,10 +62,7 @@ impl TiledMapAssets {
             let tiled_rs::LayerType::Objects(object_layer) = layer.layer_type() else {
                 return None;
             };
-            Some(ObjectLayer::new(
-                layer.name.clone(),
-                layer.as_object_layer().unwrap(),
-            ))
+            Some(ObjectLayer::new(layer.name.clone(), object_layer))
         })
     }
 }
@@ -103,16 +100,17 @@ impl<'map> TileLayer<'map> {
 }
 
 impl<'map> TileLayer<'map> {
+    #[allow(dead_code)]
     fn name(&self) -> &str {
         &self.name
     }
 
     pub fn width(&self) -> u32 {
-        self.inner_layer.width().map(|w| w as u32).unwrap_or(0)
+        self.inner_layer.width().unwrap_or(0)
     }
 
     pub fn height(&self) -> u32 {
-        self.inner_layer.height().map(|h| h as u32).unwrap_or(0)
+        self.inner_layer.height().unwrap_or(0)
     }
 
     pub fn tile_positions(&self) -> Vec<(u32, u32)> {
@@ -128,9 +126,7 @@ impl<'map> TileLayer<'map> {
     }
 
     pub fn tile(&self, x: u32, y: u32) -> Option<Tile> {
-        let Some(tile) = self.inner_layer.get_tile(x as i32, y as i32) else {
-            return None;
-        };
+        let tile = self.inner_layer.get_tile(x as i32, y as i32)?;
 
         tile.get_tile().map(|tile_data| {
             let Some(collision) = tile_data.collision.as_ref() else {
@@ -188,30 +184,19 @@ impl<'map> ObjectLayer<'map> {
 }
 
 impl<'map> ObjectLayer<'map> {
+    #[allow(dead_code)]
     fn name(&self) -> &str {
         &self.name
     }
 
-    fn width(&self) -> i32 {
-        self.inner_layer.map().width as i32
-    }
-
-    fn height(&self) -> i32 {
-        self.inner_layer.map().height as i32
-    }
-
-    fn object_indexes(&self) -> Vec<usize> {
+    pub fn object_indexes(&self) -> Vec<usize> {
         (0..self.inner_layer.objects().count())
-            .map(|i| i as usize)
             .collect()
     }
 
-    fn object(&self, index: usize) -> Option<Tile> {
+    pub fn object(&self, index: usize) -> Option<Tile> {
         let object = self.inner_layer.get_object(index)?;
-
-        let Some(tile_data) = object.tile_data() else {
-            return None;
-        };
+        let tile_data = object.tile_data()?;
 
         info!("Object Props: {:?}", object.properties);
         info!("Tile Props: {:?}", object);
