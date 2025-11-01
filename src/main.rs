@@ -1,3 +1,5 @@
+use std::env;
+
 mod adapter;
 mod core;
 mod plugins;
@@ -20,6 +22,13 @@ use crate::scenes::ScenesPlugin;
 pub struct MainCamera;
 
 fn main() {
+    let args: Vec<String> = env::args().collect();
+    println!("Starting keystone_cc with args: {:?}", args);
+    if args.len() > 1 {
+        core::domain::chunk_grammar_map::main();
+        return;
+    }
+
     App::new()
         .add_plugins((
             DefaultPlugins
