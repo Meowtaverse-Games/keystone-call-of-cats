@@ -62,3 +62,9 @@ pub struct PlayerMotion {
     pub ground_y: f32,
     pub is_jumping: bool,
 }
+
+#[derive(Component)]
+pub struct PlayerSpawnState {
+    pub translation: Vec3,
+    pub scale: f32,
+}

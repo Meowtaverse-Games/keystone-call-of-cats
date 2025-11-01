@@ -9,9 +9,12 @@ use crate::{
         assets::{PLAYER_IDLE_KEYS, PLAYER_RUN_KEYS},
         stage::components::{
             Player, PlayerAnimation, PlayerAnimationClips, PlayerAnimationState, PlayerMotion,
+            PlayerSpawnState,
         },
     },
 };
+
+use super::ui::ScriptEditorState;
 
 pub fn spawn_player(
     commands: &mut Commands,
@@ -82,6 +85,10 @@ pub fn spawn_player(
                 ground_y: y,
                 is_jumping: false,
             },
+            PlayerSpawnState {
+                translation: Vec3::new(x, y, 1.0),
+                scale,
+            },
             RigidBody::Dynamic,
             GravityScale(40.0),
             LockedAxes::ROTATION_LOCKED,
@@ -139,10 +146,18 @@ type MoveCharacterComponents<'w> = (
 );
 
 pub fn move_character(
+    editor_state: Res<ScriptEditorState>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut query: Query<MoveCharacterComponents<'_>, With<Player>>,
 ) {
     for (transform, mut velocity, mut motion, mut sprite, colliding) in &mut query {
+        if !editor_state.controls_enabled {
+            velocity.x = 0.0;
+            motion.is_moving = false;
+            sprite.flip_x = motion.direction < 0.0;
+            continue;
+        }
+
         let mut input_direction: f32 = 0.0;
 
         if keyboard_input.pressed(KeyCode::ArrowRight) {
@@ -181,5 +196,59 @@ pub fn move_character(
         }
 
         sprite.flip_x = motion.direction < 0.0;
+    }
+}
+
+pub fn reset_player_position(
+    mut editor_state: ResMut<ScriptEditorState>,
+    mut query: Query<
+        (
+            &mut Transform,
+            &mut LinearVelocity,
+            &mut PlayerMotion,
+            &mut PlayerAnimation,
+            &mut Sprite,
+            &PlayerSpawnState,
+        ),
+        With<Player>,
+    >,
+) {
+    if !editor_state.pending_player_reset {
+        return;
+    }
+
+    editor_state.pending_player_reset = false;
+
+    for (mut transform, mut velocity, mut motion, mut animation, mut sprite, spawn) in &mut query {
+        transform.translation = spawn.translation;
+        transform.scale = Vec3::splat(spawn.scale);
+
+        *velocity = LinearVelocity(Vec2::ZERO);
+
+        motion.direction = 1.0;
+        motion.is_moving = false;
+        motion.is_jumping = false;
+        motion.ground_y = spawn.translation.y;
+
+        animation.state = if !animation.clips.idle.is_empty() {
+            PlayerAnimationState::Idle
+        } else if !animation.clips.run.is_empty() {
+            PlayerAnimationState::Run
+        } else {
+            animation.state
+        };
+        animation.frame_index = 0;
+        animation.timer.reset();
+
+        if let Some(handle) = animation
+            .current_frames()
+            .first()
+            .cloned()
+            .or_else(|| animation.clips.run.first().cloned())
+            .or_else(|| animation.clips.idle.first().cloned())
+        {
+            sprite.image = handle;
+        }
+        sprite.flip_x = false;
     }
 }

@@ -9,7 +9,7 @@ use bevy::{prelude::*, window::PrimaryWindow};
 use super::components::*;
 use crate::plugins::{TiledMapAssets, assets_loader::AssetStore, design_resolution::*};
 
-pub use player::{PLAYER_OBJECT_ID, animate_character, move_character};
+pub use player::{PLAYER_OBJECT_ID, animate_character, move_character, reset_player_position};
 pub use stone::{
     StoneCommandMessage, carry_riders_with_stone, handle_stone_messages, update_stone_behavior,
 };
