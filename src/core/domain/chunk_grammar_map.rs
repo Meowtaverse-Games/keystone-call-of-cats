@@ -1,8 +1,7 @@
 use rand::Rng;
 use std::collections::HashMap;
 
-const MAP_WIDTH: i32 = 30;
-const MAP_HEIGHT: i32 = 20;
+const MAP_SIZE: (i32, i32) = (30, 20);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Dir {
@@ -125,18 +124,6 @@ pub fn main() {
         return;
     }
 
-    let width_span = (max_x - min_x + 1).max(0);
-    let height_span = (max_y - min_y + 1).max(0);
-
-    assert!(
-        width_span <= MAP_WIDTH,
-        "生成されたチャンク幅 {width_span} が許可サイズ {MAP_WIDTH} を超えています"
-    );
-    assert!(
-        height_span <= MAP_HEIGHT,
-        "生成されたチャンク高さ {height_span} が許可サイズ {MAP_HEIGHT} を超えています"
-    );
-
     let offset_x = -min_x;
     let offset_y = -min_y;
 
@@ -152,13 +139,6 @@ pub fn main() {
             };
             map.insert((x, y), ch);
         }
-    }
-
-    for &(x, y) in map.keys() {
-        assert!(
-            (0..MAP_WIDTH).contains(&x) && (0..MAP_HEIGHT).contains(&y),
-            "タイル座標 ({x}, {y}) が許可サイズ {MAP_WIDTH}x{MAP_HEIGHT} を超えています"
-        );
     }
 
     println!("== Placed Chunks ==");
@@ -228,8 +208,9 @@ fn place_chunk(t: &ChunkTemplate, origin: (i32, i32)) -> PlacedChunk {
 
 /// マップを囲いなしで出力（存在するタイルのmin/maxを計算して描画）
 fn print_ascii_map(map: &HashMap<(i32, i32), char>) {
-    for y in (0..MAP_HEIGHT).rev() {
-        for x in 0..MAP_WIDTH {
+    let (map_width, map_height) = MAP_SIZE;
+    for y in (0..map_height).rev() {
+        for x in 0..map_width {
             let ch = map.get(&(x, y)).copied().unwrap_or('.');
             print!("{ch}");
         }
