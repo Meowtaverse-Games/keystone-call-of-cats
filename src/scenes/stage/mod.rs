@@ -9,7 +9,8 @@ mod systems;
 pub struct StagePlugin;
 impl Plugin for StagePlugin {
     fn build(&self, app: &mut App) {
-        app.add_message::<systems::StoneCommandMessage>()
+        app.init_resource::<systems::StageProgression>()
+            .add_message::<systems::StoneCommandMessage>()
             .add_systems(OnEnter(GameState::Stage), systems::setup)
             .add_systems(OnExit(GameState::Stage), systems::cleanup)
             .add_systems(
@@ -28,6 +29,18 @@ impl Plugin for StagePlugin {
                 Update,
                 systems::check_goal_completion
                     .after(systems::move_character)
+                    .run_if(in_state(GameState::Stage)),
+            )
+            .add_systems(
+                Update,
+                systems::advance_stage_if_cleared
+                    .after(systems::check_goal_completion)
+                    .run_if(in_state(GameState::Stage)),
+            )
+            .add_systems(
+                Update,
+                systems::reload_stage_if_needed
+                    .after(systems::advance_stage_if_cleared)
                     .run_if(in_state(GameState::Stage)),
             )
             .add_systems(

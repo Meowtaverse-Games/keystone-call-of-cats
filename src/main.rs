@@ -49,7 +49,10 @@ fn main() {
             Color::linear_rgb(0.0, 0.0, 0.0),
         ))
         .add_plugins(TiledPlugin::new(
-            "assets/tiled/stage1-1.tmx",
+            vec![
+                "assets/tiled/stage1-1.tmx".to_string(),
+                "assets/tiled/stage1-2.tmx".to_string(),
+            ],
             "assets/tiled/super-platfomer-assets.tsx",
         ))
         .add_plugins(AssetLoaderPlugin)
