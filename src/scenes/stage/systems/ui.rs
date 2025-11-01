@@ -22,6 +22,7 @@ pub struct ScriptEditorState {
     pub last_commands: Vec<ScriptCommand>,
     pub controls_enabled: bool,
     pub pending_player_reset: bool,
+    pub stage_cleared: bool,
 }
 
 impl ScriptEditorState {
@@ -179,6 +180,7 @@ pub fn ui(
                                 editor.controls_enabled = false;
                                 editor.pending_player_reset = true;
                                 editor.last_run_feedback = Some("実行を停止しました。".to_string());
+                                editor.stage_cleared = false;
                             } else {
                                 match script_executor.run(Language::Rhai, &editor.buffer) {
                                     Ok(commands) => {
@@ -198,12 +200,14 @@ pub fn ui(
                                         editor.last_run_feedback = Some(summary);
                                         editor.controls_enabled = true;
                                         editor.pending_player_reset = true;
+                                        editor.stage_cleared = false;
                                     }
                                     Err(err) => {
                                         editor.last_commands.clear();
                                         editor.last_run_feedback = Some(err.to_string());
                                         editor.controls_enabled = false;
                                         editor.pending_player_reset = false;
+                                        editor.stage_cleared = false;
                                         warn!("Failed to execute script: {}", err);
                                     }
                                 }
@@ -212,6 +216,7 @@ pub fn ui(
                         EditorMenuAction::LoadExample => {
                             editor.controls_enabled = false;
                             editor.pending_player_reset = false;
+                            editor.stage_cleared = false;
                         }
                         EditorMenuAction::SaveBuffer => {}
                     }
@@ -258,6 +263,7 @@ pub fn ui(
 
                 if text_edit_response.changed() {
                     editor.controls_enabled = false;
+                    editor.stage_cleared = false;
                 }
             });
         })

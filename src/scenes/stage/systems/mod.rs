@@ -9,6 +9,7 @@ use bevy::{prelude::*, window::PrimaryWindow};
 use super::components::*;
 use crate::plugins::{TiledMapAssets, assets_loader::AssetStore, design_resolution::*};
 
+pub use goal::check_goal_completion;
 pub use player::{PLAYER_OBJECT_ID, animate_character, move_character, reset_player_position};
 pub use stone::{
     StoneCommandMessage, carry_riders_with_stone, handle_stone_messages, update_stone_behavior,
@@ -16,7 +17,12 @@ pub use stone::{
 use ui::ScriptEditorState;
 pub use ui::ui;
 
-type StageCleanupFilter = Or<(With<StageBackground>, With<Player>, With<StageDebugMarker>)>;
+type StageCleanupFilter = Or<(
+    With<StageBackground>,
+    With<Player>,
+    With<StageDebugMarker>,
+    With<Goal>,
+)>;
 
 fn compute_stage_root_translation(viewport: &ScaledViewport, window_size: Vec2) -> Vec3 {
     let translation = Vec2::new(

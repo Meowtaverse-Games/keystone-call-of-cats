@@ -3,7 +3,13 @@ use bevy::prelude::*;
 
 pub const GOAL_OBJECT_ID: u32 = 194;
 
-use crate::{plugins::design_resolution::ScaledViewport, plugins::tiled::*};
+use crate::{
+    plugins::design_resolution::ScaledViewport,
+    plugins::tiled::*,
+    scenes::stage::components::{Goal, Player, PlayerMotion},
+};
+
+use super::ui::ScriptEditorState;
 
 pub fn spawn_goal(
     commands: &mut Commands,
@@ -41,6 +47,9 @@ pub fn spawn_goal(
             Transform::from_xyz(object_x, object_y, 0.0).with_scale(Vec3::new(scale, scale, 1.0));
 
         parent.spawn((
+            Goal {
+                half_extents: real_tile_size * 0.5,
+            },
             image_from_tileset(tileset, goal_object.id).unwrap(),
             transform,
             RigidBody::Static,
@@ -53,4 +62,44 @@ fn image_from_tileset(tileset: &Tileset, id: u32) -> Option<Sprite> {
     let tile_sprite = tileset.atlas_sprite(id)?;
     let image = Sprite::from_atlas_image(tile_sprite.texture, tile_sprite.atlas);
     Some(image)
+}
+
+type GoalCheckPlayer<'w> = (
+    &'w GlobalTransform,
+    &'w mut LinearVelocity,
+    &'w mut PlayerMotion,
+);
+
+pub fn check_goal_completion(
+    mut editor_state: ResMut<ScriptEditorState>,
+    mut player_query: Query<GoalCheckPlayer<'_>, With<Player>>,
+    goals: Query<(&GlobalTransform, &Goal)>,
+) {
+    if !editor_state.controls_enabled || editor_state.stage_cleared {
+        return;
+    }
+
+    let Ok((player_transform, mut velocity, mut motion)) = player_query.single_mut() else {
+        return;
+    };
+
+    let player_pos = player_transform.translation().truncate();
+
+    for (goal_transform, goal) in &goals {
+        let goal_pos = goal_transform.translation().truncate();
+        let delta = player_pos - goal_pos;
+
+        if delta.x.abs() <= goal.half_extents.x && delta.y.abs() <= goal.half_extents.y {
+            velocity.x = 0.0;
+            velocity.y = 0.0;
+            motion.is_moving = false;
+            motion.is_jumping = false;
+
+            editor_state.controls_enabled = false;
+            editor_state.stage_cleared = true;
+            editor_state.pending_player_reset = false;
+            editor_state.last_run_feedback = Some("ステージクリア！".to_string());
+            break;
+        }
+    }
 }
