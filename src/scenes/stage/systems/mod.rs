@@ -6,7 +6,7 @@ mod ui;
 
 use std::path::Path;
 
-use bevy::{prelude::*, window::PrimaryWindow};
+use bevy::{ecs::system::SystemParam, prelude::*, window::PrimaryWindow};
 
 use super::components::*;
 use crate::plugins::{
@@ -218,54 +218,57 @@ fn cleanup_stage_entities(
         }
     }
 }
+#[derive(SystemParam)]
+pub struct StageSetupParams<'w, 's> {
+    asset_store: Res<'w, AssetStore>,
+    tiled_maps: Res<'w, TiledMapLibrary>,
+    viewport: Res<'w, ScaledViewport>,
+    asset_server: Res<'w, AssetServer>,
+    atlas_layouts: ResMut<'w, Assets<TextureAtlasLayout>>,
+    window_query: Query<'w, 's, &'static Window, With<PrimaryWindow>>,
+    progression: ResMut<'w, StageProgression>,
+    editor_state: Option<ResMut<'w, ScriptEditorState>>,
+}
 
-pub fn setup(
-    mut commands: Commands,
-    asset_store: Res<AssetStore>,
-    tiled_maps: Res<TiledMapLibrary>,
-    viewport: Res<ScaledViewport>,
-    asset_server: Res<AssetServer>,
-    mut atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
-    window_query: Query<&Window, With<PrimaryWindow>>,
-    mut progression: ResMut<StageProgression>,
-    editor_state: Option<ResMut<ScriptEditorState>>,
-) {
-    if editor_state.is_none() {
+pub fn setup(mut commands: Commands, mut params: StageSetupParams) {
+    if params.editor_state.is_none() {
         ui::init_editor_state(&mut commands);
     }
 
-    if tiled_maps.is_empty() {
+    if params.tiled_maps.is_empty() {
         warn!("Stage setup: no Tiled maps available");
         return;
     }
 
-    progression.reset_if_needed(&tiled_maps);
+    params.progression.reset_if_needed(&params.tiled_maps);
 
-    let Some(current_map) = progression.current_map(&tiled_maps) else {
+    let Some(current_map) = params.progression.current_map(&params.tiled_maps) else {
         warn!(
             "Stage setup: no map available for index {}",
-            progression.current_index()
+            params.progression.current_index()
         );
         return;
     };
 
-    let Ok(window) = window_query.single() else {
+    let Ok(window) = params.window_query.single() else {
         warn!("Stage setup: primary window not available");
         return;
     };
 
-    let stage_root_position = compute_stage_root_translation(&viewport, window.resolution.size());
+    let stage_root_position =
+        compute_stage_root_translation(params.viewport.as_ref(), window.resolution.size());
     spawn_stage(
         &mut commands,
-        Transform::from_translation(stage_root_position).with_scale(Vec3::splat(viewport.scale)),
+        Transform::from_translation(stage_root_position)
+            .with_scale(Vec3::splat(params.viewport.scale)),
         current_map,
-        &viewport,
-        &asset_store,
-        &asset_server,
-        &mut atlas_layouts,
+        params.viewport.as_ref(),
+        params.asset_store.as_ref(),
+        params.asset_server.as_ref(),
+        params.atlas_layouts.as_mut(),
     );
 
-    progression.clear_reload();
+    params.progression.clear_reload();
 }
 
 pub fn cleanup(
@@ -310,57 +313,67 @@ pub fn advance_stage_if_cleared(
     editor_state.stage_cleared = false;
 }
 
-pub fn reload_stage_if_needed(
-    mut commands: Commands,
-    asset_store: Res<AssetStore>,
-    tiled_maps: Res<TiledMapLibrary>,
-    viewport: Res<ScaledViewport>,
-    asset_server: Res<AssetServer>,
-    mut atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
-    window_query: Query<&Window, With<PrimaryWindow>>,
-    mut progression: ResMut<StageProgression>,
-    stage_roots: Query<Entity, With<StageRoot>>,
-    query: Query<Entity, StageCleanupFilter>,
-    tiles: Query<Entity, With<StageTile>>,
-    stones: Query<Entity, With<StoneRune>>,
-    editor_state: Option<ResMut<ScriptEditorState>>,
-) {
-    if !progression.take_pending_reload() {
+#[derive(SystemParam)]
+pub struct StageReloadParams<'w, 's> {
+    asset_store: Res<'w, AssetStore>,
+    tiled_maps: Res<'w, TiledMapLibrary>,
+    viewport: Res<'w, ScaledViewport>,
+    asset_server: Res<'w, AssetServer>,
+    atlas_layouts: ResMut<'w, Assets<TextureAtlasLayout>>,
+    window_query: Query<'w, 's, &'static Window, With<PrimaryWindow>>,
+    progression: ResMut<'w, StageProgression>,
+    stage_roots: Query<'w, 's, Entity, With<StageRoot>>,
+    query: Query<'w, 's, Entity, StageCleanupFilter>,
+    tiles: Query<'w, 's, Entity, With<StageTile>>,
+    stones: Query<'w, 's, Entity, With<StoneRune>>,
+    editor_state: Option<ResMut<'w, ScriptEditorState>>,
+}
+
+pub fn reload_stage_if_needed(mut commands: Commands, mut params: StageReloadParams) {
+    if !params.progression.take_pending_reload() {
         return;
     }
 
-    if tiled_maps.is_empty() {
+    if params.tiled_maps.is_empty() {
         warn!("Stage reload requested but no maps are available");
         return;
     }
 
-    let Some(current_map) = progression.current_map(&tiled_maps) else {
+    let Some(current_map) = params.progression.current_map(&params.tiled_maps) else {
         warn!(
             "Stage reload: no map available for index {}",
-            progression.current_index()
+            params.progression.current_index()
         );
         return;
     };
 
-    cleanup_stage_entities(&mut commands, &stage_roots, &query, &tiles, &stones);
+    cleanup_stage_entities(
+        &mut commands,
+        &params.stage_roots,
+        &params.query,
+        &params.tiles,
+        &params.stones,
+    );
 
-    let Ok(window) = window_query.single() else {
+    let Ok(window) = params.window_query.single() else {
         warn!("Stage reload: primary window not available");
         return;
     };
 
-    let stage_root_position = compute_stage_root_translation(&viewport, window.resolution.size());
+    let stage_root_position =
+        compute_stage_root_translation(params.viewport.as_ref(), window.resolution.size());
     spawn_stage(
         &mut commands,
-        Transform::from_translation(stage_root_position).with_scale(Vec3::splat(viewport.scale)),
+        Transform::from_translation(stage_root_position)
+            .with_scale(Vec3::splat(params.viewport.scale)),
         current_map,
-        &viewport,
-        &asset_store,
-        &asset_server,
-        &mut atlas_layouts,
+        params.viewport.as_ref(),
+        params.asset_store.as_ref(),
+        params.asset_server.as_ref(),
+        params.atlas_layouts.as_mut(),
     );
 
-    if let Some(mut editor) = editor_state {
+    if let Some(editor) = params.editor_state.as_deref_mut() {
         let label = map_label(current_map);
         editor.controls_enabled = false;
         editor.pending_player_reset = false;
