@@ -1,6 +1,9 @@
 use rand::Rng;
 use std::collections::HashMap;
 
+const MAP_WIDTH: i32 = 30;
+const MAP_HEIGHT: i32 = 20;
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Dir {
     Left,
@@ -76,8 +79,8 @@ pub fn main() {
     ];
     let goal_chunk_factories: &[fn() -> ChunkTemplate] = &[chunk_goal_platform, chunk_goal_lower];
 
-    // 左から右へ最大6チャンク（start + 0~5 mid + goal）を連結する
-    let max_mid_chunks = 5;
+    // 左から右へ最大5チャンク（start + 0~3 mid + goal）を連結する
+    let max_mid_chunks: usize = 3;
     let mid_count = if mid_chunk_factories.is_empty() {
         0
     } else {
@@ -104,16 +107,58 @@ pub fn main() {
     let placed_goal = place_next(&goal_template, Dir::Left, current_exit);
     placed_chunks.push(placed_goal);
 
+    let mut min_x = i32::MAX;
+    let mut max_x = i32::MIN;
+    let mut min_y = i32::MAX;
+    let mut max_y = i32::MIN;
+    for chunk in &placed_chunks {
+        for tile in &chunk.tiles_world {
+            min_x = min_x.min(tile.x);
+            max_x = max_x.max(tile.x);
+            min_y = min_y.min(tile.y);
+            max_y = max_y.max(tile.y);
+        }
+    }
+
+    if min_x == i32::MAX {
+        println!("[empty]");
+        return;
+    }
+
+    let width_span = (max_x - min_x + 1).max(0);
+    let height_span = (max_y - min_y + 1).max(0);
+
+    assert!(
+        width_span <= MAP_WIDTH,
+        "生成されたチャンク幅 {width_span} が許可サイズ {MAP_WIDTH} を超えています"
+    );
+    assert!(
+        height_span <= MAP_HEIGHT,
+        "生成されたチャンク高さ {height_span} が許可サイズ {MAP_HEIGHT} を超えています"
+    );
+
+    let offset_x = -min_x;
+    let offset_y = -min_y;
+
     let mut map = HashMap::<(i32, i32), char>::new();
     for chunk in &placed_chunks {
         for tile in &chunk.tiles_world {
+            let x = tile.x + offset_x;
+            let y = tile.y + offset_y;
             let ch = match tile.kind {
                 TileKind::Solid => '#',
                 TileKind::PlayerSpawn => '@',
                 TileKind::Goal => 'G',
             };
-            map.insert((tile.x, tile.y), ch);
+            map.insert((x, y), ch);
         }
+    }
+
+    for &(x, y) in map.keys() {
+        assert!(
+            (0..MAP_WIDTH).contains(&x) && (0..MAP_HEIGHT).contains(&y),
+            "タイル座標 ({x}, {y}) が許可サイズ {MAP_WIDTH}x{MAP_HEIGHT} を超えています"
+        );
     }
 
     println!("== Placed Chunks ==");
@@ -183,20 +228,8 @@ fn place_chunk(t: &ChunkTemplate, origin: (i32, i32)) -> PlacedChunk {
 
 /// マップを囲いなしで出力（存在するタイルのmin/maxを計算して描画）
 fn print_ascii_map(map: &HashMap<(i32, i32), char>) {
-    if map.is_empty() {
-        println!("[empty]");
-        return;
-    }
-    let (mut min_x, mut max_x, mut min_y, mut max_y) = (i32::MAX, i32::MIN, i32::MAX, i32::MIN);
-    for &(x, y) in map.keys() {
-        min_x = min_x.min(x);
-        max_x = max_x.max(x);
-        min_y = min_y.min(y);
-        max_y = max_y.max(y);
-    }
-    // 上から下へ（yは大→小）、左から右へ（xは小→大）
-    for y in (min_y..=max_y).rev() {
-        for x in min_x..=max_x {
+    for y in (0..MAP_HEIGHT).rev() {
+        for x in 0..MAP_WIDTH {
             let ch = map.get(&(x, y)).copied().unwrap_or('.');
             print!("{ch}");
         }
