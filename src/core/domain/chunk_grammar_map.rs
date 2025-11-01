@@ -158,7 +158,7 @@ pub fn main() {
         println!("- {}", chunk.id);
     }
 
-    println!("\n== ASCII Map ==");
+    println!();
     print_ascii_map(&map);
 }
 
