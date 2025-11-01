@@ -145,6 +145,15 @@ type MoveCharacterComponents<'w> = (
     Option<&'w CollidingEntities>,
 );
 
+type ResetPlayerComponents<'w> = (
+    &'w mut Transform,
+    &'w mut LinearVelocity,
+    &'w mut PlayerMotion,
+    &'w mut PlayerAnimation,
+    &'w mut Sprite,
+    &'w PlayerSpawnState,
+);
+
 pub fn move_character(
     editor_state: Res<ScriptEditorState>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
@@ -201,17 +210,7 @@ pub fn move_character(
 
 pub fn reset_player_position(
     mut editor_state: ResMut<ScriptEditorState>,
-    mut query: Query<
-        (
-            &mut Transform,
-            &mut LinearVelocity,
-            &mut PlayerMotion,
-            &mut PlayerAnimation,
-            &mut Sprite,
-            &PlayerSpawnState,
-        ),
-        With<Player>,
-    >,
+    mut query: Query<ResetPlayerComponents<'_>, With<Player>>,
 ) {
     if !editor_state.pending_player_reset {
         return;
