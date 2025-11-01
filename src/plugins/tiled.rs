@@ -15,7 +15,7 @@ pub use tile_layer::{TileLayer, TileShape};
 /// Configures how the [`TiledPlugin`] loads Tiled data.
 #[derive(Resource, Clone)]
 pub struct TiledLoaderConfig {
-    pub map_path: String,
+    pub map_paths: Vec<String>,
     pub tsx_path: String,
 }
 
@@ -25,10 +25,10 @@ pub struct TiledPlugin {
 }
 
 impl TiledPlugin {
-    pub fn new(map_path: impl Into<String>, tsx_path: impl Into<String>) -> Self {
+    pub fn new(map_paths: Vec<String>, tsx_path: impl Into<String>) -> Self {
         Self {
             config: TiledLoaderConfig {
-                map_path: map_path.into(),
+                map_paths,
                 tsx_path: tsx_path.into(),
             },
         }
@@ -42,14 +42,19 @@ impl Plugin for TiledPlugin {
     }
 }
 
-#[derive(Resource)]
+#[derive(Clone)]
 pub struct TiledMapAssets {
+    map_path: String,
     _tsx: Arc<tiled_rs::Tileset>,
     map: Arc<tiled_rs::Map>,
     tilesets: Vec<Tileset>,
 }
 
 impl TiledMapAssets {
+    pub fn map_path(&self) -> &str {
+        &self.map_path
+    }
+
     pub fn tilesets(&self) -> &[Tileset] {
         &self.tilesets
     }
@@ -92,6 +97,29 @@ impl TiledMapAssets {
     pub fn scaled_tile_size_and_scale(&self, viewport_size: Vec2, tile_size: Vec2) -> (Vec2, f32) {
         let scale = (viewport_size / self.map_pixel_size(tile_size)).min_element();
         (tile_size * scale, scale)
+    }
+}
+
+#[derive(Resource, Default)]
+pub struct TiledMapLibrary {
+    maps: Vec<TiledMapAssets>,
+}
+
+impl TiledMapLibrary {
+    pub fn new(maps: Vec<TiledMapAssets>) -> Self {
+        Self { maps }
+    }
+
+    pub fn len(&self) -> usize {
+        self.maps.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.maps.is_empty()
+    }
+
+    pub fn get(&self, index: usize) -> Option<&TiledMapAssets> {
+        self.maps.get(index)
     }
 }
 
@@ -152,37 +180,54 @@ fn load_tiled_assets(
 ) {
     let mut loader = tiled_rs::Loader::new();
 
-    let map = match loader.load_tmx_map(&config.map_path) {
-        Ok(map) => map,
-        Err(err) => {
-            error!(target: "tiled", "Failed to load TMX map '{}': {err}", config.map_path);
-            return;
-        }
-    };
-
     let tsx = match loader.load_tsx_tileset(&config.tsx_path) {
-        Ok(tileset) => tileset,
+        Ok(tileset) => Arc::new(tileset),
         Err(err) => {
-            error!(target: "tiled", "Failed to load TSX tilesets from '{}': {err}", config.tsx_path);
+            error!(
+                target: "tiled",
+                "Failed to load TSX tilesets from '{}': {err}",
+                config.tsx_path
+            );
             return;
         }
     };
 
-    let tilesets = map
-        .tilesets()
-        .iter()
-        .map(|tileset| load_tileset(tileset, &asset_server, &mut layouts))
-        .collect::<Vec<_>>();
+    let mut loaded_maps = Vec::new();
 
-    map.tilesets().iter().for_each(|tileset| {
-        info!(target: "tiled", "Loaded tileset: {}", tileset.name);
-    });
+    for map_path in &config.map_paths {
+        let map = match loader.load_tmx_map(map_path) {
+            Ok(map) => map,
+            Err(err) => {
+                error!(
+                    target: "tiled",
+                    "Failed to load TMX map '{}': {err}",
+                    map_path
+                );
+                continue;
+            }
+        };
 
-    commands.insert_resource(TiledMapAssets {
-        _tsx: Arc::new(tsx),
-        map: Arc::new(map),
-        tilesets,
-    });
+        let tilesets = map
+            .tilesets()
+            .iter()
+            .map(|tileset| load_tileset(tileset, &asset_server, &mut layouts))
+            .collect::<Vec<_>>();
+
+        map.tilesets().iter().for_each(|tileset| {
+            info!(target: "tiled", "Loaded tileset '{}' for map '{}'", tileset.name, map_path);
+        });
+
+        info!(target: "tiled", "Loaded TMX map '{}'", map_path);
+
+        loaded_maps.push(TiledMapAssets {
+            map_path: map_path.clone(),
+            _tsx: Arc::clone(&tsx),
+            map: Arc::new(map),
+            tilesets,
+        });
+    }
+
+    commands.insert_resource(TiledMapLibrary::new(loaded_maps));
 }
 
 fn load_tileset(
