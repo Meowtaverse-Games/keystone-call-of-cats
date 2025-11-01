@@ -26,6 +26,12 @@ impl Plugin for StagePlugin {
             )
             .add_systems(
                 Update,
+                systems::check_goal_completion
+                    .after(systems::move_character)
+                    .run_if(in_state(GameState::Stage)),
+            )
+            .add_systems(
+                Update,
                 systems::carry_riders_with_stone
                     .after(systems::update_stone_behavior)
                     .run_if(in_state(GameState::Stage)),

@@ -18,6 +18,11 @@ pub struct StoneRune;
 #[derive(Component)]
 pub struct Player;
 
+#[derive(Component)]
+pub struct Goal {
+    pub half_extents: Vec2,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PlayerAnimationState {
     Idle,
