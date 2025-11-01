@@ -1,6 +1,5 @@
-// 標準ライブラリのみ：Bevyなし、RONなし、CA分割なしの最小実装
+use rand::Rng;
 use std::collections::HashMap;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Dir {
@@ -63,44 +62,8 @@ struct PlacedChunk {
     tiles_world: Vec<Tile>,
 }
 
-struct LcgRng {
-    state: u64,
-}
-
-impl LcgRng {
-    fn new(mut seed: u64) -> Self {
-        if seed == 0 {
-            seed = 0x4d5f_5365; // 適当な非ゼロ種
-        }
-        Self { state: seed }
-    }
-
-    fn from_system_time() -> Self {
-        let seed = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map(|d| d.as_nanos() as u64)
-            .unwrap_or(0x5eed_1234);
-        Self::new(seed ^ seed.rotate_left(13))
-    }
-
-    fn next_u32(&mut self) -> u32 {
-        // Numerical Recipes の LCG 定数
-        self.state = self.state.wrapping_mul(6364136223846793005).wrapping_add(1);
-        (self.state >> 32) as u32
-    }
-
-    fn next_range(&mut self, upper: usize) -> usize {
-        assert!(upper > 0, "upper must be > 0");
-        if upper.is_power_of_two() {
-            (self.next_u32() as usize) & (upper - 1)
-        } else {
-            (self.next_u32() as usize) % upper
-        }
-    }
-}
-
 pub fn main() {
-    let mut rng = LcgRng::from_system_time();
+    let mut rng = rand::rng();
 
     // チャンク候補を用意。入口向きはすべて Left で統一。
     let start = chunk_start_flat();
@@ -118,7 +81,7 @@ pub fn main() {
     let mid_count = if mid_chunk_factories.is_empty() {
         0
     } else {
-        rng.next_range(max_mid_chunks + 1)
+        rng.random_range(0..=max_mid_chunks)
     };
 
     let mut placed_chunks = Vec::<PlacedChunk>::new();
@@ -128,7 +91,7 @@ pub fn main() {
     placed_chunks.push(placed_start);
 
     for _ in 0..mid_count {
-        let template_fn = mid_chunk_factories[rng.next_range(mid_chunk_factories.len())];
+        let template_fn = mid_chunk_factories[rng.random_range(0..mid_chunk_factories.len())];
         let template = template_fn();
         let template_id = template.id;
         let placed = place_next(&template, Dir::Left, current_exit);
@@ -137,7 +100,7 @@ pub fn main() {
         placed_chunks.push(placed);
     }
 
-    let goal_template = goal_chunk_factories[rng.next_range(goal_chunk_factories.len())]();
+    let goal_template = goal_chunk_factories[rng.random_range(0..goal_chunk_factories.len())]();
     let placed_goal = place_next(&goal_template, Dir::Left, current_exit);
     placed_chunks.push(placed_goal);
 
