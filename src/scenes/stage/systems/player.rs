@@ -1,25 +1,26 @@
 use avian2d::prelude::*;
 use bevy::{input::ButtonInput, prelude::*};
 
+pub const PLAYER_OBJECT_ID: u32 = 408;
+
 use crate::{
     plugins::assets_loader::AssetStore,
     scenes::{
         assets::{PLAYER_IDLE_KEYS, PLAYER_RUN_KEYS},
         stage::components::{
             Player, PlayerAnimation, PlayerAnimationClips, PlayerAnimationState, PlayerMotion,
+            PlayerSpawnState,
         },
     },
 };
 
-const PLAYER_SCALE: f32 = 4.0;
-const PLAYER_GROUND_Y: f32 = -100.0;
+use super::ui::ScriptEditorState;
 
 pub fn spawn_player(
     commands: &mut Commands,
     stage_root: Entity,
     asset_store: &AssetStore,
-    spawn_x: f32,
-    spawn_y: f32,
+    (x, y, scale): (f32, f32, f32),
 ) -> bool {
     let idle_frames: Vec<Handle<Image>> = PLAYER_IDLE_KEYS
         .iter()
@@ -79,20 +80,22 @@ pub fn spawn_player(
             PlayerMotion {
                 speed: 90.0,
                 direction: 1.0,
-                min_x: -150.0,
-                max_x: 150.0,
                 is_moving: matches!(initial_state, PlayerAnimationState::Run),
                 jump_speed: 280.0,
-                ground_y: PLAYER_GROUND_Y,
+                ground_y: y,
                 is_jumping: false,
+            },
+            PlayerSpawnState {
+                translation: Vec3::new(x, y, 1.0),
+                scale,
             },
             RigidBody::Dynamic,
             GravityScale(40.0),
             LockedAxes::ROTATION_LOCKED,
-            Collider::circle(PLAYER_SCALE * 2.5),
+            Collider::circle(scale * 2.5),
             CollidingEntities::default(),
             DebugRender::default().with_collider_color(Color::srgb(1.0, 0.0, 0.0)),
-            Transform::from_xyz(spawn_x, spawn_y, 1.0).with_scale(Vec3::splat(PLAYER_SCALE)),
+            Transform::from_xyz(x, y, 1.0).with_scale(Vec3::splat(scale)),
         ));
     });
 
@@ -142,11 +145,28 @@ type MoveCharacterComponents<'w> = (
     Option<&'w CollidingEntities>,
 );
 
+type ResetPlayerComponents<'w> = (
+    &'w mut Transform,
+    &'w mut LinearVelocity,
+    &'w mut PlayerMotion,
+    &'w mut PlayerAnimation,
+    &'w mut Sprite,
+    &'w PlayerSpawnState,
+);
+
 pub fn move_character(
+    editor_state: Res<ScriptEditorState>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut query: Query<MoveCharacterComponents<'_>, With<Player>>,
 ) {
     for (transform, mut velocity, mut motion, mut sprite, colliding) in &mut query {
+        if !editor_state.controls_enabled {
+            velocity.x = 0.0;
+            motion.is_moving = false;
+            sprite.flip_x = motion.direction < 0.0;
+            continue;
+        }
+
         let mut input_direction: f32 = 0.0;
 
         if keyboard_input.pressed(KeyCode::ArrowRight) {
@@ -162,13 +182,8 @@ pub fn move_character(
 
         if input_direction.abs() > f32::EPSILON {
             let direction = input_direction.signum();
-            let blocked_left = direction < 0.0 && transform.translation.x <= motion.min_x;
-            let blocked_right = direction > 0.0 && transform.translation.x >= motion.max_x;
-
-            if !(blocked_left || blocked_right) {
-                desired_velocity_x = direction * motion.speed;
-                facing_direction = direction;
-            }
+            desired_velocity_x = direction * motion.speed;
+            facing_direction = direction;
         }
 
         velocity.x = desired_velocity_x;
@@ -190,5 +205,49 @@ pub fn move_character(
         }
 
         sprite.flip_x = motion.direction < 0.0;
+    }
+}
+
+pub fn reset_player_position(
+    mut editor_state: ResMut<ScriptEditorState>,
+    mut query: Query<ResetPlayerComponents<'_>, With<Player>>,
+) {
+    if !editor_state.pending_player_reset {
+        return;
+    }
+
+    editor_state.pending_player_reset = false;
+
+    for (mut transform, mut velocity, mut motion, mut animation, mut sprite, spawn) in &mut query {
+        transform.translation = spawn.translation;
+        transform.scale = Vec3::splat(spawn.scale);
+
+        *velocity = LinearVelocity(Vec2::ZERO);
+
+        motion.direction = 1.0;
+        motion.is_moving = false;
+        motion.is_jumping = false;
+        motion.ground_y = spawn.translation.y;
+
+        animation.state = if !animation.clips.idle.is_empty() {
+            PlayerAnimationState::Idle
+        } else if !animation.clips.run.is_empty() {
+            PlayerAnimationState::Run
+        } else {
+            animation.state
+        };
+        animation.frame_index = 0;
+        animation.timer.reset();
+
+        if let Some(handle) = animation
+            .current_frames()
+            .first()
+            .cloned()
+            .or_else(|| animation.clips.run.first().cloned())
+            .or_else(|| animation.clips.idle.first().cloned())
+        {
+            sprite.image = handle;
+        }
+        sprite.flip_x = false;
     }
 }

@@ -17,13 +17,17 @@ use crate::{
 pub struct ScriptEditorState {
     pub buffer: String,
     pub last_action: Option<EditorMenuAction>,
+    pub last_action_was_running: bool,
     pub last_run_feedback: Option<String>,
     pub last_commands: Vec<ScriptCommand>,
+    pub controls_enabled: bool,
+    pub pending_player_reset: bool,
 }
 
 impl ScriptEditorState {
-    fn apply_action(&mut self, action: EditorMenuAction) {
+    fn apply_action(&mut self, action: EditorMenuAction, was_running: bool) {
         self.last_action = Some(action);
+        self.last_action_was_running = was_running;
     }
 }
 
@@ -37,10 +41,11 @@ pub enum EditorMenuAction {
 impl EditorMenuAction {
     const ALL: [Self; 3] = [Self::LoadExample, Self::SaveBuffer, Self::RunScript];
 
-    fn label(self) -> &'static str {
+    fn label(self, is_running: bool) -> &'static str {
         match self {
             Self::LoadExample => "Load",
             Self::SaveBuffer => "Save",
+            Self::RunScript if is_running => "Stop",
             Self::RunScript => "Run",
         }
     }
@@ -61,10 +66,11 @@ impl EditorMenuAction {
         }
     }
 
-    fn status_text(self) -> &'static str {
+    fn status_text(self, was_running: bool) -> &'static str {
         match self {
             Self::LoadExample => "メニュー「ロード（F1）」を選択しました。",
             Self::SaveBuffer => "メニュー「セーブ（F2）」を選択しました。",
+            Self::RunScript if was_running => "メニュー「停止（F3）」を選択しました。",
             Self::RunScript => "メニュー「実行（F3）」を選択しました。",
         }
     }
@@ -154,7 +160,11 @@ pub fn ui(
                     ui.spacing_mut().item_spacing.x = 8.0;
 
                     for action in EditorMenuAction::ALL {
-                        let label = format!("{} ({})", action.label(), action.key_text());
+                        let label = format!(
+                            "{} ({})",
+                            action.label(editor.controls_enabled),
+                            action.key_text()
+                        );
                         if ui.button(label).clicked() {
                             pending_action = Some(action);
                         }
@@ -162,37 +172,55 @@ pub fn ui(
                 });
 
                 if let Some(action) = pending_action {
-                    if action == EditorMenuAction::RunScript {
-                        match script_executor.run(Language::Rhai, &editor.buffer) {
-                            Ok(commands) => {
-                                let summary = if commands.is_empty() {
-                                    "命令は返されませんでした。".to_string()
-                                } else {
-                                    format!(
-                                        "{}件の命令: {}",
-                                        commands.len(),
-                                        summarize_commands(&commands)
-                                    )
-                                };
-                                stone_writer.write(StoneCommandMessage {
-                                    commands: commands.clone(),
-                                });
-                                editor.last_commands = commands;
-                                editor.last_run_feedback = Some(summary);
-                            }
-                            Err(err) => {
-                                editor.last_commands.clear();
-                                editor.last_run_feedback = Some(err.to_string());
-                                warn!("Failed to execute script: {}", err);
+                    let was_running = editor.controls_enabled;
+                    match action {
+                        EditorMenuAction::RunScript => {
+                            if was_running {
+                                editor.controls_enabled = false;
+                                editor.pending_player_reset = true;
+                                editor.last_run_feedback = Some("実行を停止しました。".to_string());
+                            } else {
+                                match script_executor.run(Language::Rhai, &editor.buffer) {
+                                    Ok(commands) => {
+                                        let summary = if commands.is_empty() {
+                                            "命令は返されませんでした。".to_string()
+                                        } else {
+                                            format!(
+                                                "{}件の命令: {}",
+                                                commands.len(),
+                                                summarize_commands(&commands)
+                                            )
+                                        };
+                                        stone_writer.write(StoneCommandMessage {
+                                            commands: commands.clone(),
+                                        });
+                                        editor.last_commands = commands;
+                                        editor.last_run_feedback = Some(summary);
+                                        editor.controls_enabled = true;
+                                        editor.pending_player_reset = true;
+                                    }
+                                    Err(err) => {
+                                        editor.last_commands.clear();
+                                        editor.last_run_feedback = Some(err.to_string());
+                                        editor.controls_enabled = false;
+                                        editor.pending_player_reset = false;
+                                        warn!("Failed to execute script: {}", err);
+                                    }
+                                }
                             }
                         }
+                        EditorMenuAction::LoadExample => {
+                            editor.controls_enabled = false;
+                            editor.pending_player_reset = false;
+                        }
+                        EditorMenuAction::SaveBuffer => {}
                     }
-                    editor.apply_action(action);
+                    editor.apply_action(action, was_running);
                 }
 
                 if let Some(action) = editor.last_action {
                     info!("Editor action: {:?}", action);
-                    ui.label(action.status_text());
+                    ui.label(action.status_text(editor.last_action_was_running));
                     editor.last_action = None;
                 }
 
@@ -217,7 +245,7 @@ pub fn ui(
                     available_size.y = ui.max_rect().height();
                 }
 
-                ui.add_sized(
+                let text_edit_response = ui.add_sized(
                     available_size,
                     egui::TextEdit::multiline(&mut editor.buffer)
                         .font(FontSelection::FontId(FontId::new(
@@ -227,6 +255,10 @@ pub fn ui(
                         .code_editor()
                         .desired_width(f32::INFINITY),
                 );
+
+                if text_edit_response.changed() {
+                    editor.controls_enabled = false;
+                }
             });
         })
         .response

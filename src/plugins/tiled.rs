@@ -4,7 +4,13 @@ use bevy::asset::Assets;
 use bevy::math::UVec2;
 use bevy::prelude::*;
 
-use tiled as tiled_rs;
+use tiled::{self as tiled_rs};
+
+mod object_layer;
+mod tile_layer;
+
+pub use object_layer::ObjectLayer;
+pub use tile_layer::{TileLayer, TileShape};
 
 /// Configures how the [`TiledPlugin`] loads Tiled data.
 #[derive(Resource, Clone)]
@@ -48,69 +54,44 @@ impl TiledMapAssets {
         &self.tilesets
     }
 
-    pub fn layers<'a>(&'a self) -> impl Iterator<Item = Layer<'a>> + 'a {
-        self.map.layers().map(|layer| {
-            let layer_type = match layer.layer_type() {
-                tiled_rs::LayerType::Tiles(_) => LayerType::Tile,
-                tiled_rs::LayerType::Objects(_) => LayerType::Object,
-                tiled_rs::LayerType::Image(_) => LayerType::Image,
-                tiled_rs::LayerType::Group(_) => LayerType::Group,
+    pub fn tile_layers<'a>(&'a self) -> impl Iterator<Item = TileLayer<'a>> + 'a {
+        self.map.layers().filter_map(|layer| {
+            let tiled_rs::LayerType::Tiles(tile_layer) = layer.layer_type() else {
+                return None;
             };
-
-            Layer {
-                name: layer.name.clone(),
-                layer_type,
-                tiled_tile_layer: layer.as_tile_layer().unwrap(),
-            }
+            Some(TileLayer::new(layer.name.clone(), tile_layer))
         })
     }
-}
 
-#[derive(Debug)]
-pub enum LayerType {
-    Tile,
-    Object,
-    Image,
-    Group,
-}
-
-#[allow(dead_code)]
-pub struct Tile {
-    pub id: u32,
-    pub collision: Option<bool>,
-}
-
-pub struct Layer<'map> {
-    pub name: String,
-    pub layer_type: LayerType,
-    tiled_tile_layer: tiled_rs::TileLayer<'map>,
-}
-
-impl<'a> Layer<'a> {
-    pub fn width(&self) -> i32 {
-        self.tiled_tile_layer.width().unwrap() as i32
-    }
-
-    pub fn height(&self) -> i32 {
-        self.tiled_tile_layer.height().unwrap() as i32
-    }
-
-    pub fn tile(&self, x: i32, y: i32) -> Option<Tile> {
-        if let Some(tile) = self.tiled_tile_layer.get_tile(x, y) {
-            tile.get_tile().map(|tile_data| Tile {
-                id: tile.id(),
-                // Retrieving a custom property named "collision" only if it exists and is a boolean
-                collision: tile_data.properties.get("collision").and_then(|v| {
-                    if let tiled_rs::PropertyValue::BoolValue(b) = v {
-                        Some(*b)
-                    } else {
-                        None
-                    }
-                }),
+    pub fn object_layer<'a>(&'a self) -> ObjectLayer<'a> {
+        self.map
+            .layers()
+            .filter_map(|layer| {
+                let tiled_rs::LayerType::Objects(object_layer) = layer.layer_type() else {
+                    return None;
+                };
+                Some(ObjectLayer::new(layer.name.clone(), object_layer))
             })
-        } else {
-            None
-        }
+            .next()
+            .expect("No object layers found in Tiled map")
+    }
+
+    pub fn map_size(&self) -> Vec2 {
+        self.tile_layers().fold(Vec2::ZERO, |acc, layer| {
+            let width = layer.width() as f32;
+            let height = layer.height() as f32;
+            Vec2::new(acc.x.max(width), acc.y.max(height))
+        })
+    }
+
+    pub fn map_pixel_size(&self, tile_size: Vec2) -> Vec2 {
+        let map_size = self.map_size();
+        Vec2::new(map_size.x * tile_size.x, map_size.y * tile_size.y)
+    }
+
+    pub fn scaled_tile_size_and_scale(&self, viewport_size: Vec2, tile_size: Vec2) -> (Vec2, f32) {
+        let scale = (viewport_size / self.map_pixel_size(tile_size)).min_element();
+        (tile_size * scale, scale)
     }
 }
 
@@ -138,6 +119,15 @@ impl Tileset {
                 index: local_id as usize,
             },
         })
+    }
+
+    pub fn tile_size(&self) -> Vec2 {
+        let raw_tile_size = self
+            .image()
+            .map(|image| image.tile_size)
+            .expect("Failed to get tile size from tileset image");
+
+        Vec2::new(raw_tile_size.x as f32, raw_tile_size.y as f32)
     }
 }
 
@@ -171,7 +161,7 @@ fn load_tiled_assets(
     };
 
     let tsx = match loader.load_tsx_tileset(&config.tsx_path) {
-        Ok(tilesets) => tilesets,
+        Ok(tileset) => tileset,
         Err(err) => {
             error!(target: "tiled", "Failed to load TSX tilesets from '{}': {err}", config.tsx_path);
             return;

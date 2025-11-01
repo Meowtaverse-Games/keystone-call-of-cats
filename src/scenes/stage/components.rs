@@ -57,10 +57,14 @@ impl PlayerAnimation {
 pub struct PlayerMotion {
     pub speed: f32,
     pub direction: f32,
-    pub min_x: f32,
-    pub max_x: f32,
     pub is_moving: bool,
     pub jump_speed: f32,
     pub ground_y: f32,
     pub is_jumping: bool,
+}
+
+#[derive(Component)]
+pub struct PlayerSpawnState {
+    pub translation: Vec3,
+    pub scale: f32,
 }
