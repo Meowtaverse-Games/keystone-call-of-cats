@@ -211,11 +211,10 @@ fn random_goal_target(
     if min_origin_x > max_origin_x {
         return None;
     }
-    let origin_x = if min_origin_x == max_origin_x {
-        min_origin_x
-    } else {
-        rng.random_range((min_origin_x as i32)..=(max_origin_x as i32)) as isize
-    };
+    let origin_x = max_origin_x;
+    if origin_x < min_origin_x {
+        return None;
+    }
     let origin_y = if max_origin_y == 0 {
         0
     } else {
@@ -278,6 +277,13 @@ fn search_path_to_goal(
             continue;
         }
         let placed = place_next(&template, Dir::Left, current_exit);
+        if placed
+            .tiles_world
+            .iter()
+            .any(|tile| tile.x < 0 || tile.x >= MAP_SIZE.0 || tile.y < 0 || tile.y >= MAP_SIZE.1)
+        {
+            continue;
+        }
         let Some(next_exit) = pick_exit_dir(&placed, Dir::Right) else {
             continue;
         };
