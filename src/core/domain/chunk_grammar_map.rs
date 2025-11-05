@@ -1,4 +1,4 @@
-use rand::{seq::SliceRandom, Rng};
+use rand::{Rng, seq::SliceRandom};
 use std::collections::{HashMap, HashSet};
 
 const MAP_SIZE: (isize, isize) = (24, 4);
@@ -75,35 +75,9 @@ pub fn main() {
     ];
     let goal_chunk_factories: &[fn() -> ChunkTemplate] = &[chunk_goal_platform, chunk_goal_lower];
 
-    let placed_chunks = try_build_random_path(
-        &mut rng,
-        &start,
-        mid_chunk_factories,
-        goal_chunk_factories,
-    )
-    .expect("チャンクの組み合わせでパスが見つからなかった");
-
-    let mut min_x = isize::MAX;
-    let mut max_x = isize::MIN;
-    let mut min_y = isize::MAX;
-    let mut max_y = isize::MIN;
-    for chunk in &placed_chunks {
-        for tile in &chunk.tiles_world {
-            min_x = min_x.min(tile.x);
-            max_x = max_x.max(tile.x);
-            min_y = min_y.min(tile.y);
-            max_y = max_y.max(tile.y);
-        }
-    }
-
-    if min_x == isize::MAX {
-        println!("[empty]");
-        return;
-    }
-
-    let offset_x = -(min_x as isize);
-    let offset_y = -(min_y as isize);
-
+    let placed_chunks =
+        try_build_random_path(&mut rng, &start, mid_chunk_factories, goal_chunk_factories)
+            .expect("チャンクの組み合わせでパスが見つからなかった");
 
     println!("== Placed Chunks ==");
     for chunk in &placed_chunks {
@@ -111,31 +85,27 @@ pub fn main() {
     }
     println!();
 
-    let map = build_tile_char_map(&placed_chunks, offset_x, offset_y);
+    println!("== ASCII Map ==");
+    let map = build_tile_char_map(&placed_chunks);
     print_ascii_map(&map);
 }
 
 fn build_tile_char_map(
     placed_chunks: &[PlacedChunk],
-    offset_x: isize,
-    offset_y: isize,
 ) -> HashMap<(isize, isize), char> {
     let mut map = HashMap::<(isize, isize), char>::new();
     for chunk in placed_chunks {
         for tile in &chunk.tiles_world {
-            let x = tile.x + offset_x;
-            let y = tile.y + offset_y;
             let ch = match tile.kind {
                 TileKind::Solid => '#',
                 TileKind::PlayerSpawn => '@',
                 TileKind::Goal => 'G',
             };
-            map.insert((x, y), ch);
+            map.insert((tile.x, tile.y), ch);
         }
     }
     map
 }
-
 
 /// 指定方向の出口を1つ拾う（最小実装：最初の一致を返す）
 fn pick_exit_dir(p: &PlacedChunk, want: Dir) -> Option<((isize, isize), Dir)> {
@@ -273,7 +243,10 @@ fn random_goal_target(
     } else {
         rng.random_range(0..=(max_origin_y as i32)) as isize
     };
-    let entry = (origin_x + goal_template.entry.x, origin_y + goal_template.entry.y);
+    let entry = (
+        origin_x + goal_template.entry.x,
+        origin_y + goal_template.entry.y,
+    );
     if entry.0 < start_pos.0 {
         return None;
     }
