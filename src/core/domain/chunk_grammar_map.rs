@@ -90,9 +90,7 @@ pub fn main() {
     print_ascii_map(&map);
 }
 
-fn build_tile_char_map(
-    placed_chunks: &[PlacedChunk],
-) -> HashMap<(isize, isize), char> {
+fn build_tile_char_map(placed_chunks: &[PlacedChunk]) -> HashMap<(isize, isize), char> {
     let mut map = HashMap::<(isize, isize), char>::new();
     for chunk in placed_chunks {
         for tile in &chunk.tiles_world {
