@@ -1,7 +1,7 @@
 use rand::{Rng, seq::SliceRandom};
 use std::collections::{HashMap, HashSet};
 
-const MAP_SIZE: (isize, isize) = (24, 4);
+const MAP_SIZE: (isize, isize) = (30, 20);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Dir {
@@ -67,6 +67,7 @@ pub fn main() {
 
     let start = chunk_start_flat();
     let mid_chunk_factories: &[fn() -> ChunkTemplate] = &[
+        chunk_simple_platform,
         chunk_flat_bridge,
         chunk_gap_jump,
         chunk_plateau,
@@ -167,9 +168,6 @@ fn try_build_random_path(
     mid_chunk_factories: &[fn() -> ChunkTemplate],
     goal_chunk_factories: &[fn() -> ChunkTemplate],
 ) -> Option<Vec<PlacedChunk>> {
-    if goal_chunk_factories.is_empty() {
-        return None;
-    }
     let placed_start = place_chunk(start, (0, 0));
     let start_exit = pick_exit_dir(&placed_start, Dir::Right)?;
 
@@ -179,6 +177,10 @@ fn try_build_random_path(
         let Some(goal_target) = random_goal_target(rng, start_exit, &goal_template) else {
             continue;
         };
+        println!(
+            "Trying goal at origin {:?}, entry {:?}",
+            goal_target.origin, goal_target.entry
+        );
         if let Some(mut mid_chunks) =
             find_path_to_goal(rng, mid_chunk_factories, start_exit, goal_target.entry)
         {
@@ -371,6 +373,35 @@ fn chunk_start_flat() -> ChunkTemplate {
                 y: 1,
                 kind: TileKind::Solid,
             });
+            v
+        },
+    }
+}
+
+fn chunk_simple_platform() -> ChunkTemplate {
+    // 緩やかな傾斜で高さが少し上がるシンプルな橋。
+    ChunkTemplate {
+        id: "flat_platform",
+        size: (2, 4),
+        entry: Port {
+            x: 0,
+            y: 1,
+            dir: Dir::Left,
+        },
+        exits: vec![Port {
+            x: 1,
+            y: 1,
+            dir: Dir::Right,
+        }],
+        tiles: {
+            let mut v = vec![];
+            for x in 0..2 {
+                v.push(Tile {
+                    x,
+                    y: 0,
+                    kind: TileKind::Solid,
+                });
+            }
             v
         },
     }
@@ -625,11 +656,11 @@ fn chunk_stairs_down_small() -> ChunkTemplate {
 fn chunk_goal_platform() -> ChunkTemplate {
     // 6x4。左から入って中段にゴールがある足場。右にも出口。
     /*
-      ......
-      I....G 
-      ######
-      ......
-     */
+     ......
+     I....G
+     ######
+     ......
+    */
     ChunkTemplate {
         id: "goal_platform",
         size: (6, 4),
@@ -665,6 +696,12 @@ fn chunk_goal_platform() -> ChunkTemplate {
 
 fn chunk_goal_lower() -> ChunkTemplate {
     // 6x4。低めの足場にゴールが配置されたバリエーション。
+    /*
+     ......
+     ......
+     I.##.G
+     ######
+    */
     ChunkTemplate {
         id: "goal_lower",
         size: (6, 4),
@@ -717,4 +754,3 @@ fn print_ascii_map(map: &HashMap<(isize, isize), char>) {
         println!();
     }
 }
-
