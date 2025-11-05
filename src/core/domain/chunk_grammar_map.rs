@@ -183,9 +183,7 @@ fn try_build_random_path(
         return None;
     }
     let placed_start = place_chunk(start, (0, 0));
-    let Some(start_exit) = pick_exit_dir(&placed_start, Dir::Right) else {
-        return None;
-    };
+    let start_exit = pick_exit_dir(&placed_start, Dir::Right)?;
 
     const MAX_ATTEMPTS: usize = 32;
     for _ in 0..MAX_ATTEMPTS {
