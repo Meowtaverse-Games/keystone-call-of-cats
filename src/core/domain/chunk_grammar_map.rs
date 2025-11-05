@@ -1,7 +1,7 @@
-use rand::Rng;
-use std::collections::HashMap;
+use rand::{seq::SliceRandom, Rng};
+use std::collections::{HashMap, HashSet};
 
-const MAP_SIZE: (i32, i32) = (30, 20);
+const MAP_SIZE: (isize, isize) = (24, 4);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Dir {
@@ -23,8 +23,8 @@ impl Dir {
 
 #[derive(Clone, Copy, Debug)]
 struct Port {
-    x: i32,
-    y: i32,
+    x: isize,
+    y: isize,
     dir: Dir, // チャンク外へ出る（または入る）向き
 }
 
@@ -37,8 +37,8 @@ enum TileKind {
 
 #[derive(Clone, Copy, Debug)]
 struct Tile {
-    x: i32,
-    y: i32,
+    x: isize,
+    y: isize,
     kind: TileKind,
 }
 
@@ -46,7 +46,7 @@ struct Tile {
 #[derive(Clone, Debug)]
 struct ChunkTemplate {
     id: &'static str,
-    size: (i32, i32), // (width, height)
+    size: (isize, isize), // (width, height)
     entry: Port,
     exits: Vec<Port>,
     tiles: Vec<Tile>,
@@ -57,10 +57,10 @@ struct ChunkTemplate {
 #[allow(dead_code)]
 struct PlacedChunk {
     id: String,
-    origin: (i32, i32), // 左下原点
-    size: (i32, i32),
-    entry_world: (i32, i32),
-    exits_world: Vec<((i32, i32), Dir)>, // 位置＋方向
+    origin: (isize, isize), // 左下原点
+    size: (isize, isize),
+    entry_world: (isize, isize),
+    exits_world: Vec<((isize, isize), Dir)>, // 位置＋方向
     tiles_world: Vec<Tile>,
 }
 
@@ -78,38 +78,27 @@ pub fn main() {
     ];
     let goal_chunk_factories: &[fn() -> ChunkTemplate] = &[chunk_goal_platform, chunk_goal_lower];
 
-    // 左から右へ最大5チャンク（start + 0~3 mid + goal）を連結する
-    let max_mid_chunks: usize = 3;
-    let mid_count = if mid_chunk_factories.is_empty() {
-        0
-    } else {
-        rng.random_range(0..=max_mid_chunks)
-    };
+    let placed_chunks = try_build_random_path(
+        &mut rng,
+        &start,
+        mid_chunk_factories,
+        goal_chunk_factories,
+    )
+    .unwrap_or_else(|| {
+        const FALLBACK_MAX_MID_CHUNKS: usize = 3;
+        build_default_world(
+            &mut rng,
+            &start,
+            mid_chunk_factories,
+            goal_chunk_factories,
+            FALLBACK_MAX_MID_CHUNKS,
+        )
+    });
 
-    let mut placed_chunks = Vec::<PlacedChunk>::new();
-    let placed_start = place_chunk(&start, (0, 0));
-    let mut current_exit =
-        pick_exit_dir(&placed_start, Dir::Right).expect("start に Right 出口が必要");
-    placed_chunks.push(placed_start);
-
-    for _ in 0..mid_count {
-        let template_fn = mid_chunk_factories[rng.random_range(0..mid_chunk_factories.len())];
-        let template = template_fn();
-        let template_id = template.id;
-        let placed = place_next(&template, Dir::Left, current_exit);
-        current_exit = pick_exit_dir(&placed, Dir::Right)
-            .unwrap_or_else(|| panic!("{template_id} に Right 出口が必要"));
-        placed_chunks.push(placed);
-    }
-
-    let goal_template = goal_chunk_factories[rng.random_range(0..goal_chunk_factories.len())]();
-    let placed_goal = place_next(&goal_template, Dir::Left, current_exit);
-    placed_chunks.push(placed_goal);
-
-    let mut min_x = i32::MAX;
-    let mut max_x = i32::MIN;
-    let mut min_y = i32::MAX;
-    let mut max_y = i32::MIN;
+    let mut min_x = isize::MAX;
+    let mut max_x = isize::MIN;
+    let mut min_y = isize::MAX;
+    let mut max_y = isize::MIN;
     for chunk in &placed_chunks {
         for tile in &chunk.tiles_world {
             min_x = min_x.min(tile.x);
@@ -119,19 +108,19 @@ pub fn main() {
         }
     }
 
-    if min_x == i32::MAX {
+    if min_x == isize::MAX {
         println!("[empty]");
         return;
     }
 
-    let offset_x = -min_x;
-    let offset_y = -min_y;
+    let offset_x = -(min_x as isize);
+    let offset_y = -(min_y as isize);
 
-    let mut map = HashMap::<(i32, i32), char>::new();
+    let mut map = HashMap::<(isize, isize), char>::new();
     for chunk in &placed_chunks {
         for tile in &chunk.tiles_world {
-            let x = tile.x + offset_x;
-            let y = tile.y + offset_y;
+            let x = (tile.x as isize + offset_x) as isize;
+            let y = (tile.y as isize + offset_y) as isize;
             let ch = match tile.kind {
                 TileKind::Solid => '#',
                 TileKind::PlayerSpawn => '@',
@@ -151,7 +140,7 @@ pub fn main() {
 }
 
 /// 指定方向の出口を1つ拾う（最小実装：最初の一致を返す）
-fn pick_exit_dir(p: &PlacedChunk, want: Dir) -> Option<((i32, i32), Dir)> {
+fn pick_exit_dir(p: &PlacedChunk, want: Dir) -> Option<((isize, isize), Dir)> {
     p.exits_world.iter().copied().find(|(_, d)| *d == want)
 }
 
@@ -159,7 +148,7 @@ fn pick_exit_dir(p: &PlacedChunk, want: Dir) -> Option<((i32, i32), Dir)> {
 fn place_next(
     template: &ChunkTemplate,
     required_entry_dir: Dir,
-    exit: ((i32, i32), Dir),
+    exit: ((isize, isize), Dir),
 ) -> PlacedChunk {
     assert_eq!(
         template.entry.dir, required_entry_dir,
@@ -179,7 +168,7 @@ fn place_next(
 }
 
 /// チャンクをワールドに敷く（原点のみ指定）
-fn place_chunk(t: &ChunkTemplate, origin: (i32, i32)) -> PlacedChunk {
+fn place_chunk(t: &ChunkTemplate, origin: (isize, isize)) -> PlacedChunk {
     let entry_world = (origin.0 + t.entry.x, origin.1 + t.entry.y);
     let exits_world = t
         .exits
@@ -207,7 +196,7 @@ fn place_chunk(t: &ChunkTemplate, origin: (i32, i32)) -> PlacedChunk {
 }
 
 /// マップを囲いなしで出力（存在するタイルのmin/maxを計算して描画）
-fn print_ascii_map(map: &HashMap<(i32, i32), char>) {
+fn print_ascii_map(map: &HashMap<(isize, isize), char>) {
     let (map_width, map_height) = MAP_SIZE;
     for y in (0..map_height).rev() {
         for x in 0..map_width {
@@ -216,6 +205,209 @@ fn print_ascii_map(map: &HashMap<(i32, i32), char>) {
         }
         println!();
     }
+}
+
+fn build_default_world(
+    rng: &mut impl Rng,
+    start: &ChunkTemplate,
+    mid_chunk_factories: &[fn() -> ChunkTemplate],
+    goal_chunk_factories: &[fn() -> ChunkTemplate],
+    max_mid_chunks: usize,
+) -> Vec<PlacedChunk> {
+    let mut placed_chunks = Vec::new();
+    let placed_start = place_chunk(start, (0, 0));
+    let mut current_exit =
+        pick_exit_dir(&placed_start, Dir::Right).expect("start に Right 出口が必要");
+    placed_chunks.push(placed_start);
+
+    for _ in 0..rng.random_range(0..=max_mid_chunks) {
+        if mid_chunk_factories.is_empty() {
+            break;
+        }
+        let mut candidates: Vec<fn() -> ChunkTemplate> = mid_chunk_factories.to_vec();
+        candidates.shuffle(rng);
+        let mut placed_mid = None;
+        for template_fn in candidates {
+            let template = template_fn();
+            let exit_pos = current_exit.0;
+            if exit_pos.0 < template.entry.x || exit_pos.1 < template.entry.y {
+                continue;
+            }
+            let placed = place_next(&template, Dir::Left, current_exit);
+            let Some(next_exit) = pick_exit_dir(&placed, Dir::Right) else {
+                continue;
+            };
+            placed_mid = Some((placed, next_exit));
+            break;
+        }
+        let Some((placed, next_exit)) = placed_mid else {
+            break;
+        };
+        current_exit = next_exit;
+        placed_chunks.push(placed);
+    }
+
+    assert!(
+        !goal_chunk_factories.is_empty(),
+        "goal_chunk_factories must not be empty"
+    );
+    let goal_template = goal_chunk_factories[rng.random_range(0..goal_chunk_factories.len())]();
+    let placed_goal = place_next(&goal_template, Dir::Left, current_exit);
+    placed_chunks.push(placed_goal);
+    placed_chunks
+}
+
+fn try_build_random_path(
+    rng: &mut impl Rng,
+    start: &ChunkTemplate,
+    mid_chunk_factories: &[fn() -> ChunkTemplate],
+    goal_chunk_factories: &[fn() -> ChunkTemplate],
+) -> Option<Vec<PlacedChunk>> {
+    if goal_chunk_factories.is_empty() {
+        return None;
+    }
+    let placed_start = place_chunk(start, (0, 0));
+    let Some(start_exit) = pick_exit_dir(&placed_start, Dir::Right) else {
+        return None;
+    };
+
+    const MAX_ATTEMPTS: usize = 32;
+    for _ in 0..MAX_ATTEMPTS {
+        let goal_template = goal_chunk_factories[rng.random_range(0..goal_chunk_factories.len())]();
+        let Some(goal_target) = random_goal_target(rng, start_exit, &goal_template) else {
+            continue;
+        };
+        if let Some(mut mid_chunks) =
+            find_path_to_goal(rng, mid_chunk_factories, start_exit, goal_target.entry)
+        {
+            let final_exit = mid_chunks
+                .last()
+                .and_then(|chunk| pick_exit_dir(chunk, Dir::Right))
+                .unwrap_or(start_exit);
+            if final_exit.0 != goal_target.entry {
+                continue;
+            }
+
+            let mut layout = Vec::with_capacity(mid_chunks.len() + 2);
+            layout.push(placed_start.clone());
+            layout.append(&mut mid_chunks);
+            layout.push(place_chunk(&goal_template, goal_target.origin));
+            return Some(layout);
+        }
+    }
+    None
+}
+
+struct GoalTarget {
+    origin: (isize, isize),
+    entry: (isize, isize),
+}
+
+fn random_goal_target(
+    rng: &mut impl Rng,
+    start_exit: ((isize, isize), Dir),
+    goal_template: &ChunkTemplate,
+) -> Option<GoalTarget> {
+    let (start_pos, _) = start_exit;
+    let max_origin_x = MAP_SIZE.0.checked_sub(goal_template.size.0)?;
+    let max_origin_y = MAP_SIZE.1.checked_sub(goal_template.size.1)?;
+    let min_origin_x = start_pos.0.checked_sub(goal_template.entry.x)?;
+    if min_origin_x > max_origin_x {
+        return None;
+    }
+    let origin_x = if min_origin_x == max_origin_x {
+        min_origin_x
+    } else {
+        rng.random_range((min_origin_x as i32)..=(max_origin_x as i32)) as isize
+    };
+    let origin_y = if max_origin_y == 0 {
+        0
+    } else {
+        rng.random_range(0..=(max_origin_y as i32)) as isize
+    };
+    let entry = (origin_x + goal_template.entry.x, origin_y + goal_template.entry.y);
+    if entry.0 < start_pos.0 {
+        return None;
+    }
+    Some(GoalTarget {
+        origin: (origin_x, origin_y),
+        entry,
+    })
+}
+
+fn find_path_to_goal(
+    rng: &mut impl Rng,
+    mid_chunk_factories: &[fn() -> ChunkTemplate],
+    start_exit: ((isize, isize), Dir),
+    goal_entry: (isize, isize),
+) -> Option<Vec<PlacedChunk>> {
+    let mut path = Vec::new();
+    let mut visited = HashSet::new();
+    visited.insert(start_exit.0);
+    search_path_to_goal(
+        rng,
+        mid_chunk_factories,
+        start_exit,
+        goal_entry,
+        &mut path,
+        &mut visited,
+    )
+}
+
+fn search_path_to_goal(
+    rng: &mut impl Rng,
+    mid_chunk_factories: &[fn() -> ChunkTemplate],
+    current_exit: ((isize, isize), Dir),
+    goal_entry: (isize, isize),
+    path: &mut Vec<PlacedChunk>,
+    visited: &mut HashSet<(isize, isize)>,
+) -> Option<Vec<PlacedChunk>> {
+    let (current_pos, _) = current_exit;
+    if current_pos == goal_entry {
+        return Some(path.clone());
+    }
+    if current_pos.0 > goal_entry.0 {
+        return None;
+    }
+
+    let mut candidates: Vec<fn() -> ChunkTemplate> = mid_chunk_factories.to_vec();
+    candidates.shuffle(rng);
+
+    for template_fn in candidates {
+        let template = template_fn();
+        if current_pos.0 < template.entry.x || current_pos.1 < template.entry.y {
+            continue;
+        }
+        let placed = place_next(&template, Dir::Left, current_exit);
+        let Some(next_exit) = pick_exit_dir(&placed, Dir::Right) else {
+            continue;
+        };
+        let (next_pos, _) = next_exit;
+        if next_pos.0 > goal_entry.0 {
+            continue;
+        }
+        if next_pos.1 >= MAP_SIZE.1 {
+            continue;
+        }
+        if !visited.insert(next_pos) {
+            continue;
+        }
+        path.push(placed);
+        if let Some(result) = search_path_to_goal(
+            rng,
+            mid_chunk_factories,
+            next_exit,
+            goal_entry,
+            path,
+            visited,
+        ) {
+            return Some(result);
+        }
+        path.pop();
+        visited.remove(&next_pos);
+    }
+
+    None
 }
 
 /* ------------------------- サンプルチャンク ------------------------- */
@@ -545,7 +737,7 @@ fn chunk_goal_platform() -> ChunkTemplate {
                 });
             }
             v.push(Tile {
-                x: 4,
+                x: 5,
                 y: 2,
                 kind: TileKind::Goal,
             });
@@ -589,7 +781,7 @@ fn chunk_goal_lower() -> ChunkTemplate {
                 kind: TileKind::Solid,
             });
             v.push(Tile {
-                x: 4,
+                x: 5,
                 y: 1,
                 kind: TileKind::Goal,
             });
