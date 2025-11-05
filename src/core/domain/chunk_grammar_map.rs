@@ -42,17 +42,15 @@ struct Tile {
     kind: TileKind,
 }
 
-/// チャンク＝小さな局所マップ。entry（入口）と複数exits（出口）を持つ。
 #[derive(Clone, Debug)]
 struct ChunkTemplate {
     id: &'static str,
-    size: (isize, isize), // (width, height)
+    size: (isize, isize),
     entry: Port,
     exits: Vec<Port>,
     tiles: Vec<Tile>,
 }
 
-/// 実際にワールドのどこに置かれたか
 #[derive(Clone, Debug)]
 #[allow(dead_code)]
 struct PlacedChunk {
@@ -67,7 +65,6 @@ struct PlacedChunk {
 pub fn main() {
     let mut rng = rand::rng();
 
-    // チャンク候補を用意。入口向きはすべて Left で統一。
     let start = chunk_start_flat();
     let mid_chunk_factories: &[fn() -> ChunkTemplate] = &[
         chunk_flat_bridge,
@@ -84,16 +81,7 @@ pub fn main() {
         mid_chunk_factories,
         goal_chunk_factories,
     )
-    .unwrap_or_else(|| {
-        const FALLBACK_MAX_MID_CHUNKS: usize = 3;
-        build_default_world(
-            &mut rng,
-            &start,
-            mid_chunk_factories,
-            goal_chunk_factories,
-            FALLBACK_MAX_MID_CHUNKS,
-        )
-    });
+    .expect("チャンクの組み合わせでパスが見つからなかった");
 
     let mut min_x = isize::MAX;
     let mut max_x = isize::MIN;
@@ -116,11 +104,27 @@ pub fn main() {
     let offset_x = -(min_x as isize);
     let offset_y = -(min_y as isize);
 
-    let mut map = HashMap::<(isize, isize), char>::new();
+
+    println!("== Placed Chunks ==");
     for chunk in &placed_chunks {
+        println!("- {}", chunk.id);
+    }
+    println!();
+
+    let map = build_tile_char_map(&placed_chunks, offset_x, offset_y);
+    print_ascii_map(&map);
+}
+
+fn build_tile_char_map(
+    placed_chunks: &[PlacedChunk],
+    offset_x: isize,
+    offset_y: isize,
+) -> HashMap<(isize, isize), char> {
+    let mut map = HashMap::<(isize, isize), char>::new();
+    for chunk in placed_chunks {
         for tile in &chunk.tiles_world {
-            let x = (tile.x as isize + offset_x) as isize;
-            let y = (tile.y as isize + offset_y) as isize;
+            let x = tile.x + offset_x;
+            let y = tile.y + offset_y;
             let ch = match tile.kind {
                 TileKind::Solid => '#',
                 TileKind::PlayerSpawn => '@',
@@ -129,15 +133,9 @@ pub fn main() {
             map.insert((x, y), ch);
         }
     }
-
-    println!("== Placed Chunks ==");
-    for chunk in &placed_chunks {
-        println!("- {}", chunk.id);
-    }
-
-    println!();
-    print_ascii_map(&map);
+    map
 }
+
 
 /// 指定方向の出口を1つ拾う（最小実装：最初の一致を返す）
 fn pick_exit_dir(p: &PlacedChunk, want: Dir) -> Option<((isize, isize), Dir)> {
@@ -205,56 +203,6 @@ fn print_ascii_map(map: &HashMap<(isize, isize), char>) {
         }
         println!();
     }
-}
-
-fn build_default_world(
-    rng: &mut impl Rng,
-    start: &ChunkTemplate,
-    mid_chunk_factories: &[fn() -> ChunkTemplate],
-    goal_chunk_factories: &[fn() -> ChunkTemplate],
-    max_mid_chunks: usize,
-) -> Vec<PlacedChunk> {
-    let mut placed_chunks = Vec::new();
-    let placed_start = place_chunk(start, (0, 0));
-    let mut current_exit =
-        pick_exit_dir(&placed_start, Dir::Right).expect("start に Right 出口が必要");
-    placed_chunks.push(placed_start);
-
-    for _ in 0..rng.random_range(0..=max_mid_chunks) {
-        if mid_chunk_factories.is_empty() {
-            break;
-        }
-        let mut candidates: Vec<fn() -> ChunkTemplate> = mid_chunk_factories.to_vec();
-        candidates.shuffle(rng);
-        let mut placed_mid = None;
-        for template_fn in candidates {
-            let template = template_fn();
-            let exit_pos = current_exit.0;
-            if exit_pos.0 < template.entry.x || exit_pos.1 < template.entry.y {
-                continue;
-            }
-            let placed = place_next(&template, Dir::Left, current_exit);
-            let Some(next_exit) = pick_exit_dir(&placed, Dir::Right) else {
-                continue;
-            };
-            placed_mid = Some((placed, next_exit));
-            break;
-        }
-        let Some((placed, next_exit)) = placed_mid else {
-            break;
-        };
-        current_exit = next_exit;
-        placed_chunks.push(placed);
-    }
-
-    assert!(
-        !goal_chunk_factories.is_empty(),
-        "goal_chunk_factories must not be empty"
-    );
-    let goal_template = goal_chunk_factories[rng.random_range(0..goal_chunk_factories.len())]();
-    let placed_goal = place_next(&goal_template, Dir::Left, current_exit);
-    placed_chunks.push(placed_goal);
-    placed_chunks
 }
 
 fn try_build_random_path(
@@ -414,6 +362,12 @@ fn search_path_to_goal(
 
 fn chunk_start_flat() -> ChunkTemplate {
     // 6x4 の小部屋。右と上に出口。地面とプレイヤー初期位置あり。
+    /*
+      ..E...
+      ......
+      .@##.E
+      ######
+    */
     ChunkTemplate {
         id: "start_flat",
         size: (6, 4),
