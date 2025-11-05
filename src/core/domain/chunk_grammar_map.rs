@@ -71,10 +71,8 @@ pub fn main() {
         chunk_stairs_down_small,
     ];
     let goal_chunk_factories: &[fn() -> ChunkTemplate] = &[chunk_goal_platform, chunk_goal_lower];
-
     let placed_chunks =
-        try_build_random_path(&mut rng, &start, mid_chunk_factories, goal_chunk_factories)
-            .expect("not found path");
+        try_build_random_path(&mut rng, &start, mid_chunk_factories, goal_chunk_factories);
 
     println!("== Placed Chunks ==");
     for chunk in &placed_chunks {
@@ -159,12 +157,11 @@ fn try_build_random_path(
     start: &ChunkTemplate,
     mid_chunk_factories: &[fn() -> ChunkTemplate],
     goal_chunk_factories: &[fn() -> ChunkTemplate],
-) -> Option<Vec<PlacedChunk>> {
+) -> Vec<PlacedChunk> {
     let placed_start = place_chunk(start, (0, 0));
-    let start_exit = pick_exit_dir(&placed_start, Dir::Right)?;
+    let start_exit = pick_exit_dir(&placed_start, Dir::Right).unwrap();
 
-    const MAX_ATTEMPTS: usize = 32;
-    for _ in 0..MAX_ATTEMPTS {
+    loop {
         let goal_template = goal_chunk_factories[rng.random_range(0..goal_chunk_factories.len())]();
         let Some(goal_target) = random_goal_target(rng, start_exit, &goal_template) else {
             continue;
@@ -188,10 +185,9 @@ fn try_build_random_path(
             layout.push(placed_start.clone());
             layout.append(&mut mid_chunks);
             layout.push(place_chunk(&goal_template, goal_target.origin));
-            return Some(layout);
+            return layout;
         }
     }
-    None
 }
 
 struct GoalTarget {
