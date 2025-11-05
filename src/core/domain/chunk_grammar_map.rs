@@ -77,7 +77,7 @@ pub fn main() {
 
     let placed_chunks =
         try_build_random_path(&mut rng, &start, mid_chunk_factories, goal_chunk_factories)
-            .expect("チャンクの組み合わせでパスが見つからなかった");
+            .expect("not found path");
 
     println!("== Placed Chunks ==");
     for chunk in &placed_chunks {
@@ -158,18 +158,6 @@ fn place_chunk(t: &ChunkTemplate, origin: (isize, isize)) -> PlacedChunk {
         entry_world,
         exits_world,
         tiles_world,
-    }
-}
-
-/// マップを囲いなしで出力（存在するタイルのmin/maxを計算して描画）
-fn print_ascii_map(map: &HashMap<(isize, isize), char>) {
-    let (map_width, map_height) = MAP_SIZE;
-    for y in (0..map_height).rev() {
-        for x in 0..map_width {
-            let ch = map.get(&(x, y)).copied().unwrap_or('.');
-            print!("{ch}");
-        }
-        println!();
     }
 }
 
@@ -636,6 +624,12 @@ fn chunk_stairs_down_small() -> ChunkTemplate {
 
 fn chunk_goal_platform() -> ChunkTemplate {
     // 6x4。左から入って中段にゴールがある足場。右にも出口。
+    /*
+      ......
+      I....G 
+      ######
+      ......
+     */
     ChunkTemplate {
         id: "goal_platform",
         size: (6, 4),
@@ -712,3 +706,15 @@ fn chunk_goal_lower() -> ChunkTemplate {
         },
     }
 }
+
+fn print_ascii_map(map: &HashMap<(isize, isize), char>) {
+    let (map_width, map_height) = MAP_SIZE;
+    for y in (0..map_height).rev() {
+        for x in 0..map_width {
+            let ch = map.get(&(x, y)).copied().unwrap_or('.');
+            print!("{ch}");
+        }
+        println!();
+    }
+}
+
