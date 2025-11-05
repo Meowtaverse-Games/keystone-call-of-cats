@@ -52,12 +52,8 @@ struct ChunkTemplate {
 }
 
 #[derive(Clone, Debug)]
-#[allow(dead_code)]
 struct PlacedChunk {
     id: String,
-    origin: (isize, isize), // 左下原点
-    size: (isize, isize),
-    entry_world: (isize, isize),
     exits_world: Vec<((isize, isize), Dir)>, // 位置＋方向
     tiles_world: Vec<Tile>,
 }
@@ -136,7 +132,6 @@ fn place_next(
 
 /// チャンクをワールドに敷く（原点のみ指定）
 fn place_chunk(t: &ChunkTemplate, origin: (isize, isize)) -> PlacedChunk {
-    let entry_world = (origin.0 + t.entry.x, origin.1 + t.entry.y);
     let exits_world = t
         .exits
         .iter()
@@ -154,9 +149,6 @@ fn place_chunk(t: &ChunkTemplate, origin: (isize, isize)) -> PlacedChunk {
 
     PlacedChunk {
         id: t.id.to_string(),
-        origin,
-        size: t.size,
-        entry_world,
         exits_world,
         tiles_world,
     }
