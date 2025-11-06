@@ -7,7 +7,12 @@ use std::path::Path;
 
 use serde::Deserialize;
 
-pub const MAP_SIZE: (isize, isize) = (28, 18);
+pub const MAP_SIZE: (isize, isize) = (30, 20);
+const BOUNDARY_MARGIN: isize = 1;
+const INNER_MAP_SIZE: (isize, isize) = (
+    MAP_SIZE.0 + 2 * BOUNDARY_MARGIN,
+    MAP_SIZE.1 + 2 * BOUNDARY_MARGIN,
+);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Dir {
@@ -214,7 +219,7 @@ pub fn build_tile_kind_map(placed_chunks: &[PlacedChunk]) -> HashMap<(isize, isi
     let mut map = HashMap::<(isize, isize), TileKind>::new();
     for chunk in placed_chunks {
         for tile in &chunk.tiles_world {
-            map.insert((tile.x, tile.y), tile.kind);
+            map.insert((tile.x + BOUNDARY_MARGIN, tile.y + BOUNDARY_MARGIN), tile.kind);
         }
     }
     map
@@ -356,8 +361,8 @@ fn random_goal_target(
     goal_template: &InnerChunkTemplate,
 ) -> Option<GoalTarget> {
     let (start_pos, _) = start_exit;
-    let max_origin_x = MAP_SIZE.0.checked_sub(goal_template.size.0)?;
-    let max_origin_y = MAP_SIZE.1.checked_sub(goal_template.size.1)?;
+    let max_origin_x = INNER_MAP_SIZE.0.checked_sub(goal_template.size.0)?;
+    let max_origin_y = INNER_MAP_SIZE.1.checked_sub(goal_template.size.1)?;
     let min_origin_x = start_pos.0.checked_sub(goal_template.entry.x)?;
     if min_origin_x > max_origin_x {
         return None;
@@ -430,7 +435,7 @@ fn search_path_to_goal(
         if placed
             .tiles_world
             .iter()
-            .any(|tile| tile.x < 0 || tile.x >= MAP_SIZE.0 || tile.y < 0 || tile.y >= MAP_SIZE.1)
+            .any(|tile| tile.x < 0 || tile.x >= INNER_MAP_SIZE.0 || tile.y < 0 || tile.y >= INNER_MAP_SIZE.1)
         {
             continue;
         }
@@ -441,7 +446,7 @@ fn search_path_to_goal(
         if next_pos.0 > goal_entry.0 {
             continue;
         }
-        if next_pos.1 >= MAP_SIZE.1 {
+        if next_pos.1 >= INNER_MAP_SIZE.1 {
             continue;
         }
         if !visited.insert(next_pos) {
@@ -461,7 +466,7 @@ fn search_path_to_goal(
 }
 
 pub fn print_ascii_map(map: &HashMap<(isize, isize), char>) {
-    let (map_width, map_height) = MAP_SIZE;
+    let (map_width, map_height) = INNER_MAP_SIZE;
     for y in (0..map_height).rev() {
         for x in 0..map_width {
             let ch = map.get(&(x, y)).copied().unwrap_or('.');
