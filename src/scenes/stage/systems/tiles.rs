@@ -53,14 +53,17 @@ fn spawn_tile_entity(
     tileset: &Tileset,
     (x, y, tile_size, base_tile_size, viewport_size, scale): (u32, u32, Vec2, Vec2, Vec2, f32),
 ) {
+    let name = &layer.name;
+    if name != "Background" {
+        return;
+    }
+
     let Some(tile) = layer.tile(x, y) else {
         return;
     };
     let Some(image) = image_from_tileset(tileset, tile.id) else {
         return;
     };
-
-    let name = &layer.name;
 
     let layer_z = match name {
         n if n.starts_with("Background") => -10.0 + layer_index as f32 * 0.01,
@@ -73,37 +76,49 @@ fn spawn_tile_entity(
     let transform =
         Transform::from_xyz(tile_x, tile_y, layer_z).with_scale(Vec3::new(scale, scale, 1.0));
 
-    if tile.shapes.is_empty() {
+    if x != 0 && y != 0 && x != 29 && y != 19 {
         parent.spawn((StageTile, image, transform));
         return;
     }
 
-    let colliders = tile
-        .shapes
-        .iter()
-        .map(|shape| match shape {
-            TileShape::Rect {
-                width,
-                height,
-                x,
-                y,
-            } => {
-                let collider = Collider::rectangle(*width, *height);
-                let pos = Position::from_xy(
-                    -base_tile_size.x / 2.0 + (*width + *x) / 2.0 + *x / 2.0,
-                    base_tile_size.y / 2.0 - (*height + *y) / 2.0 - *y / 2.0,
-                );
-                let rot = Rotation::degrees(0.0);
-                (pos, rot, collider)
-            }
-        })
-        .collect::<Vec<_>>();
+    // let colliders = tile
+    //     .shapes
+    //     .iter()
+    //     .map(|shape| match shape {
+    //         TileShape::Rect {
+    //             width,
+    //             height,
+    //             x,
+    //             y,
+    //         } => {
+    //             let collider = Collider::rectangle(*width, *height);
+    //             let pos = Position::from_xy(
+    //                 -base_tile_size.x / 2.0 + (*width + *x) / 2.0 + *x / 2.0,
+    //                 base_tile_size.y / 2.0 - (*height + *y) / 2.0 - *y / 2.0,
+    //             );
+    //             let rot = Rotation::degrees(0.0);
+    //             (pos, rot, collider)
+    //         }
+    //     })
+    //     .collect::<Vec<_>>();
+
+    let x = 0.0;
+    let y = 0.0;
+    let width = 16.0;
+    let height = 16.0;
+
+    let collider = Collider::rectangle(width, height);
+    let pos = Position::from_xy(
+        -base_tile_size.x / 2.0 + (width + x) / 2.0 + x / 2.0,
+        base_tile_size.y / 2.0 - (height + y) / 2.0 - y / 2.0,
+    );
+    let rot = Rotation::degrees(0.0);
 
     parent.spawn((
         StageTile,
         image,
         transform,
         RigidBody::Static,
-        Collider::compound(colliders),
+        Collider::compound(Vec::from([(pos, rot, collider)])),
     ));
 }
