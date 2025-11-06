@@ -112,7 +112,32 @@ pub fn spawn_tiles(
                 let transform = Transform::from_xyz(tile_x, tile_y, -10.0)
                     .with_scale(Vec3::new(scale, scale, 1.0));
 
-                parent.spawn((StageTile, image, transform));
+                spawn_boundary_tile(parent, image, transform, tile_size, true);
+
+                // let shapes = match kind {
+                //     TileKind::Solid => {
+                //         let collider = Collider::rectangle(tile_size.x, tile_size.y);
+                //         vec![(Position::default(), Rotation::default(), collider)]
+                //     }
+                //     TileKind::PlayerSpawn | TileKind::Goal => {
+                //         shape_sampling.sample_points_in_rectangle(
+                //             &Vec2::new(tile_size.x, tile_size.y),
+                //             4,
+                //         )
+                //         .into_iter()
+                //         .map(|point| {
+                //             let collider = Collider::ball(2.0);
+                //             (
+                //                 Position::from_xy(point.x, point.y),
+                //                 Rotation::default(),
+                //                 collider,
+                //             )
+                //         })
+                //         .collect()
+                //     }
+                // };
+
+                // parent.spawn((StageTile, image, transform, Collider::compound(shapes)));
             }
         },
     );

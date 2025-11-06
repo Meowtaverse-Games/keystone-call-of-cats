@@ -24,12 +24,17 @@ pub struct MainCamera;
 fn main() {
     let args: Vec<String> = env::args().collect();
     println!("Starting keystone_cc with args: {:?}", args);
+
     if args.len() > 1 && args[1] == "--chunk-grammar-map" {
         core::domain::chunk_grammar_map::main();
         return;
     }
 
-    App::new()
+    let debug = args.iter().any(|arg| arg == "--debug");
+
+    let mut app = App::new();
+
+    app
         .add_plugins((
             DefaultPlugins
                 .set(AssetPlugin {
@@ -47,8 +52,13 @@ fn main() {
                 })
                 .set(ImagePlugin::default_nearest()),
             PhysicsPlugins::default(),
-            PhysicsDebugPlugin,
-        ))
+        ));
+
+    if debug {
+        app.add_plugins(PhysicsDebugPlugin::default());
+    }
+
+    app
         .add_plugins(ScriptPlugin)
         .add_plugins(VisibilityPlugin)
         .add_systems(Startup, setup_camera)
