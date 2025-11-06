@@ -1,5 +1,6 @@
 use avian2d::prelude::*;
 use bevy::prelude::*;
+use rand::Rng;
 
 use crate::{
     core::domain::chunk_grammar_map::{self, MAP_SIZE, TileKind},
@@ -55,21 +56,46 @@ pub fn spawn_tiles(
         |parent: &mut bevy_ecs::relationship::RelatedSpawnerCommands<'_, ChildOf>| {
             for x in 0..MAP_SIZE.0 {
                 for y in 0..MAP_SIZE.1 {
-                    let is_boundary = x == 0 || y == 0 || x == MAP_SIZE.0 - 1 || y == MAP_SIZE.1 - 1;
-                    if is_boundary {
-                        let tile_x = (x as f32 + 0.5) * real_tile_size.x - viewport_size.x / 2.0;
-                        let tile_y = -((y as f32 + 0.5) * real_tile_size.y - viewport_size.y / 2.0);
+                    let tile_x = (x as f32 + 0.5) * real_tile_size.x - viewport_size.x / 2.0;
+                    let tile_y = -((y as f32 + 0.5) * real_tile_size.y - viewport_size.y / 2.0);
 
-                        let transform = Transform::from_xyz(tile_x, tile_y, -10.0)
-                            .with_scale(Vec3::new(scale, scale, 1.0));
+                    let transform = Transform::from_xyz(tile_x, tile_y, -10.0)
+                        .with_scale(Vec3::new(scale, scale, 1.0));
+                    let is_boundary =
+                        x == 0 || y == 0 || x == MAP_SIZE.0 - 1 || y == MAP_SIZE.1 - 1;
+                    let background_ids = [
+                        251, 252, 253, 254, 268, 269, 270, 271, 285, 286, 287, 288, 302, 303, 304,
+                        305,
+                    ];
+                    let tile_id = if is_boundary {
+                        if x == 0 && y == 0 {
+                            113
+                        } else if x == MAP_SIZE.0 - 1 && y == 0 {
+                            130
+                        } else if x == 0 && y == MAP_SIZE.1 - 1 {
+                            115
+                        } else if x == MAP_SIZE.0 - 1 && y == MAP_SIZE.1 - 1 {
+                            168
+                        } else if y == 0 {
+                            95
+                        } else if y == MAP_SIZE.1 - 1 {
+                            133
+                        } else if x == 0 {
+                            112
+                        } else if x == MAP_SIZE.0 - 1 {
+                            132
+                        } else {
+                            134 // Fallback, should not happen
+                        }
+                    } else {
+                        let index = rng.random_range(0..(background_ids.len()));
+                        background_ids[index]
+                    };
 
-                        let tile_id = 113; // Assuming boundary tiles use tile ID 113
-                        let Some(image) = image_from_tileset(tileset, tile_id) else {
-                            continue;
-                        };
-
-                        spawn_boundary_tile(parent, image, transform, tile_size);
-                    }
+                    let Some(image) = image_from_tileset(tileset, tile_id as usize) else {
+                        continue;
+                    };
+                    spawn_boundary_tile(parent, image, transform, tile_size, is_boundary);
                 }
             }
 
@@ -77,13 +103,12 @@ pub fn spawn_tiles(
                 let Some(tile_id) = tile_id_for_kind(kind) else {
                     continue;
                 };
-                let Some(image) = image_from_tileset(tileset, tile_id) else {
+                let Some(image) = image_from_tileset(tileset, tile_id as usize) else {
                     continue;
                 };
 
-                let tile_x = (x as f32 + 0.5) * real_tile_size.x - viewport_size.x / 2.0;
-                let tile_y = -((y as f32 + 0.5) * real_tile_size.y - viewport_size.y / 2.0);
-                info!("Spawning tile at ({}, {}) of kind {:?}, tile: {:?}", x, y, kind, (tile_x, tile_y));
+                let tile_x = (x as f32 + 1.5) * real_tile_size.x - viewport_size.x / 2.0;
+                let tile_y = ((y as f32 + 4.0) * real_tile_size.y - viewport_size.y / 2.0);
                 let transform = Transform::from_xyz(tile_x, tile_y, -10.0)
                     .with_scale(Vec3::new(scale, scale, 1.0));
 
@@ -93,16 +118,18 @@ pub fn spawn_tiles(
     );
 }
 
-fn image_from_tileset(tileset: &Tileset, id: u32) -> Option<Sprite> {
-    let tile_sprite = tileset.atlas_sprite(id)?;
+fn image_from_tileset(tileset: &Tileset, id: usize) -> Option<Sprite> {
+    let tile_sprite = tileset.atlas_sprite(id as u32)?;
     let image = Sprite::from_atlas_image(tile_sprite.texture, tile_sprite.atlas);
     Some(image)
 }
 
 fn tile_id_for_kind(kind: TileKind) -> Option<u32> {
+    info!("Getting tile ID for kind: {:?}", kind);
     match kind {
-        TileKind::Solid => Some(113),
-        TileKind::PlayerSpawn | TileKind::Goal => None,
+        TileKind::Solid => Some(235),
+        TileKind::PlayerSpawn => Some(408),
+        TileKind::Goal => Some(194),
     }
 }
 
@@ -111,9 +138,15 @@ fn spawn_boundary_tile(
     image: Sprite,
     transform: Transform,
     base_tile_size: Vec2,
+    is_boundary: bool,
 ) {
     let width = base_tile_size.x;
     let height = base_tile_size.y;
+
+    if !is_boundary {
+        parent.spawn((StageTile, image, transform));
+        return;
+    }
 
     let collider = Collider::rectangle(width, height);
     let pos = Position::from_xy(

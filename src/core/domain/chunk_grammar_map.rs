@@ -10,8 +10,8 @@ use serde::Deserialize;
 pub const MAP_SIZE: (isize, isize) = (30, 20);
 const BOUNDARY_MARGIN: isize = 1;
 const INNER_MAP_SIZE: (isize, isize) = (
-    MAP_SIZE.0 + 2 * BOUNDARY_MARGIN,
-    MAP_SIZE.1 + 2 * BOUNDARY_MARGIN,
+    MAP_SIZE.0 - 2 * BOUNDARY_MARGIN,
+    MAP_SIZE.1 - 2 * BOUNDARY_MARGIN,
 );
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -219,7 +219,7 @@ pub fn build_tile_kind_map(placed_chunks: &[PlacedChunk]) -> HashMap<(isize, isi
     let mut map = HashMap::<(isize, isize), TileKind>::new();
     for chunk in placed_chunks {
         for tile in &chunk.tiles_world {
-            map.insert((tile.x + BOUNDARY_MARGIN, tile.y + BOUNDARY_MARGIN), tile.kind);
+            map.insert((tile.x, tile.y), tile.kind);
         }
     }
     map
@@ -432,11 +432,9 @@ fn search_path_to_goal(
             continue;
         }
         let placed = place_next(template, Dir::Left, current_exit);
-        if placed
-            .tiles_world
-            .iter()
-            .any(|tile| tile.x < 0 || tile.x >= INNER_MAP_SIZE.0 || tile.y < 0 || tile.y >= INNER_MAP_SIZE.1)
-        {
+        if placed.tiles_world.iter().any(|tile| {
+            tile.x < 0 || tile.x >= INNER_MAP_SIZE.0 || tile.y < 0 || tile.y >= INNER_MAP_SIZE.1
+        }) {
             continue;
         }
         let Some(next_exit) = pick_exit_dir(&placed, Dir::Right) else {
