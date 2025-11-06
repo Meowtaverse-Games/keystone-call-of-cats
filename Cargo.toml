@@ -14,6 +14,8 @@ tiled = "0.15.0"
 avian2d = "0.4.0"
 rhai = { version = "1.23.6", features = ["sync"] }
 rand = "0.9.2"
+ron = "0.11.0"
+serde = { version = "1", features = ["derive"] }
 
 [package.metadata.bundle.mac]
 identifier = "com.meowtaverse-games.com.keystone-cc"
