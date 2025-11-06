@@ -34,32 +34,30 @@ fn main() {
 
     let mut app = App::new();
 
-    app
-        .add_plugins((
-            DefaultPlugins
-                .set(AssetPlugin {
-                    file_path: "assets".to_string(),
-                    watch_for_changes_override: Some(true),
+    app.add_plugins((
+        DefaultPlugins
+            .set(AssetPlugin {
+                file_path: "assets".to_string(),
+                watch_for_changes_override: Some(true),
+                ..default()
+            })
+            .set(WindowPlugin {
+                primary_window: Some(Window {
+                    title: "keystone: call of cats".to_string(),
+                    visible: false,
                     ..default()
-                })
-                .set(WindowPlugin {
-                    primary_window: Some(Window {
-                        title: "keystone: call of cats".to_string(),
-                        visible: false,
-                        ..default()
-                    }),
-                    ..default()
-                })
-                .set(ImagePlugin::default_nearest()),
-            PhysicsPlugins::default(),
-        ));
+                }),
+                ..default()
+            })
+            .set(ImagePlugin::default_nearest()),
+        PhysicsPlugins::default(),
+    ));
 
     if debug {
         app.add_plugins(PhysicsDebugPlugin::default());
     }
 
-    app
-        .add_plugins(ScriptPlugin)
+    app.add_plugins(ScriptPlugin)
         .add_plugins(VisibilityPlugin)
         .add_systems(Startup, setup_camera)
         .add_plugins(DesignResolutionPlugin::new(
