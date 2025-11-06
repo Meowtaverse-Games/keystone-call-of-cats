@@ -1,10 +1,13 @@
 use rand::{Rng, seq::SliceRandom};
 use std::collections::{HashMap, HashSet};
+use std::fmt;
+use std::fs::File;
 use std::io::BufReader;
+use std::path::Path;
 
 use serde::Deserialize;
 
-const MAP_SIZE: (isize, isize) = (30, 20);
+pub const MAP_SIZE: (isize, isize) = (28, 18);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Dir {
@@ -31,15 +34,15 @@ struct Port {
     dir: Dir, // チャンク外へ出る（または入る）向き
 }
 
-#[derive(Clone, Copy, Debug)]
-enum TileKind {
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TileKind {
     Solid,
     PlayerSpawn,
     Goal,
 }
 
 #[derive(Clone, Copy, Debug)]
-struct Tile {
+pub struct Tile {
     x: isize,
     y: isize,
     kind: TileKind,
@@ -55,10 +58,10 @@ struct InnerChunkTemplate {
 }
 
 #[derive(Clone, Debug)]
-struct PlacedChunk {
-    id: String,
+pub struct PlacedChunk {
+    pub id: String,
     exits_world: Vec<((isize, isize), Dir)>, // 位置＋方向
-    tiles_world: Vec<Tile>,
+    pub tiles_world: Vec<Tile>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -139,7 +142,7 @@ struct GoalChunks {
 }
 
 #[derive(Debug, Deserialize)]
-struct ChunkGrammarConfig(StartChunks, MiddleChunks, GoalChunks);
+pub struct ChunkGrammarConfig(StartChunks, MiddleChunks, GoalChunks);
 
 impl ChunkGrammarConfig {
     fn starts(&self) -> Vec<InnerChunkTemplate> {
@@ -167,21 +170,62 @@ impl ChunkGrammarConfig {
     }
 }
 
+#[derive(Debug)]
+pub enum ChunkGrammarError {
+    Io(std::io::Error),
+    Parse(ron::error::SpannedError),
+}
+
+impl fmt::Display for ChunkGrammarError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ChunkGrammarError::Io(err) => write!(f, "io error: {err}"),
+            ChunkGrammarError::Parse(err) => write!(f, "parse error: {err}"),
+        }
+    }
+}
+
+impl std::error::Error for ChunkGrammarError {}
+
+pub fn load_config_from_file(
+    path: impl AsRef<Path>,
+) -> Result<ChunkGrammarConfig, ChunkGrammarError> {
+    let file = File::open(path).map_err(ChunkGrammarError::Io)?;
+    let reader = BufReader::new(file);
+    ron::de::from_reader(reader).map_err(ChunkGrammarError::Parse)
+}
+
+pub fn generate_random_layout(rng: &mut impl Rng, config: &ChunkGrammarConfig) -> Vec<PlacedChunk> {
+    let starts = config.starts();
+    let middles = config.middles();
+    let goals = config.goals();
+    try_build_random_path(rng, &starts, &middles, &goals)
+}
+
+pub fn generate_random_layout_from_file(
+    rng: &mut impl Rng,
+    path: impl AsRef<Path>,
+) -> Result<Vec<PlacedChunk>, ChunkGrammarError> {
+    let config = load_config_from_file(path)?;
+    Ok(generate_random_layout(rng, &config))
+}
+
+pub fn build_tile_kind_map(placed_chunks: &[PlacedChunk]) -> HashMap<(isize, isize), TileKind> {
+    let mut map = HashMap::<(isize, isize), TileKind>::new();
+    for chunk in placed_chunks {
+        for tile in &chunk.tiles_world {
+            map.insert((tile.x, tile.y), tile.kind);
+        }
+    }
+    map
+}
+
+#[allow(dead_code)]
 pub fn main() {
     let mut rng = rand::rng();
-
-    let tutorial_chunk_file =
-        std::fs::File::open("assets/chunk_grammar_map/tutorial.ron").expect("not found file");
-    let reader = BufReader::new(tutorial_chunk_file);
-    let config: ChunkGrammarConfig = ron::de::from_reader(reader).expect("failed to parse RON");
-
-    let placed_chunks = try_build_random_path(
-        &mut rng,
-        &config.starts(),
-        &config.middles(),
-        &config.goals(),
-    );
-
+    let placed_chunks =
+        generate_random_layout_from_file(&mut rng, "assets/chunk_grammar_map/tutorial.ron")
+            .expect("failed to generate layout from config");
     println!("== Placed Chunks ==");
     for chunk in &placed_chunks {
         println!("- {}", chunk.id);
@@ -193,7 +237,7 @@ pub fn main() {
     print_ascii_map(&map);
 }
 
-fn build_tile_char_map(placed_chunks: &[PlacedChunk]) -> HashMap<(isize, isize), char> {
+pub fn build_tile_char_map(placed_chunks: &[PlacedChunk]) -> HashMap<(isize, isize), char> {
     let mut map = HashMap::<(isize, isize), char>::new();
     for chunk in placed_chunks {
         for tile in &chunk.tiles_world {
@@ -416,7 +460,7 @@ fn search_path_to_goal(
     None
 }
 
-fn print_ascii_map(map: &HashMap<(isize, isize), char>) {
+pub fn print_ascii_map(map: &HashMap<(isize, isize), char>) {
     let (map_width, map_height) = MAP_SIZE;
     for y in (0..map_height).rev() {
         for x in 0..map_width {
