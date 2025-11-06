@@ -2,7 +2,7 @@ use rand::{Rng, seq::SliceRandom};
 use std::collections::{HashMap, HashSet};
 use std::io::BufReader;
 
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 const MAP_SIZE: (isize, isize) = (30, 20);
 
@@ -47,7 +47,7 @@ struct Tile {
 
 #[derive(Clone, Debug)]
 struct InnerChunkTemplate {
-    id: &'static str,
+    id: String,
     size: (isize, isize),
     entry: Port,
     exits: Vec<Port>,
@@ -61,67 +61,125 @@ struct PlacedChunk {
     tiles_world: Vec<Tile>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-struct MyStruct {
-    boolean: bool,
-    float: f32,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Deserialize)]
 struct ChunkTemplate {
     id: String,
     map: Vec<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+impl ChunkTemplate {
+    fn to_inner_template(&self) -> InnerChunkTemplate {
+        let height = self.map.len() as isize;
+        let width = self.map.iter().map(|row| row.len()).max().unwrap_or(0) as isize;
+
+        let mut tiles = Vec::new();
+        let mut entry = None;
+        let mut exits = Vec::new();
+
+        for (y, row) in self.map.iter().enumerate() {
+            for (x, ch) in row.chars().enumerate() {
+                let x = x as isize;
+                let y = height - 1 - y as isize; // 上下反転
+                match ch {
+                    '#' => tiles.push(Tile {
+                        x,
+                        y,
+                        kind: TileKind::Solid,
+                    }),
+                    '@' => tiles.push(Tile {
+                        x,
+                        y,
+                        kind: TileKind::PlayerSpawn,
+                    }),
+                    'G' => tiles.push(Tile {
+                        x,
+                        y,
+                        kind: TileKind::Goal,
+                    }),
+                    'I' => {
+                        entry = Some(Port {
+                            x,
+                            y,
+                            dir: Dir::Left, // 仮
+                        });
+                    }
+                    'E' => exits.push(Port {
+                        x,
+                        y,
+                        dir: Dir::Right, // 仮
+                    }),
+                    _ => {}
+                }
+            }
+        }
+
+        InnerChunkTemplate {
+            id: self.id.clone(),
+            size: (width, height),
+            entry: entry.expect("entry point 'I' not found"),
+            exits,
+            tiles,
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
 struct StartChunks {
     templates: Vec<ChunkTemplate>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Deserialize)]
 struct MiddleChunks {
     templates: Vec<ChunkTemplate>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Deserialize)]
 struct GoalChunks {
     templates: Vec<ChunkTemplate>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-struct ChunkGrammarConfig(
-    StartChunks,
-    MiddleChunks,
-    GoalChunks,
-);
+#[derive(Debug, Deserialize)]
+struct ChunkGrammarConfig(StartChunks, MiddleChunks, GoalChunks);
+
+impl ChunkGrammarConfig {
+    fn starts(&self) -> Vec<InnerChunkTemplate> {
+        self.0
+            .templates
+            .iter()
+            .map(|t| t.to_inner_template())
+            .collect()
+    }
+
+    fn middles(&self) -> Vec<InnerChunkTemplate> {
+        self.1
+            .templates
+            .iter()
+            .map(|t| t.to_inner_template())
+            .collect()
+    }
+
+    fn goals(&self) -> Vec<InnerChunkTemplate> {
+        self.2
+            .templates
+            .iter()
+            .map(|t| t.to_inner_template())
+            .collect()
+    }
+}
 
 pub fn main() {
-    let x: MyStruct = ron::from_str("(boolean: true, float: 1.23)").unwrap();
+    let mut rng = rand::rng();
 
     let tutorial_chunk_file =
         std::fs::File::open("assets/chunk_grammar_map/tutorial.ron").expect("not found file");
     let reader = BufReader::new(tutorial_chunk_file);
     let config: ChunkGrammarConfig = ron::de::from_reader(reader).expect("failed to parse RON");
 
-    println!(
-        "Pretty RON: {}",
-        ron::ser::to_string_pretty(&config, ron::ser::PrettyConfig::default()).unwrap(),
-    );
+    let start = config.starts();
+    let mid = config.middles();
+    let goals = config.goals();
 
-    let mut rng = rand::rng();
-
-    let start = chunk_start_flat();
-    let mid_chunk_factories: &[fn() -> InnerChunkTemplate] = &[
-        chunk_simple_platform,
-        chunk_flat_bridge,
-        chunk_gap_jump,
-        chunk_plateau,
-        chunk_stairs_up_small,
-        chunk_stairs_down_small,
-    ];
-    let goal_chunk_factories: &[fn() -> InnerChunkTemplate] = &[chunk_goal_platform, chunk_goal_lower];
-    let placed_chunks =
-        try_build_random_path(&mut rng, &start, mid_chunk_factories, goal_chunk_factories);
+    let placed_chunks = try_build_random_path(&mut rng, &start, &mid, &goals);
 
     println!("== Placed Chunks ==");
     for chunk in &placed_chunks {
@@ -203,16 +261,19 @@ fn place_chunk(t: &InnerChunkTemplate, origin: (isize, isize)) -> PlacedChunk {
 
 fn try_build_random_path(
     rng: &mut impl Rng,
-    start: &InnerChunkTemplate,
-    mid_chunk_factories: &[fn() -> InnerChunkTemplate],
-    goal_chunk_factories: &[fn() -> InnerChunkTemplate],
+    start_chunk_factories: &[InnerChunkTemplate],
+    mid_chunk_factories: &[InnerChunkTemplate],
+    goal_chunk_factories: &[InnerChunkTemplate],
 ) -> Vec<PlacedChunk> {
-    let placed_start = place_chunk(start, (0, 0));
+    let placed_start = place_chunk(
+        &start_chunk_factories[rng.random_range(0..start_chunk_factories.len())],
+        (0, 0),
+    );
     let start_exit = pick_exit_dir(&placed_start, Dir::Right).unwrap();
 
     loop {
-        let goal_template = goal_chunk_factories[rng.random_range(0..goal_chunk_factories.len())]();
-        let Some(goal_target) = random_goal_target(rng, start_exit, &goal_template) else {
+        let goal_template = &goal_chunk_factories[rng.random_range(0..goal_chunk_factories.len())];
+        let Some(goal_target) = random_goal_target(rng, start_exit, goal_template) else {
             continue;
         };
         println!(
@@ -233,7 +294,7 @@ fn try_build_random_path(
             let mut layout = Vec::with_capacity(mid_chunks.len() + 2);
             layout.push(placed_start.clone());
             layout.append(&mut mid_chunks);
-            layout.push(place_chunk(&goal_template, goal_target.origin));
+            layout.push(place_chunk(goal_template, goal_target.origin));
             return layout;
         }
     }
@@ -280,7 +341,7 @@ fn random_goal_target(
 
 fn find_path_to_goal(
     rng: &mut impl Rng,
-    mid_chunk_factories: &[fn() -> InnerChunkTemplate],
+    mid_chunk_factories: &[InnerChunkTemplate],
     start_exit: ((isize, isize), Dir),
     goal_entry: (isize, isize),
 ) -> Option<Vec<PlacedChunk>> {
@@ -299,7 +360,7 @@ fn find_path_to_goal(
 
 fn search_path_to_goal(
     rng: &mut impl Rng,
-    mid_chunk_factories: &[fn() -> InnerChunkTemplate],
+    candidates: &[InnerChunkTemplate],
     current_exit: ((isize, isize), Dir),
     goal_entry: (isize, isize),
     path: &mut Vec<PlacedChunk>,
@@ -313,11 +374,10 @@ fn search_path_to_goal(
         return None;
     }
 
-    let mut candidates: Vec<fn() -> InnerChunkTemplate> = mid_chunk_factories.to_vec();
+    let mut candidates = candidates.to_vec();
     candidates.shuffle(rng);
 
-    for template_fn in candidates {
-        let template = template_fn();
+    for template in &candidates {
         if current_pos.0 < template.entry.x || current_pos.1 < template.entry.y {
             continue;
         }
@@ -343,14 +403,9 @@ fn search_path_to_goal(
             continue;
         }
         path.push(placed);
-        if let Some(result) = search_path_to_goal(
-            rng,
-            mid_chunk_factories,
-            next_exit,
-            goal_entry,
-            path,
-            visited,
-        ) {
+        if let Some(result) =
+            search_path_to_goal(rng, &mut candidates, next_exit, goal_entry, path, visited)
+        {
             return Some(result);
         }
         path.pop();
@@ -362,69 +417,10 @@ fn search_path_to_goal(
 
 /* ------------------------- サンプルチャンク ------------------------- */
 
-fn chunk_start_flat() -> InnerChunkTemplate {
-    // 6x4 の小部屋。右と上に出口。地面とプレイヤー初期位置あり。
-    /*
-      ..E...
-      ......
-      .@##.E
-      ######
-    */
-    InnerChunkTemplate {
-        id: "start_flat",
-        size: (6, 4),
-        entry: Port {
-            x: 0,
-            y: 1,
-            dir: Dir::Left,
-        }, // スタート側の接続統一用（実際は未使用）
-        exits: vec![
-            Port {
-                x: 5,
-                y: 1,
-                dir: Dir::Right,
-            }, // 右へ
-            Port {
-                x: 2,
-                y: 3,
-                dir: Dir::Up,
-            }, // 上へ
-        ],
-        tiles: {
-            let mut v = vec![];
-            // 地面
-            for x in 0..6 {
-                v.push(Tile {
-                    x,
-                    y: 0,
-                    kind: TileKind::Solid,
-                });
-            }
-            // 低い段＋プレイヤー
-            v.push(Tile {
-                x: 1,
-                y: 1,
-                kind: TileKind::PlayerSpawn,
-            });
-            v.push(Tile {
-                x: 2,
-                y: 1,
-                kind: TileKind::Solid,
-            });
-            v.push(Tile {
-                x: 3,
-                y: 1,
-                kind: TileKind::Solid,
-            });
-            v
-        },
-    }
-}
-
 fn chunk_simple_platform() -> InnerChunkTemplate {
     // 緩やかな傾斜で高さが少し上がるシンプルな橋。
     InnerChunkTemplate {
-        id: "flat_platform",
+        id: "flat_platform".to_string(),
         size: (2, 4),
         entry: Port {
             x: 0,
@@ -453,7 +449,7 @@ fn chunk_simple_platform() -> InnerChunkTemplate {
 fn chunk_flat_bridge() -> InnerChunkTemplate {
     // 緩やかな傾斜で高さが少し上がるシンプルな橋。
     InnerChunkTemplate {
-        id: "flat_bridge",
+        id: "flat_bridge".to_string(),
         size: (6, 4),
         entry: Port {
             x: 0,
@@ -502,7 +498,7 @@ fn chunk_flat_bridge() -> InnerChunkTemplate {
 fn chunk_gap_jump() -> InnerChunkTemplate {
     // 小さな穴と段差。真ん中をジャンプで越えるイメージ。
     InnerChunkTemplate {
-        id: "gap_jump",
+        id: "gap_jump".to_string(),
         size: (6, 4),
         entry: Port {
             x: 0,
@@ -549,7 +545,7 @@ fn chunk_gap_jump() -> InnerChunkTemplate {
 fn chunk_plateau() -> InnerChunkTemplate {
     // 高さ2の台地が中央にあるチャンク。
     InnerChunkTemplate {
-        id: "plateau",
+        id: "plateau".to_string(),
         size: (6, 4),
         entry: Port {
             x: 0,
@@ -592,7 +588,7 @@ fn chunk_plateau() -> InnerChunkTemplate {
 fn chunk_stairs_up_small() -> InnerChunkTemplate {
     // 6x4。左から入って右上へ出る階段チャンク。さらに上方向の出口も一つ。
     InnerChunkTemplate {
-        id: "stairs_up_small",
+        id: "stairs_up_small".to_string(),
         size: (6, 4),
         entry: Port {
             x: 0,
@@ -650,7 +646,7 @@ fn chunk_stairs_up_small() -> InnerChunkTemplate {
 fn chunk_stairs_down_small() -> InnerChunkTemplate {
     // 左が高台になっている小さな下り階段。
     InnerChunkTemplate {
-        id: "stairs_down_small",
+        id: "stairs_down_small".to_string(),
         size: (6, 4),
         entry: Port {
             x: 0,
@@ -690,97 +686,6 @@ fn chunk_stairs_down_small() -> InnerChunkTemplate {
                 x: 2,
                 y: 1,
                 kind: TileKind::Solid,
-            });
-            v
-        },
-    }
-}
-
-fn chunk_goal_platform() -> InnerChunkTemplate {
-    // 6x4。左から入って中段にゴールがある足場。右にも出口。
-    /*
-     ......
-     I....G
-     ######
-     ......
-    */
-    InnerChunkTemplate {
-        id: "goal_platform",
-        size: (6, 4),
-        entry: Port {
-            x: 0,
-            y: 2,
-            dir: Dir::Left,
-        },
-        exits: vec![Port {
-            x: 5,
-            y: 2,
-            dir: Dir::Right,
-        }],
-        tiles: {
-            let mut v = vec![];
-            // 中段足場
-            for x in 0..6 {
-                v.push(Tile {
-                    x,
-                    y: 1,
-                    kind: TileKind::Solid,
-                });
-            }
-            v.push(Tile {
-                x: 5,
-                y: 2,
-                kind: TileKind::Goal,
-            });
-            v
-        },
-    }
-}
-
-fn chunk_goal_lower() -> InnerChunkTemplate {
-    // 6x4。低めの足場にゴールが配置されたバリエーション。
-    /*
-     ......
-     ......
-     I.##.G
-     ######
-    */
-    InnerChunkTemplate {
-        id: "goal_lower",
-        size: (6, 4),
-        entry: Port {
-            x: 0,
-            y: 1,
-            dir: Dir::Left,
-        },
-        exits: vec![Port {
-            x: 5,
-            y: 1,
-            dir: Dir::Right,
-        }],
-        tiles: {
-            let mut v = vec![];
-            for x in 0..6 {
-                v.push(Tile {
-                    x,
-                    y: 0,
-                    kind: TileKind::Solid,
-                });
-            }
-            v.push(Tile {
-                x: 2,
-                y: 1,
-                kind: TileKind::Solid,
-            });
-            v.push(Tile {
-                x: 3,
-                y: 1,
-                kind: TileKind::Solid,
-            });
-            v.push(Tile {
-                x: 5,
-                y: 1,
-                kind: TileKind::Goal,
             });
             v
         },
