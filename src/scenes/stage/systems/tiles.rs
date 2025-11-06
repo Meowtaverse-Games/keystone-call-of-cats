@@ -108,13 +108,13 @@ pub fn spawn_tiles(
                 };
 
                 let tile_x = (x as f32 + 1.5) * real_tile_size.x - viewport_size.x / 2.0;
-                let tile_y = ((y as f32 + 4.0) * real_tile_size.y - viewport_size.y / 2.0);
+                let tile_y = (y as f32 + 4.0) * real_tile_size.y - viewport_size.y / 2.0;
                 let transform = Transform::from_xyz(tile_x, tile_y, -10.0)
                     .with_scale(Vec3::new(scale, scale, 1.0));
 
                 // spawn_boundary_tile(parent, image, transform, tile_size, true);
 
-                let Some(tile) = tiled_map_assets.tile(tile_id as u32) else {
+                let Some(tile) = tiled_map_assets.tile(tile_id) else {
                     continue;
                 };
 
@@ -143,7 +143,13 @@ pub fn spawn_tiles(
                     parent.spawn((StageTile, image, transform));
                     continue;
                 }
-                parent.spawn((StageTile, image, transform, RigidBody::Static, Collider::compound(shapes)));
+                parent.spawn((
+                    StageTile,
+                    image,
+                    transform,
+                    RigidBody::Static,
+                    Collider::compound(shapes),
+                ));
             }
         },
     );

@@ -11,6 +11,7 @@ pub enum TileShape {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub struct Tile {
     pub id: u32,
     pub shapes: Vec<TileShape>,
@@ -44,18 +45,7 @@ impl<'map> TileLayer<'map> {
         self.inner_layer.height().unwrap_or(0)
     }
 
-    pub fn tile_positions(&self) -> Vec<(u32, u32)> {
-        let mut indexes = vec![(0u32, 0u32)];
-        for x in 0..self.inner_layer.width().unwrap() as i32 {
-            for y in 0..self.inner_layer.height().unwrap() as i32 {
-                if let Some(_tile) = self.inner_layer.get_tile(x, y) {
-                    indexes.push((x as u32, y as u32));
-                }
-            }
-        }
-        indexes
-    }
-
+    #[allow(dead_code)]
     pub fn tile(&self, x: u32, y: u32) -> Option<Tile> {
         let tile = self.inner_layer.get_tile(x as i32, y as i32)?;
 
