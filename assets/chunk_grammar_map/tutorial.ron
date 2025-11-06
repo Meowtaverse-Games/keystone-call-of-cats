@@ -1,0 +1,26 @@
+(
+    StartChunks([
+        ChunkTemplate {
+            id: "start_flat",
+            map: [
+                "..E...",
+                "......",
+                ".@##.E",
+                "######",
+            ]
+        }
+    ]),
+    GoalChunks([
+        ChunkTemplate {
+            id: "goal_flat",
+            map: [
+                "......",
+                "......",
+                "I.##.G",
+                "######",
+            ]
+        }
+    ]),
+    MiddleChunks([
+    ]),
+)
