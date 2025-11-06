@@ -54,7 +54,7 @@ fn main() {
     ));
 
     if debug {
-        app.add_plugins(PhysicsDebugPlugin::default());
+        app.add_plugins(PhysicsDebugPlugin);
     }
 
     app.add_plugins(ScriptPlugin)

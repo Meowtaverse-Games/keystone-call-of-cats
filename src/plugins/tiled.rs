@@ -10,7 +10,7 @@ mod object_layer;
 mod tile_layer;
 
 pub use object_layer::ObjectLayer;
-pub use tile_layer::{TileLayer, TileShape};
+pub use tile_layer::{Tile, TileLayer, TileShape};
 
 /// Configures how the [`TiledPlugin`] loads Tiled data.
 #[derive(Resource, Clone)]
@@ -45,7 +45,7 @@ impl Plugin for TiledPlugin {
 #[derive(Clone)]
 pub struct TiledMapAssets {
     map_path: String,
-    _tsx: Arc<tiled_rs::Tileset>,
+    tsx: Arc<tiled_rs::Tileset>,
     map: Arc<tiled_rs::Map>,
     tilesets: Vec<Tileset>,
 }
@@ -57,6 +57,29 @@ impl TiledMapAssets {
 
     pub fn tilesets(&self) -> &[Tileset] {
         &self.tilesets
+    }
+
+    pub fn tile(&self, id: u32) -> Option<Tile> {
+        let tile = self.tsx.get_tile(id)?;
+
+        let shapes = match &tile.collision {
+            Some(collision) => collision
+                .object_data()
+                .iter()
+                .map(|data| match data.shape {
+                    tiled_rs::ObjectShape::Rect { width, height } => TileShape::Rect {
+                        width,
+                        height,
+                        x: data.x,
+                        y: data.y,
+                    },
+                    _ => unimplemented!("Tile shape not implemented"),
+                })
+                .collect(),
+            None => vec![],
+        };
+
+        Some(Tile { id, shapes })
     }
 
     pub fn tile_layers<'a>(&'a self) -> impl Iterator<Item = TileLayer<'a>> + 'a {
@@ -221,7 +244,7 @@ fn load_tiled_assets(
 
         loaded_maps.push(TiledMapAssets {
             map_path: map_path.clone(),
-            _tsx: Arc::clone(&tsx),
+            tsx: Arc::clone(&tsx),
             map: Arc::new(map),
             tilesets,
         });

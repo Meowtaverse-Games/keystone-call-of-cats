@@ -85,7 +85,7 @@ pub fn spawn_tiles(
                         } else if x == MAP_SIZE.0 - 1 {
                             132
                         } else {
-                            134 // Fallback, should not happen
+                            0 // Fallback, should not happen
                         }
                     } else {
                         let index = rng.random_range(0..(background_ids.len()));
@@ -112,32 +112,38 @@ pub fn spawn_tiles(
                 let transform = Transform::from_xyz(tile_x, tile_y, -10.0)
                     .with_scale(Vec3::new(scale, scale, 1.0));
 
-                spawn_boundary_tile(parent, image, transform, tile_size, true);
+                // spawn_boundary_tile(parent, image, transform, tile_size, true);
 
-                // let shapes = match kind {
-                //     TileKind::Solid => {
-                //         let collider = Collider::rectangle(tile_size.x, tile_size.y);
-                //         vec![(Position::default(), Rotation::default(), collider)]
-                //     }
-                //     TileKind::PlayerSpawn | TileKind::Goal => {
-                //         shape_sampling.sample_points_in_rectangle(
-                //             &Vec2::new(tile_size.x, tile_size.y),
-                //             4,
-                //         )
-                //         .into_iter()
-                //         .map(|point| {
-                //             let collider = Collider::ball(2.0);
-                //             (
-                //                 Position::from_xy(point.x, point.y),
-                //                 Rotation::default(),
-                //                 collider,
-                //             )
-                //         })
-                //         .collect()
-                //     }
-                // };
+                let Some(tile) = tiled_map_assets.tile(tile_id as u32) else {
+                    continue;
+                };
 
-                // parent.spawn((StageTile, image, transform, Collider::compound(shapes)));
+                let shapes = tile
+                    .shapes
+                    .iter()
+                    .map(|shape| match shape {
+                        TileShape::Rect {
+                            width,
+                            height,
+                            x,
+                            y,
+                        } => {
+                            let collider = Collider::rectangle(*width, *height);
+                            let pos = Position::from_xy(
+                                -tile_size.x / 2.0 + (*width + *x) / 2.0 + *x / 2.0,
+                                tile_size.y / 2.0 - (*height + *y) / 2.0 - *y / 2.0,
+                            );
+                            let rot = Rotation::degrees(0.0);
+                            (pos, rot, collider)
+                        }
+                    })
+                    .collect::<Vec<_>>();
+
+                if shapes.is_empty() {
+                    parent.spawn((StageTile, image, transform));
+                    continue;
+                }
+                parent.spawn((StageTile, image, transform, RigidBody::Static, Collider::compound(shapes)));
             }
         },
     );

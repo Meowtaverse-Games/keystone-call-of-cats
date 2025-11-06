@@ -13,8 +13,6 @@ pub enum TileShape {
 #[derive(Debug)]
 pub struct Tile {
     pub id: u32,
-    #[allow(dead_code)]
-    pub collision: Option<bool>,
     pub shapes: Vec<TileShape>,
 }
 
@@ -65,13 +63,12 @@ impl<'map> TileLayer<'map> {
             let Some(collision) = tile_data.collision.as_ref() else {
                 return Tile {
                     id: tile.id(),
-                    collision: None,
                     shapes: vec![],
                 };
             };
 
-            let object_data = collision.object_data();
-            let shapes = object_data
+            let shapes = collision
+                .object_data()
                 .iter()
                 .map(|data| match data.shape {
                     tiled_rs::ObjectShape::Rect { width, height } => TileShape::Rect {
@@ -88,13 +85,6 @@ impl<'map> TileLayer<'map> {
 
             Tile {
                 id: tile.id(),
-                collision: tile_data.properties.get("collision").and_then(|v| {
-                    if let tiled_rs::PropertyValue::BoolValue(b) = v {
-                        Some(*b)
-                    } else {
-                        None
-                    }
-                }),
                 shapes,
             }
         })
