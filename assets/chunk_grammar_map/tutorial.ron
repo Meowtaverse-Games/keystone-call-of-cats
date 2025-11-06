@@ -1,26 +1,32 @@
 (
-    StartChunks([
-        ChunkTemplate {
-            id: "start_flat",
-            map: [
-                "..E...",
-                "......",
-                ".@##.E",
-                "######",
-            ]
-        }
-    ]),
-    GoalChunks([
-        ChunkTemplate {
-            id: "goal_flat",
-            map: [
-                "......",
-                "......",
-                "I.##.G",
-                "######",
-            ]
-        }
-    ]),
-    MiddleChunks([
-    ]),
+    StartChunks(
+        templates: [
+            ChunkTemplate(
+                id: "start_flat",
+                map: [
+                    "..E...",
+                    "......",
+                    ".@##.E",
+                    "######",
+                ]
+            )
+        ]
+    ),
+    MiddleChunks(
+        templates: [
+        ]
+    ),
+    GoalChunks(
+        templates: [
+            ChunkTemplate(
+                id: "goal_flat",
+                map: [
+                    "......",
+                    "......",
+                    "I.##.G",
+                    "######",
+                ]
+            )
+        ]
+    ),
 )
