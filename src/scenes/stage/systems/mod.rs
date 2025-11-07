@@ -177,13 +177,6 @@ fn populate_stage_contents(
         return;
     };
 
-    let (_, scale) =
-        tiled_map_assets.scaled_tile_size_and_scale(viewport.size, tileset.tile_size());
-    info!(
-        "Computed player scale: {}, viewport size: {}",
-        scale, viewport.size
-    );
-
     let tile_size = tileset.tile_size();
     let viewport_size = viewport.size;
     let (real_tile_size, scale) =
