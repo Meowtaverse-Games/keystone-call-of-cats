@@ -111,9 +111,8 @@ pub fn update(
 
     boot_timer.timer.tick(time.delta());
     if boot_timer.timer.is_finished() && loaded.0 {
-        // TODO; transition to the title scene
         info!("Boot timer finished");
-        next_state.set(GameState::Title);
+        next_state.set(GameState::SelectStage);
     }
 }
 

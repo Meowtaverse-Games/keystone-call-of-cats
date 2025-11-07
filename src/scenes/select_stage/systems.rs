@@ -1,6 +1,9 @@
 use std::path::Path;
 
+use bevy::app::AppExit;
+use bevy::prelude::MessageWriter;
 use bevy::prelude::*;
+use bevy::ui::BorderRadius;
 use bevy_ecs::hierarchy::ChildSpawnerCommands;
 
 use super::components::*;
@@ -69,6 +72,33 @@ struct StageEntry {
     playable: bool,
 }
 
+struct StageSummary {
+    total: usize,
+    unlocked: usize,
+    locked: usize,
+    highlight: String,
+}
+
+impl StageSummary {
+    fn from_entries(entries: &[StageEntry]) -> Self {
+        let total = entries.len();
+        let unlocked = entries.iter().filter(|entry| entry.playable).count();
+        let locked = total.saturating_sub(unlocked);
+        let highlight = entries
+            .iter()
+            .find(|entry| entry.playable)
+            .map(|entry| entry.title.clone())
+            .unwrap_or_else(|| "COMING SOON".to_string());
+
+        Self {
+            total,
+            unlocked,
+            locked,
+            highlight,
+        }
+    }
+}
+
 impl StageEntry {
     fn playable(index: usize, map: &TiledMapAssets) -> Self {
         Self {
@@ -104,8 +134,12 @@ pub fn setup(
         warn!("StageSelect: default font is not available, UI text may be missing");
         Handle::default()
     };
+    let display_font = asset_store
+        .font(FontKey::Title)
+        .unwrap_or_else(|| font.clone());
 
     let entries = build_stage_entries(&tiled_maps);
+    let summary = StageSummary::from_entries(&entries);
     let state = StageSelectState::new(entries.len(), CARDS_PER_PAGE);
     let page_text = format!("{}/{}", state.current_page + 1, state.total_pages());
     commands.insert_resource(state);
@@ -117,10 +151,10 @@ pub fn setup(
                 width: Val::Percent(100.0),
                 height: Val::Percent(100.0),
                 flex_direction: FlexDirection::Column,
-                justify_content: JustifyContent::Center,
+                justify_content: JustifyContent::SpaceBetween,
                 align_items: AlignItems::Stretch,
                 padding: UiRect::axes(Val::Px(48.0), Val::Px(32.0)),
-                row_gap: Val::Px(SECTION_SPACING),
+                row_gap: Val::Px(SECTION_SPACING * 1.25),
                 ..default()
             },
             BackgroundColor(background_color()),
@@ -128,7 +162,8 @@ pub fn setup(
         .id();
 
     commands.entity(root).with_children(|parent| {
-        spawn_top_bar(parent, &font);
+        spawn_glow_layers(parent);
+        spawn_hero_section(parent, &font, &display_font, &summary, &page_text);
         spawn_stage_cards(parent, &entries, &font);
         spawn_bottom_bar(parent, &font, &page_text);
     });
@@ -143,11 +178,11 @@ pub fn cleanup(mut commands: Commands, roots: Query<Entity, With<StageSelectRoot
 
 pub fn handle_back_button(
     mut interactions: Query<(&StageBackButton, &Interaction), Changed<Interaction>>,
-    mut next_state: ResMut<NextState<GameState>>,
+    mut exit_events: MessageWriter<AppExit>,
 ) {
     for (_, interaction) in &mut interactions {
         if *interaction == Interaction::Pressed {
-            next_state.set(GameState::Title);
+            exit_events.write(AppExit::Success);
         }
     }
 }
@@ -190,7 +225,7 @@ pub fn handle_play_buttons(
 pub fn handle_keyboard_navigation(
     keys: Res<ButtonInput<KeyCode>>,
     mut state: ResMut<StageSelectState>,
-    mut next_state: ResMut<NextState<GameState>>,
+    mut exit_events: MessageWriter<AppExit>,
 ) {
     if keys.just_pressed(KeyCode::ArrowRight) {
         state.move_page(1);
@@ -201,7 +236,7 @@ pub fn handle_keyboard_navigation(
     }
 
     if keys.just_pressed(KeyCode::Escape) {
-        next_state.set(GameState::Title);
+        exit_events.write(AppExit::Success);
     }
 }
 
@@ -245,27 +280,296 @@ pub fn update_button_visuals(
     }
 }
 
-fn spawn_top_bar(parent: &mut ChildSpawnerCommands, font: &Handle<Font>) {
+fn spawn_glow_layers(parent: &mut ChildSpawnerCommands) {
+    parent.spawn((
+        Node {
+            position_type: PositionType::Absolute,
+            left: Val::Px(-160.0),
+            top: Val::Px(32.0),
+            width: Val::Px(360.0),
+            height: Val::Px(360.0),
+            ..default()
+        },
+        BorderRadius::all(Val::Px(360.0)),
+        BackgroundColor(primary_glow_color()),
+        ZIndex(-1),
+    ));
+
+    parent.spawn((
+        Node {
+            position_type: PositionType::Absolute,
+            right: Val::Px(-120.0),
+            bottom: Val::Px(-80.0),
+            width: Val::Px(420.0),
+            height: Val::Px(420.0),
+            ..default()
+        },
+        BorderRadius::all(Val::Px(420.0)),
+        BackgroundColor(secondary_glow_color()),
+        ZIndex(-1),
+    ));
+}
+
+fn spawn_hero_section(
+    parent: &mut ChildSpawnerCommands,
+    font: &Handle<Font>,
+    display_font: &Handle<Font>,
+    summary: &StageSummary,
+    page_text: &str,
+) {
     parent
         .spawn(Node {
             width: Val::Percent(100.0),
-            justify_content: JustifyContent::SpaceBetween,
-            align_items: AlignItems::Center,
+            flex_direction: FlexDirection::Column,
+            row_gap: Val::Px(20.0),
             ..default()
         })
-        .with_children(|bar| {
-            spawn_back_button(bar, font);
-            spawn_category_label(bar, font, "DEFAULT");
-            spawn_category_label(bar, font, "CUSTOM");
+        .with_children(|hero| {
+            hero.spawn(Node {
+                width: Val::Percent(100.0),
+                justify_content: JustifyContent::SpaceBetween,
+                align_items: AlignItems::Center,
+                ..default()
+            })
+            .with_children(|row| {
+                spawn_status_badge(row, font, "EXPERIMENTAL BUILD");
+                spawn_back_button(row, font);
+            });
+
+            hero.spawn(Node {
+                width: Val::Percent(100.0),
+                flex_direction: FlexDirection::Row,
+                column_gap: Val::Px(32.0),
+                align_items: AlignItems::Stretch,
+                ..default()
+            })
+            .with_children(|content| {
+                spawn_hero_copy(content, font, display_font, summary);
+                spawn_highlight_card(content, font, summary, page_text);
+            });
+        });
+}
+
+fn spawn_status_badge(parent: &mut ChildSpawnerCommands, font: &Handle<Font>, label: &str) {
+    parent
+        .spawn((
+            Node {
+                padding: UiRect::axes(Val::Px(20.0), Val::Px(10.0)),
+                ..default()
+            },
+            BorderRadius::all(Val::Px(999.0)),
+            BackgroundColor(badge_background_color()),
+        ))
+        .with_children(|badge| {
+            badge
+                .spawn(Text::new(label))
+                .insert(TextFont {
+                    font: font.clone(),
+                    font_size: 22.0,
+                    ..default()
+                })
+                .insert(TextColor(secondary_text_color()));
+        });
+}
+
+fn spawn_hero_copy(
+    parent: &mut ChildSpawnerCommands,
+    font: &Handle<Font>,
+    display_font: &Handle<Font>,
+    summary: &StageSummary,
+) {
+    parent
+        .spawn(Node {
+            flex_grow: 2.0,
+            flex_direction: FlexDirection::Column,
+            row_gap: Val::Px(12.0),
+            ..default()
+        })
+        .with_children(|left| {
+            left.spawn(Node {
+                position_type: PositionType::Relative,
+                ..default()
+            })
+            .with_children(|stack| {
+                stack.spawn((
+                    Node {
+                        position_type: PositionType::Absolute,
+                        left: Val::Px(4.0),
+                        top: Val::Px(4.0),
+                        ..default()
+                    },
+                    Text::new("KEYSTONE · CALL OF CATS"),
+                    TextFont {
+                        font: display_font.clone(),
+                        font_size: 56.0,
+                        ..default()
+                    },
+                    TextColor(hero_shadow_color()),
+                ));
+
+                stack.spawn((
+                    Text::new("KEYSTONE · CALL OF CATS"),
+                    TextFont {
+                        font: display_font.clone(),
+                        font_size: 56.0,
+                        ..default()
+                    },
+                    TextColor(hero_title_color()),
+                ));
+            });
+
+            left.spawn(Text::new(
+                "Drop into a vibrant kitty multiverse, remix your best scripts,\
+                 \nand pursue the sharpest keystones.",
+            ))
+            .insert(TextFont {
+                font: font.clone(),
+                font_size: 24.0,
+                ..default()
+            })
+            .insert(TextColor(secondary_text_color()));
+
+            left.spawn(Node {
+                flex_direction: FlexDirection::Row,
+                column_gap: Val::Px(16.0),
+                ..default()
+            })
+            .with_children(|stats| {
+                spawn_stat_card(
+                    stats,
+                    font,
+                    "UNLOCKED",
+                    &format!("{}", summary.unlocked),
+                    true,
+                );
+                spawn_stat_card(stats, font, "LOCKED", &format!("{}", summary.locked), false);
+                spawn_stat_card(stats, font, "SLOTS", &format!("{}", summary.total), false);
+            });
+        });
+}
+
+fn spawn_stat_card(
+    parent: &mut ChildSpawnerCommands,
+    font: &Handle<Font>,
+    label: &str,
+    value: &str,
+    accent: bool,
+) {
+    parent
+        .spawn((
+            Node {
+                padding: UiRect::axes(Val::Px(20.0), Val::Px(14.0)),
+                flex_direction: FlexDirection::Column,
+                row_gap: Val::Px(6.0),
+                ..default()
+            },
+            BorderRadius::all(Val::Px(18.0)),
+            BackgroundColor(stat_card_background(accent)),
+        ))
+        .with_children(|card| {
+            card.spawn(Text::new(label))
+                .insert(TextFont {
+                    font: font.clone(),
+                    font_size: 16.0,
+                    ..default()
+                })
+                .insert(TextColor(secondary_text_color()));
+
+            card.spawn(Text::new(value))
+                .insert(TextFont {
+                    font: font.clone(),
+                    font_size: 32.0,
+                    ..default()
+                })
+                .insert(TextColor(primary_text_color()));
+        });
+}
+
+fn spawn_highlight_card(
+    parent: &mut ChildSpawnerCommands,
+    font: &Handle<Font>,
+    summary: &StageSummary,
+    page_text: &str,
+) {
+    parent
+        .spawn((
+            Node {
+                flex_grow: 1.0,
+                padding: UiRect::all(Val::Px(28.0)),
+                flex_direction: FlexDirection::Column,
+                row_gap: Val::Px(14.0),
+                align_self: AlignSelf::Stretch,
+                ..default()
+            },
+            BorderRadius::all(Val::Px(32.0)),
+            BackgroundColor(hero_card_background()),
+        ))
+        .with_children(|card| {
+            card.spawn(Text::new("FEATURED STAGE"))
+                .insert(TextFont {
+                    font: font.clone(),
+                    font_size: 18.0,
+                    ..default()
+                })
+                .insert(TextColor(secondary_text_color()));
+
+            card.spawn(Text::new(summary.highlight.clone()))
+                .insert(TextFont {
+                    font: font.clone(),
+                    font_size: 34.0,
+                    ..default()
+                })
+                .insert(TextColor(primary_text_color()));
+
+            card.spawn(Text::new(
+                "Dial in your keystone strategy before the cats do.",
+            ))
+            .insert(TextFont {
+                font: font.clone(),
+                font_size: 20.0,
+                ..default()
+            })
+            .insert(TextColor(secondary_text_color()));
+
+            card.spawn(Node {
+                flex_direction: FlexDirection::Row,
+                column_gap: Val::Px(12.0),
+                ..default()
+            })
+            .with_children(|chips| {
+                spawn_highlight_chip(chips, font, &format!("PAGES {}", page_text));
+                spawn_highlight_chip(chips, font, "STORY MODE");
+            });
+        });
+}
+
+fn spawn_highlight_chip(parent: &mut ChildSpawnerCommands, font: &Handle<Font>, label: &str) {
+    parent
+        .spawn((
+            Node {
+                padding: UiRect::axes(Val::Px(18.0), Val::Px(8.0)),
+                ..default()
+            },
+            BorderRadius::all(Val::Px(999.0)),
+            BackgroundColor(badge_background_color()),
+        ))
+        .with_children(|chip| {
+            chip.spawn(Text::new(label))
+                .insert(TextFont {
+                    font: font.clone(),
+                    font_size: 16.0,
+                    ..default()
+                })
+                .insert(TextColor(primary_text_color()));
         });
 }
 
 fn spawn_back_button(parent: &mut ChildSpawnerCommands, font: &Handle<Font>) {
     let visual = ButtonVisual::new(
-        subtle_button_color(0.0),
-        subtle_button_color(0.15),
-        subtle_button_color(0.3),
-        subtle_button_color(0.0),
+        hero_button_color(),
+        hero_button_hover_color(),
+        hero_button_pressed_color(),
+        subtle_button_color(0.2),
         true,
     );
     let initial = button_initial_color(&visual);
@@ -276,39 +580,17 @@ fn spawn_back_button(parent: &mut ChildSpawnerCommands, font: &Handle<Font>) {
             Button,
             visual,
             Node {
-                padding: UiRect::all(Val::Px(18.0)),
-                border: UiRect::all(Val::Px(3.0)),
+                padding: UiRect::axes(Val::Px(24.0), Val::Px(12.0)),
                 ..default()
             },
-            BorderColor::all(primary_text_color()),
+            BorderRadius::all(Val::Px(999.0)),
             BackgroundColor(initial),
         ))
         .with_children(|btn| {
-            btn.spawn(Text::new("BACK"))
+            btn.spawn(Text::new("EXIT"))
                 .insert(TextFont {
                     font: font.clone(),
-                    font_size: 42.0,
-                    ..default()
-                })
-                .insert(TextColor(primary_text_color()));
-        });
-}
-
-fn spawn_category_label(parent: &mut ChildSpawnerCommands, font: &Handle<Font>, label: &str) {
-    parent
-        .spawn((
-            Node {
-                padding: UiRect::axes(Val::Px(24.0), Val::Px(12.0)),
-                border: UiRect::all(Val::Px(3.0)),
-                ..default()
-            },
-            BorderColor::all(primary_text_color()),
-        ))
-        .with_children(|node| {
-            node.spawn(Text::new(label))
-                .insert(TextFont {
-                    font: font.clone(),
-                    font_size: 38.0,
+                    font_size: 28.0,
                     ..default()
                 })
                 .insert(TextColor(primary_text_color()));
@@ -324,104 +606,156 @@ fn spawn_stage_cards(
         .spawn(Node {
             width: Val::Percent(100.0),
             flex_grow: 1.0,
-            justify_content: JustifyContent::Center,
-            align_items: AlignItems::Center,
+            flex_wrap: FlexWrap::Wrap,
+            row_gap: Val::Px(CARD_GAP),
             column_gap: Val::Px(CARD_GAP),
-            flex_wrap: FlexWrap::NoWrap,
+            justify_content: JustifyContent::FlexStart,
+            align_items: AlignItems::FlexStart,
             ..default()
         })
-        .with_children(|row| {
+        .with_children(|grid| {
             for entry in entries {
-                spawn_stage_card(row, entry, font);
-            }
-        });
-}
+                grid.spawn((
+                    StageCard { index: entry.index },
+                    Node {
+                        width: Val::Px(CARD_WIDTH),
+                        min_height: Val::Px(CARD_HEIGHT),
+                        flex_direction: FlexDirection::Column,
+                        row_gap: Val::Px(16.0),
+                        padding: UiRect::all(Val::Px(24.0)),
+                        border: UiRect::all(Val::Px(2.0)),
+                        display: if entry.index < CARDS_PER_PAGE {
+                            Display::Flex
+                        } else {
+                            Display::None
+                        },
+                        ..default()
+                    },
+                    BorderRadius::all(Val::Px(28.0)),
+                    BackgroundColor(card_background_color()),
+                    BorderColor::all(card_border_color()),
+                ))
+                .with_children(|card| {
+                    card.spawn(Node {
+                        width: Val::Percent(100.0),
+                        justify_content: JustifyContent::SpaceBetween,
+                        align_items: AlignItems::Center,
+                        ..default()
+                    })
+                    .with_children(|header| {
+                        header
+                            .spawn(Text::new(format!("STAGE {:02}", entry.index + 1)))
+                            .insert(TextFont {
+                                font: font.clone(),
+                                font_size: 18.0,
+                                ..default()
+                            })
+                            .insert(TextColor(secondary_text_color()));
 
-fn spawn_stage_card(parent: &mut ChildSpawnerCommands, entry: &StageEntry, font: &Handle<Font>) {
-    let display = if entry.index < CARDS_PER_PAGE {
-        Display::Flex
-    } else {
-        Display::None
-    };
+                        spawn_stage_chip(header, font, entry.playable);
+                    });
 
-    parent
-        .spawn((
-            StageCard { index: entry.index },
-            Node {
-                width: Val::Px(CARD_WIDTH),
-                height: Val::Px(CARD_HEIGHT),
-                flex_direction: FlexDirection::Column,
-                justify_content: JustifyContent::SpaceBetween,
-                row_gap: Val::Px(16.0),
-                padding: UiRect::all(Val::Px(18.0)),
-                display,
-                ..default()
-            },
-            BackgroundColor(card_background_color()),
-            BorderColor::all(primary_text_color()),
-        ))
-        .with_children(|card| {
-            card.spawn(Text::new(entry.title.clone()))
-                .insert(TextFont {
-                    font: font.clone(),
-                    font_size: 32.0,
-                    ..default()
-                })
-                .insert(TextColor(primary_text_color()));
-
-            card.spawn(Node {
-                flex_direction: FlexDirection::Row,
-                justify_content: JustifyContent::SpaceBetween,
-                align_items: AlignItems::Stretch,
-                column_gap: Val::Px(16.0),
-                flex_grow: 1.0,
-                ..default()
-            })
-            .with_children(|row| {
-                row.spawn(Node {
-                    flex_direction: FlexDirection::Column,
-                    row_gap: Val::Px(12.0),
-                    ..default()
-                })
-                .with_children(|stats| {
-                    stats
-                        .spawn(Text::new("GLOBAL HIGHSCORES:"))
+                    card.spawn(Text::new(entry.title.clone()))
                         .insert(TextFont {
                             font: font.clone(),
-                            font_size: 20.0,
+                            font_size: 32.0,
                             ..default()
                         })
                         .insert(TextColor(primary_text_color()));
 
-                    stats
-                        .spawn(Text::new("BEST TIME\n--"))
-                        .insert(TextFont {
-                            font: font.clone(),
-                            font_size: 18.0,
-                            ..default()
-                        })
-                        .insert(TextColor(secondary_text_color()));
-
-                    stats
-                        .spawn(Text::new("BEST SCRIPT\n--"))
-                        .insert(TextFont {
-                            font: font.clone(),
-                            font_size: 18.0,
-                            ..default()
-                        })
-                        .insert(TextColor(secondary_text_color()));
-                });
-
-                row.spawn((
-                    Node {
-                        flex_grow: 1.0,
+                    card.spawn(Text::new(if entry.playable {
+                        "Sprint-ready layout for confident coders."
+                    } else {
+                        "Reach the keystone above to unlock this remix."
+                    }))
+                    .insert(TextFont {
+                        font: font.clone(),
+                        font_size: 18.0,
                         ..default()
-                    },
-                    BackgroundColor(preview_background()),
-                ));
-            });
+                    })
+                    .insert(TextColor(secondary_text_color()));
 
-            spawn_play_button(card, entry, font);
+                    card.spawn(Node {
+                        flex_direction: FlexDirection::Row,
+                        column_gap: Val::Px(12.0),
+                        ..default()
+                    })
+                    .with_children(|stats| {
+                        spawn_mini_stat(stats, font, "BEST TIME", "--");
+                        spawn_mini_stat(stats, font, "BEST SCRIPT", "--");
+                    });
+
+                    card.spawn((
+                        Node {
+                            flex_grow: 1.0,
+                            ..default()
+                        },
+                        BorderRadius::all(Val::Px(20.0)),
+                        BackgroundColor(preview_background()),
+                    ))
+                    .with_children(|_| {});
+
+                    spawn_play_button(card, entry, font);
+                });
+            }
+        });
+}
+
+fn spawn_stage_chip(parent: &mut ChildSpawnerCommands, font: &Handle<Font>, playable: bool) {
+    let (label, color) = if playable {
+        ("READY", hero_button_color())
+    } else {
+        ("LOCKED", disabled_accent_color())
+    };
+
+    parent
+        .spawn((
+            Node {
+                padding: UiRect::axes(Val::Px(12.0), Val::Px(6.0)),
+                ..default()
+            },
+            BorderRadius::all(Val::Px(999.0)),
+            BackgroundColor(color),
+        ))
+        .with_children(|chip| {
+            chip.spawn(Text::new(label))
+                .insert(TextFont {
+                    font: font.clone(),
+                    font_size: 14.0,
+                    ..default()
+                })
+                .insert(TextColor(primary_text_color()));
+        });
+}
+
+fn spawn_mini_stat(
+    parent: &mut ChildSpawnerCommands,
+    font: &Handle<Font>,
+    label: &str,
+    value: &str,
+) {
+    parent
+        .spawn(Node {
+            flex_direction: FlexDirection::Column,
+            row_gap: Val::Px(4.0),
+            ..default()
+        })
+        .with_children(|stat| {
+            stat.spawn(Text::new(label))
+                .insert(TextFont {
+                    font: font.clone(),
+                    font_size: 14.0,
+                    ..default()
+                })
+                .insert(TextColor(secondary_text_color()));
+
+            stat.spawn(Text::new(value))
+                .insert(TextFont {
+                    font: font.clone(),
+                    font_size: 22.0,
+                    ..default()
+                })
+                .insert(TextColor(primary_text_color()));
         });
 }
 
@@ -449,16 +783,17 @@ fn spawn_play_button(parent: &mut ChildSpawnerCommands, entry: &StageEntry, font
                 justify_content: JustifyContent::Center,
                 align_items: AlignItems::Center,
                 align_self: AlignSelf::FlexEnd,
-                padding: UiRect::axes(Val::Px(0.0), Val::Px(12.0)),
+                padding: UiRect::axes(Val::Px(32.0), Val::Px(12.0)),
                 ..default()
             },
+            BorderRadius::all(Val::Px(999.0)),
             BackgroundColor(button_initial_color(&visual)),
         ))
         .with_children(|btn| {
             btn.spawn(Text::new(label))
                 .insert(TextFont {
                     font: font.clone(),
-                    font_size: 28.0,
+                    font_size: 24.0,
                     ..default()
                 })
                 .insert(TextColor(primary_text_color()));
@@ -467,13 +802,20 @@ fn spawn_play_button(parent: &mut ChildSpawnerCommands, entry: &StageEntry, font
 
 fn spawn_bottom_bar(parent: &mut ChildSpawnerCommands, font: &Handle<Font>, initial_value: &str) {
     parent
-        .spawn(Node {
-            width: Val::Percent(100.0),
-            justify_content: JustifyContent::Center,
-            align_items: AlignItems::Center,
-            column_gap: Val::Px(16.0),
-            ..default()
-        })
+        .spawn((
+            Node {
+                width: Val::Percent(100.0),
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                column_gap: Val::Px(20.0),
+                padding: UiRect::axes(Val::Px(28.0), Val::Px(18.0)),
+                border: UiRect::all(Val::Px(1.0)),
+                ..default()
+            },
+            BorderRadius::all(Val::Px(28.0)),
+            BackgroundColor(nav_background_color()),
+            BorderColor::all(card_border_color()),
+        ))
         .with_children(|nav| {
             spawn_nav_button(nav, font, "<", -1);
             nav.spawn((
@@ -481,7 +823,7 @@ fn spawn_bottom_bar(parent: &mut ChildSpawnerCommands, font: &Handle<Font>, init
                 Text::new(initial_value),
                 TextFont {
                     font: font.clone(),
-                    font_size: 26.0,
+                    font_size: 28.0,
                     ..default()
                 },
                 TextColor(primary_text_color()),
@@ -497,10 +839,10 @@ fn spawn_nav_button(
     delta: isize,
 ) {
     let visual = ButtonVisual::new(
-        subtle_button_color(0.0),
-        subtle_button_color(0.15),
-        subtle_button_color(0.3),
-        subtle_button_color(0.0),
+        subtle_button_color(0.2),
+        subtle_button_color(0.35),
+        subtle_button_color(0.5),
+        subtle_button_color(0.08),
         true,
     );
 
@@ -510,11 +852,10 @@ fn spawn_nav_button(
             Button,
             visual,
             Node {
-                padding: UiRect::all(Val::Px(8.0)),
-                border: UiRect::all(Val::Px(2.0)),
+                padding: UiRect::all(Val::Px(12.0)),
                 ..default()
             },
-            BorderColor::all(primary_text_color()),
+            BorderRadius::all(Val::Px(18.0)),
             BackgroundColor(button_initial_color(&visual)),
         ))
         .with_children(|btn| {
@@ -560,41 +901,93 @@ fn display_name(map: &TiledMapAssets) -> String {
 }
 
 fn background_color() -> Color {
-    Color::srgb(0.05, 0.07, 0.14)
+    Color::srgb(0.02, 0.03, 0.07)
+}
+
+fn primary_glow_color() -> Color {
+    Color::srgba(0.99, 0.35, 0.71, 0.22)
+}
+
+fn secondary_glow_color() -> Color {
+    Color::srgba(0.28, 0.63, 0.98, 0.18)
 }
 
 fn card_background_color() -> Color {
     Color::srgb(0.09, 0.11, 0.2)
 }
 
+fn card_border_color() -> Color {
+    Color::srgba(1.0, 1.0, 1.0, 0.08)
+}
+
 fn preview_background() -> Color {
-    Color::srgb(0.13, 0.16, 0.28)
+    Color::srgb(0.14, 0.17, 0.31)
+}
+
+fn hero_card_background() -> Color {
+    Color::srgb(0.11, 0.14, 0.28)
+}
+
+fn nav_background_color() -> Color {
+    Color::srgba(0.1, 0.13, 0.23, 0.85)
 }
 
 fn primary_text_color() -> Color {
-    Color::srgb(0.95, 0.96, 0.98)
+    Color::srgb(0.96, 0.97, 1.0)
 }
 
 fn secondary_text_color() -> Color {
-    Color::srgb(0.75, 0.78, 0.84)
+    Color::srgb(0.73, 0.78, 0.9)
+}
+
+fn badge_background_color() -> Color {
+    Color::srgba(1.0, 1.0, 1.0, 0.08)
+}
+
+fn hero_title_color() -> Color {
+    Color::srgb(0.99, 0.56, 0.79)
+}
+
+fn hero_shadow_color() -> Color {
+    Color::srgb(0.1, 0.03, 0.19)
+}
+
+fn stat_card_background(accent: bool) -> Color {
+    if accent {
+        Color::srgba(0.99, 0.38, 0.67, 0.28)
+    } else {
+        Color::srgba(1.0, 1.0, 1.0, 0.05)
+    }
+}
+
+fn hero_button_color() -> Color {
+    Color::srgb(0.96, 0.34, 0.53)
+}
+
+fn hero_button_hover_color() -> Color {
+    Color::srgb(0.98, 0.42, 0.63)
+}
+
+fn hero_button_pressed_color() -> Color {
+    Color::srgb(0.84, 0.28, 0.46)
 }
 
 fn accent_color() -> Color {
-    Color::srgb(0.97, 0.32, 0.54)
+    Color::srgb(0.37, 0.75, 0.99)
 }
 
 fn accent_hover_color() -> Color {
-    Color::srgb(0.98, 0.44, 0.64)
+    Color::srgb(0.5, 0.81, 0.99)
 }
 
 fn accent_pressed_color() -> Color {
-    Color::srgb(0.85, 0.25, 0.46)
+    Color::srgb(0.3, 0.6, 0.9)
 }
 
 fn disabled_accent_color() -> Color {
-    Color::srgb(0.3, 0.32, 0.4)
+    Color::srgba(0.5, 0.52, 0.59, 0.7)
 }
 
 fn subtle_button_color(alpha: f32) -> Color {
-    Color::srgba(1.0, 1.0, 1.0, alpha)
+    Color::srgba(0.86, 0.9, 1.0, alpha)
 }
