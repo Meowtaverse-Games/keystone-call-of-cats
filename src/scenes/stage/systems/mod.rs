@@ -9,6 +9,13 @@ use std::path::Path;
 use bevy::{ecs::system::SystemParam, prelude::*, window::PrimaryWindow};
 
 use super::components::*;
+
+use crate::{
+    core::domain::chunk_grammar_map::{self, MAP_SIZE, TileKind},
+    plugins::{design_resolution::ScaledViewport, tiled::*},
+    scenes::stage::components::StageTile,
+};
+
 use crate::plugins::{
     TiledMapAssets, TiledMapLibrary, assets_loader::AssetStore, design_resolution::*,
 };
@@ -20,6 +27,8 @@ pub use stone::{
 };
 use ui::ScriptEditorState;
 pub use ui::ui;
+
+const CHUNK_GRAMMAR_CONFIG_PATH: &str = "assets/chunk_grammar_map/tutorial.ron";
 
 #[derive(Resource, Default)]
 pub struct StageProgression {
@@ -124,6 +133,32 @@ fn spawn_stage(
     stage_root
 }
 
+fn new_map_tiles() -> Vec<((isize, isize), chunk_grammar_map::TileKind)> {
+    let mut rng = rand::rng();
+    let placed_chunks = match chunk_grammar_map::generate_random_layout_from_file(
+        &mut rng,
+        CHUNK_GRAMMAR_CONFIG_PATH,
+    ) {
+        Ok(chunks) => chunks,
+        Err(err) => {
+            warn!(
+                "Stage setup: failed to generate tiles from chunk grammar config '{}': {err}",
+                CHUNK_GRAMMAR_CONFIG_PATH
+            );
+            return Vec::new();
+        }
+    };
+
+    chunk_grammar_map::print_ascii_map(&chunk_grammar_map::build_tile_char_map(&placed_chunks));
+
+    let mut tiles: Vec<_> = chunk_grammar_map::build_tile_kind_map(&placed_chunks)
+        .into_iter()
+        .collect();
+    tiles.sort_by_key(|((x, y), _)| (*y, *x));
+
+    tiles
+}
+
 fn populate_stage_contents(
     commands: &mut Commands,
     stage_root: Entity,
@@ -133,7 +168,9 @@ fn populate_stage_contents(
     asset_server: &AssetServer,
     atlas_layouts: &mut Assets<TextureAtlasLayout>,
 ) {
-    tiles::spawn_tiles(commands, stage_root, tiled_map_assets, viewport);
+    let map_tiles = new_map_tiles();
+
+    tiles::spawn_tiles(commands, stage_root, tiled_map_assets, map_tiles.clone(), viewport);
 
     let Some(tileset) = tiled_map_assets.tilesets().first() else {
         warn!(
@@ -155,20 +192,30 @@ fn populate_stage_contents(
     let (real_tile_size, scale) =
         tiled_map_assets.scaled_tile_size_and_scale(viewport_size, tile_size);
 
-    let object_layer = tiled_map_assets.object_layer();
 
-    let Some(player_object) = object_layer.object_by_id(PLAYER_OBJECT_ID) else {
-        warn!(
-            "Stage setup: no player object found in object layer for map '{}'",
-            tiled_map_assets.map_path()
+    let player_position = map_tiles.into_iter().find_map(|((x, y), kind)| {
+        info!(
+            "!!! Tile at ({}, {}) is of kind {:?}",
+            x,
+            y,
+            kind
         );
-        return;
-    };
+        if kind != TileKind::PlayerSpawn {
+            None
+        } else {
+            Some((x as f32, y as f32))
+        }
+    }).unwrap_or((1.0, 1.0));
+
+    info!(
+        "Spawning player at tile position: ({}, {})",
+        player_position.0, player_position.1
+    );
 
     let player_x =
-        player_object.position.x * scale + real_tile_size.x / 2.0 - viewport_size.x / 2.0;
+        (player_position.0 + 1.5) * real_tile_size.x - viewport_size.x / 2.0;
     let player_y =
-        -((player_object.position.y * scale - real_tile_size.y / 2.0) - viewport_size.y / 2.0);
+        (player_position.1 + 4.0) * real_tile_size.y - viewport_size.y / 2.0;
 
     if !player::spawn_player(
         commands,

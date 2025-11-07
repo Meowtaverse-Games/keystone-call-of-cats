@@ -8,18 +8,19 @@ use crate::{
     scenes::stage::components::StageTile,
 };
 
-const CHUNK_GRAMMAR_CONFIG_PATH: &str = "assets/chunk_grammar_map/tutorial.ron";
-
 pub fn spawn_tiles(
     commands: &mut Commands,
     stage_root: Entity,
     tiled_map_assets: &TiledMapAssets,
+    map_tiles  : Vec<((isize, isize), chunk_grammar_map::TileKind)>,
     viewport: &ScaledViewport,
 ) {
     let Some(tileset) = tiled_map_assets.tilesets().first() else {
         warn!("Stage setup: no tilesets available");
         return;
     };
+
+    let mut rng = rand::rng();
 
     let viewport_size = viewport.size;
     let tile_size = tileset.tile_size();
@@ -29,28 +30,6 @@ pub fn spawn_tiles(
     );
     let scale = (viewport_size / map_pixel_size).min_element();
     let real_tile_size = tile_size * scale;
-
-    let mut rng = rand::rng();
-    let placed_chunks = match chunk_grammar_map::generate_random_layout_from_file(
-        &mut rng,
-        CHUNK_GRAMMAR_CONFIG_PATH,
-    ) {
-        Ok(chunks) => chunks,
-        Err(err) => {
-            warn!(
-                "Stage setup: failed to generate tiles from chunk grammar config '{}': {err}",
-                CHUNK_GRAMMAR_CONFIG_PATH
-            );
-            return;
-        }
-    };
-
-    chunk_grammar_map::print_ascii_map(&chunk_grammar_map::build_tile_char_map(&placed_chunks));
-
-    let mut tiles: Vec<_> = chunk_grammar_map::build_tile_kind_map(&placed_chunks)
-        .into_iter()
-        .collect();
-    tiles.sort_by_key(|((x, y), _)| (*y, *x));
 
     commands.entity(stage_root).with_children(
         |parent: &mut bevy_ecs::relationship::RelatedSpawnerCommands<'_, ChildOf>| {
@@ -99,7 +78,7 @@ pub fn spawn_tiles(
                 }
             }
 
-            for ((x, y), kind) in tiles {
+            for ((x, y), kind) in map_tiles {
                 let Some(tile_id) = tile_id_for_kind(kind) else {
                     continue;
                 };
@@ -165,7 +144,7 @@ fn tile_id_for_kind(kind: TileKind) -> Option<u32> {
     info!("Getting tile ID for kind: {:?}", kind);
     match kind {
         TileKind::Solid => Some(235),
-        TileKind::PlayerSpawn => Some(408),
+        TileKind::PlayerSpawn => None, // Some(408),
         TileKind::Goal => Some(194),
     }
 }
