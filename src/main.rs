@@ -23,7 +23,6 @@ pub struct MainCamera;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    println!("Starting keystone_cc with args: {:?}", args);
 
     if args.len() > 1 && args[1] == "--chunk-grammar-map" {
         core::domain::chunk_grammar_map::main();

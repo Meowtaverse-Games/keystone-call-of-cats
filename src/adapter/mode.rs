@@ -1,9 +1,10 @@
 use bevy::prelude::*;
 
-#[derive(Resource, Debug, Clone, Copy)]
+#[derive(Resource, Debug, Clone, Copy, Default)]
 pub struct Mode {
     pub changed: bool,
-    pub show_boot_screen: bool,
+    pub skip_boot: bool,
+    pub skip_title: bool,
     pub render_physics: bool,
 }
 
@@ -14,10 +15,12 @@ impl Mode {
 
         for arg in args.iter().skip(1) {
             match arg.as_str() {
-                "--skip-boot" => mode.show_boot_screen = false,
+                "--skip-boot" => mode.skip_boot = true,
+                "--skip-title" => mode.skip_title = true,
                 "--render-physics" => mode.render_physics = true,
                 "--debug" => {
-                    mode.show_boot_screen = false;
+                    mode.skip_boot = true;
+                    mode.skip_title = true;
                     mode.render_physics = true;
                 }
                 _ => not_change_count += 1,
@@ -26,15 +29,5 @@ impl Mode {
         mode.changed = not_change_count != args.len() - 1;
 
         mode
-    }
-}
-
-impl Default for Mode {
-    fn default() -> Self {
-        Self {
-            changed: false,
-            show_boot_screen: true,
-            render_physics: false,
-        }
     }
 }
