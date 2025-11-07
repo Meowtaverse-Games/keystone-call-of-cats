@@ -1,3 +1,5 @@
+use std::env;
+
 mod adapter;
 mod core;
 mod plugins;
@@ -20,27 +22,42 @@ use crate::scenes::ScenesPlugin;
 pub struct MainCamera;
 
 fn main() {
-    App::new()
-        .add_plugins((
-            DefaultPlugins
-                .set(AssetPlugin {
-                    file_path: "assets".to_string(),
-                    watch_for_changes_override: Some(true),
+    let args: Vec<String> = env::args().collect();
+    println!("Starting keystone_cc with args: {:?}", args);
+
+    if args.len() > 1 && args[1] == "--chunk-grammar-map" {
+        core::domain::chunk_grammar_map::main();
+        return;
+    }
+
+    let debug = args.iter().any(|arg| arg == "--debug");
+
+    let mut app = App::new();
+
+    app.add_plugins((
+        DefaultPlugins
+            .set(AssetPlugin {
+                file_path: "assets".to_string(),
+                watch_for_changes_override: Some(true),
+                ..default()
+            })
+            .set(WindowPlugin {
+                primary_window: Some(Window {
+                    title: "keystone: call of cats".to_string(),
+                    visible: false,
                     ..default()
-                })
-                .set(WindowPlugin {
-                    primary_window: Some(Window {
-                        title: "keystone: call of cats".to_string(),
-                        visible: false,
-                        ..default()
-                    }),
-                    ..default()
-                })
-                .set(ImagePlugin::default_nearest()),
-            PhysicsPlugins::default(),
-            PhysicsDebugPlugin,
-        ))
-        .add_plugins(ScriptPlugin)
+                }),
+                ..default()
+            })
+            .set(ImagePlugin::default_nearest()),
+        PhysicsPlugins::default(),
+    ));
+
+    if debug {
+        app.add_plugins(PhysicsDebugPlugin);
+    }
+
+    app.add_plugins(ScriptPlugin)
         .add_plugins(VisibilityPlugin)
         .add_systems(Startup, setup_camera)
         .add_plugins(DesignResolutionPlugin::new(
@@ -49,7 +66,10 @@ fn main() {
             Color::linear_rgb(0.0, 0.0, 0.0),
         ))
         .add_plugins(TiledPlugin::new(
-            "assets/tiled/stage1-1.tmx",
+            vec![
+                "assets/tiled/stage1-1.tmx".to_string(),
+                "assets/tiled/stage1-2.tmx".to_string(),
+            ],
             "assets/tiled/super-platfomer-assets.tsx",
         ))
         .add_plugins(AssetLoaderPlugin)

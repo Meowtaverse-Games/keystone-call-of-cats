@@ -11,10 +11,9 @@ pub enum TileShape {
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub struct Tile {
     pub id: u32,
-    #[allow(dead_code)]
-    pub collision: Option<bool>,
     pub shapes: Vec<TileShape>,
 }
 
@@ -46,18 +45,7 @@ impl<'map> TileLayer<'map> {
         self.inner_layer.height().unwrap_or(0)
     }
 
-    pub fn tile_positions(&self) -> Vec<(u32, u32)> {
-        let mut indexes = vec![(0u32, 0u32)];
-        for x in 0..self.inner_layer.width().unwrap() as i32 {
-            for y in 0..self.inner_layer.height().unwrap() as i32 {
-                if let Some(_tile) = self.inner_layer.get_tile(x, y) {
-                    indexes.push((x as u32, y as u32));
-                }
-            }
-        }
-        indexes
-    }
-
+    #[allow(dead_code)]
     pub fn tile(&self, x: u32, y: u32) -> Option<Tile> {
         let tile = self.inner_layer.get_tile(x as i32, y as i32)?;
 
@@ -65,13 +53,12 @@ impl<'map> TileLayer<'map> {
             let Some(collision) = tile_data.collision.as_ref() else {
                 return Tile {
                     id: tile.id(),
-                    collision: None,
                     shapes: vec![],
                 };
             };
 
-            let object_data = collision.object_data();
-            let shapes = object_data
+            let shapes = collision
+                .object_data()
                 .iter()
                 .map(|data| match data.shape {
                     tiled_rs::ObjectShape::Rect { width, height } => TileShape::Rect {
@@ -88,13 +75,6 @@ impl<'map> TileLayer<'map> {
 
             Tile {
                 id: tile.id(),
-                collision: tile_data.properties.get("collision").and_then(|v| {
-                    if let tiled_rs::PropertyValue::BoolValue(b) = v {
-                        Some(*b)
-                    } else {
-                        None
-                    }
-                }),
                 shapes,
             }
         })
