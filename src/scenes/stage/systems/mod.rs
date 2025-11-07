@@ -53,6 +53,16 @@ impl StageProgression {
         }
     }
 
+    pub fn select(&mut self, index: usize, library: &TiledMapLibrary) -> bool {
+        if index >= library.len() {
+            return false;
+        }
+
+        self.current_index = index;
+        self.pending_reload = true;
+        true
+    }
+
     pub fn reset_if_needed(&mut self, library: &TiledMapLibrary) {
         if library.is_empty() {
             self.current_index = 0;
