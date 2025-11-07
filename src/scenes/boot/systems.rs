@@ -101,7 +101,6 @@ pub fn update(
 ) {
     if let Ok((_, mut transform)) = boot_ui.single_mut() {
         transform.scale = Vec3::splat(scaled_viewport.scale);
-        info!("Boot UI scale updated to {}", scaled_viewport.scale);
     }
 
     for _event in reader.read() {
