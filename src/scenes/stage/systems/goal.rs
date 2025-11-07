@@ -85,6 +85,7 @@ pub fn check_goal_completion(
             editor_state.stage_cleared = true;
             editor_state.pending_player_reset = false;
             editor_state.last_run_feedback = Some("ステージクリア！".to_string());
+            editor_state.stage_clear_popup_open = true;
             break;
         }
     }
