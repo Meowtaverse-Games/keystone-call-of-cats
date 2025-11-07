@@ -6,10 +6,8 @@ use bevy::prelude::*;
 
 use tiled::{self as tiled_rs};
 
-mod object_layer;
 mod tile_layer;
 
-pub use object_layer::ObjectLayer;
 pub use tile_layer::{Tile, TileLayer, TileShape};
 
 /// Configures how the [`TiledPlugin`] loads Tiled data.
@@ -89,19 +87,6 @@ impl TiledMapAssets {
             };
             Some(TileLayer::new(layer.name.clone(), tile_layer))
         })
-    }
-
-    pub fn object_layer<'a>(&'a self) -> ObjectLayer<'a> {
-        self.map
-            .layers()
-            .filter_map(|layer| {
-                let tiled_rs::LayerType::Objects(object_layer) = layer.layer_type() else {
-                    return None;
-                };
-                Some(ObjectLayer::new(layer.name.clone(), object_layer))
-            })
-            .next()
-            .expect("No object layers found in Tiled map")
     }
 
     pub fn map_size(&self) -> Vec2 {

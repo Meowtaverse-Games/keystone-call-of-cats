@@ -193,7 +193,19 @@ fn populate_stage_contents(
         (player_x, player_y, scale),
     );
 
-    goal::spawn_goal(commands, stage_root, tiled_map_assets, viewport);
+    let goal_position = placed_chunks
+        .tile_position(TileKind::Goal)
+        .unwrap_or((MAP_SIZE.0 - 2, MAP_SIZE.1 - 2));
+    let goal_x = (goal_position.0 as f32 + 1.5) * real_tile_size.x - viewport_size.x / 2.0;
+    let goal_y = (goal_position.1 as f32 + 4.0) * real_tile_size.y - viewport_size.y / 2.0;
+
+    goal::spawn_goal(
+        commands,
+        stage_root,
+        tiled_map_assets,
+        viewport,
+        (goal_x, goal_y),
+    );
 
     stone::spawn_stone_display(commands, stage_root, asset_server, atlas_layouts);
 }
