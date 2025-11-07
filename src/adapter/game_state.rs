@@ -5,5 +5,6 @@ pub enum GameState {
     #[default]
     Boot,
     Title,
+    SelectStage,
     Stage,
 }

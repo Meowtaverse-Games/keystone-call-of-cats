@@ -6,6 +6,8 @@ use crate::adapter::*;
 mod components;
 mod systems;
 
+pub use systems::StageProgression;
+
 pub struct StagePlugin;
 impl Plugin for StagePlugin {
     fn build(&self, app: &mut App) {
