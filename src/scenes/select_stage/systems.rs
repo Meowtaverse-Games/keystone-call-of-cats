@@ -37,7 +37,7 @@ impl StageSelectState {
     }
 
     pub fn total_pages(&self) -> usize {
-        ((self.total_entries + self.cards_per_page - 1) / self.cards_per_page).max(1)
+        self.total_entries.div_ceil(self.cards_per_page).max(1)
     }
 
     pub fn visible_range(&self) -> std::ops::Range<usize> {
