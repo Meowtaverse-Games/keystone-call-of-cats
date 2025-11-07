@@ -11,17 +11,15 @@ use bevy::{ecs::system::SystemParam, prelude::*, window::PrimaryWindow};
 use super::components::*;
 
 use crate::{
-    core::domain::chunk_grammar_map::{self, MAP_SIZE, TileKind},
-    plugins::{design_resolution::ScaledViewport, tiled::*},
+    core::domain::chunk_grammar_map::{self, TileKind},
+    plugins::design_resolution::ScaledViewport,
     scenes::stage::components::StageTile,
 };
 
-use crate::plugins::{
-    TiledMapAssets, TiledMapLibrary, assets_loader::AssetStore, design_resolution::*,
-};
+use crate::plugins::{TiledMapAssets, TiledMapLibrary, assets_loader::AssetStore};
 
 pub use goal::check_goal_completion;
-pub use player::{PLAYER_OBJECT_ID, animate_character, move_character, reset_player_position};
+pub use player::{animate_character, move_character, reset_player_position};
 pub use stone::{
     StoneCommandMessage, carry_riders_with_stone, handle_stone_messages, update_stone_behavior,
 };
@@ -170,7 +168,13 @@ fn populate_stage_contents(
 ) {
     let map_tiles = new_map_tiles();
 
-    tiles::spawn_tiles(commands, stage_root, tiled_map_assets, map_tiles.clone(), viewport);
+    tiles::spawn_tiles(
+        commands,
+        stage_root,
+        tiled_map_assets,
+        map_tiles.clone(),
+        viewport,
+    );
 
     let Some(tileset) = tiled_map_assets.tilesets().first() else {
         warn!(
@@ -192,42 +196,26 @@ fn populate_stage_contents(
     let (real_tile_size, scale) =
         tiled_map_assets.scaled_tile_size_and_scale(viewport_size, tile_size);
 
+    let player_position = map_tiles
+        .into_iter()
+        .find_map(|((x, y), kind)| {
+            if kind != TileKind::PlayerSpawn {
+                None
+            } else {
+                Some((x as f32, y as f32))
+            }
+        })
+        .unwrap_or((1.0, 1.0));
 
-    let player_position = map_tiles.into_iter().find_map(|((x, y), kind)| {
-        info!(
-            "!!! Tile at ({}, {}) is of kind {:?}",
-            x,
-            y,
-            kind
-        );
-        if kind != TileKind::PlayerSpawn {
-            None
-        } else {
-            Some((x as f32, y as f32))
-        }
-    }).unwrap_or((1.0, 1.0));
+    let player_x = (player_position.0 + 1.5) * real_tile_size.x - viewport_size.x / 2.0;
+    let player_y = (player_position.1 + 4.0) * real_tile_size.y - viewport_size.y / 2.0;
 
-    info!(
-        "Spawning player at tile position: ({}, {})",
-        player_position.0, player_position.1
-    );
-
-    let player_x =
-        (player_position.0 + 1.5) * real_tile_size.x - viewport_size.x / 2.0;
-    let player_y =
-        (player_position.1 + 4.0) * real_tile_size.y - viewport_size.y / 2.0;
-
-    if !player::spawn_player(
+    player::spawn_player(
         commands,
         stage_root,
         asset_store,
         (player_x, player_y, scale),
-    ) {
-        warn!(
-            "Stage setup: failed to spawn player for map '{}'",
-            tiled_map_assets.map_path()
-        );
-    }
+    );
 
     goal::spawn_goal(commands, stage_root, tiled_map_assets, viewport);
 

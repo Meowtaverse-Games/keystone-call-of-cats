@@ -12,7 +12,7 @@ pub fn spawn_tiles(
     commands: &mut Commands,
     stage_root: Entity,
     tiled_map_assets: &TiledMapAssets,
-    map_tiles  : Vec<((isize, isize), chunk_grammar_map::TileKind)>,
+    map_tiles: Vec<((isize, isize), chunk_grammar_map::TileKind)>,
     viewport: &ScaledViewport,
 ) {
     let Some(tileset) = tiled_map_assets.tilesets().first() else {

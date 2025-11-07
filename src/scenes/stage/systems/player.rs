@@ -1,8 +1,6 @@
 use avian2d::prelude::*;
 use bevy::{input::ButtonInput, prelude::*};
 
-pub const PLAYER_OBJECT_ID: u32 = 408;
-
 use crate::{
     plugins::assets_loader::AssetStore,
     scenes::{
@@ -21,7 +19,7 @@ pub fn spawn_player(
     stage_root: Entity,
     asset_store: &AssetStore,
     (x, y, scale): (f32, f32, f32),
-) -> bool {
+) {
     let idle_frames: Vec<Handle<Image>> = PLAYER_IDLE_KEYS
         .iter()
         .filter_map(|key| asset_store.image(*key))
@@ -33,7 +31,7 @@ pub fn spawn_player(
 
     if idle_frames.is_empty() && run_frames.is_empty() {
         warn!("Stage setup: no player animation frames found");
-        return false;
+        return;
     }
 
     if idle_frames.is_empty() {
@@ -64,7 +62,7 @@ pub fn spawn_player(
 
     let Some(initial_frame) = initial_frame else {
         warn!("Stage setup: could not determine an initial player sprite");
-        return false;
+        return;
     };
 
     commands.entity(stage_root).with_children(|parent| {
@@ -98,8 +96,6 @@ pub fn spawn_player(
             Transform::from_xyz(x, y, 1.0).with_scale(Vec3::splat(scale)),
         ));
     });
-
-    true
 }
 
 pub fn animate_character(
