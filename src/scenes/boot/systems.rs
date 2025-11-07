@@ -19,6 +19,7 @@ pub fn setup(
     scaled_viewport: Res<ScaledViewport>,
     mut commands: Commands,
     mut load_writer: MessageWriter<LoadAssetGroup>,
+    mode: Res<Mode>,
 ) {
     load_writer.write(DEFAULT_GROUP);
 
@@ -35,13 +36,10 @@ pub fn setup(
         Transform::default().with_scale(Vec3::splat(scaled_viewport.scale)),
     ));
 
+    let mills = if !mode.skip_boot { 1200 } else { 0 };
     commands.insert_resource(BootTimer {
         // for testing, make it shorter
-        timer: Timer::new(
-            Duration::from_millis(200),
-            // Duration::from_secs(30),
-            TimerMode::Once,
-        ),
+        timer: Timer::new(Duration::from_millis(mills), TimerMode::Once),
     });
 }
 
@@ -53,8 +51,6 @@ pub fn setup_font(
     asset_store: Res<AssetStore>,
     fonts: Res<Assets<Font>>,
 ) {
-    info!("Setting up UI font");
-
     if *loaded {
         return;
     }
@@ -115,7 +111,6 @@ pub fn update(
 
     boot_timer.timer.tick(time.delta());
     if boot_timer.timer.is_finished() && loaded.0 {
-        // TODO; transition to the title scene
         info!("Boot timer finished");
         next_state.set(GameState::SelectStage);
     }

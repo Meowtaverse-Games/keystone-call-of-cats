@@ -5,6 +5,7 @@ use bevy_egui::{
 };
 
 use crate::{
+    adapter::GameState,
     core::boundary::ScriptCommand,
     plugins::{
         design_resolution::LetterboxOffsets,
@@ -113,6 +114,7 @@ pub fn ui(
     mut editor: ResMut<ScriptEditorState>,
     script_executor: Res<ScriptExecutor>,
     mut stone_writer: MessageWriter<StoneCommandMessage>,
+    mut next_state: ResMut<NextState<GameState>>,
 ) {
     let Ok(ctx) = contexts.ctx_mut() else {
         return;
@@ -181,6 +183,16 @@ pub fn ui(
         })
         .show(ctx, |ui| {
             ui.vertical(|ui| {
+                if ui.button("タイトルに戻る").clicked() {
+                    editor.controls_enabled = false;
+                    editor.pending_player_reset = false;
+                    editor.stage_cleared = false;
+                    editor.stage_clear_popup_open = false;
+                    next_state.set(GameState::SelectStage);
+                }
+
+                ui.separator();
+
                 let mut pending_action = action_from_keys;
 
                 ui.horizontal(|ui| {

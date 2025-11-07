@@ -13,7 +13,7 @@ use bevy_egui::EguiPlugin;
 use avian2d::debug_render::PhysicsDebugPlugin;
 use avian2d::prelude::*;
 
-use crate::adapter::game_state::GameState;
+use crate::adapter::{GameState, Mode};
 use crate::plugins::*;
 use crate::scenes::ScenesPlugin;
 
@@ -23,14 +23,16 @@ pub struct MainCamera;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    println!("Starting keystone_cc with args: {:?}", args);
 
     if args.len() > 1 && args[1] == "--chunk-grammar-map" {
         core::domain::chunk_grammar_map::main();
         return;
     }
 
-    let debug = args.iter().any(|arg| arg == "--debug");
+    let mode = Mode::from_args(&args);
+    if mode.changed {
+        println!("Operating mode: {:?}", mode);
+    }
 
     let mut app = App::new();
 
@@ -53,7 +55,7 @@ fn main() {
         PhysicsPlugins::default(),
     ));
 
-    if debug {
+    if mode.render_physics {
         app.add_plugins(PhysicsDebugPlugin);
     }
 
@@ -75,6 +77,7 @@ fn main() {
         .add_plugins(AssetLoaderPlugin)
         .add_plugins(EguiPlugin::default())
         .add_plugins(ScenesPlugin)
+        .insert_resource(mode)
         .init_state::<GameState>()
         .run();
 }

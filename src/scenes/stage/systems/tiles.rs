@@ -141,7 +141,6 @@ fn image_from_tileset(tileset: &Tileset, id: usize) -> Option<Sprite> {
 }
 
 fn tile_id_for_kind(kind: TileKind) -> Option<u32> {
-    info!("Getting tile ID for kind: {:?}", kind);
     match kind {
         TileKind::Solid => Some(235),
         TileKind::PlayerSpawn => None, // Some(408),
