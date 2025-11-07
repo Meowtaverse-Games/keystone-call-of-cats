@@ -12,7 +12,7 @@ pub fn spawn_tiles(
     commands: &mut Commands,
     stage_root: Entity,
     tiled_map_assets: &TiledMapAssets,
-    map_tiles: Vec<((isize, isize), chunk_grammar_map::TileKind)>,
+    placed_chunks: &chunk_grammar_map::PlacedChunkLayout,
     viewport: &ScaledViewport,
 ) {
     let Some(tileset) = tiled_map_assets.tilesets().first() else {
@@ -78,7 +78,7 @@ pub fn spawn_tiles(
                 }
             }
 
-            for ((x, y), kind) in map_tiles {
+            for ((x, y), kind) in placed_chunks.map_iter() {
                 let Some(tile_id) = tile_id_for_kind(kind) else {
                     continue;
                 };

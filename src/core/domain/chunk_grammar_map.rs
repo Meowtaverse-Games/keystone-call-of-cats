@@ -39,7 +39,7 @@ struct Port {
     dir: Dir, // チャンク外へ出る（または入る）向き
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum TileKind {
     Solid,
     PlayerSpawn,
@@ -200,37 +200,24 @@ pub fn load_config_from_file(
     ron::de::from_reader(reader).map_err(ChunkGrammarError::Parse)
 }
 
-pub fn generate_random_layout(rng: &mut impl Rng, config: &ChunkGrammarConfig) -> Vec<PlacedChunk> {
+pub fn generate_random_layout(config: &ChunkGrammarConfig) -> PlacedChunkLayout {
     let starts = config.starts();
     let middles = config.middles();
     let goals = config.goals();
-    try_build_random_path(rng, &starts, &middles, &goals)
+    try_build_random_path(&starts, &middles, &goals)
 }
 
 pub fn generate_random_layout_from_file(
-    rng: &mut impl Rng,
     path: impl AsRef<Path>,
-) -> Result<Vec<PlacedChunk>, ChunkGrammarError> {
+) -> Result<PlacedChunkLayout, ChunkGrammarError> {
     let config = load_config_from_file(path)?;
-    Ok(generate_random_layout(rng, &config))
-}
-
-pub fn build_tile_kind_map(placed_chunks: &[PlacedChunk]) -> HashMap<(isize, isize), TileKind> {
-    let mut map = HashMap::<(isize, isize), TileKind>::new();
-    for chunk in placed_chunks {
-        for tile in &chunk.tiles_world {
-            map.insert((tile.x, tile.y), tile.kind);
-        }
-    }
-    map
+    Ok(generate_random_layout(&config))
 }
 
 #[allow(dead_code)]
 pub fn main() {
-    let mut rng = rand::rng();
-    let placed_chunks =
-        generate_random_layout_from_file(&mut rng, "assets/chunk_grammar_map/tutorial.ron")
-            .expect("failed to generate layout from config");
+    let placed_chunks = generate_random_layout_from_file("assets/chunk_grammar_map/tutorial.ron")
+        .expect("failed to generate layout from config");
     println!("== Placed Chunks ==");
     for chunk in &placed_chunks {
         println!("- {}", chunk.id);
@@ -238,12 +225,12 @@ pub fn main() {
     println!();
 
     println!("== ASCII Map ==");
-    let map = build_tile_char_map(&placed_chunks);
-    print_ascii_map(&map);
+    print_ascii_map(&placed_chunks);
 }
 
-pub fn build_tile_char_map(placed_chunks: &[PlacedChunk]) -> HashMap<(isize, isize), char> {
+fn build_tile_char_map(placed_chunks: &PlacedChunkLayout) -> HashMap<(isize, isize), char> {
     let mut map = HashMap::<(isize, isize), char>::new();
+
     for chunk in placed_chunks {
         for tile in &chunk.tiles_world {
             let ch = match tile.kind {
@@ -254,6 +241,7 @@ pub fn build_tile_char_map(placed_chunks: &[PlacedChunk]) -> HashMap<(isize, isi
             map.insert((tile.x, tile.y), ch);
         }
     }
+
     map
 }
 
@@ -309,12 +297,56 @@ fn place_chunk(t: &InnerChunkTemplate, origin: (isize, isize)) -> PlacedChunk {
     }
 }
 
+pub struct PlacedChunkLayout {
+    pub placed_chunks: Vec<PlacedChunk>,
+}
+
+impl IntoIterator for PlacedChunkLayout {
+    type Item = PlacedChunk;
+    type IntoIter = std::vec::IntoIter<PlacedChunk>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.placed_chunks.into_iter()
+    }
+}
+
+impl<'a> IntoIterator for &'a PlacedChunkLayout {
+    type Item = &'a PlacedChunk;
+    type IntoIter = std::slice::Iter<'a, PlacedChunk>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.placed_chunks.iter()
+    }
+}
+
+impl PlacedChunkLayout {
+    pub fn tile_position(&self, kind: TileKind) -> Option<(isize, isize)> {
+        for chunk in &self.placed_chunks {
+            for tile in &chunk.tiles_world {
+                if tile.kind == kind {
+                    return Some((tile.x, tile.y));
+                }
+            }
+        }
+        None
+    }
+
+    pub fn map_iter(&self) -> impl Iterator<Item = ((isize, isize), TileKind)> + '_ {
+        self.placed_chunks.iter().flat_map(|chunk| {
+            chunk
+                .tiles_world
+                .iter()
+                .map(|tile| ((tile.x, tile.y), tile.kind))
+        })
+    }
+}
+
 fn try_build_random_path(
-    rng: &mut impl Rng,
     start_chunks: &[InnerChunkTemplate],
     mid_chunks: &[InnerChunkTemplate],
     goal_chunks: &[InnerChunkTemplate],
-) -> Vec<PlacedChunk> {
+) -> PlacedChunkLayout {
+    let mut rng = rand::rng();
     let placed_start = place_chunk(
         &start_chunks[rng.random_range(0..start_chunks.len())],
         (0, 0),
@@ -323,7 +355,7 @@ fn try_build_random_path(
 
     loop {
         let goal_template = &goal_chunks[rng.random_range(0..goal_chunks.len())];
-        let Some(goal_target) = random_goal_target(rng, start_exit, goal_template) else {
+        let Some(goal_target) = random_goal_target(&mut rng, start_exit, goal_template) else {
             continue;
         };
         println!(
@@ -331,7 +363,7 @@ fn try_build_random_path(
             goal_target.origin, goal_target.entry
         );
         if let Some(mut mid_chunks) =
-            find_path_to_goal(rng, mid_chunks, start_exit, goal_target.entry)
+            find_path_to_goal(&mut rng, mid_chunks, start_exit, goal_target.entry)
         {
             let final_exit = mid_chunks
                 .last()
@@ -345,7 +377,9 @@ fn try_build_random_path(
             layout.push(placed_start.clone());
             layout.append(&mut mid_chunks);
             layout.push(place_chunk(goal_template, goal_target.origin));
-            return layout;
+            return PlacedChunkLayout {
+                placed_chunks: layout,
+            };
         }
     }
 }
@@ -463,7 +497,8 @@ fn search_path_to_goal(
     None
 }
 
-pub fn print_ascii_map(map: &HashMap<(isize, isize), char>) {
+pub fn print_ascii_map(placed_chunks: &PlacedChunkLayout) {
+    let map = build_tile_char_map(placed_chunks);
     let (map_width, map_height) = INNER_MAP_SIZE;
     for y in (0..map_height).rev() {
         for x in 0..map_width {
