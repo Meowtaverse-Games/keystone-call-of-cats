@@ -12,6 +12,7 @@ use bevy_egui::EguiPlugin;
 
 use avian2d::debug_render::PhysicsDebugPlugin;
 use avian2d::prelude::*;
+use bevy_steamworks::SteamworksPlugin;
 
 use crate::adapter::{GameState, Mode};
 use crate::plugins::*;
@@ -20,6 +21,8 @@ use crate::scenes::ScenesPlugin;
 #[derive(Component)]
 #[require(Camera2d)]
 pub struct MainCamera;
+
+const STEAM_APP_ID: u32 = 4169380;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -36,24 +39,25 @@ fn main() {
 
     let mut app = App::new();
 
-    app.add_plugins((
-        DefaultPlugins
-            .set(AssetPlugin {
-                file_path: "assets".to_string(),
-                watch_for_changes_override: Some(true),
-                ..default()
-            })
-            .set(WindowPlugin {
-                primary_window: Some(Window {
-                    title: "keystone: call of cats".to_string(),
-                    visible: false,
+    app.add_plugins(SteamworksPlugin::init_app(STEAM_APP_ID).unwrap())
+        .add_plugins((
+            DefaultPlugins
+                .set(AssetPlugin {
+                    file_path: "assets".to_string(),
+                    watch_for_changes_override: Some(true),
                     ..default()
-                }),
-                ..default()
-            })
-            .set(ImagePlugin::default_nearest()),
-        PhysicsPlugins::default(),
-    ));
+                })
+                .set(WindowPlugin {
+                    primary_window: Some(Window {
+                        title: "keystone: call of cats".to_string(),
+                        visible: false,
+                        ..default()
+                    }),
+                    ..default()
+                })
+                .set(ImagePlugin::default_nearest()),
+            PhysicsPlugins::default(),
+        ));
 
     if mode.render_physics {
         app.add_plugins(PhysicsDebugPlugin);
