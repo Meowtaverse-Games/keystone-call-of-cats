@@ -11,7 +11,7 @@ use super::components::*;
 use crate::{
     domain::chunk_grammar_map::{self, *},
     infrastructure::engine::{
-        assets_loader::AssetStore, design_resolution::ScaledViewport, TiledMapAssets,
+        TiledMapAssets, assets_loader::AssetStore, design_resolution::ScaledViewport,
     },
     presentation::scenes::stage::components::StageTile,
 };
@@ -39,7 +39,7 @@ impl StageProgression {
         self.current_index
     }
 
-    pub fn current_map<'a>(&self) -> PlacedChunkLayout {
+    pub fn current_map(&self) -> PlacedChunkLayout {
         new_placed_chunks()
     }
 
@@ -155,7 +155,7 @@ fn populate_stage_contents(
         commands,
         stage_root,
         tiled_map_assets,
-        &placed_chunks,
+        placed_chunks,
         viewport,
     );
 
@@ -288,7 +288,7 @@ pub fn advance_stage_if_cleared(
     }
 
     if progression.advance() {
-        let next_map = progression.current_map();
+        // let next_map = progression.current_map();
         // let label = map_label(next_map);
         editor_state.last_run_feedback = Some(format!("ステージ「{}」へ進みます。", 1));
         editor_state.controls_enabled = false;
@@ -346,7 +346,7 @@ pub fn reload_stage_if_needed(mut commands: Commands, mut params: StageReloadPar
         &mut commands,
         Transform::from_translation(stage_root_position)
             .with_scale(Vec3::splat(params.viewport.scale)),
-            &params.tiled_map_assets,
+        &params.tiled_map_assets,
         &current_map,
         params.viewport.as_ref(),
         params.asset_store.as_ref(),

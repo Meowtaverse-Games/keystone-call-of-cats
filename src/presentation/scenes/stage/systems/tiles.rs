@@ -106,8 +106,8 @@ pub fn spawn_tiles(
                         } => {
                             let collider = Collider::rectangle(*width, *height);
                             let pos = Position::from_xy(
-                                -tile_size.x / 2.0 + (*width + *x) / 2.0 + *x / 2.0,
-                                tile_size.y / 2.0 - (*height + *y) / 2.0 - *y / 2.0,
+                                -tile_size.x / 2.0 + (width + x) / 2.0 + x / 2.0,
+                                tile_size.y / 2.0 - (height + y) / 2.0 - y / 2.0,
                             );
                             let rot = Rotation::degrees(0.0);
                             (pos, rot, collider)

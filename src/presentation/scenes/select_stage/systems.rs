@@ -1,5 +1,3 @@
-use std::path::Path;
-
 use bevy::app::AppExit;
 use bevy::prelude::MessageWriter;
 use bevy::prelude::*;
@@ -98,7 +96,7 @@ impl StageSummary {
 }
 
 impl StageEntry {
-    fn playable(index: usize, map: &TiledMapAssets) -> Self {
+    fn playable(index: usize) -> Self {
         Self {
             index,
             title: format!("STAGE-{}", index),

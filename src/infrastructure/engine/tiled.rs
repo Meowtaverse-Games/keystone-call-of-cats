@@ -4,14 +4,27 @@ use bevy::asset::Assets;
 use bevy::math::UVec2;
 use bevy::prelude::*;
 
-mod tile_layer;
-
 use tiled::{self as tiled_rs};
-
-pub use tile_layer::{Tile, TileShape};
 
 const MAP_SIZE: (usize, usize) = (30, 20);
 const TILE_SIZE: (f32, f32) = (16.0, 16.0);
+
+#[derive(Debug)]
+pub enum TileShape {
+    Rect {
+        width: f32,
+        height: f32,
+        x: f32,
+        y: f32,
+    },
+}
+
+#[derive(Debug)]
+#[allow(dead_code)]
+pub struct Tile {
+    pub id: u32,
+    pub shapes: Vec<TileShape>,
+}
 
 /// Configures how the [`TiledPlugin`] loads Tiled data.
 #[derive(Resource, Clone)]
@@ -71,7 +84,7 @@ impl TiledMapAssets {
         Some(Tile { id, shapes })
     }
     pub fn map_size(&self) -> Vec2 {
-        Vec2::new( MAP_SIZE.0 as f32, MAP_SIZE.1 as f32)
+        Vec2::new(MAP_SIZE.0 as f32, MAP_SIZE.1 as f32)
     }
 
     pub fn tile_size(&self) -> Vec2 {
@@ -154,9 +167,11 @@ fn load_tiled_assets(
         }
     };
 
-
     let tileset = load_tileset(&asset_server, &mut layouts, &tsx);
-    commands.insert_resource(TiledMapAssets{ tsx: Arc::new(tsx), tileset });
+    commands.insert_resource(TiledMapAssets {
+        tsx: Arc::new(tsx),
+        tileset,
+    });
 }
 
 fn load_tileset(
@@ -169,9 +184,7 @@ fn load_tileset(
         .as_ref()
         .map(|image| create_tileset_image(tileset, image, asset_server, layouts));
 
-    Tileset {
-        image,
-    }
+    Tileset { image }
 }
 
 fn create_tileset_image(
