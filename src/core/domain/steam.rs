@@ -1,6 +1,5 @@
 use steamworks::AppId;
 use steamworks::Client;
-use steamworks::FriendFlags;
 use steamworks::PersonaStateChange;
 
 use std::io::*;
@@ -42,13 +41,9 @@ pub fn main(app_id: u32) {
         rs.is_cloud_enabled_for_account()
     );
 
-
     rs.files().iter().for_each(|f| {
-        println!(
-            "File: {:?} (size: {:?})",
-            f.name, f.size,
-        );
-    }); 
+        println!("File: {:?} (size: {:?})", f.name, f.size,);
+    });
 
     let file = steamworks::RemoteStorage::file(&rs, "test.txt");
     let mut writer = file.write();

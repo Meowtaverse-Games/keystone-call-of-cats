@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 
-use std::io::{self, Error, ErrorKind, Write, Read};
+use std::io::{Read, Write};
+use thiserror::Error;
 
 pub enum RemoteFileType {
     Stages,
@@ -11,15 +12,27 @@ pub struct SteamClient {
     client: Option<bevy_steamworks::Client>,
 }
 
+#[derive(Error, Debug)]
+pub enum SteamError {
+    #[error("Steam client not initialized")]
+    SteamNotInitialized,
+    #[error(transparent)]
+    IoError(#[from] std::io::Error),
+}
+
 fn file_name(file_type: RemoteFileType) -> String {
     match file_type {
         RemoteFileType::Stages => "stages.txt".to_string(),
     }
 }
 impl SteamClient {
-    pub fn save(&self, file_type: RemoteFileType, contents: String) -> io::Result<()> {
+    pub fn save(
+        &self,
+        file_type: RemoteFileType,
+        contents: String,
+    ) -> std::result::Result<(), SteamError> {
         let Some(client) = &self.client else {
-            return Err(Error::new(ErrorKind::Other, "Steam client not initialized"));
+            return Err(SteamError::SteamNotInitialized);
         };
 
         let rs = client.remote_storage();
@@ -38,9 +51,12 @@ impl SteamClient {
         Ok(())
     }
 
-    pub fn load(&self, file_type: RemoteFileType) -> io::Result<Option<String>> {
+    pub fn load(
+        &self,
+        file_type: RemoteFileType,
+    ) -> std::result::Result<Option<String>, SteamError> {
         let Some(client) = &self.client else {
-            return Err(Error::new(ErrorKind::Other, "Steam client not initialized"));
+            return Err(SteamError::SteamNotInitialized);
         };
 
         let rs = client.remote_storage();

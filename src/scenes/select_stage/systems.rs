@@ -5,7 +5,6 @@ use bevy::prelude::MessageWriter;
 use bevy::prelude::*;
 use bevy::ui::BorderRadius;
 use bevy_ecs::hierarchy::ChildSpawnerCommands;
-use bevy_steamworks::Client;
 
 use super::components::*;
 use crate::{

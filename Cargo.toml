@@ -18,6 +18,7 @@ ron = "0.11.0"
 serde = { version = "1", features = ["derive"] }
 bevy-steamworks = "0.15.0"
 steamworks = "0.12.2"
+thiserror = "2.0.17"
 
 [package.metadata.bundle.mac]
 identifier = "com.meowtaverse-games.com.keystone-cc"
