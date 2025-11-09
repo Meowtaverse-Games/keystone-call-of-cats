@@ -4,16 +4,18 @@ use bevy::asset::Assets;
 use bevy::math::UVec2;
 use bevy::prelude::*;
 
-use tiled::{self as tiled_rs};
-
 mod tile_layer;
 
-pub use tile_layer::{Tile, TileLayer, TileShape};
+use tiled::{self as tiled_rs};
+
+pub use tile_layer::{Tile, TileShape};
+
+const MAP_SIZE: (usize, usize) = (30, 20);
+const TILE_SIZE: (f32, f32) = (16.0, 16.0);
 
 /// Configures how the [`TiledPlugin`] loads Tiled data.
 #[derive(Resource, Clone)]
 pub struct TiledLoaderConfig {
-    pub map_paths: Vec<String>,
     pub tsx_path: String,
 }
 
@@ -23,10 +25,9 @@ pub struct TiledPlugin {
 }
 
 impl TiledPlugin {
-    pub fn new(map_paths: Vec<String>, tsx_path: impl Into<String>) -> Self {
+    pub fn new(tsx_path: impl Into<String>) -> Self {
         Self {
             config: TiledLoaderConfig {
-                map_paths,
                 tsx_path: tsx_path.into(),
             },
         }
@@ -40,23 +41,13 @@ impl Plugin for TiledPlugin {
     }
 }
 
-#[derive(Clone)]
+#[derive(Resource, Clone)]
 pub struct TiledMapAssets {
-    map_path: String,
     tsx: Arc<tiled_rs::Tileset>,
-    map: Arc<tiled_rs::Map>,
-    tilesets: Vec<Tileset>,
+    pub tileset: Tileset,
 }
 
 impl TiledMapAssets {
-    pub fn map_path(&self) -> &str {
-        &self.map_path
-    }
-
-    pub fn tilesets(&self) -> &[Tileset] {
-        &self.tilesets
-    }
-
     pub fn tile(&self, id: u32) -> Option<Tile> {
         let tile = self.tsx.get_tile(id)?;
 
@@ -79,22 +70,12 @@ impl TiledMapAssets {
 
         Some(Tile { id, shapes })
     }
-
-    pub fn tile_layers<'a>(&'a self) -> impl Iterator<Item = TileLayer<'a>> + 'a {
-        self.map.layers().filter_map(|layer| {
-            let tiled_rs::LayerType::Tiles(tile_layer) = layer.layer_type() else {
-                return None;
-            };
-            Some(TileLayer::new(layer.name.clone(), tile_layer))
-        })
+    pub fn map_size(&self) -> Vec2 {
+        Vec2::new( MAP_SIZE.0 as f32, MAP_SIZE.1 as f32)
     }
 
-    pub fn map_size(&self) -> Vec2 {
-        self.tile_layers().fold(Vec2::ZERO, |acc, layer| {
-            let width = layer.width() as f32;
-            let height = layer.height() as f32;
-            Vec2::new(acc.x.max(width), acc.y.max(height))
-        })
+    pub fn tile_size(&self) -> Vec2 {
+        Vec2::new(TILE_SIZE.0, TILE_SIZE.1)
     }
 
     pub fn map_pixel_size(&self, tile_size: Vec2) -> Vec2 {
@@ -108,32 +89,8 @@ impl TiledMapAssets {
     }
 }
 
-#[derive(Resource, Default)]
-pub struct TiledMapLibrary {
-    maps: Vec<TiledMapAssets>,
-}
-
-impl TiledMapLibrary {
-    pub fn new(maps: Vec<TiledMapAssets>) -> Self {
-        Self { maps }
-    }
-
-    pub fn len(&self) -> usize {
-        self.maps.len()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.maps.is_empty()
-    }
-
-    pub fn get(&self, index: usize) -> Option<&TiledMapAssets> {
-        self.maps.get(index)
-    }
-}
-
 #[derive(Clone)]
 pub struct Tileset {
-    tileset: Arc<tiled_rs::Tileset>,
     image: Option<TiledTilesetImage>,
 }
 
@@ -144,9 +101,6 @@ impl Tileset {
 
     pub fn atlas_sprite(&self, local_id: u32) -> Option<TiledAtlasSprite> {
         let image = self.image.as_ref()?;
-        if local_id >= self.tileset.tilecount {
-            return None;
-        }
 
         Some(TiledAtlasSprite {
             texture: image.texture.clone(),
@@ -189,7 +143,7 @@ fn load_tiled_assets(
     let mut loader = tiled_rs::Loader::new();
 
     let tsx = match loader.load_tsx_tileset(&config.tsx_path) {
-        Ok(tileset) => Arc::new(tileset),
+        Ok(tileset) => tileset,
         Err(err) => {
             error!(
                 target: "tiled",
@@ -200,48 +154,15 @@ fn load_tiled_assets(
         }
     };
 
-    let mut loaded_maps = Vec::new();
 
-    for map_path in &config.map_paths {
-        let map = match loader.load_tmx_map(map_path) {
-            Ok(map) => map,
-            Err(err) => {
-                error!(
-                    target: "tiled",
-                    "Failed to load TMX map '{}': {err}",
-                    map_path
-                );
-                continue;
-            }
-        };
-
-        let tilesets = map
-            .tilesets()
-            .iter()
-            .map(|tileset| load_tileset(tileset, &asset_server, &mut layouts))
-            .collect::<Vec<_>>();
-
-        map.tilesets().iter().for_each(|tileset| {
-            info!(target: "tiled", "Loaded tileset '{}' for map '{}'", tileset.name, map_path);
-        });
-
-        info!(target: "tiled", "Loaded TMX map '{}'", map_path);
-
-        loaded_maps.push(TiledMapAssets {
-            map_path: map_path.clone(),
-            tsx: Arc::clone(&tsx),
-            map: Arc::new(map),
-            tilesets,
-        });
-    }
-
-    commands.insert_resource(TiledMapLibrary::new(loaded_maps));
+    let tileset = load_tileset(&asset_server, &mut layouts, &tsx);
+    commands.insert_resource(TiledMapAssets{ tsx: Arc::new(tsx), tileset });
 }
 
 fn load_tileset(
-    tileset: &Arc<tiled_rs::Tileset>,
     asset_server: &AssetServer,
     layouts: &mut Assets<TextureAtlasLayout>,
+    tileset: &tiled_rs::Tileset,
 ) -> Tileset {
     let image = tileset
         .image
@@ -249,7 +170,6 @@ fn load_tileset(
         .map(|image| create_tileset_image(tileset, image, asset_server, layouts));
 
     Tileset {
-        tileset: Arc::clone(tileset),
         image,
     }
 }

@@ -119,15 +119,14 @@ pub fn setup(
     mut clear_color: ResMut<ClearColor>,
     mut letterbox_offsets: ResMut<LetterboxOffsets>,
     asset_store: Res<AssetStore>,
-    tiled_maps: Res<TiledMapLibrary>,
     steam: Res<SteamClient>,
 ) {
-    info!("Steam load: {:?}", steam.load(RemoteFileType::Stages));
-
-    info!(
-        "Steam Cloud Enabled: {:?}",
-        steam.save(RemoteFileType::Stages, "test".to_string())
-    );
+    let progress = StageProgressUseCase::new(steam.as_ref())
+        .load_or_default()
+        .unwrap_or_else(|err| {
+            warn!("StageSelect: failed to load stage progress: {err}");
+            StageProgress::default()
+        });
 
     clear_color.0 = background_color();
     letterbox_offsets.left = 0.0;
@@ -143,7 +142,7 @@ pub fn setup(
         .font(FontKey::Title)
         .unwrap_or_else(|| font.clone());
 
-    let entries = build_stage_entries(&tiled_maps);
+    let entries = build_stage_entries(&progress);
     let summary = StageSummary::from_entries(&entries);
     let state = StageSelectState::new(entries.len(), CARDS_PER_PAGE);
     let page_text = format!("{}/{}", state.current_page + 1, state.total_pages());
@@ -205,7 +204,6 @@ pub fn handle_nav_buttons(
 
 pub fn handle_play_buttons(
     mut interactions: Query<(&StagePlayButton, &Interaction), Changed<Interaction>>,
-    tiled_maps: Res<TiledMapLibrary>,
     mut progression: ResMut<StageProgression>,
     mut next_state: ResMut<NextState<GameState>>,
 ) {
@@ -882,27 +880,22 @@ fn button_initial_color(visual: &ButtonVisual) -> Color {
     }
 }
 
-fn build_stage_entries(library: &TiledMapLibrary) -> Vec<StageEntry> {
-    let total_slots = library.len().max(TOTAL_STAGE_SLOTS).max(1);
-    let mut entries = Vec::with_capacity(total_slots);
+fn build_stage_entries(progress: &StageProgress) -> Vec<StageEntry> {
+    let mut entries = Vec::with_capacity(TOTAL_STAGE_SLOTS);
 
-    for index in 0..total_slots {
-        if let Some(map) = library.get(index) {
-            entries.push(StageEntry::playable(index, map));
+    for index in 0..TOTAL_STAGE_SLOTS {
+        if progress.is_unlocked(index) {
+            entries.push(StageEntry {
+                index,
+                title: format!("STAGE {:02}", index + 1),
+                playable: true,
+            });
         } else {
             entries.push(StageEntry::locked(index));
         }
     }
 
     entries
-}
-
-fn display_name(map: &TiledMapAssets) -> String {
-    Path::new(map.map_path())
-        .file_stem()
-        .and_then(|stem| stem.to_str())
-        .map(|name| name.replace('_', " ").to_uppercase())
-        .unwrap_or_else(|| format!("STAGE {}", map.map_path()))
 }
 
 fn background_color() -> Color {

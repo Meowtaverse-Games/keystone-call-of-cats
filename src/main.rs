@@ -1,10 +1,5 @@
 use std::env;
 
-mod application;
-mod domain;
-mod infrastructure;
-mod presentation;
-
 use bevy::asset::AssetPlugin;
 use bevy::{camera::ScalingMode, prelude::*};
 
@@ -12,6 +7,11 @@ use bevy_egui::EguiPlugin;
 
 use avian2d::debug_render::PhysicsDebugPlugin;
 use avian2d::prelude::*;
+
+mod application;
+mod domain;
+mod infrastructure;
+mod presentation;
 
 use crate::application::{GameState, Mode, STEAM_APP_ID};
 use crate::infrastructure::engine::{
@@ -80,13 +80,7 @@ fn main() {
             1200.0,
             Color::linear_rgb(0.0, 0.0, 0.0),
         ))
-        .add_plugins(TiledPlugin::new(
-            vec![
-                "assets/tiled/stage1-1.tmx".to_string(),
-                "assets/tiled/stage1-2.tmx".to_string(),
-            ],
-            "assets/tiled/super-platfomer-assets.tsx",
-        ))
+        .add_plugins(TiledPlugin::new("assets/tiled/super-platfomer-assets.tsx"))
         .add_plugins(AssetLoaderPlugin)
         .add_plugins(EguiPlugin::default())
         .add_plugins(ScenesPlugin)

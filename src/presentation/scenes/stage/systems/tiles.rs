@@ -15,10 +15,7 @@ pub fn spawn_tiles(
     placed_chunks: &chunk_grammar_map::PlacedChunkLayout,
     viewport: &ScaledViewport,
 ) {
-    let Some(tileset) = tiled_map_assets.tilesets().first() else {
-        warn!("Stage setup: no tilesets available");
-        return;
-    };
+    let tileset = tiled_map_assets.tileset.clone();
 
     let mut rng = rand::rng();
 
@@ -71,7 +68,7 @@ pub fn spawn_tiles(
                         background_ids[index]
                     };
 
-                    let Some(image) = image_from_tileset(tileset, tile_id as usize) else {
+                    let Some(image) = image_from_tileset(&tileset, tile_id as usize) else {
                         continue;
                     };
                     spawn_boundary_tile(parent, image, transform, tile_size, is_boundary);
@@ -82,7 +79,7 @@ pub fn spawn_tiles(
                 let Some(tile_id) = tile_id_for_kind(kind) else {
                     continue;
                 };
-                let Some(image) = image_from_tileset(tileset, tile_id as usize) else {
+                let Some(image) = image_from_tileset(&tileset, tile_id as usize) else {
                     continue;
                 };
 

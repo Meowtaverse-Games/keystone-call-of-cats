@@ -4,8 +4,6 @@ mod stone;
 mod tiles;
 mod ui;
 
-use std::path::Path;
-
 use bevy::{ecs::system::SystemParam, prelude::*, window::PrimaryWindow};
 
 use super::components::*;
@@ -14,7 +12,6 @@ use crate::{
     domain::chunk_grammar_map::{self, *},
     infrastructure::engine::{
         assets_loader::AssetStore, design_resolution::ScaledViewport, TiledMapAssets,
-        TiledMapLibrary,
     },
     presentation::scenes::stage::components::StageTile,
 };
@@ -29,6 +26,8 @@ pub use ui::ui;
 
 const CHUNK_GRAMMAR_CONFIG_PATH: &str = "assets/chunk_grammar_map/tutorial.ron";
 
+const MAP_SLOTS: usize = 20;
+
 #[derive(Resource, Default)]
 pub struct StageProgression {
     current_index: usize,
@@ -40,12 +39,12 @@ impl StageProgression {
         self.current_index
     }
 
-    pub fn current_map<'a>(&self, library: &'a TiledMapLibrary) -> Option<&'a TiledMapAssets> {
-        library.get(self.current_index)
+    pub fn current_map<'a>(&self) -> PlacedChunkLayout {
+        new_placed_chunks()
     }
 
-    pub fn advance(&mut self, library: &TiledMapLibrary) -> bool {
-        if self.current_index + 1 >= library.len() {
+    pub fn advance(&mut self) -> bool {
+        if self.current_index + 1 >= MAP_SLOTS {
             false
         } else {
             self.current_index += 1;
@@ -54,8 +53,8 @@ impl StageProgression {
         }
     }
 
-    pub fn select(&mut self, index: usize, library: &TiledMapLibrary) -> bool {
-        if index >= library.len() {
+    pub fn select(&mut self, index: usize) -> bool {
+        if index >= MAP_SLOTS {
             return false;
         }
 
@@ -64,11 +63,8 @@ impl StageProgression {
         true
     }
 
-    pub fn reset_if_needed(&mut self, library: &TiledMapLibrary) {
-        if library.is_empty() {
-            self.current_index = 0;
-            self.pending_reload = false;
-        } else if self.current_index >= library.len() {
+    pub fn reset_if_needed(&mut self) {
+        if self.current_index >= MAP_SLOTS {
             self.current_index = 0;
             self.pending_reload = true;
         }
@@ -103,18 +99,11 @@ fn compute_stage_root_translation(viewport: &ScaledViewport, window_size: Vec2) 
     Vec3::new(translation.x, translation.y, 1.0)
 }
 
-fn map_label(map: &TiledMapAssets) -> String {
-    Path::new(map.map_path())
-        .file_stem()
-        .and_then(|stem| stem.to_str())
-        .map(|name| name.to_string())
-        .unwrap_or_else(|| map.map_path().to_string())
-}
-
 fn spawn_stage(
     commands: &mut Commands,
     transform: Transform,
     map_assets: &TiledMapAssets,
+    placed_chunks: &PlacedChunkLayout,
     viewport: &ScaledViewport,
     asset_store: &AssetStore,
     asset_server: &AssetServer,
@@ -133,6 +122,7 @@ fn spawn_stage(
         commands,
         stage_root,
         map_assets,
+        placed_chunks,
         viewport,
         asset_store,
         asset_server,
@@ -155,13 +145,12 @@ fn populate_stage_contents(
     commands: &mut Commands,
     stage_root: Entity,
     tiled_map_assets: &TiledMapAssets,
+    placed_chunks: &PlacedChunkLayout,
     viewport: &ScaledViewport,
     asset_store: &AssetStore,
     asset_server: &AssetServer,
     atlas_layouts: &mut Assets<TextureAtlasLayout>,
 ) {
-    let placed_chunks = new_placed_chunks();
-
     tiles::spawn_tiles(
         commands,
         stage_root,
@@ -170,15 +159,7 @@ fn populate_stage_contents(
         viewport,
     );
 
-    let Some(tileset) = tiled_map_assets.tilesets().first() else {
-        warn!(
-            "Stage setup: no tilesets available for map '{}'",
-            tiled_map_assets.map_path()
-        );
-        return;
-    };
-
-    let tile_size = tileset.tile_size();
+    let tile_size = Vec2::new(16.0, 16.0);
     let viewport_size = viewport.size;
     let (real_tile_size, scale) =
         tiled_map_assets.scaled_tile_size_and_scale(viewport_size, tile_size);
@@ -248,7 +229,7 @@ fn cleanup_stage_entities(
 #[derive(SystemParam)]
 pub struct StageSetupParams<'w, 's> {
     asset_store: Res<'w, AssetStore>,
-    tiled_maps: Res<'w, TiledMapLibrary>,
+    tiled_map_assets: Res<'w, TiledMapAssets>,
     viewport: Res<'w, ScaledViewport>,
     asset_server: Res<'w, AssetServer>,
     atlas_layouts: ResMut<'w, Assets<TextureAtlasLayout>>,
@@ -262,20 +243,9 @@ pub fn setup(mut commands: Commands, mut params: StageSetupParams) {
         ui::init_editor_state(&mut commands);
     }
 
-    if params.tiled_maps.is_empty() {
-        warn!("Stage setup: no Tiled maps available");
-        return;
-    }
+    params.progression.reset_if_needed();
 
-    params.progression.reset_if_needed(&params.tiled_maps);
-
-    let Some(current_map) = params.progression.current_map(&params.tiled_maps) else {
-        warn!(
-            "Stage setup: no map available for index {}",
-            params.progression.current_index()
-        );
-        return;
-    };
+    let current_map = params.progression.current_map();
 
     let Ok(window) = params.window_query.single() else {
         warn!("Stage setup: primary window not available");
@@ -288,7 +258,8 @@ pub fn setup(mut commands: Commands, mut params: StageSetupParams) {
         &mut commands,
         Transform::from_translation(stage_root_position)
             .with_scale(Vec3::splat(params.viewport.scale)),
-        current_map,
+        &params.tiled_map_assets,
+        &current_map,
         params.viewport.as_ref(),
         params.asset_store.as_ref(),
         params.asset_server.as_ref(),
@@ -309,7 +280,6 @@ pub fn cleanup(
 }
 
 pub fn advance_stage_if_cleared(
-    tiled_maps: Res<TiledMapLibrary>,
     mut progression: ResMut<StageProgression>,
     mut editor_state: ResMut<ScriptEditorState>,
 ) {
@@ -317,16 +287,10 @@ pub fn advance_stage_if_cleared(
         return;
     }
 
-    if tiled_maps.is_empty() {
-        editor_state.stage_cleared = false;
-        return;
-    }
-
-    if progression.advance(&tiled_maps) {
-        if let Some(next_map) = progression.current_map(&tiled_maps) {
-            let label = map_label(next_map);
-            editor_state.last_run_feedback = Some(format!("ステージ「{}」へ進みます。", label));
-        }
+    if progression.advance() {
+        let next_map = progression.current_map();
+        // let label = map_label(next_map);
+        editor_state.last_run_feedback = Some(format!("ステージ「{}」へ進みます。", 1));
         editor_state.controls_enabled = false;
         editor_state.pending_player_reset = false;
     } else {
@@ -343,10 +307,10 @@ pub fn advance_stage_if_cleared(
 #[derive(SystemParam)]
 pub struct StageReloadParams<'w, 's> {
     asset_store: Res<'w, AssetStore>,
-    tiled_maps: Res<'w, TiledMapLibrary>,
     viewport: Res<'w, ScaledViewport>,
     asset_server: Res<'w, AssetServer>,
     atlas_layouts: ResMut<'w, Assets<TextureAtlasLayout>>,
+    tiled_map_assets: Res<'w, TiledMapAssets>,
     window_query: Query<'w, 's, &'static Window, With<PrimaryWindow>>,
     progression: ResMut<'w, StageProgression>,
     stage_roots: Query<'w, 's, Entity, With<StageRoot>>,
@@ -361,18 +325,7 @@ pub fn reload_stage_if_needed(mut commands: Commands, mut params: StageReloadPar
         return;
     }
 
-    if params.tiled_maps.is_empty() {
-        warn!("Stage reload requested but no maps are available");
-        return;
-    }
-
-    let Some(current_map) = params.progression.current_map(&params.tiled_maps) else {
-        warn!(
-            "Stage reload: no map available for index {}",
-            params.progression.current_index()
-        );
-        return;
-    };
+    let current_map = params.progression.current_map();
 
     cleanup_stage_entities(
         &mut commands,
@@ -393,7 +346,8 @@ pub fn reload_stage_if_needed(mut commands: Commands, mut params: StageReloadPar
         &mut commands,
         Transform::from_translation(stage_root_position)
             .with_scale(Vec3::splat(params.viewport.scale)),
-        current_map,
+            &params.tiled_map_assets,
+        &current_map,
         params.viewport.as_ref(),
         params.asset_store.as_ref(),
         params.asset_server.as_ref(),
@@ -401,7 +355,7 @@ pub fn reload_stage_if_needed(mut commands: Commands, mut params: StageReloadPar
     );
 
     if let Some(editor) = params.editor_state.as_deref_mut() {
-        let label = map_label(current_map);
+        let label = format!("STAGE-{}", 1); // map_label(current_map);
         editor.controls_enabled = false;
         editor.pending_player_reset = false;
         editor.stage_cleared = false;
