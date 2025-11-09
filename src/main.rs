@@ -12,9 +12,8 @@ use bevy_egui::EguiPlugin;
 
 use avian2d::debug_render::PhysicsDebugPlugin;
 use avian2d::prelude::*;
-use bevy_steamworks::SteamworksPlugin;
 
-use crate::adapter::{GameState, Mode};
+use crate::adapter::{GameState, Mode, STEAM_APP_ID};
 use crate::plugins::*;
 use crate::scenes::ScenesPlugin;
 
@@ -22,14 +21,21 @@ use crate::scenes::ScenesPlugin;
 #[require(Camera2d)]
 pub struct MainCamera;
 
-const STEAM_APP_ID: u32 = 4169380;
-
 fn main() {
     let args: Vec<String> = env::args().collect();
 
-    if args.len() > 1 && args[1] == "--chunk-grammar-map" {
-        core::domain::chunk_grammar_map::main();
-        return;
+    if args.len() > 1 {
+        match args[1].as_str() {
+            "--chunk-grammar-map" => {
+                core::domain::chunk_grammar_map::main();
+                return;
+            }
+            "--steam-test" => {
+                core::domain::steam::main(STEAM_APP_ID);
+                return;
+            }
+            _ => {}
+        }
     }
 
     let mode = Mode::from_args(&args);
@@ -39,7 +45,7 @@ fn main() {
 
     let mut app = App::new();
 
-    app.add_plugins(SteamworksPlugin::init_app(STEAM_APP_ID).unwrap())
+    app.add_plugins(SteamPlugin::new(STEAM_APP_ID))
         .add_plugins((
             DefaultPlugins
                 .set(AssetPlugin {

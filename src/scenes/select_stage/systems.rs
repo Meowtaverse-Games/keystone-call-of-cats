@@ -5,14 +5,12 @@ use bevy::prelude::MessageWriter;
 use bevy::prelude::*;
 use bevy::ui::BorderRadius;
 use bevy_ecs::hierarchy::ChildSpawnerCommands;
+use bevy_steamworks::Client;
 
 use super::components::*;
 use crate::{
     adapter::GameState,
-    plugins::{
-        TiledMapAssets, TiledMapLibrary, assets_loader::AssetStore,
-        design_resolution::LetterboxOffsets,
-    },
+    plugins::*,
     scenes::{assets::FontKey, stage::StageProgression},
 };
 
@@ -123,7 +121,15 @@ pub fn setup(
     mut letterbox_offsets: ResMut<LetterboxOffsets>,
     asset_store: Res<AssetStore>,
     tiled_maps: Res<TiledMapLibrary>,
+    steam: Res<SteamClient>,
 ) {
+    info!("Steam load: {:?}", steam.load(RemoteFileType::Stages));
+
+    info!(
+        "Steam Cloud Enabled: {:?}",
+        steam.save(RemoteFileType::Stages, "test".to_string())
+    );
+
     clear_color.0 = background_color();
     letterbox_offsets.left = 0.0;
     letterbox_offsets.right = 0.0;

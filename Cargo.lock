@@ -3764,6 +3764,7 @@ dependencies = [
  "rhai",
  "ron 0.11.0",
  "serde",
+ "steamworks",
  "tiled",
 ]
 
