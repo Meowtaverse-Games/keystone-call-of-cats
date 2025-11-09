@@ -3,10 +3,10 @@ use std::time::Duration;
 use bevy::prelude::*;
 use bevy_egui::{EguiContexts, egui};
 
-use crate::adapter::*;
-use crate::plugins::assets_loader::*;
-use crate::plugins::design_resolution::ScaledViewport;
-use crate::scenes::assets::{DEFAULT_GROUP, FontKey};
+use crate::application::*;
+use crate::infrastructure::engine::assets_loader::*;
+use crate::infrastructure::engine::design_resolution::ScaledViewport;
+use crate::presentation::scenes::assets::{DEFAULT_GROUP, FontKey};
 
 use super::components::BootRoot;
 #[derive(Resource, Default)]

@@ -1,6 +1,6 @@
-use crate::core::{
-    boundary::{ScriptCommand, ScriptExecutionError, ScriptRunner},
-    domain::script::ScriptExecutor as DomainScriptExecutor,
+use crate::{
+    domain::scripts::{ScriptCommand, ScriptExecutionError, ScriptRunner},
+    infrastructure::scripts::RhaiScriptExecutor,
 };
 use bevy::prelude::*;
 
@@ -10,17 +10,29 @@ pub enum Language {
     Keystone,
 }
 
-#[derive(Resource, Default)]
-pub struct ScriptExecutor(DomainScriptExecutor);
+#[derive(Resource)]
+pub struct ScriptExecutor {
+    runner: Box<dyn ScriptRunner>,
+}
+
+impl Default for ScriptExecutor {
+    fn default() -> Self {
+        Self::new(Box::<RhaiScriptExecutor>::default())
+    }
+}
 
 impl ScriptExecutor {
+    pub fn new(runner: Box<dyn ScriptRunner>) -> Self {
+        Self { runner }
+    }
+
     pub fn run(
         &self,
         language: Language,
         source: &str,
     ) -> Result<Vec<ScriptCommand>, ScriptExecutionError> {
         match language {
-            Language::Rhai => self.0.run(source),
+            Language::Rhai => self.runner.run(source),
             Language::Keystone => {
                 // Execute Keystone script
                 Err(ScriptExecutionError::UnsupportedLanguage(

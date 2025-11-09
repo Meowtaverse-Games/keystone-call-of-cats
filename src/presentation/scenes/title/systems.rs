@@ -2,10 +2,10 @@ use bevy::color::palettes::css::*;
 use bevy::prelude::*;
 
 use super::components::TitleUI;
-use crate::adapter::*;
-use crate::plugins::assets_loader::AssetStore;
-use crate::plugins::design_resolution::LetterboxOffsets;
-use crate::scenes::assets::FontKey;
+use crate::application::*;
+use crate::infrastructure::engine::assets_loader::AssetStore;
+use crate::infrastructure::engine::design_resolution::LetterboxOffsets;
+use crate::presentation::scenes::assets::FontKey;
 
 pub fn setup(
     mut commands: Commands,

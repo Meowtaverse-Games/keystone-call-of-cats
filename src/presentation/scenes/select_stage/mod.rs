@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::adapter::*;
+use crate::application::*;
 
 mod components;
 mod systems;

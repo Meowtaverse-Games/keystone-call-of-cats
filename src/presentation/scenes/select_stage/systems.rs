@@ -8,9 +8,9 @@ use bevy_ecs::hierarchy::ChildSpawnerCommands;
 
 use super::components::*;
 use crate::{
-    adapter::GameState,
-    plugins::*,
-    scenes::{assets::FontKey, stage::StageProgression},
+    application::GameState,
+    infrastructure::engine::*,
+    presentation::scenes::{assets::FontKey, stage::StageProgression},
 };
 
 const TOTAL_STAGE_SLOTS: usize = 20;

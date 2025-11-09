@@ -2,8 +2,8 @@ use avian2d::prelude::*;
 use bevy::{input::ButtonInput, prelude::*};
 
 use crate::{
-    plugins::assets_loader::AssetStore,
-    scenes::{
+    infrastructure::engine::assets_loader::AssetStore,
+    presentation::scenes::{
         assets::{PLAYER_IDLE_KEYS, PLAYER_RUN_KEYS},
         stage::components::{
             Player, PlayerAnimation, PlayerAnimationClips, PlayerAnimationState, PlayerMotion,

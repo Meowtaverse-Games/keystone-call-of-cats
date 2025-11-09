@@ -3,7 +3,7 @@ use bevy::prelude::*;
 pub mod assets;
 mod boot;
 mod select_stage;
-mod stage;
+pub mod stage;
 
 use boot::BootPlugin;
 use select_stage::StageSelectPlugin;

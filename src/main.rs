@@ -1,9 +1,9 @@
 use std::env;
 
-mod adapter;
-mod core;
-mod plugins;
-mod scenes;
+mod application;
+mod domain;
+mod infrastructure;
+mod presentation;
 
 use bevy::asset::AssetPlugin;
 use bevy::{camera::ScalingMode, prelude::*};
@@ -13,9 +13,12 @@ use bevy_egui::EguiPlugin;
 use avian2d::debug_render::PhysicsDebugPlugin;
 use avian2d::prelude::*;
 
-use crate::adapter::{GameState, Mode, STEAM_APP_ID};
-use crate::plugins::*;
-use crate::scenes::ScenesPlugin;
+use crate::application::{GameState, Mode, STEAM_APP_ID};
+use crate::infrastructure::engine::{
+    AssetLoaderPlugin, DesignResolutionPlugin, ScriptPlugin, SteamPlugin, TiledPlugin,
+    VisibilityPlugin,
+};
+use crate::presentation::ScenesPlugin;
 
 #[derive(Component)]
 #[require(Camera2d)]
@@ -27,11 +30,11 @@ fn main() {
     if args.len() > 1 {
         match args[1].as_str() {
             "--chunk-grammar-map" => {
-                core::domain::chunk_grammar_map::main();
+                domain::chunk_grammar_map::main();
                 return;
             }
             "--steam-test" => {
-                core::domain::steam::main(STEAM_APP_ID);
+                infrastructure::steam::show_steam_app_info(STEAM_APP_ID);
                 return;
             }
             _ => {}

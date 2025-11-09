@@ -2,9 +2,8 @@ use avian2d::prelude::*;
 use bevy::prelude::*;
 
 use crate::{
-    plugins::design_resolution::ScaledViewport,
-    plugins::tiled::*,
-    scenes::stage::components::{Goal, Player, PlayerMotion},
+    infrastructure::engine::{design_resolution::ScaledViewport, tiled::*},
+    presentation::scenes::stage::components::{Goal, Player, PlayerMotion},
 };
 
 use super::ui::ScriptEditorState;

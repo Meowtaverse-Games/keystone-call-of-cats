@@ -3,9 +3,9 @@ use bevy::prelude::*;
 use rand::Rng;
 
 use crate::{
-    core::domain::chunk_grammar_map::{self, MAP_SIZE, TileKind},
-    plugins::{design_resolution::ScaledViewport, tiled::*},
-    scenes::stage::components::StageTile,
+    domain::chunk_grammar_map::{self, MAP_SIZE, TileKind},
+    infrastructure::engine::{design_resolution::ScaledViewport, tiled::*},
+    presentation::scenes::stage::components::StageTile,
 };
 
 pub fn spawn_tiles(

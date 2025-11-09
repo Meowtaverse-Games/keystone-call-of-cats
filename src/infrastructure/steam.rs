@@ -4,7 +4,7 @@ use steamworks::PersonaStateChange;
 
 use std::io::*;
 
-pub fn main(app_id: u32) {
+pub fn show_steam_app_info(app_id: u32) {
     let client = Client::init_app(app_id).unwrap();
 
     let _cb = client.register_callback(|p: PersonaStateChange| {

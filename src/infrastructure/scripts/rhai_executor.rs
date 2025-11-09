@@ -1,11 +1,11 @@
-use crate::core::boundary::{MoveDirection, ScriptCommand, ScriptExecutionError, ScriptRunner};
+use crate::domain::scripts::{MoveDirection, ScriptCommand, ScriptExecutionError, ScriptRunner};
 use rhai::{Dynamic, Engine, EvalAltResult, FLOAT as RhaiFloat, Position};
 use std::sync::{Arc, Mutex};
 
 /// Rhai-based implementation of the `ScriptRunner` boundary.
-pub struct ScriptExecutor;
+pub struct RhaiScriptExecutor;
 
-impl ScriptExecutor {
+impl RhaiScriptExecutor {
     pub fn new() -> Self {
         Self
     }
@@ -27,13 +27,13 @@ impl ScriptExecutor {
     }
 }
 
-impl Default for ScriptExecutor {
+impl Default for RhaiScriptExecutor {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl ScriptRunner for ScriptExecutor {
+impl ScriptRunner for RhaiScriptExecutor {
     fn run(&self, source: &str) -> Result<Vec<ScriptCommand>, ScriptExecutionError> {
         self.parse_commands(source)
     }

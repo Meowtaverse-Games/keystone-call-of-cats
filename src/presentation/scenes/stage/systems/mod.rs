@@ -11,12 +11,13 @@ use bevy::{ecs::system::SystemParam, prelude::*, window::PrimaryWindow};
 use super::components::*;
 
 use crate::{
-    core::domain::chunk_grammar_map::{self, *},
-    plugins::design_resolution::ScaledViewport,
-    scenes::stage::components::StageTile,
+    domain::chunk_grammar_map::{self, *},
+    infrastructure::engine::{
+        assets_loader::AssetStore, design_resolution::ScaledViewport, TiledMapAssets,
+        TiledMapLibrary,
+    },
+    presentation::scenes::stage::components::StageTile,
 };
-
-use crate::plugins::{TiledMapAssets, TiledMapLibrary, assets_loader::AssetStore};
 
 pub use goal::check_goal_completion;
 pub use player::{animate_character, move_character, reset_player_position};
