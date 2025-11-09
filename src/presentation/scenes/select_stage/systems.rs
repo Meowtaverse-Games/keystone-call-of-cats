@@ -8,7 +8,8 @@ use bevy_ecs::hierarchy::ChildSpawnerCommands;
 
 use super::components::*;
 use crate::{
-    application::GameState,
+    application::{GameState, StageProgressUseCase},
+    domain::stage_progress::StageProgress,
     infrastructure::engine::*,
     presentation::scenes::{assets::FontKey, stage::StageProgression},
 };
@@ -100,7 +101,7 @@ impl StageEntry {
     fn playable(index: usize, map: &TiledMapAssets) -> Self {
         Self {
             index,
-            title: display_name(map),
+            title: format!("STAGE-{}", index),
             playable: true,
         }
     }
@@ -213,7 +214,7 @@ pub fn handle_play_buttons(
         }
 
         if *interaction == Interaction::Pressed {
-            if progression.select(button.stage_index, tiled_maps.as_ref()) {
+            if progression.select(button.stage_index) {
                 next_state.set(GameState::Stage);
             } else {
                 warn!(

@@ -1,78 +1,51 @@
 use bevy::prelude::*;
 
 use std::io::{Read, Write};
-use thiserror::Error;
 
-pub enum RemoteFileType {
-    Stages,
-}
+use crate::application::steam::{RemoteFile, RemoteFileError, RemoteFileStorage};
 
 #[derive(Resource, Default)]
 pub struct SteamClient {
     client: Option<bevy_steamworks::Client>,
 }
 
-#[derive(Error, Debug)]
-pub enum SteamError {
-    #[error("Steam client not initialized")]
-    SteamNotInitialized,
-    #[error(transparent)]
-    IoError(#[from] std::io::Error),
-}
-
-fn file_name(file_type: RemoteFileType) -> String {
-    match file_type {
-        RemoteFileType::Stages => "stages.txt".to_string(),
-    }
-}
 impl SteamClient {
-    pub fn save(
-        &self,
-        file_type: RemoteFileType,
-        contents: String,
-    ) -> std::result::Result<(), SteamError> {
-        let Some(client) = &self.client else {
-            return Err(SteamError::SteamNotInitialized);
-        };
-
-        let rs = client.remote_storage();
-
-        info!(
-            "cloud_enabled_app={} cloud_enabled_user={}",
-            rs.is_cloud_enabled_for_app(),
-            rs.is_cloud_enabled_for_account()
-        );
-
-        let filename = file_name(file_type);
-        let file = rs.file(&filename);
-        let mut writer = file.write();
-        writer.write_all(contents.as_bytes())?;
-
-        Ok(())
+    fn remote_storage(&self) -> Result<bevy_steamworks::RemoteStorage, RemoteFileError> {
+        let client = self.client.as_ref().ok_or(RemoteFileError::Unavailable)?;
+        Ok(client.remote_storage())
     }
+}
 
-    pub fn load(
-        &self,
-        file_type: RemoteFileType,
-    ) -> std::result::Result<Option<String>, SteamError> {
-        let Some(client) = &self.client else {
-            return Err(SteamError::SteamNotInitialized);
-        };
-
-        let rs = client.remote_storage();
-
-        let filename = file_name(file_type);
-        let file = rs.file(&filename);
+impl RemoteFileStorage for SteamClient {
+    fn load_remote_file(&self, file: RemoteFile) -> Result<Option<Vec<u8>>, RemoteFileError> {
+        let storage = self.remote_storage()?;
+        let filename = file_name(file);
+        let file = storage.file(filename);
 
         if !file.exists() {
             return Ok(None);
         }
 
         let mut reader = file.read();
-        let mut contents = String::new();
-        reader.read_to_string(&mut contents)?;
+        let mut buffer = Vec::new();
+        reader.read_to_end(&mut buffer)?;
 
-        Ok(Some(contents))
+        Ok(Some(buffer))
+    }
+
+    fn save_remote_file(&self, file: RemoteFile, bytes: &[u8]) -> Result<(), RemoteFileError> {
+        let storage = self.remote_storage()?;
+        let filename = file_name(file);
+        let file = storage.file(filename);
+        let mut writer = file.write();
+        writer.write_all(bytes)?;
+        Ok(())
+    }
+}
+
+fn file_name(file_type: RemoteFile) -> &'static str {
+    match file_type {
+        RemoteFile::StageProgress => "stage_progress.ron",
     }
 }
 
