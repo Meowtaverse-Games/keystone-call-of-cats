@@ -16,7 +16,7 @@ mod presentation;
 
 use crate::config::steam::*;
 
-use crate::application::{GameState, LaunchProfile};
+use crate::application::*;
 use crate::infrastructure::engine::{
     AssetLoaderPlugin, DesignResolutionPlugin, ScriptPlugin, TiledPlugin, VisibilityPlugin,
 };
@@ -27,31 +27,26 @@ use crate::presentation::ScenesPlugin;
 pub struct MainCamera;
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
     let steam_app_id = steam_app_id();
 
-    if args.len() > 1 {
-        match args[1].as_str() {
-            "--chunk-grammar-map" => {
+    let launch_profile = LaunchProfile::from_args(env::args().collect::<Vec<_>>().as_slice());
+    if launch_profile.changed {
+        println!("Launch profile: {:?}", launch_profile);
+    }
+    match launch_profile.launch_type {
+            LaunchType::GenerateChunkGrammerMap => {
                 domain::chunk_grammar_map::main();
                 return;
             }
-            "--steam-test" => {
+            LaunchType::SteamAppInfo => {
                 infrastructure::steamworks::show_steam_app_info(steam_app_id);
                 return;
             }
             _ => {}
         }
-    }
-
-    let launch_profile = LaunchProfile::from_args(&args);
-    if launch_profile.changed {
-        println!("Launch profile: {:?}", launch_profile);
-    }
 
     let mut app = App::new();
 
-    // Initialize Steamworks via bevy_steamworks (replaces old SteamPlugin)
     app.add_plugins(bevy_steamworks::SteamworksPlugin::init_app(steam_app_id).unwrap())
         .add_plugins((
             DefaultPlugins
