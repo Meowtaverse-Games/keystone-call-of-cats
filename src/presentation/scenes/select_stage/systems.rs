@@ -322,6 +322,7 @@ fn spawn_hero_section(
     parent
         .spawn(Node {
             width: Val::Percent(100.0),
+            height: Val::Percent(100.0),
             flex_direction: FlexDirection::Column,
             row_gap: Val::Px(20.0),
             ..default()
@@ -340,6 +341,7 @@ fn spawn_hero_section(
 
             hero.spawn(Node {
                 width: Val::Percent(100.0),
+                flex_grow: 1.0,
                 flex_direction: FlexDirection::Row,
                 column_gap: Val::Px(32.0),
                 align_items: AlignItems::Stretch,
@@ -419,17 +421,6 @@ fn spawn_hero_copy(
                     TextColor(hero_title_color()),
                 ));
             });
-
-            left.spawn(Text::new(
-                "Drop into a vibrant kitty multiverse, remix your best scripts,\
-                 \nand pursue the sharpest keystones.",
-            ))
-            .insert(TextFont {
-                font: font.clone(),
-                font_size: 24.0,
-                ..default()
-            })
-            .insert(TextColor(secondary_text_color()));
 
             left.spawn(Node {
                 flex_direction: FlexDirection::Row,
@@ -621,7 +612,7 @@ fn spawn_stage_cards(
                     StageCard { index: entry.index },
                     Node {
                         width: Val::Px(CARD_WIDTH),
-                        min_height: Val::Px(CARD_HEIGHT),
+                        flex_grow: 1.0,
                         flex_direction: FlexDirection::Column,
                         row_gap: Val::Px(16.0),
                         padding: UiRect::all(Val::Px(24.0)),
@@ -676,16 +667,6 @@ fn spawn_stage_cards(
                         ..default()
                     })
                     .insert(TextColor(secondary_text_color()));
-
-                    card.spawn(Node {
-                        flex_direction: FlexDirection::Row,
-                        column_gap: Val::Px(12.0),
-                        ..default()
-                    })
-                    .with_children(|stats| {
-                        spawn_mini_stat(stats, font, "BEST TIME", "--");
-                        spawn_mini_stat(stats, font, "BEST SCRIPT", "--");
-                    });
 
                     card.spawn((
                         Node {

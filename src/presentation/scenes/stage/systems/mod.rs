@@ -288,8 +288,6 @@ pub fn advance_stage_if_cleared(
     }
 
     if progression.advance() {
-        // let next_map = progression.current_map();
-        // let label = map_label(next_map);
         editor_state.last_run_feedback = Some(format!("ステージ「{}」へ進みます。", 1));
         editor_state.controls_enabled = false;
         editor_state.pending_player_reset = false;

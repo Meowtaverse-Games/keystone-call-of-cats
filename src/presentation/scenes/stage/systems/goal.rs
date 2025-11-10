@@ -26,8 +26,6 @@ pub fn spawn_goal(
         real_tile_size, scale
     );
 
-    // let tile = tiled_map_assets.tile(GOAL_OBJECT_ID).unwrap();
-
     commands.entity(stage_root).with_children(|parent| {
         parent.spawn((
             Goal {
