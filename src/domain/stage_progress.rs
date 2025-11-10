@@ -1,19 +1,19 @@
 use serde::{Deserialize, Serialize};
 
 /// Tracks which stage index has been unlocked.
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StageProgress {
     /// Zero-based index of the highest unlocked stage.
     pub highest_unlocked_index: usize,
 }
 
-impl StageProgress {
-    pub fn new(highest_unlocked_index: usize) -> Self {
-        Self {
-            highest_unlocked_index,
-        }
+impl Default for StageProgress {
+    fn default() -> Self {
+        Self { highest_unlocked_index: 2 }
     }
+}
 
+impl StageProgress {
     pub fn is_unlocked(&self, stage_index: usize) -> bool {
         stage_index <= self.highest_unlocked_index
     }
