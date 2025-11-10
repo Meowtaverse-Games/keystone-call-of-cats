@@ -19,7 +19,7 @@ pub fn setup(
     scaled_viewport: Res<ScaledViewport>,
     mut commands: Commands,
     mut load_writer: MessageWriter<LoadAssetGroup>,
-    mode: Res<Mode>,
+    launch_profile: Res<LaunchProfile>,
 ) {
     load_writer.write(DEFAULT_GROUP);
 
@@ -36,7 +36,7 @@ pub fn setup(
         Transform::default().with_scale(Vec3::splat(scaled_viewport.scale)),
     ));
 
-    let mills = if !mode.skip_boot { 1200 } else { 0 };
+    let mills = if !launch_profile.skip_boot { 1200 } else { 0 };
     commands.insert_resource(BootTimer {
         // for testing, make it shorter
         timer: Timer::new(Duration::from_millis(mills), TimerMode::Once),

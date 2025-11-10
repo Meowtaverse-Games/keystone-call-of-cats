@@ -6,16 +6,15 @@ use bevy_ecs::hierarchy::ChildSpawnerCommands;
 
 use super::components::*;
 use crate::{
-    application::{GameState, StageProgressUseCase},
+    FileStorageRes,
+    application::*,
     domain::stage_progress::StageProgress,
     infrastructure::engine::*,
     presentation::scenes::{assets::FontKey, stage::StageProgression},
 };
 
-const TOTAL_STAGE_SLOTS: usize = 20;
 const CARDS_PER_PAGE: usize = 3;
 const CARD_WIDTH: f32 = 360.0;
-const CARD_HEIGHT: f32 = 320.0;
 const CARD_GAP: f32 = 32.0;
 const SECTION_SPACING: f32 = 20.0;
 
@@ -118,14 +117,16 @@ pub fn setup(
     mut clear_color: ResMut<ClearColor>,
     mut letterbox_offsets: ResMut<LetterboxOffsets>,
     asset_store: Res<AssetStore>,
-    steam: Res<SteamClient>,
+    file_storage: Res<FileStorageRes>,
 ) {
-    let progress = StageProgressUseCase::new(steam.as_ref())
-        .load_or_default()
-        .unwrap_or_else(|err| {
-            warn!("StageSelect: failed to load stage progress: {err}");
-            StageProgress::default()
-        });
+    let progress = crate::application::usecase::stage_progress_usecase::StageProgressService::new(
+        file_storage.0.as_ref(),
+    )
+    .load_or_default()
+    .unwrap_or_else(|err| {
+        warn!("StageSelect: failed to load stage progress: {:?}", err);
+        StageProgress::default()
+    });
 
     clear_color.0 = background_color();
     letterbox_offsets.left = 0.0;
@@ -711,37 +712,6 @@ fn spawn_stage_chip(parent: &mut ChildSpawnerCommands, font: &Handle<Font>, play
         });
 }
 
-fn spawn_mini_stat(
-    parent: &mut ChildSpawnerCommands,
-    font: &Handle<Font>,
-    label: &str,
-    value: &str,
-) {
-    parent
-        .spawn(Node {
-            flex_direction: FlexDirection::Column,
-            row_gap: Val::Px(4.0),
-            ..default()
-        })
-        .with_children(|stat| {
-            stat.spawn(Text::new(label))
-                .insert(TextFont {
-                    font: font.clone(),
-                    font_size: 14.0,
-                    ..default()
-                })
-                .insert(TextColor(secondary_text_color()));
-
-            stat.spawn(Text::new(value))
-                .insert(TextFont {
-                    font: font.clone(),
-                    font_size: 22.0,
-                    ..default()
-                })
-                .insert(TextColor(primary_text_color()));
-        });
-}
-
 fn spawn_play_button(parent: &mut ChildSpawnerCommands, entry: &StageEntry, font: &Handle<Font>) {
     let enabled = entry.playable;
     let visual = ButtonVisual::new(
@@ -865,11 +835,7 @@ fn build_stage_entries(progress: &StageProgress) -> Vec<StageEntry> {
 
     for index in 0..TOTAL_STAGE_SLOTS {
         if progress.is_unlocked(index) {
-            entries.push(StageEntry {
-                index,
-                title: format!("STAGE {:02}", index + 1),
-                playable: true,
-            });
+            entries.push(StageEntry::playable(index));
         } else {
             entries.push(StageEntry::locked(index));
         }

@@ -9,14 +9,16 @@ use avian2d::debug_render::PhysicsDebugPlugin;
 use avian2d::prelude::*;
 
 mod application;
+mod config;
 mod domain;
 mod infrastructure;
 mod presentation;
 
-use crate::application::{GameState, Mode, STEAM_APP_ID};
+use crate::config::steam::*;
+
+use crate::application::{GameState, LaunchProfile};
 use crate::infrastructure::engine::{
-    AssetLoaderPlugin, DesignResolutionPlugin, ScriptPlugin, SteamPlugin, TiledPlugin,
-    VisibilityPlugin,
+    AssetLoaderPlugin, DesignResolutionPlugin, ScriptPlugin, TiledPlugin, VisibilityPlugin,
 };
 use crate::presentation::ScenesPlugin;
 
@@ -26,6 +28,7 @@ pub struct MainCamera;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
+    let steam_app_id = steam_app_id();
 
     if args.len() > 1 {
         match args[1].as_str() {
@@ -34,21 +37,22 @@ fn main() {
                 return;
             }
             "--steam-test" => {
-                infrastructure::steam::show_steam_app_info(STEAM_APP_ID);
+                infrastructure::steamworks::show_steam_app_info(steam_app_id);
                 return;
             }
             _ => {}
         }
     }
 
-    let mode = Mode::from_args(&args);
-    if mode.changed {
-        println!("Operating mode: {:?}", mode);
+    let launch_profile = LaunchProfile::from_args(&args);
+    if launch_profile.changed {
+        println!("Launch profile: {:?}", launch_profile);
     }
 
     let mut app = App::new();
 
-    app.add_plugins(SteamPlugin::new(STEAM_APP_ID))
+    // Initialize Steamworks via bevy_steamworks (replaces old SteamPlugin)
+    app.add_plugins(bevy_steamworks::SteamworksPlugin::init_app(steam_app_id).unwrap())
         .add_plugins((
             DefaultPlugins
                 .set(AssetPlugin {
@@ -68,7 +72,7 @@ fn main() {
             PhysicsPlugins::default(),
         ));
 
-    if mode.render_physics {
+    if launch_profile.render_physics {
         app.add_plugins(PhysicsDebugPlugin);
     }
 
@@ -84,7 +88,10 @@ fn main() {
         .add_plugins(AssetLoaderPlugin)
         .add_plugins(EguiPlugin::default())
         .add_plugins(ScenesPlugin)
-        .insert_resource(mode)
+        // Provide SteamClient wrapper and FileStorage to use cases
+        .add_systems(Startup, infrastructure::engine::steam::provide_steam_client)
+        .add_systems(Startup, setup_file_storage)
+        .insert_resource(launch_profile)
         .init_state::<GameState>()
         .run();
 }
@@ -97,4 +104,29 @@ fn setup_camera(mut commands: Commands) {
             ..OrthographicProjection::default_2d()
         }),
     ));
+}
+
+// ---------- Composition Root: FileStorage DI ----------
+use crate::application::ports::file_storage::FileStorage;
+use std::sync::Arc;
+
+#[derive(Resource, Clone)]
+pub struct FileStorageRes(pub Arc<dyn FileStorage + Send + Sync>);
+
+fn setup_file_storage(mut commands: Commands, steam_client: Option<Res<bevy_steamworks::Client>>) {
+    use crate::infrastructure::storage::local_file_storage::LocalFileStorage;
+    use crate::infrastructure::storage::steam_cloud_file_storage::SteamCloudFileStorage;
+
+    let storage: Arc<dyn FileStorage + Send + Sync> = if let Some(client) = steam_client {
+        let rs = client.remote_storage();
+        if rs.is_cloud_enabled_for_app() && rs.is_cloud_enabled_for_account() {
+            Arc::new(SteamCloudFileStorage::new(client.clone()))
+        } else {
+            Arc::new(LocalFileStorage::default_dir())
+        }
+    } else {
+        Arc::new(LocalFileStorage::default_dir())
+    };
+
+    commands.insert_resource(FileStorageRes(storage));
 }

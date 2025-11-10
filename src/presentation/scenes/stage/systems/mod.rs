@@ -8,6 +8,7 @@ use bevy::{ecs::system::SystemParam, prelude::*, window::PrimaryWindow};
 
 use super::components::*;
 
+use crate::FileStorageRes;
 use crate::{
     domain::chunk_grammar_map::{self, *},
     infrastructure::engine::{
@@ -35,12 +36,12 @@ pub struct StageProgression {
 }
 
 impl StageProgression {
-    pub fn current_index(&self) -> usize {
-        self.current_index
-    }
-
     pub fn current_map(&self) -> PlacedChunkLayout {
         new_placed_chunks()
+    }
+
+    pub fn current_index(&self) -> usize {
+        self.current_index
     }
 
     pub fn advance(&mut self) -> bool {
@@ -61,13 +62,6 @@ impl StageProgression {
         self.current_index = index;
         self.pending_reload = true;
         true
-    }
-
-    pub fn reset_if_needed(&mut self) {
-        if self.current_index >= MAP_SLOTS {
-            self.current_index = 0;
-            self.pending_reload = true;
-        }
     }
 
     pub fn clear_reload(&mut self) {
@@ -243,8 +237,6 @@ pub fn setup(mut commands: Commands, mut params: StageSetupParams) {
         ui::init_editor_state(&mut commands);
     }
 
-    params.progression.reset_if_needed();
-
     let current_map = params.progression.current_map();
 
     let Ok(window) = params.window_query.single() else {
@@ -282,9 +274,15 @@ pub fn cleanup(
 pub fn advance_stage_if_cleared(
     mut progression: ResMut<StageProgression>,
     mut editor_state: ResMut<ScriptEditorState>,
+    file_storage: Res<FileStorageRes>,
 ) {
     if !editor_state.stage_cleared {
         return;
+    }
+    use crate::application::usecase::stage_progress_usecase::StageProgressService;
+    let svc = StageProgressService::new(file_storage.0.as_ref());
+    if let Err(e) = svc.unlock_stage(progression.current_index()) {
+        warn!("Failed to unlock stage progress: {:?}", e);
     }
 
     if progression.advance() {

@@ -9,7 +9,9 @@ pub struct StageProgress {
 
 impl Default for StageProgress {
     fn default() -> Self {
-        Self { highest_unlocked_index: 2 }
+        Self {
+            highest_unlocked_index: 2,
+        }
     }
 }
 
