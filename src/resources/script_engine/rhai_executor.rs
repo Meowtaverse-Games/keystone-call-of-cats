@@ -40,8 +40,7 @@ impl ScriptRunner for RhaiScriptExecutor {
 }
 
 #[derive(Clone)]
-#[allow(dead_code)]
-struct CommandValue(ScriptCommand);
+struct CommandValue();
 
 #[derive(Clone, Default)]
 struct CommandRecorder(Arc<Mutex<Vec<ScriptCommand>>>);
@@ -111,7 +110,7 @@ fn register_commands(engine: &mut Engine, recorder: CommandRecorder) {
 fn record_move(recorder: &CommandRecorder, direction: MoveDirection) -> CommandValue {
     let command = ScriptCommand::Move(direction);
     recorder.push(command.clone());
-    CommandValue(command)
+    CommandValue()
 }
 
 fn move_named(
@@ -144,7 +143,7 @@ fn sleep_for(
 
     let command = ScriptCommand::Sleep(duration as f32);
     recorder.push(command.clone());
-    Ok(CommandValue(command))
+    Ok(CommandValue())
 }
 
 fn map_engine_error(error: Box<EvalAltResult>) -> ScriptExecutionError {

@@ -28,12 +28,6 @@ impl StageProgress {
         }
     }
 
-    /// Total number of unlocked slots (stages) = unlocked_until + 1 (stage 0 always counts).
-    #[cfg_attr(not(test), allow(dead_code))]
-    pub fn unlocked_slots(&self) -> usize {
-        self.unlocked_until + 1
-    }
-
     pub fn load_or_default(storage: &dyn FileStorage) -> Self {
         match storage.load(STAGE_PROGRESS_FILE) {
             Ok(Some(bytes)) => ron::de::from_bytes(&bytes).unwrap_or_else(|err| {
@@ -68,7 +62,6 @@ mod tests {
     fn default_has_first_stage() {
         let p = StageProgress::default();
         assert!(p.is_unlocked(0));
-        assert_eq!(p.unlocked_slots(), 1);
     }
 
     #[test]
@@ -76,9 +69,7 @@ mod tests {
         let mut p = StageProgress::default();
         assert!(p.unlock_until(2));
         assert!(p.is_unlocked(2));
-        assert_eq!(p.unlocked_slots(), 3);
         // unlocking same or lower doesn't change
         assert!(!p.unlock_until(1));
-        assert_eq!(p.unlocked_slots(), 3);
     }
 }
