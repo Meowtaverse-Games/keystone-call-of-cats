@@ -8,7 +8,7 @@ use bevy::{ecs::system::SystemParam, prelude::*, window::PrimaryWindow};
 
 use super::components::*;
 
-use crate::FileStorageRes;
+use crate::application::usecase::stage_progress_usecase::StageProgressServiceRes;
 use crate::{
     domain::chunk_grammar_map::{self, *},
     infrastructure::engine::{
@@ -274,14 +274,12 @@ pub fn cleanup(
 pub fn advance_stage_if_cleared(
     mut progression: ResMut<StageProgression>,
     mut editor_state: ResMut<ScriptEditorState>,
-    file_storage: Res<FileStorageRes>,
+    progress_service: Res<StageProgressServiceRes>,
 ) {
     if !editor_state.stage_cleared {
         return;
     }
-    use crate::application::usecase::stage_progress_usecase::StageProgressService;
-    let svc = StageProgressService::new(file_storage.0.as_ref());
-    if let Err(e) = svc.unlock_stage(progression.current_index()) {
+    if let Err(e) = progress_service.unlock_stage(progression.current_index()) {
         warn!("Failed to unlock stage progress: {:?}", e);
     }
 

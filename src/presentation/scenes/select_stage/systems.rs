@@ -5,8 +5,10 @@ use bevy::ui::BorderRadius;
 use bevy_ecs::hierarchy::ChildSpawnerCommands;
 
 use super::components::*;
+use crate::StageRepositoryRes;
+use crate::application::usecase::stage_catalog_usecase::*;
+use crate::application::usecase::stage_progress_usecase::StageProgressServiceRes;
 use crate::{
-    FileStorageRes,
     application::*,
     domain::stage_progress::StageProgress,
     infrastructure::engine::*,
@@ -117,13 +119,10 @@ pub fn setup(
     mut clear_color: ResMut<ClearColor>,
     mut letterbox_offsets: ResMut<LetterboxOffsets>,
     asset_store: Res<AssetStore>,
-    file_storage: Res<FileStorageRes>,
+    stage_repo: Res<StageRepositoryRes>,
+    progress_service: Res<StageProgressServiceRes>,
 ) {
-    let progress = crate::application::usecase::stage_progress_usecase::StageProgressService::new(
-        file_storage.0.as_ref(),
-    )
-    .load_or_default()
-    .unwrap_or_else(|err| {
+    let progress = progress_service.load_or_default().unwrap_or_else(|err| {
         warn!("StageSelect: failed to load stage progress: {:?}", err);
         StageProgress::default()
     });
@@ -142,7 +141,25 @@ pub fn setup(
         .font(FontKey::Title)
         .unwrap_or_else(|| font.clone());
 
-    let entries = build_stage_entries(&progress);
+    let stage_catalog_usecase = StageCatalogUseCase::new(stage_repo.0.as_ref());
+
+    let entries = match stage_catalog_usecase.list_stage_cards(&progress) {
+        Ok(cards) => cards
+            .into_iter()
+            .map(|c| StageEntry {
+                index: c.index,
+                title: c.title,
+                playable: c.playable,
+            })
+            .collect(),
+        Err(err) => {
+            warn!(
+                "StageSelect: failed to build catalog from repository: {}. Falling back to default entries.",
+                err
+            );
+            build_stage_entries(&progress)
+        }
+    };
     let summary = StageSummary::from_entries(&entries);
     let state = StageSelectState::new(entries.len(), CARDS_PER_PAGE);
     let page_text = format!("{}/{}", state.current_page + 1, state.total_pages());

@@ -28,7 +28,9 @@ impl LaunchProfile {
 
         for arg in args.iter().skip(1) {
             match arg.as_str() {
-                "--chunk-grammar-map" => launch_profile.launch_type = LaunchType::GenerateChunkGrammerMap,
+                "--chunk-grammar-map" => {
+                    launch_profile.launch_type = LaunchType::GenerateChunkGrammerMap
+                }
                 "--steam-app-info" => launch_profile.launch_type = LaunchType::SteamAppInfo,
 
                 "--skip-boot" => launch_profile.skip_boot = true,

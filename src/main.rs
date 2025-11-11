@@ -16,10 +16,14 @@ mod presentation;
 
 use crate::config::steam::*;
 
+use crate::application::ports::StageRepository;
+use crate::application::usecase::stage_progress_usecase::StageProgressServiceRes;
 use crate::application::*;
 use crate::infrastructure::engine::{
     AssetLoaderPlugin, DesignResolutionPlugin, ScriptPlugin, TiledPlugin, VisibilityPlugin,
 };
+use crate::infrastructure::repository::stage::file_stage_repository::FileStageRepository;
+use crate::infrastructure::repository::stage::static_stage_repository::StaticStageRepository;
 use crate::presentation::ScenesPlugin;
 
 #[derive(Component)]
@@ -34,16 +38,16 @@ fn main() {
         println!("Launch profile: {:?}", launch_profile);
     }
     match launch_profile.launch_type {
-            LaunchType::GenerateChunkGrammerMap => {
-                domain::chunk_grammar_map::main();
-                return;
-            }
-            LaunchType::SteamAppInfo => {
-                infrastructure::steamworks::show_steam_app_info(steam_app_id);
-                return;
-            }
-            _ => {}
+        LaunchType::GenerateChunkGrammerMap => {
+            domain::chunk_grammar_map::main();
+            return;
         }
+        LaunchType::SteamAppInfo => {
+            infrastructure::steamworks::show_steam_app_info(steam_app_id);
+            return;
+        }
+        _ => {}
+    }
 
     let mut app = App::new();
 
@@ -108,9 +112,14 @@ use std::sync::Arc;
 #[derive(Resource, Clone)]
 pub struct FileStorageRes(pub Arc<dyn FileStorage + Send + Sync>);
 
+#[derive(Resource, Clone)]
+pub struct StageRepositoryRes(pub Arc<dyn StageRepository + Send + Sync>);
+
 fn setup_file_storage(mut commands: Commands, steam_client: Option<Res<bevy_steamworks::Client>>) {
+    use crate::application::game_state::TOTAL_STAGE_SLOTS;
     use crate::infrastructure::storage::local_file_storage::LocalFileStorage;
     use crate::infrastructure::storage::steam_cloud_file_storage::SteamCloudFileStorage;
+    use std::path::Path;
 
     let storage: Arc<dyn FileStorage + Send + Sync> = if let Some(client) = steam_client {
         let rs = client.remote_storage();
@@ -123,5 +132,23 @@ fn setup_file_storage(mut commands: Commands, steam_client: Option<Res<bevy_stea
         Arc::new(LocalFileStorage::default_dir())
     };
 
-    commands.insert_resource(FileStorageRes(storage));
+    let storage_res = FileStorageRes(storage);
+    commands.insert_resource(storage_res.clone());
+
+    // Provide StageProgressServiceRes bound to the same storage
+    commands.insert_resource(StageProgressServiceRes::new(storage_res.0.clone()));
+
+    // Provide a StageRepository for the catalog UI: try file-based first, fallback to static.
+    let repo: Arc<dyn StageRepository + Send + Sync> =
+        match FileStageRepository::load_from(Path::new("assets/stages/catalog.ron")) {
+            Ok(file_repo) => Arc::new(file_repo),
+            Err(err) => {
+                warn!(
+                    "Stage catalog: failed to load RON file, falling back to static: {}",
+                    err
+                );
+                Arc::new(StaticStageRepository::new(TOTAL_STAGE_SLOTS))
+            }
+        };
+    commands.insert_resource(StageRepositoryRes(repo));
 }
