@@ -17,7 +17,7 @@ mod presentation;
 use crate::config::*;
 
 use crate::application::ports::StageRepository;
-use crate::application::usecase::stage_progress_usecase::StageProgressServiceRes;
+use crate::application::usecase::*;
 use crate::application::*;
 use crate::infrastructure::*;
 use crate::presentation::ScenesPlugin;

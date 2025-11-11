@@ -8,15 +8,10 @@ use bevy::{ecs::system::SystemParam, prelude::*, window::PrimaryWindow};
 
 use super::components::*;
 
-use crate::application::usecase::stage_progress_usecase::StageProgressServiceRes;
-use crate::application::usecase::state::{
-    StageCatalogRes, StageProgressRes, unlock_stage as unlock_stage_and_update,
-};
+use crate::application::usecase::*;
 use crate::{
     domain::chunk_grammar_map::{self, *},
-    infrastructure::engine::{
-        TiledMapAssets, assets_loader::AssetStore, design_resolution::ScaledViewport,
-    },
+    infrastructure::*,
     presentation::scenes::stage::components::StageTile,
 };
 
@@ -285,14 +280,7 @@ pub fn advance_stage_if_cleared(
         return;
     }
     // Update in-memory caches first, persist via service, and refresh catalog diff.
-    if let (Some(mut p), Some(mut c)) = (progress_res.as_deref_mut(), catalog_res.as_deref_mut()) {
-        unlock_stage_and_update(
-            &mut p,
-            &mut c,
-            &progress_service,
-            progression.current_index(),
-        );
-    } else if let Err(e) = progress_service.unlock_stage(progression.current_index()) {
+    if let Err(e) = progress_service.unlock_stage(progression.current_index()) {
         warn!("Failed to unlock stage progress: {:?}", e);
     }
 
