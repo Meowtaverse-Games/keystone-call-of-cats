@@ -48,10 +48,10 @@ fn load_stage_catalog_entries() -> Vec<StageMeta> {
         return build_stage_meta(entries);
     }
 
-    if let Ok(text) = std::fs::read_to_string("assets/stages/catalog.ron") {
-        if let Ok(entries) = ron::de::from_str::<Vec<RonStageEntry>>(&text) {
-            return build_stage_meta(entries);
-        }
+    if let Ok(text) = std::fs::read_to_string("assets/stages/catalog.ron")
+        && let Ok(entries) = ron::de::from_str::<Vec<RonStageEntry>>(&text)
+    {
+        return build_stage_meta(entries);
     }
 
     (0..TOTAL_STAGE_SLOTS)
