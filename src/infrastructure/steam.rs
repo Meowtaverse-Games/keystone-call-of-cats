@@ -1,11 +1,38 @@
-use steamworks::AppId;
-use steamworks::Client;
-use steamworks::PersonaStateChange;
-
 use std::io::*;
 
+use bevy::prelude::*;
+use steamworks::{self, AppId, Client as SteamworksClient, PersonaStateChange};
+
+#[derive(Resource, Clone)]
+pub struct SteamClient(SteamworksClient);
+
+impl SteamClient {
+    pub fn remote_storage(&self) -> steamworks::RemoteStorage {
+        self.0.remote_storage()
+    }
+}
+
+pub struct SteamPlugin {
+    client: SteamworksClient,
+}
+
+impl SteamPlugin {
+    pub fn new(app_id: impl Into<AppId>) -> Self {
+        let client =
+            SteamworksClient::init_app(app_id).expect("Failed to initialize Steamworks SDK");
+
+        Self { client }
+    }
+}
+
+impl Plugin for SteamPlugin {
+    fn build(&self, app: &mut App) {
+        app.insert_resource(SteamClient(self.client.clone()));
+    }
+}
+
 pub fn show_steam_app_info(app_id: u32) {
-    let client = Client::init_app(app_id).unwrap();
+    let client = SteamworksClient::init_app(app_id).unwrap();
 
     let _cb = client.register_callback(|p: PersonaStateChange| {
         println!("Got callback: {:?}", p);

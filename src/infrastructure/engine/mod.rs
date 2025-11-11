@@ -12,6 +12,3 @@ pub use script::ScriptPlugin;
 
 pub mod visibility;
 pub use visibility::VisibilityPlugin;
-
-pub mod steam;
-pub use steam::SteamClient;

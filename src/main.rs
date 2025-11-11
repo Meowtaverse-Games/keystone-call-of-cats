@@ -14,17 +14,12 @@ mod domain;
 mod infrastructure;
 mod presentation;
 
-use crate::config::steam::*;
+use crate::config::*;
 
 use crate::application::ports::StageRepository;
 use crate::application::usecase::stage_progress_usecase::StageProgressServiceRes;
 use crate::application::*;
-use crate::infrastructure::engine::{
-    AssetLoaderPlugin, DesignResolutionPlugin, ScriptPlugin, TiledPlugin, VisibilityPlugin,
-};
-use crate::infrastructure::repository::stage::embedded_stage_repository::EmbeddedStageRepository;
-use crate::infrastructure::repository::stage::file_stage_repository::FileStageRepository;
-use crate::infrastructure::repository::stage::static_stage_repository::StaticStageRepository;
+use crate::infrastructure::*;
 use crate::presentation::ScenesPlugin;
 
 #[derive(Component)]
@@ -44,7 +39,7 @@ fn main() {
             return;
         }
         LaunchType::SteamAppInfo => {
-            infrastructure::steamworks::show_steam_app_info(steam_app_id);
+            show_steam_app_info(steam_app_id);
             return;
         }
         _ => {}
@@ -52,7 +47,7 @@ fn main() {
 
     let mut app = App::new();
 
-    app.add_plugins(bevy_steamworks::SteamworksPlugin::init_app(steam_app_id).unwrap())
+    app.add_plugins(SteamPlugin::new(steam_app_id))
         .add_plugins((
             DefaultPlugins
                 .set(AssetPlugin {
@@ -88,8 +83,6 @@ fn main() {
         .add_plugins(AssetLoaderPlugin)
         .add_plugins(EguiPlugin::default())
         .add_plugins(ScenesPlugin)
-        // Provide SteamClient wrapper and FileStorage to use cases
-        .add_systems(Startup, infrastructure::engine::steam::provide_steam_client)
         .add_systems(Startup, setup_file_storage)
         .insert_resource(launch_profile)
         .init_state::<GameState>()
@@ -116,7 +109,7 @@ pub struct FileStorageRes(pub Arc<dyn FileStorage + Send + Sync>);
 #[derive(Resource, Clone)]
 pub struct StageRepositoryRes(pub Arc<dyn StageRepository + Send + Sync>);
 
-fn setup_file_storage(mut commands: Commands, steam_client: Option<Res<bevy_steamworks::Client>>) {
+fn setup_file_storage(mut commands: Commands, steam_client: Option<Res<SteamClient>>) {
     use crate::application::game_state::TOTAL_STAGE_SLOTS;
     use crate::infrastructure::storage::local_file_storage::LocalFileStorage;
     use crate::infrastructure::storage::steam_cloud_file_storage::SteamCloudFileStorage;

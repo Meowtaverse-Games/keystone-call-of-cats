@@ -1,17 +1,16 @@
 use std::io::{Read, Write};
 use steamworks::RemoteStoragePlatforms;
 
-use crate::application::ports::file_storage::{FileError, FileStorage};
+use crate::application::ports::file_storage::*;
+use crate::infrastructure::steam::*;
 
-/// Steam Remote Storage による FileStorage 実装。
-/// 注意: ファイル名は仮想的な相対パスを使用してください（先頭に '/' を付けない）。
 #[derive(Clone)]
 pub struct SteamCloudFileStorage {
-    client: bevy_steamworks::Client,
+    client: SteamClient,
 }
 
 impl SteamCloudFileStorage {
-    pub fn new(client: bevy_steamworks::Client) -> Self {
+    pub fn new(client: SteamClient) -> Self {
         Self { client }
     }
 
