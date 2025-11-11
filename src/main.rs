@@ -5,22 +5,25 @@ use bevy::{camera::ScalingMode, prelude::*};
 
 use bevy_egui::EguiPlugin;
 
-use avian2d::debug_render::PhysicsDebugPlugin;
-use avian2d::prelude::*;
+use avian2d::{debug_render::PhysicsDebugPlugin, prelude::*};
 
-mod application;
 mod config;
-mod domain;
-mod infrastructure;
-mod presentation;
+mod plugins;
+mod resources;
+mod scenes;
+mod systems;
+mod util;
 
-use crate::config::*;
-
-use crate::application::ports::StageRepository;
-use crate::application::usecase::*;
-use crate::application::*;
-use crate::infrastructure::*;
-use crate::presentation::ScenesPlugin;
+use crate::{
+    config::*,
+    plugins::{steam::show_steam_app_info, *},
+    resources::{
+        chunk_grammar_map,
+        game_state::GameState,
+        launch_profile::{LaunchProfile, LaunchType},
+    },
+    scenes::ScenesPlugin,
+};
 
 #[derive(Component)]
 #[require(Camera2d)]
@@ -35,7 +38,7 @@ fn main() {
     }
     match launch_profile.launch_type {
         LaunchType::GenerateChunkGrammerMap => {
-            domain::chunk_grammar_map::main();
+            chunk_grammar_map::main();
             return;
         }
         LaunchType::SteamAppInfo => {
@@ -47,25 +50,26 @@ fn main() {
 
     let mut app = App::new();
 
-    app.add_plugins(SteamPlugin::new(steam_app_id))
-        .add_plugins((
-            DefaultPlugins
-                .set(AssetPlugin {
-                    file_path: "assets".to_string(),
-                    watch_for_changes_override: Some(true),
+    app.add_plugins((
+        SteamPlugin::new(steam_app_id),
+        StagePlugin,
+        DefaultPlugins
+            .set(AssetPlugin {
+                file_path: "assets".to_string(),
+                watch_for_changes_override: Some(true),
+                ..default()
+            })
+            .set(WindowPlugin {
+                primary_window: Some(Window {
+                    title: "keystone: call of cats".to_string(),
+                    visible: false,
                     ..default()
-                })
-                .set(WindowPlugin {
-                    primary_window: Some(Window {
-                        title: "keystone: call of cats".to_string(),
-                        visible: false,
-                        ..default()
-                    }),
-                    ..default()
-                })
-                .set(ImagePlugin::default_nearest()),
-            PhysicsPlugins::default(),
-        ));
+                }),
+                ..default()
+            })
+            .set(ImagePlugin::default_nearest()),
+        PhysicsPlugins::default(),
+    ));
 
     if launch_profile.render_physics {
         app.add_plugins(PhysicsDebugPlugin);
@@ -83,7 +87,6 @@ fn main() {
         .add_plugins(AssetLoaderPlugin)
         .add_plugins(EguiPlugin::default())
         .add_plugins(ScenesPlugin)
-        .add_systems(Startup, setup_file_storage)
         .insert_resource(launch_profile)
         .init_state::<GameState>()
         .run();
@@ -97,58 +100,4 @@ fn setup_camera(mut commands: Commands) {
             ..OrthographicProjection::default_2d()
         }),
     ));
-}
-
-// ---------- Composition Root: FileStorage DI ----------
-use crate::application::ports::file_storage::FileStorage;
-use std::sync::Arc;
-
-#[derive(Resource, Clone)]
-pub struct FileStorageRes(pub Arc<dyn FileStorage + Send + Sync>);
-
-#[derive(Resource, Clone)]
-pub struct StageRepositoryRes(pub Arc<dyn StageRepository + Send + Sync>);
-
-fn setup_file_storage(mut commands: Commands, steam_client: Option<Res<SteamClient>>) {
-    use crate::application::game_state::TOTAL_STAGE_SLOTS;
-    use crate::infrastructure::storage::local_file_storage::LocalFileStorage;
-    use crate::infrastructure::storage::steam_cloud_file_storage::SteamCloudFileStorage;
-    use std::path::Path;
-
-    let storage: Arc<dyn FileStorage + Send + Sync> = if let Some(client) = steam_client {
-        let rs = client.remote_storage();
-        if rs.is_cloud_enabled_for_app() && rs.is_cloud_enabled_for_account() {
-            Arc::new(SteamCloudFileStorage::new(client.clone()))
-        } else {
-            Arc::new(LocalFileStorage::default_dir())
-        }
-    } else {
-        Arc::new(LocalFileStorage::default_dir())
-    };
-
-    let storage_res = FileStorageRes(storage);
-    commands.insert_resource(storage_res.clone());
-
-    commands.insert_resource(StageProgressServiceRes::new(storage_res.0.clone()));
-
-    let repo: Arc<dyn StageRepository + Send + Sync> = match EmbeddedStageRepository::load() {
-        Ok(r) => Arc::new(r),
-        Err(err) => {
-            warn!(
-                "Stage catalog: embedded RON failed to parse: {}. Trying filesystem.",
-                err
-            );
-            match FileStageRepository::load_from(Path::new("assets/stages/catalog.ron")) {
-                Ok(file_repo) => Arc::new(file_repo),
-                Err(err) => {
-                    warn!(
-                        "Stage catalog: failed to load RON file, falling back to static: {}",
-                        err
-                    );
-                    Arc::new(StaticStageRepository::new(TOTAL_STAGE_SLOTS))
-                }
-            }
-        }
-    };
-    commands.insert_resource(StageRepositoryRes(repo));
 }
