@@ -4,7 +4,7 @@ use bevy::prelude::*;
 pub enum LaunchType {
     #[default]
     Normal,
-    GenerateChunkGrammerMap,
+    ShowChunkGrammarAsciiMap,
     SteamAppInfo,
 }
 
@@ -28,8 +28,8 @@ impl LaunchProfile {
 
         for arg in args.iter().skip(1) {
             match arg.as_str() {
-                "--chunk-grammar-map" => {
-                    launch_profile.launch_type = LaunchType::GenerateChunkGrammerMap
+                "--show-chunk-grammar-ascii-map" => {
+                    launch_profile.launch_type = LaunchType::ShowChunkGrammarAsciiMap
                 }
                 "--steam-app-info" => launch_profile.launch_type = LaunchType::SteamAppInfo,
 

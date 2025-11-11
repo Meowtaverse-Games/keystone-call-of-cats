@@ -214,8 +214,7 @@ pub fn generate_random_layout_from_file(
     Ok(generate_random_layout(&config))
 }
 
-#[allow(dead_code)]
-pub fn main() {
+pub fn show_ascii_map() {
     let placed_chunks = generate_random_layout_from_file("assets/chunk_grammar_map/tutorial.ron")
         .expect("failed to generate layout from config");
     println!("== Placed Chunks ==");

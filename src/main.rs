@@ -37,8 +37,8 @@ fn main() {
         println!("Launch profile: {:?}", launch_profile);
     }
     match launch_profile.launch_type {
-        LaunchType::GenerateChunkGrammerMap => {
-            chunk_grammar_map::main();
+        LaunchType::ShowChunkGrammarAsciiMap => {
+            chunk_grammar_map::show_ascii_map();
             return;
         }
         LaunchType::SteamAppInfo => {
