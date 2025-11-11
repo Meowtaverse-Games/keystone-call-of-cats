@@ -8,6 +8,7 @@ use super::components::*;
 use crate::StageRepositoryRes;
 use crate::application::usecase::stage_catalog_usecase::*;
 use crate::application::usecase::stage_progress_usecase::StageProgressServiceRes;
+use crate::application::usecase::state::{StageCatalogRes, StageProgressRes, init_stage_state};
 use crate::{
     application::*,
     domain::stage_progress::StageProgress,
@@ -121,11 +122,18 @@ pub fn setup(
     asset_store: Res<AssetStore>,
     stage_repo: Res<StageRepositoryRes>,
     progress_service: Res<StageProgressServiceRes>,
+    maybe_catalog: Option<Res<StageCatalogRes>>,
+    maybe_progress: Option<Res<StageProgressRes>>,
 ) {
-    let progress = progress_service.load_or_default().unwrap_or_else(|err| {
-        warn!("StageSelect: failed to load stage progress: {:?}", err);
-        StageProgress::default()
-    });
+    if maybe_catalog.is_none() || maybe_progress.is_none() {
+        let (catalog, progress) = init_stage_state(stage_repo.0.as_ref(), &progress_service);
+        commands.insert_resource(catalog);
+        commands.insert_resource(progress);
+    }
+
+    let progress = maybe_progress
+        .map(|r| r.0.clone())
+        .unwrap_or_else(|| progress_service.load_or_default().unwrap_or_default());
 
     clear_color.0 = background_color();
     letterbox_offsets.left = 0.0;
@@ -141,23 +149,33 @@ pub fn setup(
         .font(FontKey::Title)
         .unwrap_or_else(|| font.clone());
 
-    let stage_catalog_usecase = StageCatalogUseCase::new(stage_repo.0.as_ref());
-
-    let entries = match stage_catalog_usecase.list_stage_cards(&progress) {
-        Ok(cards) => cards
-            .into_iter()
+    let entries: Vec<StageEntry> = if let Some(cat) = maybe_catalog.as_ref() {
+        cat.entries()
+            .iter()
             .map(|c| StageEntry {
                 index: c.index,
-                title: c.title,
+                title: c.title.clone(),
                 playable: c.playable,
             })
-            .collect(),
-        Err(err) => {
-            warn!(
-                "StageSelect: failed to build catalog from repository: {}. Falling back to default entries.",
-                err
-            );
-            build_stage_entries(&progress)
+            .collect()
+    } else {
+        // Directly query repository without helper (removed helper function during refactor).
+        match stage_repo.0.list() {
+            Ok(metas) => metas
+                .into_iter()
+                .map(|m| StageEntry {
+                    index: m.id.0,
+                    title: m.title,
+                    playable: progress.is_unlocked(m.id.0),
+                })
+                .collect(),
+            Err(err) => {
+                warn!(
+                    "StageSelect: failed to list repository: {}. Falling back to default entries.",
+                    err
+                );
+                build_stage_entries(&progress)
+            }
         }
     };
     let summary = StageSummary::from_entries(&entries);

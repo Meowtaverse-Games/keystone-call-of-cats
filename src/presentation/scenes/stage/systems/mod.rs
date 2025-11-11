@@ -9,6 +9,9 @@ use bevy::{ecs::system::SystemParam, prelude::*, window::PrimaryWindow};
 use super::components::*;
 
 use crate::application::usecase::stage_progress_usecase::StageProgressServiceRes;
+use crate::application::usecase::state::{
+    StageCatalogRes, StageProgressRes, unlock_stage as unlock_stage_and_update,
+};
 use crate::{
     domain::chunk_grammar_map::{self, *},
     infrastructure::engine::{
@@ -275,11 +278,21 @@ pub fn advance_stage_if_cleared(
     mut progression: ResMut<StageProgression>,
     mut editor_state: ResMut<ScriptEditorState>,
     progress_service: Res<StageProgressServiceRes>,
+    mut progress_res: Option<ResMut<StageProgressRes>>,
+    mut catalog_res: Option<ResMut<StageCatalogRes>>,
 ) {
     if !editor_state.stage_cleared {
         return;
     }
-    if let Err(e) = progress_service.unlock_stage(progression.current_index()) {
+    // Update in-memory caches first, persist via service, and refresh catalog diff.
+    if let (Some(mut p), Some(mut c)) = (progress_res.as_deref_mut(), catalog_res.as_deref_mut()) {
+        unlock_stage_and_update(
+            &mut p,
+            &mut c,
+            &progress_service,
+            progression.current_index(),
+        );
+    } else if let Err(e) = progress_service.unlock_stage(progression.current_index()) {
         warn!("Failed to unlock stage progress: {:?}", e);
     }
 
