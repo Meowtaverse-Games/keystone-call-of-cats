@@ -282,7 +282,7 @@ pub fn advance_stage_if_cleared(
         return;
     }
 
-    progress.unlock_until(progression.current_stage_id());
+    progress.unlock_until(StageId(progression.current_stage_id().0 + 1));
 
     if progression.advance(&stage_catalog) {
         editor_state.last_run_feedback = Some(format!("ステージ「{}」へ進みます。", 1));

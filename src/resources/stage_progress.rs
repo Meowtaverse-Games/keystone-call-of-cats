@@ -47,7 +47,12 @@ impl StageProgress {
             }
         };
 
-        me.unlock_until(stage_catalog_usecase.max_unlocked_stage_id());
+        me.unlock_until(StageId(
+            stage_catalog_usecase
+                .max_unlocked_stage_id()
+                .0
+                .max(me.unlocked_until.0),
+        ));
 
         info!("Loaded stage progress: {:?}", me);
 

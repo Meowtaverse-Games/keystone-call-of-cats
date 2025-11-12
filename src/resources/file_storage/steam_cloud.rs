@@ -1,6 +1,8 @@
 use std::io::{Read, Write};
 use steamworks::{Client as SteamClient, RemoteStoragePlatforms};
 
+use bevy::prelude::*;
+
 use crate::resources::{
     file_storage::{FileError, FileStorage},
     steam_client::SteamClientResource,
@@ -46,6 +48,9 @@ impl FileStorage for SteamCloudFileStorage {
         let mut reader = file.read();
         let mut buf = Vec::new();
         reader.read_to_end(&mut buf)?;
+
+        info!("Loaded {} bytes from Steam Cloud: {}", buf.len(), name);
+
         Ok(Some(buf))
     }
 
@@ -54,7 +59,6 @@ impl FileStorage for SteamCloudFileStorage {
         let name = self.sanitize_name(name);
         let rs = self.client.remote_storage();
 
-        // 任意: 全プラットフォーム同期（必要に応じて）
         rs.file(name).set_sync_platforms(
             RemoteStoragePlatforms::WINDOWS
                 | RemoteStoragePlatforms::MACOS
