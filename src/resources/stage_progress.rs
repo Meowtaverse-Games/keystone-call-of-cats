@@ -1,7 +1,10 @@
-use bevy::prelude::{Resource, warn};
+use bevy::prelude::{Resource, info, warn};
 use serde::{Deserialize, Serialize};
 
-use crate::resources::file_storage::{FileError, FileStorage};
+use crate::resources::{
+    file_storage::{FileError, FileStorage},
+    stage_catalog,
+};
 
 pub const STAGE_PROGRESS_FILE: &str = "stage_progress.ron";
 
@@ -28,8 +31,11 @@ impl StageProgress {
         }
     }
 
-    pub fn load_or_default(storage: &dyn FileStorage) -> Self {
-        match storage.load(STAGE_PROGRESS_FILE) {
+    pub fn load_or_default(
+        stage_catalog_usecase: &stage_catalog::StageCatalog,
+        storage: &dyn FileStorage,
+    ) -> Self {
+        let mut me = match storage.load(STAGE_PROGRESS_FILE) {
             Ok(Some(bytes)) => ron::de::from_bytes(&bytes).unwrap_or_else(|err| {
                 warn!("Failed to parse stage progress data: {err}");
                 StageProgress::default()
@@ -39,12 +45,19 @@ impl StageProgress {
                 warn!("Failed to load stage progress data: {err}");
                 StageProgress::default()
             }
-        }
+        };
+
+        me.unlock_until(stage_catalog_usecase.max_unlocked_stage_id().0);
+
+        info!("Loaded stage progress: {:?}", me);
+
+        me
     }
 
     pub fn persist(&self, storage: &dyn FileStorage) -> Result<(), FileError> {
         let serialized = ron::ser::to_string(self)
             .map_err(|err| FileError::Other(format!("serialize stage progress: {err}")))?;
+        info!("Saving stage progress: {:?}", serialized);
         storage
             .save(STAGE_PROGRESS_FILE, serialized.as_bytes())
             .map_err(|err| {

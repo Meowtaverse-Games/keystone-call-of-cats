@@ -1,7 +1,7 @@
 use bevy::prelude::Resource;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 pub struct StageId(pub usize);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -28,13 +28,23 @@ impl StageCatalog {
     pub fn iter(&self) -> impl Iterator<Item = &StageMeta> {
         self.stages.iter()
     }
+
+    pub fn max_unlocked_stage_id(&self) -> StageId {
+        self.stages
+            .iter()
+            .filter(|stage| stage.unlocked)
+            .map(|stage| stage.id)
+            .max_by_key(|id| id.0)
+            .unwrap_or_default()
+    }
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Default)]
 struct RonStageEntry {
+    id: usize,
     title: String,
     #[serde(default)]
-    unlocked: Option<bool>,
+    unlocked: bool,
 }
 
 fn load_stage_catalog_entries() -> Vec<StageMeta> {
@@ -50,11 +60,10 @@ fn load_stage_catalog_entries() -> Vec<StageMeta> {
 fn build_stage_meta(entries: Vec<RonStageEntry>) -> Vec<StageMeta> {
     entries
         .into_iter()
-        .enumerate()
-        .map(|(i, entry)| StageMeta {
-            id: StageId(i),
+        .map(|entry| StageMeta {
+            id: StageId(entry.id),
             title: entry.title,
-            unlocked: entry.unlocked.unwrap_or(false),
+            unlocked: entry.unlocked,
         })
         .collect()
 }

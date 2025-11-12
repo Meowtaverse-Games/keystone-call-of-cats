@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use crate::resources::{
     file_storage::{FileStorage, FileStorageResource, LocalFileStorage, SteamCloudFileStorage},
-    stage_catalog::StageCatalog,
+    stage_catalog::{self, StageCatalog},
     stage_progress::StageProgress,
     steam_client::SteamClientResource,
 };
@@ -34,12 +34,14 @@ pub fn setup_stage_resources(
         commands.insert_resource(FileStorageResource::new(storage_backend.clone()));
     }
 
+    let stage_catalog_usecase = stage_catalog::StageCatalog::load_from_assets();
     if existing_catalog.is_none() {
-        commands.insert_resource(StageCatalog::load_from_assets());
+        commands.insert_resource(stage_catalog_usecase.clone());
     }
 
     if existing_progress.is_none() {
-        let progress = StageProgress::load_or_default(storage_backend.as_ref());
+        let progress =
+            StageProgress::load_or_default(&stage_catalog_usecase, storage_backend.as_ref());
         commands.insert_resource(progress);
     }
 }
