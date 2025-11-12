@@ -5,9 +5,10 @@ use super::components::*;
 use crate::{
     resources::{
         asset_store::AssetStore, design_resolution::LetterboxOffsets, game_state::GameState,
-        stage_catalog::StageCatalog, stage_progress::StageProgress,
+        stage_catalog::*,
+        stage_progress::*,
     },
-    scenes::{assets::FontKey, stage::StageProgression},
+    scenes::{assets::FontKey, stage::StageProgressionState},
 };
 
 const CARDS_PER_PAGE: usize = 3;
@@ -59,9 +60,17 @@ impl StageSelectState {
 }
 
 struct StageEntry {
-    index: usize,
-    title: String,
+    meta: StageMeta,
     playable: bool,
+}
+
+impl StageEntry {
+    fn from(stage_progress: &StageProgress, meta: &StageMeta) -> Self {
+        Self {
+            meta: meta.clone(),
+            playable: stage_progress.is_unlocked(meta.id),
+        }
+    }
 }
 
 struct StageSummary {
@@ -79,7 +88,7 @@ impl StageSummary {
         let highlight = entries
             .iter()
             .find(|entry| entry.playable)
-            .map(|entry| entry.title.clone())
+            .map(|entry| entry.meta.title.clone())
             .unwrap_or_else(|| "COMING SOON".to_string());
 
         Self {
@@ -115,11 +124,7 @@ pub fn setup(
 
     let entries: Vec<StageEntry> = catalog
         .iter()
-        .map(|m| StageEntry {
-            index: m.id.0,
-            title: m.title.clone(),
-            playable: progress.is_unlocked(m.id.0),
-        })
+        .map(|m| StageEntry::from(&progress, m))
         .collect();
     let summary = StageSummary::from_entries(&entries);
     let state = StageSelectState::new(entries.len(), CARDS_PER_PAGE);
@@ -182,7 +187,8 @@ pub fn handle_nav_buttons(
 
 pub fn handle_play_buttons(
     mut interactions: Query<(&StagePlayButton, &Interaction), Changed<Interaction>>,
-    mut progression: ResMut<StageProgression>,
+    mut progression: ResMut<StageProgressionState>,
+    catalog: Res<StageCatalog>,
     mut next_state: ResMut<NextState<GameState>>,
 ) {
     for (button, interaction) in &mut interactions {
@@ -191,13 +197,14 @@ pub fn handle_play_buttons(
         }
 
         if *interaction == Interaction::Pressed {
-            if progression.select(button.stage_index) {
+            if let Some(stage) = catalog.stage_by_index(button.stage_index) {
+                progression.select_stage(stage);
                 next_state.set(GameState::Stage);
             } else {
-                warn!(
-                    "Stage {} is not available in the Tiled map library",
-                    button.stage_index + 1
-                );
+            warn!(
+                "Stage {} is not available",
+                button.stage_index + 1
+            );
             }
         }
     }
@@ -586,9 +593,9 @@ fn spawn_stage_cards(
             ..default()
         })
         .with_children(|grid| {
-            for entry in entries {
+            for (index, entry) in entries.iter().enumerate() {
                 grid.spawn((
-                    StageCard { index: entry.index },
+                    StageCard { index },
                     Node {
                         width: Val::Px(CARD_WIDTH),
                         flex_grow: 1.0,
@@ -596,7 +603,7 @@ fn spawn_stage_cards(
                         row_gap: Val::Px(16.0),
                         padding: UiRect::all(Val::Px(24.0)),
                         border: UiRect::all(Val::Px(2.0)),
-                        display: if entry.index < CARDS_PER_PAGE {
+                        display: if index < CARDS_PER_PAGE {
                             Display::Flex
                         } else {
                             Display::None
@@ -616,7 +623,7 @@ fn spawn_stage_cards(
                     })
                     .with_children(|header| {
                         header
-                            .spawn(Text::new(format!("STAGE {:02}", entry.index + 1)))
+                            .spawn(Text::new(format!("STAGE {:02}", index + 1)))
                             .insert(TextFont {
                                 font: font.clone(),
                                 font_size: 18.0,
@@ -627,7 +634,7 @@ fn spawn_stage_cards(
                         spawn_stage_chip(header, font, entry.playable);
                     });
 
-                    card.spawn(Text::new(entry.title.clone()))
+                    card.spawn(Text::new(entry.meta.title.clone()))
                         .insert(TextFont {
                             font: font.clone(),
                             font_size: 32.0,
@@ -657,7 +664,7 @@ fn spawn_stage_cards(
                     ))
                     .with_children(|_| {});
 
-                    spawn_play_button(card, entry, font);
+                    spawn_play_button(card, index, entry, font);
                 });
             }
         });
@@ -690,7 +697,7 @@ fn spawn_stage_chip(parent: &mut ChildSpawnerCommands, font: &Handle<Font>, play
         });
 }
 
-fn spawn_play_button(parent: &mut ChildSpawnerCommands, entry: &StageEntry, font: &Handle<Font>) {
+fn spawn_play_button(parent: &mut ChildSpawnerCommands, stage_index: usize, entry: &StageEntry, font: &Handle<Font>) {
     let enabled = entry.playable;
     let visual = ButtonVisual::new(
         accent_color(),
@@ -705,7 +712,7 @@ fn spawn_play_button(parent: &mut ChildSpawnerCommands, entry: &StageEntry, font
     parent
         .spawn((
             StagePlayButton {
-                stage_index: entry.index,
+                stage_index,
                 enabled,
             },
             Button,

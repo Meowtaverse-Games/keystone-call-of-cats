@@ -1,4 +1,4 @@
-use bevy::prelude::Resource;
+use bevy::prelude::{*, Resource};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
@@ -9,6 +9,14 @@ pub struct StageMeta {
     pub id: StageId,
     pub title: String,
     pub unlocked: bool,
+}
+
+impl StageMeta {
+    pub fn map_path(&self) -> String {
+        info!("assets/stages/stage-{}.ron", self.id.0);
+
+        format!("assets/stages/stage-{}.ron", self.id.0)
+    }
 }
 
 #[derive(Resource, Clone, Debug)]
@@ -27,6 +35,15 @@ impl StageCatalog {
 
     pub fn iter(&self) -> impl Iterator<Item = &StageMeta> {
         self.stages.iter()
+    }
+
+    pub fn stage_by_index(&self, index: usize) -> Option<&StageMeta> {
+        self.stages.get(index)
+    }
+
+    pub fn next_stage(&self, stage_id: StageId) -> Option<&StageMeta> {
+        let next_stage_id = StageId(stage_id.0 + 1);
+        self.stages.iter().find(|stage| stage.id == next_stage_id)
     }
 
     pub fn max_unlocked_stage_id(&self) -> StageId {

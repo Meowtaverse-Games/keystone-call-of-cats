@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::resources::{
     file_storage::{FileError, FileStorage},
-    stage_catalog,
+    stage_catalog::{self, StageId},
 };
 
 pub const STAGE_PROGRESS_FILE: &str = "stage_progress.ron";
@@ -12,19 +12,19 @@ pub const STAGE_PROGRESS_FILE: &str = "stage_progress.ron";
 /// Unlocked range is inclusive from 0..=unlocked_until.
 #[derive(Resource, Debug, Clone, Serialize, Deserialize, Default)]
 pub struct StageProgress {
-    unlocked_until: usize,
+    unlocked_until: StageId,
 }
 
 impl StageProgress {
     /// Returns true if the stage index is unlocked (<= current unlocked_until).
-    pub fn is_unlocked(&self, index: usize) -> bool {
-        index <= self.unlocked_until
+    pub fn is_unlocked(&self, stage_id: StageId) -> bool {
+        stage_id.0 <= self.unlocked_until.0
     }
 
-    /// Unlock all stages up to `index` (inclusive). Returns true if state changed.
-    pub fn unlock_until(&mut self, index: usize) -> bool {
-        if index > self.unlocked_until {
-            self.unlocked_until = index;
+    /// Unlock all stages up to `stage_id` (inclusive). Returns true if state changed.
+    pub fn unlock_until(&mut self, stage_id: StageId) -> bool {
+        if stage_id.0 > self.unlocked_until.0 {
+            self.unlocked_until = stage_id;
             true
         } else {
             false
@@ -47,7 +47,7 @@ impl StageProgress {
             }
         };
 
-        me.unlock_until(stage_catalog_usecase.max_unlocked_stage_id().0);
+        me.unlock_until(stage_catalog_usecase.max_unlocked_stage_id());
 
         info!("Loaded stage progress: {:?}", me);
 
@@ -74,15 +74,15 @@ mod tests {
     #[test]
     fn default_has_first_stage() {
         let p = StageProgress::default();
-        assert!(p.is_unlocked(0));
+        assert!(p.is_unlocked(StageId(0)));
     }
 
     #[test]
     fn unlocking_advances_range() {
         let mut p = StageProgress::default();
-        assert!(p.unlock_until(2));
-        assert!(p.is_unlocked(2));
+        assert!(p.unlock_until(StageId(2)));
+        assert!(p.is_unlocked(StageId(2)));
         // unlocking same or lower doesn't change
-        assert!(!p.unlock_until(1));
+        assert!(!p.unlock_until(StageId(1)));
     }
 }

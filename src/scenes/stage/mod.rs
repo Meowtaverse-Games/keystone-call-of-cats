@@ -6,12 +6,12 @@ use crate::resources::game_state::GameState;
 pub mod components;
 pub mod systems;
 
-pub use systems::StageProgression;
+pub use systems::StageProgressionState;
 
 pub struct StageScenePlugin;
 impl Plugin for StageScenePlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<systems::StageProgression>()
+        app.init_resource::<systems::StageProgressionState>()
             .add_message::<systems::StoneCommandMessage>()
             .add_systems(OnEnter(GameState::Stage), systems::setup)
             .add_systems(OnExit(GameState::Stage), systems::cleanup)

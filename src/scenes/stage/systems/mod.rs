@@ -10,13 +10,12 @@ use super::components::*;
 
 use crate::{
     resources::{
-        asset_store::AssetStore,
-        chunk_grammar_map::{
+        asset_store::AssetStore, chunk_grammar_map::{
             self, MAP_SIZE, PlacedChunkLayout, TileKind, generate_random_layout_from_file,
         },
-        design_resolution::ScaledViewport,
-        stage_progress::StageProgress,
-        tiled::TiledMapAssets,
+        design_resolution::ScaledViewport, 
+        stage_catalog::*,
+        stage_progress::StageProgress, tiled::TiledMapAssets
     },
     scenes::stage::components::StageTile,
 };
@@ -29,43 +28,47 @@ pub use stone::{
 use ui::ScriptEditorState;
 pub use ui::ui;
 
-const CHUNK_GRAMMAR_CONFIG_PATH: &str = "assets/chunk_grammar_map/tutorial.ron";
-
-const MAP_SLOTS: usize = 20;
-
 #[derive(Resource, Default)]
-pub struct StageProgression {
-    current_index: usize,
+pub struct StageProgressionState {
+    current_stage: Option<StageMeta>,
     pending_reload: bool,
 }
 
-impl StageProgression {
+impl StageProgressionState {
     pub fn current_map(&self) -> PlacedChunkLayout {
-        new_placed_chunks()
+        let current_stage = self.current_stage.as_ref().expect("no current stage");
+        let placed_chunks = generate_random_layout_from_file(current_stage.map_path())
+            .expect("failed to generate layout from config");
+
+        chunk_grammar_map::print_ascii_map(&placed_chunks);
+
+        placed_chunks
     }
 
-    pub fn current_index(&self) -> usize {
-        self.current_index
+    pub fn current_stage_id(&self) -> StageId {
+        self.current_stage
+            .as_ref()
+            .map(|stage| stage.id)
+            .unwrap_or_default()
     }
 
-    pub fn advance(&mut self) -> bool {
-        if self.current_index + 1 >= MAP_SLOTS {
-            false
-        } else {
-            self.current_index += 1;
-            self.pending_reload = true;
-            true
-        }
-    }
-
-    pub fn select(&mut self, index: usize) -> bool {
-        if index >= MAP_SLOTS {
+    pub fn advance(&mut self, stage_catalog: &StageCatalog) -> bool {
+        if self.current_stage.is_none() {
             return false;
         }
 
-        self.current_index = index;
+        let Some(next_stage) = stage_catalog.next_stage(self.current_stage.as_ref().unwrap().id) else {
+            return false;
+        };
+
+        self.current_stage = Some(next_stage.clone());
         self.pending_reload = true;
         true
+    }
+
+    pub fn select_stage(&mut self, stage: &StageMeta) {
+        self.current_stage = Some(stage.clone());
+        self.pending_reload = true;
     }
 
     pub fn clear_reload(&mut self) {
@@ -128,15 +131,6 @@ fn spawn_stage(
     );
 
     stage_root
-}
-
-fn new_placed_chunks() -> PlacedChunkLayout {
-    let placed_chunks = generate_random_layout_from_file(CHUNK_GRAMMAR_CONFIG_PATH)
-        .expect("failed to generate layout from config");
-
-    chunk_grammar_map::print_ascii_map(&placed_chunks);
-
-    placed_chunks
 }
 
 fn populate_stage_contents(
@@ -232,7 +226,7 @@ pub struct StageSetupParams<'w, 's> {
     asset_server: Res<'w, AssetServer>,
     atlas_layouts: ResMut<'w, Assets<TextureAtlasLayout>>,
     window_query: Query<'w, 's, &'static Window, With<PrimaryWindow>>,
-    progression: ResMut<'w, StageProgression>,
+    progression: ResMut<'w, StageProgressionState>,
     editor_state: Option<ResMut<'w, ScriptEditorState>>,
 }
 
@@ -276,17 +270,18 @@ pub fn cleanup(
 }
 
 pub fn advance_stage_if_cleared(
-    mut progression: ResMut<StageProgression>,
+    mut progression: ResMut<StageProgressionState>,
     mut editor_state: ResMut<ScriptEditorState>,
     mut progress: ResMut<StageProgress>,
+    stage_catalog: Res<StageCatalog>,
 ) {
     if !editor_state.stage_cleared {
         return;
     }
 
-    progress.unlock_until(progression.current_index());
+    progress.unlock_until(progression.current_stage_id());
 
-    if progression.advance() {
+    if progression.advance(&stage_catalog) {
         editor_state.last_run_feedback = Some(format!("ステージ「{}」へ進みます。", 1));
         editor_state.controls_enabled = false;
         editor_state.pending_player_reset = false;
@@ -309,7 +304,7 @@ pub struct StageReloadParams<'w, 's> {
     atlas_layouts: ResMut<'w, Assets<TextureAtlasLayout>>,
     tiled_map_assets: Res<'w, TiledMapAssets>,
     window_query: Query<'w, 's, &'static Window, With<PrimaryWindow>>,
-    progression: ResMut<'w, StageProgression>,
+    progression: ResMut<'w, StageProgressionState>,
     stage_roots: Query<'w, 's, Entity, With<StageRoot>>,
     query: Query<'w, 's, Entity, StageCleanupFilter>,
     tiles: Query<'w, 's, Entity, With<StageTile>>,
