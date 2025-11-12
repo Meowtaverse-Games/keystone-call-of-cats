@@ -1,5 +1,7 @@
 [
-  (title: "STAGE-0"),
+  (title: "TUTORIAL-1", unlocked: Some(true)),
+  (title: "TUTORIAL-2", unlocked: Some(true)),
+  (title: "TUTORIAL-3", unlocked: Some(true)),
   (title: "STAGE-1"),
   (title: "STAGE-2"),
   (title: "STAGE-3"),
@@ -18,5 +20,5 @@
   (title: "STAGE-16"),
   (title: "STAGE-17"),
   (title: "STAGE-18"),
-  (title: "STAGE-19")
+  (title: "STAGE-20")
 ]

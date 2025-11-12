@@ -215,7 +215,7 @@ pub fn generate_random_layout_from_file(
 }
 
 pub fn show_ascii_map() {
-    let placed_chunks = generate_random_layout_from_file("assets/chunk_grammar_map/tutorial.ron")
+    let placed_chunks = generate_random_layout_from_file("assets/stages/tutorial-1.ron")
         .expect("failed to generate layout from config");
     println!("== Placed Chunks ==");
     for chunk in &placed_chunks {

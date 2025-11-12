@@ -1,8 +1,6 @@
 use bevy::prelude::Resource;
 use serde::{Deserialize, Serialize};
 
-use crate::resources::game_state::TOTAL_STAGE_SLOTS;
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct StageId(pub usize);
 
@@ -10,6 +8,7 @@ pub struct StageId(pub usize);
 pub struct StageMeta {
     pub id: StageId,
     pub title: String,
+    pub unlocked: bool,
 }
 
 #[derive(Resource, Clone, Debug)]
@@ -35,31 +34,17 @@ impl StageCatalog {
 struct RonStageEntry {
     title: String,
     #[serde(default)]
-    id: Option<usize>,
+    unlocked: Option<bool>,
 }
 
 fn load_stage_catalog_entries() -> Vec<StageMeta> {
     const EMBEDDED: &str = include_str!(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/assets/stages/catalog.ron"
+        "/assets/stages/list.ron"
     ));
 
-    if let Ok(entries) = ron::de::from_str::<Vec<RonStageEntry>>(EMBEDDED) {
-        return build_stage_meta(entries);
-    }
-
-    if let Ok(text) = std::fs::read_to_string("assets/stages/catalog.ron")
-        && let Ok(entries) = ron::de::from_str::<Vec<RonStageEntry>>(&text)
-    {
-        return build_stage_meta(entries);
-    }
-
-    (0..TOTAL_STAGE_SLOTS)
-        .map(|i| StageMeta {
-            id: StageId(i),
-            title: format!("STAGE {:02}", i + 1),
-        })
-        .collect()
+    let entries = ron::de::from_str::<Vec<RonStageEntry>>(EMBEDDED).unwrap();
+    build_stage_meta(entries)
 }
 
 fn build_stage_meta(entries: Vec<RonStageEntry>) -> Vec<StageMeta> {
@@ -67,8 +52,9 @@ fn build_stage_meta(entries: Vec<RonStageEntry>) -> Vec<StageMeta> {
         .into_iter()
         .enumerate()
         .map(|(i, entry)| StageMeta {
-            id: StageId(entry.id.unwrap_or(i)),
+            id: StageId(i),
             title: entry.title,
+            unlocked: entry.unlocked.unwrap_or(false),
         })
         .collect()
 }

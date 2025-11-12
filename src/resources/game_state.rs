@@ -7,5 +7,3 @@ pub enum GameState {
     SelectStage,
     Stage,
 }
-
-pub const TOTAL_STAGE_SLOTS: usize = 20;
