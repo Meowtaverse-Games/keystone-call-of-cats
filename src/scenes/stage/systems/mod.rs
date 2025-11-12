@@ -10,12 +10,14 @@ use super::components::*;
 
 use crate::{
     resources::{
-        asset_store::AssetStore, chunk_grammar_map::{
+        asset_store::AssetStore,
+        chunk_grammar_map::{
             self, MAP_SIZE, PlacedChunkLayout, TileKind, generate_random_layout_from_file,
         },
-        design_resolution::ScaledViewport, 
+        design_resolution::ScaledViewport,
         stage_catalog::*,
-        stage_progress::StageProgress, tiled::TiledMapAssets
+        stage_progress::StageProgress,
+        tiled::TiledMapAssets,
     },
     scenes::stage::components::StageTile,
 };
@@ -57,7 +59,8 @@ impl StageProgressionState {
             return false;
         }
 
-        let Some(next_stage) = stage_catalog.next_stage(self.current_stage.as_ref().unwrap().id) else {
+        let Some(next_stage) = stage_catalog.next_stage(self.current_stage.as_ref().unwrap().id)
+        else {
             return false;
         };
 

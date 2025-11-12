@@ -5,8 +5,7 @@ use super::components::*;
 use crate::{
     resources::{
         asset_store::AssetStore, design_resolution::LetterboxOffsets, game_state::GameState,
-        stage_catalog::*,
-        stage_progress::*,
+        stage_catalog::*, stage_progress::*,
     },
     scenes::{assets::FontKey, stage::StageProgressionState},
 };
@@ -201,10 +200,7 @@ pub fn handle_play_buttons(
                 progression.select_stage(stage);
                 next_state.set(GameState::Stage);
             } else {
-            warn!(
-                "Stage {} is not available",
-                button.stage_index + 1
-            );
+                warn!("Stage {} is not available", button.stage_index + 1);
             }
         }
     }
@@ -697,7 +693,12 @@ fn spawn_stage_chip(parent: &mut ChildSpawnerCommands, font: &Handle<Font>, play
         });
 }
 
-fn spawn_play_button(parent: &mut ChildSpawnerCommands, stage_index: usize, entry: &StageEntry, font: &Handle<Font>) {
+fn spawn_play_button(
+    parent: &mut ChildSpawnerCommands,
+    stage_index: usize,
+    entry: &StageEntry,
+    font: &Handle<Font>,
+) {
     let enabled = entry.playable;
     let visual = ButtonVisual::new(
         accent_color(),

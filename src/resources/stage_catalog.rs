@@ -1,4 +1,4 @@
-use bevy::prelude::{*, Resource};
+use bevy::prelude::{Resource, *};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
