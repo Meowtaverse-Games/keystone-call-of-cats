@@ -4,8 +4,8 @@ use avian2d::prelude::*;
 use bevy::prelude::*;
 
 use crate::{
-    core::boundary::{MoveDirection, ScriptCommand},
     scenes::stage::components::{Player, StoneRune},
+    util::script_types::{MoveDirection, ScriptCommand},
 };
 
 #[derive(Message, Clone)]

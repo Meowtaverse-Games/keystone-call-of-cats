@@ -2,12 +2,13 @@
 Keystone: Call of Cats invites you to guide curious cats and stones toward a shared goal while discovering how to program along the way.
 
 ## Repository Layout
-- `app/` – Binary crate `keystone-cc` that bootstraps Bevy and wires all other crates together
-- `core/` – Engine-agnostic domain types such as players, scoring, and boundary definitions
-- `adapter/` – Bridges the domain layer into Bevy's ECS and exposes shared resources
-- `plugins/` – Reusable Bevy plugins including the design-resolution helper and asset loader
-- `scenes/` – Scene implementations (boot flow, title screen) and shared asset handles
-- `assets/` – Runtime assets loaded by the game; use `ext-assets/` for externally sourced files
+- `src/main.rs` – Binary entrypoint that configures Bevy and registers the game layers
+- `src/application/` – High-level game/application state, modes, and platform glue (e.g., Steam)
+- `src/domain/` – Engine-agnostic rules, chunk grammars, and script definitions shared across layers
+- `src/infrastructure/` – Bridges to external systems and engine services (Steam APIs, tiled import, scripting, asset loading)
+- `src/presentation/` – Scenes, cameras, and UI/state presentation built on Bevy ECS
+- `assets/` – Runtime assets loaded by the game
+- `ext-assets/` – Source files gathered from external tools/artists before import or optimization
 
 ## How To Run
 

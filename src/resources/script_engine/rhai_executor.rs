@@ -1,11 +1,11 @@
-use crate::core::boundary::{MoveDirection, ScriptCommand, ScriptExecutionError, ScriptRunner};
+use crate::util::script_types::{MoveDirection, ScriptCommand, ScriptExecutionError, ScriptRunner};
 use rhai::{Dynamic, Engine, EvalAltResult, FLOAT as RhaiFloat, Position};
 use std::sync::{Arc, Mutex};
 
 /// Rhai-based implementation of the `ScriptRunner` boundary.
-pub struct ScriptExecutor;
+pub struct RhaiScriptExecutor;
 
-impl ScriptExecutor {
+impl RhaiScriptExecutor {
     pub fn new() -> Self {
         Self
     }
@@ -27,21 +27,20 @@ impl ScriptExecutor {
     }
 }
 
-impl Default for ScriptExecutor {
+impl Default for RhaiScriptExecutor {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl ScriptRunner for ScriptExecutor {
+impl ScriptRunner for RhaiScriptExecutor {
     fn run(&self, source: &str) -> Result<Vec<ScriptCommand>, ScriptExecutionError> {
         self.parse_commands(source)
     }
 }
 
 #[derive(Clone)]
-#[allow(dead_code)]
-struct CommandValue(ScriptCommand);
+struct CommandValue();
 
 #[derive(Clone, Default)]
 struct CommandRecorder(Arc<Mutex<Vec<ScriptCommand>>>);
@@ -111,7 +110,7 @@ fn register_commands(engine: &mut Engine, recorder: CommandRecorder) {
 fn record_move(recorder: &CommandRecorder, direction: MoveDirection) -> CommandValue {
     let command = ScriptCommand::Move(direction);
     recorder.push(command.clone());
-    CommandValue(command)
+    CommandValue()
 }
 
 fn move_named(
@@ -144,7 +143,7 @@ fn sleep_for(
 
     let command = ScriptCommand::Sleep(duration as f32);
     recorder.push(command.clone());
-    Ok(CommandValue(command))
+    Ok(CommandValue())
 }
 
 fn map_engine_error(error: Box<EvalAltResult>) -> ScriptExecutionError {

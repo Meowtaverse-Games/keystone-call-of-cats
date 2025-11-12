@@ -1,17 +1,17 @@
 use bevy::prelude::*;
 use bevy_egui::EguiPrimaryContextPass;
 
-use crate::adapter::*;
+use crate::resources::game_state::GameState;
 
-mod components;
-mod systems;
+pub mod components;
+pub mod systems;
 
-pub use systems::StageProgression;
+pub use systems::StageProgressionState;
 
-pub struct StagePlugin;
-impl Plugin for StagePlugin {
+pub struct StageScenePlugin;
+impl Plugin for StageScenePlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<systems::StageProgression>()
+        app.init_resource::<systems::StageProgressionState>()
             .add_message::<systems::StoneCommandMessage>()
             .add_systems(OnEnter(GameState::Stage), systems::setup)
             .add_systems(OnExit(GameState::Stage), systems::cleanup)

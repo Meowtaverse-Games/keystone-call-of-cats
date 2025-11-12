@@ -3,10 +3,15 @@ use std::time::Duration;
 use bevy::prelude::*;
 use bevy_egui::{EguiContexts, egui};
 
-use crate::adapter::*;
-use crate::plugins::assets_loader::*;
-use crate::plugins::design_resolution::ScaledViewport;
-use crate::scenes::assets::{DEFAULT_GROUP, FontKey};
+use crate::{
+    resources::{
+        asset_store::{AssetGroupLoaded, AssetStore, LoadAssetGroup},
+        design_resolution::ScaledViewport,
+        game_state::GameState,
+        launch_profile::LaunchProfile,
+    },
+    scenes::assets::{DEFAULT_GROUP, FontKey},
+};
 
 use super::components::BootRoot;
 #[derive(Resource, Default)]
@@ -19,7 +24,7 @@ pub fn setup(
     scaled_viewport: Res<ScaledViewport>,
     mut commands: Commands,
     mut load_writer: MessageWriter<LoadAssetGroup>,
-    mode: Res<Mode>,
+    launch_profile: Res<LaunchProfile>,
 ) {
     load_writer.write(DEFAULT_GROUP);
 
@@ -36,7 +41,7 @@ pub fn setup(
         Transform::default().with_scale(Vec3::splat(scaled_viewport.scale)),
     ));
 
-    let mills = if !mode.skip_boot { 1200 } else { 0 };
+    let mills = if !launch_profile.skip_boot { 1200 } else { 0 };
     commands.insert_resource(BootTimer {
         // for testing, make it shorter
         timer: Timer::new(Duration::from_millis(mills), TimerMode::Once),
@@ -101,7 +106,6 @@ pub fn update(
 ) {
     if let Ok((_, mut transform)) = boot_ui.single_mut() {
         transform.scale = Vec3::splat(scaled_viewport.scale);
-        info!("Boot UI scale updated to {}", scaled_viewport.scale);
     }
 
     for _event in reader.read() {

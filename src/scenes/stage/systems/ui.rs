@@ -5,13 +5,13 @@ use bevy_egui::{
 };
 
 use crate::{
-    adapter::GameState,
-    core::boundary::ScriptCommand,
-    plugins::{
+    resources::{
         design_resolution::LetterboxOffsets,
-        script::{Language, ScriptExecutor},
+        game_state::GameState,
+        script_engine::{Language, ScriptExecutor},
     },
     scenes::stage::systems::StoneCommandMessage,
+    util::script_types::ScriptCommand,
 };
 
 #[derive(Resource, Default)]

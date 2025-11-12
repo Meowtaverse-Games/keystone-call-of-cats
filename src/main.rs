@@ -1,42 +1,58 @@
 use std::env;
 
-mod adapter;
-mod core;
-mod plugins;
-mod scenes;
-
 use bevy::asset::AssetPlugin;
 use bevy::{camera::ScalingMode, prelude::*};
 
 use bevy_egui::EguiPlugin;
 
-use avian2d::debug_render::PhysicsDebugPlugin;
-use avian2d::prelude::*;
+use avian2d::{debug_render::PhysicsDebugPlugin, prelude::*};
 
-use crate::adapter::{GameState, Mode};
-use crate::plugins::*;
-use crate::scenes::ScenesPlugin;
+mod config;
+mod plugins;
+mod resources;
+mod scenes;
+mod systems;
+mod util;
+
+use crate::{
+    config::*,
+    plugins::{steam::show_steam_app_info, *},
+    resources::{
+        chunk_grammar_map,
+        game_state::GameState,
+        launch_profile::{LaunchProfile, LaunchType},
+    },
+    scenes::ScenesPlugin,
+};
 
 #[derive(Component)]
 #[require(Camera2d)]
 pub struct MainCamera;
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
+    let steam_app_id = steam_app_id();
 
-    if args.len() > 1 && args[1] == "--chunk-grammar-map" {
-        core::domain::chunk_grammar_map::main();
-        return;
+    let launch_profile = LaunchProfile::from_args(env::args().collect::<Vec<_>>().as_slice());
+    if launch_profile.changed {
+        println!("Launch profile: {:?}", launch_profile);
     }
-
-    let mode = Mode::from_args(&args);
-    if mode.changed {
-        println!("Operating mode: {:?}", mode);
+    match launch_profile.launch_type {
+        LaunchType::ShowChunkGrammarAsciiMap => {
+            chunk_grammar_map::show_ascii_map();
+            return;
+        }
+        LaunchType::SteamAppInfo => {
+            show_steam_app_info(steam_app_id);
+            return;
+        }
+        _ => {}
     }
 
     let mut app = App::new();
 
     app.add_plugins((
+        SteamPlugin::new(steam_app_id),
+        StagePlugin,
         DefaultPlugins
             .set(AssetPlugin {
                 file_path: "assets".to_string(),
@@ -55,7 +71,7 @@ fn main() {
         PhysicsPlugins::default(),
     ));
 
-    if mode.render_physics {
+    if launch_profile.render_physics {
         app.add_plugins(PhysicsDebugPlugin);
     }
 
@@ -67,17 +83,11 @@ fn main() {
             1200.0,
             Color::linear_rgb(0.0, 0.0, 0.0),
         ))
-        .add_plugins(TiledPlugin::new(
-            vec![
-                "assets/tiled/stage1-1.tmx".to_string(),
-                "assets/tiled/stage1-2.tmx".to_string(),
-            ],
-            "assets/tiled/super-platfomer-assets.tsx",
-        ))
+        .add_plugins(TiledPlugin::new("assets/tiled/super-platfomer-assets.tsx"))
         .add_plugins(AssetLoaderPlugin)
         .add_plugins(EguiPlugin::default())
         .add_plugins(ScenesPlugin)
-        .insert_resource(mode)
+        .insert_resource(launch_profile)
         .init_state::<GameState>()
         .run();
 }

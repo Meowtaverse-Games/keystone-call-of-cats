@@ -2,8 +2,7 @@ use avian2d::prelude::*;
 use bevy::prelude::*;
 
 use crate::{
-    plugins::design_resolution::ScaledViewport,
-    plugins::tiled::*,
+    resources::{design_resolution::ScaledViewport, tiled::*},
     scenes::stage::components::{Goal, Player, PlayerMotion},
 };
 
@@ -18,13 +17,8 @@ pub fn spawn_goal(
     viewport: &ScaledViewport,
     (object_x, object_y): (f32, f32),
 ) {
-    let Some(tileset) = tiled_map_assets.tilesets().first() else {
-        warn!("Stage setup: no tilesets available");
-        return;
-    };
-
     let viewport_size = viewport.size;
-    let tile_size = tileset.tile_size();
+    let tile_size = tiled_map_assets.tile_size();
     let (real_tile_size, scale) =
         tiled_map_assets.scaled_tile_size_and_scale(viewport_size, tile_size);
     info!(
@@ -37,7 +31,7 @@ pub fn spawn_goal(
             Goal {
                 half_extents: real_tile_size * 0.5,
             },
-            image_from_tileset(tileset, GOAL_OBJECT_ID).unwrap(),
+            image_from_tileset(&tiled_map_assets.tileset, GOAL_OBJECT_ID).unwrap(),
             Transform::from_xyz(object_x, object_y, 0.0).with_scale(Vec3::splat(scale)),
             RigidBody::Static,
         ));

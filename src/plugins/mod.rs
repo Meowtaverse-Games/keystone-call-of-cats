@@ -1,14 +1,15 @@
-pub mod assets_loader;
-pub use assets_loader::AssetLoaderPlugin;
-
+pub mod assets;
 pub mod design_resolution;
-pub use design_resolution::DesignResolutionPlugin;
-
+pub mod scripts;
+pub mod stage;
+pub mod steam;
 pub mod tiled;
-pub use tiled::*;
-
-pub mod script;
-pub use script::ScriptPlugin;
-
 pub mod visibility;
+
+pub use assets::AssetLoaderPlugin;
+pub use design_resolution::DesignResolutionPlugin;
+pub use scripts::ScriptPlugin;
+pub use stage::StagePlugin;
+pub use steam::SteamPlugin;
+pub use tiled::TiledPlugin;
 pub use visibility::VisibilityPlugin;

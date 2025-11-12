@@ -1,25 +1,17 @@
-use std::path::Path;
-
-use bevy::app::AppExit;
-use bevy::prelude::MessageWriter;
-use bevy::prelude::*;
-use bevy::ui::BorderRadius;
+use bevy::{app::AppExit, prelude::*, ui::BorderRadius};
 use bevy_ecs::hierarchy::ChildSpawnerCommands;
 
 use super::components::*;
 use crate::{
-    adapter::GameState,
-    plugins::{
-        TiledMapAssets, TiledMapLibrary, assets_loader::AssetStore,
-        design_resolution::LetterboxOffsets,
+    resources::{
+        asset_store::AssetStore, design_resolution::LetterboxOffsets, game_state::GameState,
+        stage_catalog::*, stage_progress::*,
     },
-    scenes::{assets::FontKey, stage::StageProgression},
+    scenes::{assets::FontKey, stage::StageProgressionState},
 };
 
-const TOTAL_STAGE_SLOTS: usize = 20;
 const CARDS_PER_PAGE: usize = 3;
 const CARD_WIDTH: f32 = 360.0;
-const CARD_HEIGHT: f32 = 320.0;
 const CARD_GAP: f32 = 32.0;
 const SECTION_SPACING: f32 = 20.0;
 
@@ -67,9 +59,17 @@ impl StageSelectState {
 }
 
 struct StageEntry {
-    index: usize,
-    title: String,
+    meta: StageMeta,
     playable: bool,
+}
+
+impl StageEntry {
+    fn from(stage_progress: &StageProgress, meta: &StageMeta) -> Self {
+        Self {
+            meta: meta.clone(),
+            playable: stage_progress.is_unlocked(meta.id),
+        }
+    }
 }
 
 struct StageSummary {
@@ -87,7 +87,7 @@ impl StageSummary {
         let highlight = entries
             .iter()
             .find(|entry| entry.playable)
-            .map(|entry| entry.title.clone())
+            .map(|entry| entry.meta.title.clone())
             .unwrap_or_else(|| "COMING SOON".to_string());
 
         Self {
@@ -99,30 +99,13 @@ impl StageSummary {
     }
 }
 
-impl StageEntry {
-    fn playable(index: usize, map: &TiledMapAssets) -> Self {
-        Self {
-            index,
-            title: display_name(map),
-            playable: true,
-        }
-    }
-
-    fn locked(index: usize) -> Self {
-        Self {
-            index,
-            title: format!("STAGE {:02}", index + 1),
-            playable: false,
-        }
-    }
-}
-
 pub fn setup(
     mut commands: Commands,
     mut clear_color: ResMut<ClearColor>,
     mut letterbox_offsets: ResMut<LetterboxOffsets>,
     asset_store: Res<AssetStore>,
-    tiled_maps: Res<TiledMapLibrary>,
+    catalog: Res<StageCatalog>,
+    progress: Res<StageProgress>,
 ) {
     clear_color.0 = background_color();
     letterbox_offsets.left = 0.0;
@@ -138,7 +121,10 @@ pub fn setup(
         .font(FontKey::Title)
         .unwrap_or_else(|| font.clone());
 
-    let entries = build_stage_entries(&tiled_maps);
+    let entries: Vec<StageEntry> = catalog
+        .iter()
+        .map(|m| StageEntry::from(&progress, m))
+        .collect();
     let summary = StageSummary::from_entries(&entries);
     let state = StageSelectState::new(entries.len(), CARDS_PER_PAGE);
     let page_text = format!("{}/{}", state.current_page + 1, state.total_pages());
@@ -200,8 +186,8 @@ pub fn handle_nav_buttons(
 
 pub fn handle_play_buttons(
     mut interactions: Query<(&StagePlayButton, &Interaction), Changed<Interaction>>,
-    tiled_maps: Res<TiledMapLibrary>,
-    mut progression: ResMut<StageProgression>,
+    mut progression: ResMut<StageProgressionState>,
+    catalog: Res<StageCatalog>,
     mut next_state: ResMut<NextState<GameState>>,
 ) {
     for (button, interaction) in &mut interactions {
@@ -210,13 +196,11 @@ pub fn handle_play_buttons(
         }
 
         if *interaction == Interaction::Pressed {
-            if progression.select(button.stage_index, tiled_maps.as_ref()) {
+            if let Some(stage) = catalog.stage_by_index(button.stage_index) {
+                progression.select_stage(stage);
                 next_state.set(GameState::Stage);
             } else {
-                warn!(
-                    "Stage {} is not available in the Tiled map library",
-                    button.stage_index + 1
-                );
+                warn!("Stage {} is not available", button.stage_index + 1);
             }
         }
     }
@@ -320,6 +304,7 @@ fn spawn_hero_section(
     parent
         .spawn(Node {
             width: Val::Percent(100.0),
+            height: Val::Percent(100.0),
             flex_direction: FlexDirection::Column,
             row_gap: Val::Px(20.0),
             ..default()
@@ -338,6 +323,7 @@ fn spawn_hero_section(
 
             hero.spawn(Node {
                 width: Val::Percent(100.0),
+                flex_grow: 1.0,
                 flex_direction: FlexDirection::Row,
                 column_gap: Val::Px(32.0),
                 align_items: AlignItems::Stretch,
@@ -417,17 +403,6 @@ fn spawn_hero_copy(
                     TextColor(hero_title_color()),
                 ));
             });
-
-            left.spawn(Text::new(
-                "Drop into a vibrant kitty multiverse, remix your best scripts,\
-                 \nand pursue the sharpest keystones.",
-            ))
-            .insert(TextFont {
-                font: font.clone(),
-                font_size: 24.0,
-                ..default()
-            })
-            .insert(TextColor(secondary_text_color()));
 
             left.spawn(Node {
                 flex_direction: FlexDirection::Row,
@@ -614,17 +589,17 @@ fn spawn_stage_cards(
             ..default()
         })
         .with_children(|grid| {
-            for entry in entries {
+            for (index, entry) in entries.iter().enumerate() {
                 grid.spawn((
-                    StageCard { index: entry.index },
+                    StageCard { index },
                     Node {
                         width: Val::Px(CARD_WIDTH),
-                        min_height: Val::Px(CARD_HEIGHT),
+                        flex_grow: 1.0,
                         flex_direction: FlexDirection::Column,
                         row_gap: Val::Px(16.0),
                         padding: UiRect::all(Val::Px(24.0)),
                         border: UiRect::all(Val::Px(2.0)),
-                        display: if entry.index < CARDS_PER_PAGE {
+                        display: if index < CARDS_PER_PAGE {
                             Display::Flex
                         } else {
                             Display::None
@@ -644,7 +619,7 @@ fn spawn_stage_cards(
                     })
                     .with_children(|header| {
                         header
-                            .spawn(Text::new(format!("STAGE {:02}", entry.index + 1)))
+                            .spawn(Text::new(format!("STAGE {:02}", index + 1)))
                             .insert(TextFont {
                                 font: font.clone(),
                                 font_size: 18.0,
@@ -655,7 +630,7 @@ fn spawn_stage_cards(
                         spawn_stage_chip(header, font, entry.playable);
                     });
 
-                    card.spawn(Text::new(entry.title.clone()))
+                    card.spawn(Text::new(entry.meta.title.clone()))
                         .insert(TextFont {
                             font: font.clone(),
                             font_size: 32.0,
@@ -675,16 +650,6 @@ fn spawn_stage_cards(
                     })
                     .insert(TextColor(secondary_text_color()));
 
-                    card.spawn(Node {
-                        flex_direction: FlexDirection::Row,
-                        column_gap: Val::Px(12.0),
-                        ..default()
-                    })
-                    .with_children(|stats| {
-                        spawn_mini_stat(stats, font, "BEST TIME", "--");
-                        spawn_mini_stat(stats, font, "BEST SCRIPT", "--");
-                    });
-
                     card.spawn((
                         Node {
                             flex_grow: 1.0,
@@ -695,7 +660,7 @@ fn spawn_stage_cards(
                     ))
                     .with_children(|_| {});
 
-                    spawn_play_button(card, entry, font);
+                    spawn_play_button(card, index, entry, font);
                 });
             }
         });
@@ -728,38 +693,12 @@ fn spawn_stage_chip(parent: &mut ChildSpawnerCommands, font: &Handle<Font>, play
         });
 }
 
-fn spawn_mini_stat(
+fn spawn_play_button(
     parent: &mut ChildSpawnerCommands,
+    stage_index: usize,
+    entry: &StageEntry,
     font: &Handle<Font>,
-    label: &str,
-    value: &str,
 ) {
-    parent
-        .spawn(Node {
-            flex_direction: FlexDirection::Column,
-            row_gap: Val::Px(4.0),
-            ..default()
-        })
-        .with_children(|stat| {
-            stat.spawn(Text::new(label))
-                .insert(TextFont {
-                    font: font.clone(),
-                    font_size: 14.0,
-                    ..default()
-                })
-                .insert(TextColor(secondary_text_color()));
-
-            stat.spawn(Text::new(value))
-                .insert(TextFont {
-                    font: font.clone(),
-                    font_size: 22.0,
-                    ..default()
-                })
-                .insert(TextColor(primary_text_color()));
-        });
-}
-
-fn spawn_play_button(parent: &mut ChildSpawnerCommands, entry: &StageEntry, font: &Handle<Font>) {
     let enabled = entry.playable;
     let visual = ButtonVisual::new(
         accent_color(),
@@ -774,7 +713,7 @@ fn spawn_play_button(parent: &mut ChildSpawnerCommands, entry: &StageEntry, font
     parent
         .spawn((
             StagePlayButton {
-                stage_index: entry.index,
+                stage_index,
                 enabled,
             },
             Button,
@@ -875,29 +814,6 @@ fn button_initial_color(visual: &ButtonVisual) -> Color {
     } else {
         visual.disabled
     }
-}
-
-fn build_stage_entries(library: &TiledMapLibrary) -> Vec<StageEntry> {
-    let total_slots = library.len().max(TOTAL_STAGE_SLOTS).max(1);
-    let mut entries = Vec::with_capacity(total_slots);
-
-    for index in 0..total_slots {
-        if let Some(map) = library.get(index) {
-            entries.push(StageEntry::playable(index, map));
-        } else {
-            entries.push(StageEntry::locked(index));
-        }
-    }
-
-    entries
-}
-
-fn display_name(map: &TiledMapAssets) -> String {
-    Path::new(map.map_path())
-        .file_stem()
-        .and_then(|stem| stem.to_str())
-        .map(|name| name.replace('_', " ").to_uppercase())
-        .unwrap_or_else(|| format!("STAGE {}", map.map_path()))
 }
 
 fn background_color() -> Color {

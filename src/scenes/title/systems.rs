@@ -2,21 +2,26 @@ use bevy::color::palettes::css::*;
 use bevy::prelude::*;
 
 use super::components::TitleUI;
-use crate::adapter::*;
-use crate::plugins::assets_loader::AssetStore;
-use crate::plugins::design_resolution::LetterboxOffsets;
-use crate::scenes::assets::FontKey;
+use crate::{
+    resources::{
+        asset_store::AssetStore,
+        design_resolution::LetterboxOffsets,
+        game_state::GameState,
+        launch_profile::LaunchProfile,
+    },
+    scenes::assets::FontKey,
+};
 
 pub fn setup(
     mut commands: Commands,
     mut clear_color: ResMut<ClearColor>,
     mut letterbox_offsets: ResMut<LetterboxOffsets>,
-    mode: Res<Mode>,
+    launch_profile: Res<LaunchProfile>,
     asset_store: Res<AssetStore>,
     mut next_state: ResMut<NextState<GameState>>,
 ) {
-    if mode.skip_title {
-        info!("Skipping title scene as per mode settings");
+    if launch_profile.skip_title {
+        info!("Skipping title scene");
         next_state.set(GameState::SelectStage);
         return;
     }

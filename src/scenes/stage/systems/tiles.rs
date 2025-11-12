@@ -3,8 +3,11 @@ use bevy::prelude::*;
 use rand::Rng;
 
 use crate::{
-    core::domain::chunk_grammar_map::{self, MAP_SIZE, TileKind},
-    plugins::{design_resolution::ScaledViewport, tiled::*},
+    resources::{
+        chunk_grammar_map::{self, MAP_SIZE, TileKind},
+        design_resolution::ScaledViewport,
+        tiled::*,
+    },
     scenes::stage::components::StageTile,
 };
 
@@ -15,10 +18,7 @@ pub fn spawn_tiles(
     placed_chunks: &chunk_grammar_map::PlacedChunkLayout,
     viewport: &ScaledViewport,
 ) {
-    let Some(tileset) = tiled_map_assets.tilesets().first() else {
-        warn!("Stage setup: no tilesets available");
-        return;
-    };
+    let tileset = tiled_map_assets.tileset.clone();
 
     let mut rng = rand::rng();
 
@@ -71,7 +71,7 @@ pub fn spawn_tiles(
                         background_ids[index]
                     };
 
-                    let Some(image) = image_from_tileset(tileset, tile_id as usize) else {
+                    let Some(image) = image_from_tileset(&tileset, tile_id as usize) else {
                         continue;
                     };
                     spawn_boundary_tile(parent, image, transform, tile_size, is_boundary);
@@ -82,7 +82,7 @@ pub fn spawn_tiles(
                 let Some(tile_id) = tile_id_for_kind(kind) else {
                     continue;
                 };
-                let Some(image) = image_from_tileset(tileset, tile_id as usize) else {
+                let Some(image) = image_from_tileset(&tileset, tile_id as usize) else {
                     continue;
                 };
 
@@ -109,8 +109,8 @@ pub fn spawn_tiles(
                         } => {
                             let collider = Collider::rectangle(*width, *height);
                             let pos = Position::from_xy(
-                                -tile_size.x / 2.0 + (*width + *x) / 2.0 + *x / 2.0,
-                                tile_size.y / 2.0 - (*height + *y) / 2.0 - *y / 2.0,
+                                -tile_size.x / 2.0 + (width + x) / 2.0 + x / 2.0,
+                                tile_size.y / 2.0 - (height + y) / 2.0 - y / 2.0,
                             );
                             let rot = Rotation::degrees(0.0);
                             (pos, rot, collider)

@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::adapter::*;
+use crate::resources::game_state::GameState;
 
 mod components;
 mod systems;

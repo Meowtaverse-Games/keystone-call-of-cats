@@ -1,4 +1,4 @@
-use crate::plugins::assets_loader::LoadAssetGroup;
+use crate::resources::asset_store::LoadAssetGroup;
 
 #[repr(u32)]
 #[derive(Clone, Copy, Debug)]
