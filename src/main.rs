@@ -18,7 +18,7 @@ mod util;
 
 use crate::{
     config::*,
-    plugins::{steam::show_steam_app_info, *},
+    plugins::*,
     resources::{
         chunk_grammar_map,
         game_state::GameState,
@@ -44,7 +44,7 @@ fn main() {
             return;
         }
         LaunchType::SteamAppInfo => {
-            show_steam_app_info(steam_app_id);
+            steam::show_steam_app_info(steam_app_id);
             return;
         }
         _ => {}
