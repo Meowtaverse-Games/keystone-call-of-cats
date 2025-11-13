@@ -42,6 +42,9 @@ impl ScriptRunner for RhaiScriptExecutor {
 #[derive(Clone)]
 struct CommandValue();
 
+const INVALID_MOVE_PREFIX: &str = "__invalid_move__:";
+const INVALID_SLEEP_PREFIX: &str = "__invalid_sleep__:";
+
 #[derive(Clone, Default)]
 struct CommandRecorder(Arc<Mutex<Vec<ScriptCommand>>>);
 
@@ -121,8 +124,7 @@ fn move_named(
         .map(|dir| record_move(recorder, dir))
         .ok_or_else(|| {
             EvalAltResult::ErrorRuntime(
-                format!("move命令にはleft/top/right/downのいずれかを指定してください: {direction}")
-                    .into(),
+                format!("{INVALID_MOVE_PREFIX}{direction}").into(),
                 Position::NONE,
             )
             .into()
@@ -135,7 +137,7 @@ fn sleep_for(
 ) -> Result<CommandValue, Box<EvalAltResult>> {
     if duration < 0.0 {
         return Err(EvalAltResult::ErrorRuntime(
-            "sleep命令の秒数は0以上である必要があります。".into(),
+            format!("{INVALID_SLEEP_PREFIX}{duration}").into(),
             Position::NONE,
         )
         .into());
@@ -147,5 +149,19 @@ fn sleep_for(
 }
 
 fn map_engine_error(error: Box<EvalAltResult>) -> ScriptExecutionError {
-    ScriptExecutionError::Engine(error.to_string())
+    match *error {
+        EvalAltResult::ErrorRuntime(value, _) => {
+            let message = value.to_string();
+            if let Some(direction) = message.strip_prefix(INVALID_MOVE_PREFIX) {
+                ScriptExecutionError::InvalidMoveDirection {
+                    direction: direction.to_string(),
+                }
+            } else if message.starts_with(INVALID_SLEEP_PREFIX) {
+                ScriptExecutionError::InvalidSleepDuration
+            } else {
+                ScriptExecutionError::Engine(message)
+            }
+        }
+        other => ScriptExecutionError::Engine(other.to_string()),
+    }
 }

@@ -1,0 +1,6 @@
+(
+    locale: "ja-JP",
+    resources: [
+        "main.ftl",
+    ],
+)

@@ -43,22 +43,32 @@ impl fmt::Display for MoveDirection {
 #[derive(Debug)]
 pub enum ScriptExecutionError {
     EmptyScript,
-    #[allow(dead_code)]
-    InvalidCommand(String),
+    InvalidMoveDirection {
+        direction: String,
+    },
+    InvalidSleepDuration,
     Engine(String),
     UnsupportedLanguage(String),
+    #[allow(dead_code)]
+    InvalidCommand(String),
 }
 
 impl fmt::Display for ScriptExecutionError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ScriptExecutionError::EmptyScript => write!(f, "スクリプトが空です。"),
-            ScriptExecutionError::InvalidCommand(msg) => {
-                write!(f, "スクリプト命令が不正です: {msg}")
+            ScriptExecutionError::EmptyScript => write!(f, "Script is empty."),
+            ScriptExecutionError::InvalidMoveDirection { direction } => {
+                write!(f, "Invalid move direction: {direction}")
             }
-            ScriptExecutionError::Engine(msg) => write!(f, "スクリプト実行エラー: {msg}"),
+            ScriptExecutionError::InvalidSleepDuration => {
+                write!(f, "sleep duration must be zero or greater.")
+            }
+            ScriptExecutionError::Engine(msg) => write!(f, "Script runtime error: {msg}"),
             ScriptExecutionError::UnsupportedLanguage(lang) => {
-                write!(f, "サポートされていないスクリプト言語です: {lang}")
+                write!(f, "Unsupported script language: {lang}")
+            }
+            ScriptExecutionError::InvalidCommand(msg) => {
+                write!(f, "Invalid command: {msg}")
             }
         }
     }

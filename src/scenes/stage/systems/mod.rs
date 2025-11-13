@@ -5,6 +5,7 @@ mod tiles;
 mod ui;
 
 use bevy::{ecs::system::SystemParam, prelude::*, window::PrimaryWindow};
+use bevy_fluent::prelude::Localization;
 
 use super::components::*;
 
@@ -20,6 +21,7 @@ use crate::{
         tiled::TiledMapAssets,
     },
     scenes::stage::components::StageTile,
+    util::localization::{localized_stage_name, tr, tr_with_args},
 };
 
 pub use goal::check_goal_completion;
@@ -52,6 +54,10 @@ impl StageProgressionState {
             .as_ref()
             .map(|stage| stage.id)
             .unwrap_or_default()
+    }
+
+    pub fn current_stage(&self) -> Option<&StageMeta> {
+        self.current_stage.as_ref()
     }
 
     pub fn advance(&mut self, stage_catalog: &StageCatalog) -> bool {
@@ -234,8 +240,10 @@ pub struct StageSetupParams<'w, 's> {
 }
 
 pub fn setup(mut commands: Commands, mut params: StageSetupParams) {
-    if params.editor_state.is_none() {
-        ui::init_editor_state(&mut commands);
+    let current_stage_id = params.progression.current_stage_id();
+    match params.editor_state.as_deref_mut() {
+        Some(editor) => editor.set_tutorial_for_stage(current_stage_id),
+        None => ui::init_editor_state(&mut commands, current_stage_id),
     }
 
     let current_map = params.progression.current_map();
@@ -277,6 +285,7 @@ pub fn advance_stage_if_cleared(
     mut editor_state: ResMut<ScriptEditorState>,
     mut progress: ResMut<StageProgress>,
     stage_catalog: Res<StageCatalog>,
+    localization: Res<Localization>,
 ) {
     if !editor_state.stage_cleared {
         return;
@@ -285,15 +294,21 @@ pub fn advance_stage_if_cleared(
     progress.unlock_until(StageId(progression.current_stage_id().0 + 1));
 
     if progression.advance(&stage_catalog) {
-        editor_state.last_run_feedback = Some(format!("ステージ「{}」へ進みます。", 1));
+        let stage_label = progression
+            .current_stage()
+            .map(|stage| localized_stage_name(&localization, stage.id, &stage.title))
+            .unwrap_or_else(|| format!("STAGE-{}", progression.current_stage_id().0));
+        editor_state.last_run_feedback = Some(tr_with_args(
+            &localization,
+            "stage-ui-feedback.advance",
+            &[("stage", stage_label.as_str())],
+        ));
         editor_state.controls_enabled = false;
         editor_state.pending_player_reset = false;
     } else {
         editor_state.controls_enabled = false;
         editor_state.pending_player_reset = false;
-        editor_state
-            .last_run_feedback
-            .get_or_insert_with(|| "全てのステージをクリアしました！".to_string());
+        editor_state.last_run_feedback = Some(tr(&localization, "stage-ui-feedback.complete"));
     }
 
     editor_state.stage_cleared = false;
@@ -313,6 +328,7 @@ pub struct StageReloadParams<'w, 's> {
     tiles: Query<'w, 's, Entity, With<StageTile>>,
     stones: Query<'w, 's, Entity, With<StoneRune>>,
     editor_state: Option<ResMut<'w, ScriptEditorState>>,
+    localization: Res<'w, Localization>,
 }
 
 pub fn reload_stage_if_needed(mut commands: Commands, mut params: StageReloadParams) {
@@ -320,6 +336,12 @@ pub fn reload_stage_if_needed(mut commands: Commands, mut params: StageReloadPar
         return;
     }
 
+    let stage_id = params.progression.current_stage_id();
+    let stage_label = params
+        .progression
+        .current_stage()
+        .map(|stage| localized_stage_name(&params.localization, stage.id, &stage.title))
+        .unwrap_or_else(|| format!("STAGE-{}", stage_id.0));
     let current_map = params.progression.current_map();
 
     cleanup_stage_entities(
@@ -350,11 +372,15 @@ pub fn reload_stage_if_needed(mut commands: Commands, mut params: StageReloadPar
     );
 
     if let Some(editor) = params.editor_state.as_deref_mut() {
-        let label = format!("STAGE-{}", 1); // map_label(current_map);
         editor.controls_enabled = false;
         editor.pending_player_reset = false;
         editor.stage_cleared = false;
-        editor.last_run_feedback = Some(format!("ステージ「{}」が開始されました。", label));
+        editor.set_tutorial_for_stage(stage_id);
+        editor.last_run_feedback = Some(tr_with_args(
+            &params.localization,
+            "stage-ui-feedback.start",
+            &[("stage", stage_label.as_str())],
+        ));
     }
 }
 

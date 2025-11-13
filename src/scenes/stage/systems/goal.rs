@@ -1,9 +1,11 @@
 use avian2d::prelude::*;
 use bevy::prelude::*;
+use bevy_fluent::prelude::Localization;
 
 use crate::{
     resources::{design_resolution::ScaledViewport, tiled::*},
     scenes::stage::components::{Goal, Player, PlayerMotion},
+    util::localization::tr,
 };
 
 use super::ui::ScriptEditorState;
@@ -54,6 +56,7 @@ pub fn check_goal_completion(
     mut editor_state: ResMut<ScriptEditorState>,
     mut player_query: Query<GoalCheckPlayer<'_>, With<Player>>,
     goals: Query<(&GlobalTransform, &Goal)>,
+    localization: Res<Localization>,
 ) {
     if !editor_state.controls_enabled || editor_state.stage_cleared {
         return;
@@ -78,7 +81,7 @@ pub fn check_goal_completion(
             editor_state.controls_enabled = false;
             editor_state.stage_cleared = true;
             editor_state.pending_player_reset = false;
-            editor_state.last_run_feedback = Some("ステージクリア！".to_string());
+            editor_state.last_run_feedback = Some(tr(&localization, "stage-ui-feedback.goal"));
             editor_state.stage_clear_popup_open = true;
             break;
         }

@@ -1,5 +1,6 @@
 use bevy::{app::AppExit, prelude::*, ui::BorderRadius};
 use bevy_ecs::hierarchy::ChildSpawnerCommands;
+use bevy_fluent::prelude::Localization;
 
 use super::components::*;
 use crate::{
@@ -8,6 +9,7 @@ use crate::{
         stage_catalog::*, stage_progress::*,
     },
     scenes::{assets::FontKey, stage::StageProgressionState},
+    util::localization::{localized_stage_name, tr, tr_with_args},
 };
 
 const CARDS_PER_PAGE: usize = 3;
@@ -70,6 +72,10 @@ impl StageEntry {
             playable: stage_progress.is_unlocked(meta.id),
         }
     }
+
+    fn localized_title(&self, localization: &Localization) -> String {
+        localized_stage_name(localization, self.meta.id, &self.meta.title)
+    }
 }
 
 struct StageSummary {
@@ -80,15 +86,15 @@ struct StageSummary {
 }
 
 impl StageSummary {
-    fn from_entries(entries: &[StageEntry]) -> Self {
+    fn from_entries(entries: &[StageEntry], localization: &Localization) -> Self {
         let total = entries.len();
         let unlocked = entries.iter().filter(|entry| entry.playable).count();
         let locked = total.saturating_sub(unlocked);
         let highlight = entries
             .iter()
             .find(|entry| entry.playable)
-            .map(|entry| entry.meta.title.clone())
-            .unwrap_or_else(|| "COMING SOON".to_string());
+            .map(|entry| localized_stage_name(localization, entry.meta.id, &entry.meta.title))
+            .unwrap_or_else(|| tr(localization, "stage-select-highlight.placeholder"));
 
         Self {
             total,
@@ -106,6 +112,7 @@ pub fn setup(
     asset_store: Res<AssetStore>,
     catalog: Res<StageCatalog>,
     progress: Res<StageProgress>,
+    localization: Res<Localization>,
 ) {
     clear_color.0 = background_color();
     letterbox_offsets.left = 0.0;
@@ -125,9 +132,11 @@ pub fn setup(
         .iter()
         .map(|m| StageEntry::from(&progress, m))
         .collect();
-    let summary = StageSummary::from_entries(&entries);
+    let summary = StageSummary::from_entries(&entries, &localization);
     let state = StageSelectState::new(entries.len(), CARDS_PER_PAGE);
-    let page_text = format!("{}/{}", state.current_page + 1, state.total_pages());
+    let current_page_number = state.current_page + 1;
+    let total_pages = state.total_pages();
+    let page_text = format!("{}/{}", current_page_number, total_pages);
     commands.insert_resource(state);
 
     let root = commands
@@ -149,8 +158,16 @@ pub fn setup(
 
     commands.entity(root).with_children(|parent| {
         spawn_glow_layers(parent);
-        spawn_hero_section(parent, &font, &display_font, &summary, &page_text);
-        spawn_stage_cards(parent, &entries, &font);
+        spawn_hero_section(
+            parent,
+            &font,
+            &display_font,
+            &summary,
+            &localization,
+            current_page_number,
+            total_pages,
+        );
+        spawn_stage_cards(parent, &entries, &font, &localization);
         spawn_bottom_bar(parent, &font, &page_text);
     });
 }
@@ -299,7 +316,9 @@ fn spawn_hero_section(
     font: &Handle<Font>,
     display_font: &Handle<Font>,
     summary: &StageSummary,
-    page_text: &str,
+    localization: &Localization,
+    current_page: usize,
+    total_pages: usize,
 ) {
     parent
         .spawn(Node {
@@ -317,8 +336,9 @@ fn spawn_hero_section(
                 ..default()
             })
             .with_children(|row| {
-                spawn_status_badge(row, font, "EXPERIMENTAL BUILD");
-                spawn_back_button(row, font);
+                let badge_label = tr(localization, "stage-select-badge.experimental");
+                spawn_status_badge(row, font, &badge_label);
+                spawn_back_button(row, font, localization);
             });
 
             hero.spawn(Node {
@@ -330,8 +350,15 @@ fn spawn_hero_section(
                 ..default()
             })
             .with_children(|content| {
-                spawn_hero_copy(content, font, display_font, summary);
-                spawn_highlight_card(content, font, summary, page_text);
+                spawn_hero_copy(content, font, display_font, summary, localization);
+                spawn_highlight_card(
+                    content,
+                    font,
+                    summary,
+                    localization,
+                    current_page,
+                    total_pages,
+                );
             });
         });
 }
@@ -363,6 +390,7 @@ fn spawn_hero_copy(
     font: &Handle<Font>,
     display_font: &Handle<Font>,
     summary: &StageSummary,
+    localization: &Localization,
 ) {
     parent
         .spawn(Node {
@@ -377,6 +405,7 @@ fn spawn_hero_copy(
                 ..default()
             })
             .with_children(|stack| {
+                let inline_title = tr(localization, "game-title-inline");
                 stack.spawn((
                     Node {
                         position_type: PositionType::Absolute,
@@ -384,7 +413,7 @@ fn spawn_hero_copy(
                         top: Val::Px(4.0),
                         ..default()
                     },
-                    Text::new("KEYSTONE · CALL OF CATS"),
+                    Text::new(inline_title.clone()),
                     TextFont {
                         font: display_font.clone(),
                         font_size: 56.0,
@@ -394,7 +423,7 @@ fn spawn_hero_copy(
                 ));
 
                 stack.spawn((
-                    Text::new("KEYSTONE · CALL OF CATS"),
+                    Text::new(inline_title),
                     TextFont {
                         font: display_font.clone(),
                         font_size: 56.0,
@@ -410,15 +439,30 @@ fn spawn_hero_copy(
                 ..default()
             })
             .with_children(|stats| {
+                let unlocked_label = tr(localization, "stage-select-stats.unlocked");
+                let locked_label = tr(localization, "stage-select-stats.locked");
+                let slots_label = tr(localization, "stage-select-stats.slots");
                 spawn_stat_card(
                     stats,
                     font,
-                    "UNLOCKED",
+                    &unlocked_label,
                     &format!("{}", summary.unlocked),
                     true,
                 );
-                spawn_stat_card(stats, font, "LOCKED", &format!("{}", summary.locked), false);
-                spawn_stat_card(stats, font, "SLOTS", &format!("{}", summary.total), false);
+                spawn_stat_card(
+                    stats,
+                    font,
+                    &locked_label,
+                    &format!("{}", summary.locked),
+                    false,
+                );
+                spawn_stat_card(
+                    stats,
+                    font,
+                    &slots_label,
+                    &format!("{}", summary.total),
+                    false,
+                );
             });
         });
 }
@@ -464,7 +508,9 @@ fn spawn_highlight_card(
     parent: &mut ChildSpawnerCommands,
     font: &Handle<Font>,
     summary: &StageSummary,
-    page_text: &str,
+    localization: &Localization,
+    current_page: usize,
+    total_pages: usize,
 ) {
     parent
         .spawn((
@@ -480,7 +526,8 @@ fn spawn_highlight_card(
             BackgroundColor(hero_card_background()),
         ))
         .with_children(|card| {
-            card.spawn(Text::new("FEATURED STAGE"))
+            let featured_label = tr(localization, "stage-select-featured.label");
+            card.spawn(Text::new(featured_label))
                 .insert(TextFont {
                     font: font.clone(),
                     font_size: 18.0,
@@ -496,15 +543,14 @@ fn spawn_highlight_card(
                 })
                 .insert(TextColor(primary_text_color()));
 
-            card.spawn(Text::new(
-                "Dial in your keystone strategy before the cats do.",
-            ))
-            .insert(TextFont {
-                font: font.clone(),
-                font_size: 20.0,
-                ..default()
-            })
-            .insert(TextColor(secondary_text_color()));
+            let description = tr(localization, "stage-select-featured.description");
+            card.spawn(Text::new(description))
+                .insert(TextFont {
+                    font: font.clone(),
+                    font_size: 20.0,
+                    ..default()
+                })
+                .insert(TextColor(secondary_text_color()));
 
             card.spawn(Node {
                 flex_direction: FlexDirection::Row,
@@ -512,8 +558,19 @@ fn spawn_highlight_card(
                 ..default()
             })
             .with_children(|chips| {
-                spawn_highlight_chip(chips, font, &format!("PAGES {}", page_text));
-                spawn_highlight_chip(chips, font, "STORY MODE");
+                let current_str = current_page.to_string();
+                let total_str = total_pages.to_string();
+                let pages_chip = tr_with_args(
+                    localization,
+                    "stage-select-highlight.pages",
+                    &[
+                        ("current", current_str.as_str()),
+                        ("total", total_str.as_str()),
+                    ],
+                );
+                spawn_highlight_chip(chips, font, &pages_chip);
+                let mode_chip = tr(localization, "stage-select-highlight.mode");
+                spawn_highlight_chip(chips, font, &mode_chip);
             });
         });
 }
@@ -539,7 +596,11 @@ fn spawn_highlight_chip(parent: &mut ChildSpawnerCommands, font: &Handle<Font>, 
         });
 }
 
-fn spawn_back_button(parent: &mut ChildSpawnerCommands, font: &Handle<Font>) {
+fn spawn_back_button(
+    parent: &mut ChildSpawnerCommands,
+    font: &Handle<Font>,
+    localization: &Localization,
+) {
     let visual = ButtonVisual::new(
         hero_button_color(),
         hero_button_hover_color(),
@@ -562,7 +623,8 @@ fn spawn_back_button(parent: &mut ChildSpawnerCommands, font: &Handle<Font>) {
             BackgroundColor(initial),
         ))
         .with_children(|btn| {
-            btn.spawn(Text::new("EXIT"))
+            let label = tr(localization, "stage-select-back");
+            btn.spawn(Text::new(label))
                 .insert(TextFont {
                     font: font.clone(),
                     font_size: 28.0,
@@ -576,7 +638,13 @@ fn spawn_stage_cards(
     parent: &mut ChildSpawnerCommands,
     entries: &[StageEntry],
     font: &Handle<Font>,
+    localization: &Localization,
 ) {
+    let ready_label = tr(localization, "stage-select-state.ready");
+    let locked_label = tr(localization, "stage-select-state.locked");
+    let play_label = tr(localization, "stage-select-play");
+    let playable_desc = tr(localization, "stage-select-stage.description.ready");
+    let locked_desc = tr(localization, "stage-select-stage.description.locked");
     parent
         .spawn(Node {
             width: Val::Percent(100.0),
@@ -618,8 +686,14 @@ fn spawn_stage_cards(
                         ..default()
                     })
                     .with_children(|header| {
+                        let stage_number = format!("{:02}", index + 1);
+                        let stage_header = tr_with_args(
+                            localization,
+                            "stage-select-stage.header",
+                            &[("number", stage_number.as_str())],
+                        );
                         header
-                            .spawn(Text::new(format!("STAGE {:02}", index + 1)))
+                            .spawn(Text::new(stage_header))
                             .insert(TextFont {
                                 font: font.clone(),
                                 font_size: 18.0,
@@ -627,10 +701,11 @@ fn spawn_stage_cards(
                             })
                             .insert(TextColor(secondary_text_color()));
 
-                        spawn_stage_chip(header, font, entry.playable);
+                        spawn_stage_chip(header, font, entry.playable, &ready_label, &locked_label);
                     });
 
-                    card.spawn(Text::new(entry.meta.title.clone()))
+                    let stage_title = entry.localized_title(localization);
+                    card.spawn(Text::new(stage_title))
                         .insert(TextFont {
                             font: font.clone(),
                             font_size: 32.0,
@@ -638,17 +713,18 @@ fn spawn_stage_cards(
                         })
                         .insert(TextColor(primary_text_color()));
 
-                    card.spawn(Text::new(if entry.playable {
-                        "Sprint-ready layout for confident coders."
+                    let description = if entry.playable {
+                        playable_desc.clone()
                     } else {
-                        "Reach the keystone above to unlock this remix."
-                    }))
-                    .insert(TextFont {
-                        font: font.clone(),
-                        font_size: 18.0,
-                        ..default()
-                    })
-                    .insert(TextColor(secondary_text_color()));
+                        locked_desc.clone()
+                    };
+                    card.spawn(Text::new(description))
+                        .insert(TextFont {
+                            font: font.clone(),
+                            font_size: 18.0,
+                            ..default()
+                        })
+                        .insert(TextColor(secondary_text_color()));
 
                     card.spawn((
                         Node {
@@ -660,17 +736,23 @@ fn spawn_stage_cards(
                     ))
                     .with_children(|_| {});
 
-                    spawn_play_button(card, index, entry, font);
+                    spawn_play_button(card, index, entry, font, &play_label, &locked_label);
                 });
             }
         });
 }
 
-fn spawn_stage_chip(parent: &mut ChildSpawnerCommands, font: &Handle<Font>, playable: bool) {
+fn spawn_stage_chip(
+    parent: &mut ChildSpawnerCommands,
+    font: &Handle<Font>,
+    playable: bool,
+    ready_label: &str,
+    locked_label: &str,
+) {
     let (label, color) = if playable {
-        ("READY", hero_button_color())
+        (ready_label, hero_button_color())
     } else {
-        ("LOCKED", disabled_accent_color())
+        (locked_label, disabled_accent_color())
     };
 
     parent
@@ -683,7 +765,7 @@ fn spawn_stage_chip(parent: &mut ChildSpawnerCommands, font: &Handle<Font>, play
             BackgroundColor(color),
         ))
         .with_children(|chip| {
-            chip.spawn(Text::new(label))
+            chip.spawn(Text::new(label.to_string()))
                 .insert(TextFont {
                     font: font.clone(),
                     font_size: 14.0,
@@ -698,6 +780,8 @@ fn spawn_play_button(
     stage_index: usize,
     entry: &StageEntry,
     font: &Handle<Font>,
+    play_label: &str,
+    locked_label: &str,
 ) {
     let enabled = entry.playable;
     let visual = ButtonVisual::new(
@@ -708,7 +792,7 @@ fn spawn_play_button(
         enabled,
     );
 
-    let label = if enabled { "PLAY >" } else { "LOCKED" };
+    let label = if enabled { play_label } else { locked_label };
 
     parent
         .spawn((
@@ -729,7 +813,7 @@ fn spawn_play_button(
             BackgroundColor(button_initial_color(&visual)),
         ))
         .with_children(|btn| {
-            btn.spawn(Text::new(label))
+            btn.spawn(Text::new(label.to_string()))
                 .insert(TextFont {
                     font: font.clone(),
                     font_size: 24.0,
