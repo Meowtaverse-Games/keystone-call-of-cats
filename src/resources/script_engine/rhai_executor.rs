@@ -20,7 +20,9 @@ impl RhaiScriptExecutor {
         let mut engine = Engine::new();
         register_commands(&mut engine, recorder.clone());
 
-        let _ = engine.eval::<Dynamic>(script).map_err(map_engine_error)?;
+        let _ = engine
+            .eval::<Dynamic>(script)
+            .map_err(|err| map_engine_error(*err))?;
 
         drop(engine);
         Ok(recorder.into_commands())
@@ -148,8 +150,8 @@ fn sleep_for(
     Ok(CommandValue())
 }
 
-fn map_engine_error(error: Box<EvalAltResult>) -> ScriptExecutionError {
-    match *error {
+fn map_engine_error(error: EvalAltResult) -> ScriptExecutionError {
+    match error {
         EvalAltResult::ErrorRuntime(value, _) => {
             let message = value.to_string();
             if let Some(direction) = message.strip_prefix(INVALID_MOVE_PREFIX) {
