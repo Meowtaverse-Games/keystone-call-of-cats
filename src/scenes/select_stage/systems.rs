@@ -5,7 +5,9 @@ use bevy_fluent::prelude::Localization;
 use super::components::*;
 use crate::{
     resources::{
-        asset_store::AssetStore, design_resolution::LetterboxOffsets, game_state::GameState,
+        asset_store::AssetStore,
+        design_resolution::{LetterboxOffsets, LetterboxVisibility},
+        game_state::GameState,
         stage_catalog::*, stage_progress::*,
     },
     scenes::{assets::FontKey, stage::StageProgressionState},
@@ -109,6 +111,7 @@ pub fn setup(
     mut commands: Commands,
     mut clear_color: ResMut<ClearColor>,
     mut letterbox_offsets: ResMut<LetterboxOffsets>,
+    mut letterbox_visibility: ResMut<LetterboxVisibility>,
     asset_store: Res<AssetStore>,
     catalog: Res<StageCatalog>,
     progress: Res<StageProgress>,
@@ -117,6 +120,7 @@ pub fn setup(
     clear_color.0 = background_color();
     letterbox_offsets.left = 0.0;
     letterbox_offsets.right = 0.0;
+    letterbox_visibility.0 = false; // Hide letterbox only in SelectStage
 
     let font = if let Some(handle) = asset_store.font(FontKey::Default) {
         handle
@@ -172,11 +176,17 @@ pub fn setup(
     });
 }
 
-pub fn cleanup(mut commands: Commands, roots: Query<Entity, With<StageSelectRoot>>) {
+pub fn cleanup(
+    mut commands: Commands,
+    roots: Query<Entity, With<StageSelectRoot>>,
+    mut letterbox_visibility: ResMut<LetterboxVisibility>,
+) {
     for entity in roots.iter() {
         commands.entity(entity).despawn();
     }
     commands.remove_resource::<StageSelectState>();
+    // Restore visibility for other scenes
+    letterbox_visibility.0 = true;
 }
 
 pub fn handle_back_button(

@@ -1,5 +1,5 @@
-game-title-full = キーストーン：コール・オブ・キャッツ
-game-title-inline = キーストーン・コール・オブ・キャッツ
+#game-title-full = キーストーン：コール・オブ・キャッツ
+#game-title-inline = キーストーン・コール・オブ・キャッツ
 
 stage-select-badge-experimental = エクスペリメンタル版
 stage-select-stats-unlocked = 解放済

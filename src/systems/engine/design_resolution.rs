@@ -3,7 +3,9 @@ use bevy::{
     window::{PrimaryWindow, WindowResized},
 };
 
-use crate::resources::design_resolution::{LetterboxOffsets, MaskColor, MaskSide, ScaledViewport};
+use crate::resources::design_resolution::{
+    LetterboxOffsets, LetterboxVisibility, MaskColor, MaskSide, ScaledViewport,
+};
 
 pub fn spawn_letterbox_masks(mut commands: Commands, mask_color: Res<MaskColor>) {
     let color = mask_color.0;
@@ -27,6 +29,7 @@ pub fn spawn_letterbox_masks(mut commands: Commands, mask_color: Res<MaskColor>)
                 ..default()
             },
             BackgroundColor(color),
+            Visibility::Visible,
         ));
         parent.spawn((
             MaskSide::Right,
@@ -37,6 +40,7 @@ pub fn spawn_letterbox_masks(mut commands: Commands, mask_color: Res<MaskColor>)
                 ..default()
             },
             BackgroundColor(color),
+            Visibility::Visible,
         ));
         parent.spawn((
             MaskSide::Top,
@@ -47,6 +51,7 @@ pub fn spawn_letterbox_masks(mut commands: Commands, mask_color: Res<MaskColor>)
                 ..default()
             },
             BackgroundColor(color),
+            Visibility::Visible,
         ));
         parent.spawn((
             MaskSide::Bottom,
@@ -57,6 +62,7 @@ pub fn spawn_letterbox_masks(mut commands: Commands, mask_color: Res<MaskColor>)
                 ..default()
             },
             BackgroundColor(color),
+            Visibility::Visible,
         ));
     });
 }
@@ -67,8 +73,9 @@ pub fn update_letterbox(
     mut resize_events: MessageReader<WindowResized>,
     windows: Query<&Window, With<PrimaryWindow>>,
     offsets: Res<LetterboxOffsets>,
+    visible: Res<LetterboxVisibility>,
     mut viewport: ResMut<ScaledViewport>,
-    mut mask_sides: Query<(&MaskSide, &mut Node), With<MaskSide>>,
+    mut mask_sides: Query<(&MaskSide, &mut Node, &mut Visibility), With<MaskSide>>,
 ) {
     let mut should_update = *first_run || offsets.is_changed();
     for _ in resize_events.read() {
@@ -126,7 +133,14 @@ pub fn update_letterbox(
     let content_left = left_margin;
     let content_right = content_left + width;
 
-    for (side, mut node) in mask_sides.iter_mut() {
+    for (side, mut node, mut vis) in mask_sides.iter_mut() {
+        // Toggle visibility first so UI reflects the desired state even if sizes don't change.
+        *vis = if visible.0 {
+            Visibility::Visible
+        } else {
+            Visibility::Hidden
+        };
+
         match side {
             MaskSide::Left => {
                 node.width = Val::Px(content_left.max(0.0));

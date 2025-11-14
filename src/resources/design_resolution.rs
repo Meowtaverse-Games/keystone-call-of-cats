@@ -3,6 +3,10 @@ use bevy::prelude::*;
 #[derive(Resource, Copy, Clone)]
 pub struct MaskColor(pub Color);
 
+/// Controls whether the letterbox mask UI is visible.
+#[derive(Resource, Copy, Clone, Debug)]
+pub struct LetterboxVisibility(pub bool);
+
 #[derive(Resource, Copy, Clone, Default, Debug)]
 pub struct LetterboxOffsets {
     pub left: f32,
