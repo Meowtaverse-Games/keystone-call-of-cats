@@ -1,7 +1,9 @@
 use bevy::prelude::*;
 
 use crate::{
-    resources::design_resolution::{LetterboxOffsets, LetterboxVisibility, MaskColor, ScaledViewport},
+    resources::design_resolution::{
+        LetterboxOffsets, LetterboxVisibility, MaskColor, ScaledViewport,
+    },
     systems::engine::design_resolution::{spawn_letterbox_masks, update_letterbox},
 };
 
