@@ -248,7 +248,7 @@ pub fn ui(
                                 editor.controls_enabled = false;
                                 editor.pending_player_reset = true;
                                 editor.last_run_feedback =
-                                    Some(tr(&localization, "stage-ui-feedback.stopped"));
+                                    Some(tr(&localization, "stage-ui-feedback-stopped"));
                                 editor.stage_cleared = false;
                                 editor.stage_clear_popup_open = false;
                             } else {
@@ -262,7 +262,7 @@ pub fn ui(
                                         editor.last_commands.clear();
                                         editor.last_run_feedback = Some(tr(
                                             &localization,
-                                            "stage-ui-feedback.step-started",
+                                            "stage-ui-feedback-step-started",
                                         ));
                                         editor.controls_enabled = true;
                                         editor.pending_player_reset = true;
@@ -312,7 +312,7 @@ pub fn ui(
                     let summary = summarize_commands(&editor.last_commands);
                     let label = tr_with_args(
                         &localization,
-                        "stage-ui-commands.list",
+                        "stage-ui-commands-list",
                         &[("summary", summary.as_str())],
                     );
                     ui.label(label);

@@ -98,7 +98,7 @@ pub fn spawn_player(
     });
 }
 
-pub fn animate_character(
+pub fn animate_player(
     time: Res<Time>,
     mut query: Query<(&mut Sprite, &mut PlayerAnimation, &PlayerMotion), With<Player>>,
 ) {
@@ -133,13 +133,74 @@ pub fn animate_character(
     }
 }
 
-type MoveCharacterComponents<'w> = (
+type MovePlayerComponents<'w> = (
     &'w Transform,
     &'w mut LinearVelocity,
     &'w mut PlayerMotion,
     &'w mut Sprite,
     Option<&'w CollidingEntities>,
 );
+
+pub fn move_player(
+    editor_state: Res<ScriptEditorState>,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    mut query: Query<MovePlayerComponents<'_>, With<Player>>,
+) {
+    let Ok((transform, mut velocity, mut motion, mut sprite, colliding)) = query.single_mut()
+    else {
+        return;
+    };
+
+    info!("Player position: {:?}", transform.translation);
+
+    if !editor_state.controls_enabled {
+        velocity.x = 0.0;
+        motion.is_moving = false;
+        sprite.flip_x = motion.direction < 0.0;
+
+        info!("Player movement disabled");
+        return;
+    }
+
+    let mut input_direction: f32 = 0.0;
+
+    if keyboard_input.pressed(KeyCode::ArrowRight) {
+        input_direction += 1.0;
+    }
+
+    if keyboard_input.pressed(KeyCode::ArrowLeft) {
+        input_direction -= 1.0;
+    }
+
+    let mut desired_velocity_x = 0.0;
+    let mut facing_direction = motion.direction;
+
+    if input_direction.abs() > f32::EPSILON {
+        let direction = input_direction.signum();
+        desired_velocity_x = direction * motion.speed;
+        facing_direction = direction;
+    }
+
+    velocity.x = desired_velocity_x;
+    motion.is_moving = desired_velocity_x.abs() > f32::EPSILON;
+    motion.direction = facing_direction;
+
+    let grounded = colliding
+        .map(|contacts| !contacts.is_empty())
+        .unwrap_or(false)
+        || transform.translation.y <= motion.ground_y + 1.0;
+
+    if grounded && velocity.y.abs() < 1.0 {
+        motion.is_jumping = false;
+    }
+
+    if keyboard_input.just_pressed(KeyCode::Space) && !motion.is_jumping && grounded {
+        velocity.y = motion.jump_speed;
+        motion.is_jumping = true;
+    }
+
+    sprite.flip_x = motion.direction < 0.0;
+}
 
 type ResetPlayerComponents<'w> = (
     &'w mut Transform,
@@ -149,60 +210,6 @@ type ResetPlayerComponents<'w> = (
     &'w mut Sprite,
     &'w PlayerSpawnState,
 );
-
-pub fn move_character(
-    editor_state: Res<ScriptEditorState>,
-    keyboard_input: Res<ButtonInput<KeyCode>>,
-    mut query: Query<MoveCharacterComponents<'_>, With<Player>>,
-) {
-    for (transform, mut velocity, mut motion, mut sprite, colliding) in &mut query {
-        if !editor_state.controls_enabled {
-            velocity.x = 0.0;
-            motion.is_moving = false;
-            sprite.flip_x = motion.direction < 0.0;
-            continue;
-        }
-
-        let mut input_direction: f32 = 0.0;
-
-        if keyboard_input.pressed(KeyCode::ArrowRight) {
-            input_direction += 1.0;
-        }
-
-        if keyboard_input.pressed(KeyCode::ArrowLeft) {
-            input_direction -= 1.0;
-        }
-
-        let mut desired_velocity_x = 0.0;
-        let mut facing_direction = motion.direction;
-
-        if input_direction.abs() > f32::EPSILON {
-            let direction = input_direction.signum();
-            desired_velocity_x = direction * motion.speed;
-            facing_direction = direction;
-        }
-
-        velocity.x = desired_velocity_x;
-        motion.is_moving = desired_velocity_x.abs() > f32::EPSILON;
-        motion.direction = facing_direction;
-
-        let grounded = colliding
-            .map(|contacts| !contacts.is_empty())
-            .unwrap_or(false)
-            || transform.translation.y <= motion.ground_y + 1.0;
-
-        if grounded && velocity.y.abs() < 1.0 {
-            motion.is_jumping = false;
-        }
-
-        if keyboard_input.just_pressed(KeyCode::Space) && !motion.is_jumping && grounded {
-            velocity.y = motion.jump_speed;
-            motion.is_jumping = true;
-        }
-
-        sprite.flip_x = motion.direction < 0.0;
-    }
-}
 
 pub fn reset_player_position(
     mut editor_state: ResMut<ScriptEditorState>,
