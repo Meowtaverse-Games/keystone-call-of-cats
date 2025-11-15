@@ -1,4 +1,4 @@
-use bevy::{app::AppExit, prelude::*, ui::BorderRadius};
+use bevy::{app::AppExit, asset::ron::de, prelude::*, ui::BorderRadius};
 use bevy_ecs::hierarchy::ChildSpawnerCommands;
 use bevy_fluent::prelude::Localization;
 
@@ -18,7 +18,6 @@ use crate::{
 const CARDS_PER_PAGE: usize = 3;
 const CARD_WIDTH: f32 = 360.0;
 const CARD_GAP: f32 = 32.0;
-const SECTION_SPACING: f32 = 20.0;
 
 #[derive(Resource)]
 pub struct StageSelectState {
@@ -85,25 +84,18 @@ struct StageSummary {
     total: usize,
     unlocked: usize,
     locked: usize,
-    highlight: String,
 }
 
 impl StageSummary {
-    fn from_entries(entries: &[StageEntry], localization: &Localization) -> Self {
+    fn from_entries(entries: &[StageEntry]) -> Self {
         let total = entries.len();
         let unlocked = entries.iter().filter(|entry| entry.playable).count();
         let locked = total.saturating_sub(unlocked);
-        let highlight = entries
-            .iter()
-            .find(|entry| entry.playable)
-            .map(|entry| localized_stage_name(localization, entry.meta.id, &entry.meta.title))
-            .unwrap_or_else(|| tr(localization, "stage-select-highlight-placeholder"));
 
         Self {
             total,
             unlocked,
             locked,
-            highlight,
         }
     }
 }
@@ -137,7 +129,7 @@ pub fn setup(
         .iter()
         .map(|m| StageEntry::from(&progress, m))
         .collect();
-    let summary = StageSummary::from_entries(&entries, &localization);
+    let summary = StageSummary::from_entries(&entries);
     let state = StageSelectState::new(entries.len(), CARDS_PER_PAGE);
     let current_page_number = state.current_page + 1;
     let total_pages = state.total_pages();
@@ -154,7 +146,7 @@ pub fn setup(
                 justify_content: JustifyContent::SpaceBetween,
                 align_items: AlignItems::Stretch,
                 padding: UiRect::axes(Val::Px(48.0), Val::Px(32.0)),
-                row_gap: Val::Px(SECTION_SPACING * 1.25),
+                // row_gap: Val::Px(SECTION_SPACING * 1.25),
                 ..default()
             },
             BackgroundColor(background_color()),
@@ -163,15 +155,7 @@ pub fn setup(
 
     commands.entity(root).with_children(|parent| {
         spawn_glow_layers(parent);
-        spawn_hero_section(
-            parent,
-            &font,
-            &display_font,
-            &summary,
-            &localization,
-            current_page_number,
-            total_pages,
-        );
+        spawn_hero_section(parent, &font, &display_font, &summary, &localization);
         spawn_stage_cards(parent, &entries, &font, &localization);
         spawn_bottom_bar(parent, &font, &page_text);
     });
@@ -328,8 +312,6 @@ fn spawn_hero_section(
     display_font: &Handle<Font>,
     summary: &StageSummary,
     localization: &Localization,
-    current_page: usize,
-    total_pages: usize,
 ) {
     parent
         .spawn(Node {
@@ -362,14 +344,6 @@ fn spawn_hero_section(
             })
             .with_children(|content| {
                 spawn_hero_copy(content, font, display_font, summary, localization);
-                spawn_highlight_card(
-                    content,
-                    font,
-                    summary,
-                    localization,
-                    current_page,
-                    total_pages,
-                );
             });
         });
 }
@@ -515,98 +489,6 @@ fn spawn_stat_card(
         });
 }
 
-fn spawn_highlight_card(
-    parent: &mut ChildSpawnerCommands,
-    font: &Handle<Font>,
-    summary: &StageSummary,
-    localization: &Localization,
-    current_page: usize,
-    total_pages: usize,
-) {
-    parent
-        .spawn((
-            Node {
-                flex_grow: 1.0,
-                padding: UiRect::all(Val::Px(28.0)),
-                flex_direction: FlexDirection::Column,
-                row_gap: Val::Px(14.0),
-                align_self: AlignSelf::Stretch,
-                ..default()
-            },
-            BorderRadius::all(Val::Px(32.0)),
-            BackgroundColor(hero_card_background()),
-        ))
-        .with_children(|card| {
-            let featured_label = tr(localization, "stage-select-featured-label");
-            card.spawn(Text::new(featured_label))
-                .insert(TextFont {
-                    font: font.clone(),
-                    font_size: 18.0,
-                    ..default()
-                })
-                .insert(TextColor(secondary_text_color()));
-
-            card.spawn(Text::new(summary.highlight.clone()))
-                .insert(TextFont {
-                    font: font.clone(),
-                    font_size: 34.0,
-                    ..default()
-                })
-                .insert(TextColor(primary_text_color()));
-
-            let description = tr(localization, "stage-select-featured-description");
-            card.spawn(Text::new(description))
-                .insert(TextFont {
-                    font: font.clone(),
-                    font_size: 20.0,
-                    ..default()
-                })
-                .insert(TextColor(secondary_text_color()));
-
-            card.spawn(Node {
-                flex_direction: FlexDirection::Row,
-                column_gap: Val::Px(12.0),
-                ..default()
-            })
-            .with_children(|chips| {
-                let current_str = current_page.to_string();
-                let total_str = total_pages.to_string();
-                let pages_chip = tr_with_args(
-                    localization,
-                    "stage-select-highlight-pages",
-                    &[
-                        ("current", current_str.as_str()),
-                        ("total", total_str.as_str()),
-                    ],
-                );
-                spawn_highlight_chip(chips, font, &pages_chip);
-                let mode_chip = tr(localization, "stage-select-highlight-mode");
-                spawn_highlight_chip(chips, font, &mode_chip);
-            });
-        });
-}
-
-fn spawn_highlight_chip(parent: &mut ChildSpawnerCommands, font: &Handle<Font>, label: &str) {
-    parent
-        .spawn((
-            Node {
-                padding: UiRect::axes(Val::Px(18.0), Val::Px(8.0)),
-                ..default()
-            },
-            BorderRadius::all(Val::Px(999.0)),
-            BackgroundColor(badge_background_color()),
-        ))
-        .with_children(|chip| {
-            chip.spawn(Text::new(label))
-                .insert(TextFont {
-                    font: font.clone(),
-                    font_size: 16.0,
-                    ..default()
-                })
-                .insert(TextColor(primary_text_color()));
-        });
-}
-
 fn spawn_back_button(
     parent: &mut ChildSpawnerCommands,
     font: &Handle<Font>,
@@ -665,6 +547,10 @@ fn spawn_stage_cards(
             column_gap: Val::Px(CARD_GAP),
             justify_content: JustifyContent::FlexStart,
             align_items: AlignItems::FlexStart,
+            margin: UiRect {
+                top: Val::Px(20.0), 
+                ..default()
+            },
             ..default()
         })
         .with_children(|grid| {
@@ -842,7 +728,7 @@ fn spawn_bottom_bar(parent: &mut ChildSpawnerCommands, font: &Handle<Font>, init
                 justify_content: JustifyContent::Center,
                 align_items: AlignItems::Center,
                 column_gap: Val::Px(20.0),
-                padding: UiRect::axes(Val::Px(28.0), Val::Px(18.0)),
+                padding: UiRect::axes(Val::Px(8.0), Val::Px(8.0)),
                 border: UiRect::all(Val::Px(1.0)),
                 ..default()
             },
@@ -933,10 +819,6 @@ fn card_border_color() -> Color {
 
 fn preview_background() -> Color {
     Color::srgb(0.14, 0.17, 0.31)
-}
-
-fn hero_card_background() -> Color {
-    Color::srgb(0.11, 0.14, 0.28)
 }
 
 fn nav_background_color() -> Color {
