@@ -357,10 +357,7 @@ fn try_build_random_path(
         let Some(goal_target) = random_goal_target(&mut rng, start_exit, goal_template) else {
             continue;
         };
-        println!(
-            "Trying goal at origin {:?}, entry {:?}",
-            goal_target.origin, goal_target.entry
-        );
+
         if let Some(mut mid_chunks) =
             find_path_to_goal(&mut rng, mid_chunks, start_exit, goal_target.entry)
         {

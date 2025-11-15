@@ -1,5 +1,6 @@
 use bevy::color::palettes::css::*;
 use bevy::prelude::*;
+use bevy_fluent::prelude::Localization;
 
 use super::components::TitleUI;
 use crate::{
@@ -10,6 +11,7 @@ use crate::{
         launch_profile::LaunchProfile,
     },
     scenes::assets::FontKey,
+    util::localization::tr,
 };
 
 pub fn setup(
@@ -19,6 +21,7 @@ pub fn setup(
     launch_profile: Res<LaunchProfile>,
     asset_store: Res<AssetStore>,
     mut next_state: ResMut<NextState<GameState>>,
+    localization: Res<Localization>,
 ) {
     if launch_profile.skip_title {
         info!("Skipping title scene");
@@ -51,6 +54,7 @@ pub fn setup(
             })
             .with_children(|center| {
                 center.spawn(Node { ..default() }).with_children(|stack| {
+                    let title_text = tr(&*localization, "game-title-full");
                     stack.spawn((
                         Node {
                             position_type: PositionType::Absolute,
@@ -58,7 +62,7 @@ pub fn setup(
                             top: Val::Px(2.0),
                             ..default()
                         },
-                        Text::new("KEYSTONE: CALL OF CATS"),
+                        Text::new(title_text.clone()),
                         TextFont {
                             font: asset_store.font(FontKey::Title).unwrap(),
                             font_size: 40.0,
@@ -70,7 +74,7 @@ pub fn setup(
 
                     stack.spawn((
                         // ZIndex::Local(1),
-                        Text::new("KEYSTONE: CALL OF CATS"),
+                        Text::new(title_text),
                         TextFont {
                             font: asset_store.font(FontKey::Title).unwrap(),
                             font_size: 40.0,

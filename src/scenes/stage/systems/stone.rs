@@ -13,6 +13,11 @@ pub struct StoneCommandMessage {
     pub commands: Vec<ScriptCommand>,
 }
 
+#[derive(Message, Clone)]
+pub struct StoneAppendCommandMessage {
+    pub command: ScriptCommand,
+}
+
 #[derive(Component, Default)]
 pub(crate) struct StoneCommandState {
     queue: VecDeque<ScriptCommand>,
@@ -96,6 +101,19 @@ pub fn handle_stone_messages(
         state.queue.clear();
         state.queue.extend(msg.commands.iter().cloned());
         state.current = None;
+    }
+}
+
+pub fn handle_stone_append_messages(
+    mut reader: MessageReader<StoneAppendCommandMessage>,
+    mut query: Query<&mut StoneCommandState, With<StoneRune>>,
+) {
+    let Ok(mut state) = query.single_mut() else {
+        return;
+    };
+
+    for msg in reader.read() {
+        state.queue.push_back(msg.command.clone());
     }
 }
 

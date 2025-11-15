@@ -2,10 +2,12 @@ use std::env;
 
 use bevy::asset::AssetPlugin;
 use bevy::{camera::ScalingMode, prelude::*};
+use bevy_fluent::prelude::*;
 
 use bevy_egui::EguiPlugin;
 
 use avian2d::{debug_render::PhysicsDebugPlugin, prelude::*};
+use unic_langid::langid;
 
 mod config;
 mod plugins;
@@ -16,7 +18,7 @@ mod util;
 
 use crate::{
     config::*,
-    plugins::{steam::show_steam_app_info, *},
+    plugins::*,
     resources::{
         chunk_grammar_map,
         game_state::GameState,
@@ -42,13 +44,15 @@ fn main() {
             return;
         }
         LaunchType::SteamAppInfo => {
-            show_steam_app_info(steam_app_id);
+            steam::show_steam_app_info(steam_app_id);
             return;
         }
         _ => {}
     }
 
     let mut app = App::new();
+
+    app.insert_resource(Locale::new(langid!("ja-JP")).with_default(langid!("en-US")));
 
     app.add_plugins((
         SteamPlugin::new(steam_app_id),
@@ -69,6 +73,7 @@ fn main() {
             })
             .set(ImagePlugin::default_nearest()),
         PhysicsPlugins::default(),
+        FluentPlugin,
     ));
 
     if launch_profile.render_physics {

@@ -1,7 +1,11 @@
 use std::time::Duration;
 
-use bevy::prelude::*;
+use bevy::{
+    asset::{LoadState, LoadedFolder},
+    prelude::*,
+};
 use bevy_egui::{EguiContexts, egui};
+use bevy_fluent::prelude::*;
 
 use crate::{
     resources::{
@@ -18,6 +22,9 @@ use super::components::BootRoot;
 pub struct BootTimer {
     timer: Timer,
 }
+
+#[derive(Resource)]
+pub struct LocaleFolder(Handle<LoadedFolder>);
 
 pub fn setup(
     asset_server: Res<AssetServer>,
@@ -40,6 +47,9 @@ pub fn setup(
         },
         Transform::default().with_scale(Vec3::splat(scaled_viewport.scale)),
     ));
+
+    let locale_folder = asset_server.load_folder("locales");
+    commands.insert_resource(LocaleFolder(locale_folder));
 
     let mills = if !launch_profile.skip_boot { 1200 } else { 0 };
     commands.insert_resource(BootTimer {
@@ -95,7 +105,9 @@ pub fn setup_font(
 #[derive(Default)]
 pub struct Loaded(bool);
 
+#[allow(clippy::too_many_arguments)]
 pub fn update(
+    mut commands: Commands,
     mut reader: MessageReader<AssetGroupLoaded>,
     mut loaded: Local<Loaded>,
     mut boot_timer: ResMut<BootTimer>,
@@ -103,6 +115,10 @@ pub fn update(
     scaled_viewport: ResMut<ScaledViewport>,
     mut next_state: ResMut<NextState<GameState>>,
     mut boot_ui: Query<(&BootRoot, &mut Transform)>,
+    asset_server: Res<AssetServer>,
+    localization_builder: LocalizationBuilder,
+    localization_folder: Option<Res<LocaleFolder>>,
+    localization: Option<Res<Localization>>,
 ) {
     if let Ok((_, mut transform)) = boot_ui.single_mut() {
         transform.scale = Vec3::splat(scaled_viewport.scale);
@@ -113,8 +129,22 @@ pub fn update(
         loaded.0 = true;
     }
 
+    let mut localization_ready = localization.is_some();
+    if !localization_ready
+        && let Some(folder) = localization_folder
+        && matches!(
+            asset_server.get_load_state(&folder.0),
+            Some(LoadState::Loaded)
+        )
+    {
+        let localization_resource = localization_builder.build(&folder.0);
+        commands.insert_resource(localization_resource);
+        commands.remove_resource::<LocaleFolder>();
+        localization_ready = true;
+    }
+
     boot_timer.timer.tick(time.delta());
-    if boot_timer.timer.is_finished() && loaded.0 {
+    if boot_timer.timer.is_finished() && loaded.0 && localization_ready {
         info!("Boot timer finished");
         next_state.set(GameState::SelectStage);
     }

@@ -3,16 +3,38 @@ use bevy_egui::{
     EguiContexts,
     egui::{self, Align2, Event, FontId, FontSelection},
 };
+use bevy_fluent::prelude::Localization;
 
 use crate::{
     resources::{
         design_resolution::LetterboxOffsets,
         game_state::GameState,
         script_engine::{Language, ScriptExecutor},
+        stage_catalog::StageId,
     },
-    scenes::stage::systems::StoneCommandMessage,
-    util::script_types::ScriptCommand,
+    scenes::stage::systems::{StoneAppendCommandMessage, StoneCommandMessage},
+    util::{
+        localization::{script_error_message, tr, tr_with_args},
+        script_types::{ScriptCommand, ScriptProgram},
+    },
 };
+
+#[derive(Clone, Debug)]
+pub struct TutorialDialog {
+    title_key: &'static str,
+    line_keys: &'static [&'static str],
+    is_open: bool,
+}
+
+impl TutorialDialog {
+    fn new(title_key: &'static str, line_keys: &'static [&'static str]) -> Self {
+        Self {
+            title_key,
+            line_keys,
+            is_open: true,
+        }
+    }
+}
 
 #[derive(Resource, Default)]
 pub struct ScriptEditorState {
@@ -21,16 +43,22 @@ pub struct ScriptEditorState {
     pub last_action_was_running: bool,
     pub last_run_feedback: Option<String>,
     pub last_commands: Vec<ScriptCommand>,
+    pub active_program: Option<Box<dyn ScriptProgram>>,
     pub controls_enabled: bool,
     pub pending_player_reset: bool,
     pub stage_cleared: bool,
     pub stage_clear_popup_open: bool,
+    pub tutorial_dialog: Option<TutorialDialog>,
 }
 
 impl ScriptEditorState {
     fn apply_action(&mut self, action: EditorMenuAction, was_running: bool) {
         self.last_action = Some(action);
         self.last_action_was_running = was_running;
+    }
+
+    pub fn set_tutorial_for_stage(&mut self, stage_id: StageId) {
+        self.tutorial_dialog = tutorial_dialog_for_stage(stage_id);
     }
 }
 
@@ -44,12 +72,12 @@ pub enum EditorMenuAction {
 impl EditorMenuAction {
     const ALL: [Self; 3] = [Self::LoadExample, Self::SaveBuffer, Self::RunScript];
 
-    fn label(self, is_running: bool) -> &'static str {
+    fn label_key(self, is_running: bool) -> &'static str {
         match self {
-            Self::LoadExample => "Load",
-            Self::SaveBuffer => "Save",
-            Self::RunScript if is_running => "Stop",
-            Self::RunScript => "Run",
+            Self::LoadExample => "stage-ui-menu-load",
+            Self::SaveBuffer => "stage-ui-menu-save",
+            Self::RunScript if is_running => "stage-ui-menu-stop",
+            Self::RunScript => "stage-ui-menu-run",
         }
     }
 
@@ -69,12 +97,12 @@ impl EditorMenuAction {
         }
     }
 
-    fn status_text(self, was_running: bool) -> &'static str {
+    fn status_key(self, was_running: bool) -> &'static str {
         match self {
-            Self::LoadExample => "メニュー「ロード（F1）」を選択しました。",
-            Self::SaveBuffer => "メニュー「セーブ（F2）」を選択しました。",
-            Self::RunScript if was_running => "メニュー「停止（F3）」を選択しました。",
-            Self::RunScript => "メニュー「実行（F3）」を選択しました。",
+            Self::LoadExample => "stage-ui-status-load",
+            Self::SaveBuffer => "stage-ui-status-save",
+            Self::RunScript if was_running => "stage-ui-status-stop",
+            Self::RunScript => "stage-ui-status-run",
         }
     }
 }
@@ -94,8 +122,8 @@ fn summarize_commands(commands: &[ScriptCommand]) -> String {
         .join(", ")
 }
 
-pub fn init_editor_state(commands: &mut Commands) {
-    commands.insert_resource(ScriptEditorState {
+pub fn init_editor_state(commands: &mut Commands, stage_id: StageId) {
+    let mut editor_state = ScriptEditorState {
         buffer: String::from(
             "move(\"left\");\n\
              sleep(1.0);\n\
@@ -105,7 +133,9 @@ pub fn init_editor_state(commands: &mut Commands) {
              }\n",
         ),
         ..default()
-    });
+    };
+    editor_state.set_tutorial_for_stage(stage_id);
+    commands.insert_resource(editor_state);
 }
 
 pub fn ui(
@@ -113,6 +143,7 @@ pub fn ui(
     mut letterbox_offsets: ResMut<LetterboxOffsets>,
     mut editor: ResMut<ScriptEditorState>,
     script_executor: Res<ScriptExecutor>,
+    localization: Res<Localization>,
     mut stone_writer: MessageWriter<StoneCommandMessage>,
     mut next_state: ResMut<NextState<GameState>>,
 ) {
@@ -183,7 +214,8 @@ pub fn ui(
         })
         .show(ctx, |ui| {
             ui.vertical(|ui| {
-                if ui.button("タイトルに戻る").clicked() {
+                let back_label = tr(&localization, "stage-ui-back-to-title");
+                if ui.button(back_label.as_str()).clicked() {
                     editor.controls_enabled = false;
                     editor.pending_player_reset = false;
                     editor.stage_cleared = false;
@@ -199,11 +231,9 @@ pub fn ui(
                     ui.spacing_mut().item_spacing.x = 8.0;
 
                     for action in EditorMenuAction::ALL {
-                        let label = format!(
-                            "{} ({})",
-                            action.label(editor.controls_enabled),
-                            action.key_text()
-                        );
+                        let button_label =
+                            tr(&localization, action.label_key(editor.controls_enabled));
+                        let label = format!("{} ({})", button_label, action.key_text());
                         if ui.button(label).clicked() {
                             pending_action = Some(action);
                         }
@@ -217,39 +247,38 @@ pub fn ui(
                             if was_running {
                                 editor.controls_enabled = false;
                                 editor.pending_player_reset = true;
-                                editor.last_run_feedback = Some("実行を停止しました。".to_string());
+                                editor.last_run_feedback =
+                                    Some(tr(&localization, "stage-ui-feedback.stopped"));
                                 editor.stage_cleared = false;
                                 editor.stage_clear_popup_open = false;
                             } else {
-                                match script_executor.run(Language::Rhai, &editor.buffer) {
-                                    Ok(commands) => {
-                                        let summary = if commands.is_empty() {
-                                            "命令は返されませんでした。".to_string()
-                                        } else {
-                                            format!(
-                                                "{}件の命令: {}",
-                                                commands.len(),
-                                                summarize_commands(&commands)
-                                            )
-                                        };
-                                        stone_writer.write(StoneCommandMessage {
-                                            commands: commands.clone(),
-                                        });
-                                        editor.last_commands = commands;
-                                        editor.last_run_feedback = Some(summary);
+                                match script_executor.compile_step(Language::Rhai, &editor.buffer) {
+                                    Ok(program) => {
+                                        // Clear any existing queue on the Stone
+                                        stone_writer
+                                            .write(StoneCommandMessage { commands: vec![] });
+
+                                        editor.active_program = Some(program);
+                                        editor.last_commands.clear();
+                                        editor.last_run_feedback = Some(tr(
+                                            &localization,
+                                            "stage-ui-feedback.step-started",
+                                        ));
                                         editor.controls_enabled = true;
                                         editor.pending_player_reset = true;
                                         editor.stage_cleared = false;
                                         editor.stage_clear_popup_open = false;
                                     }
                                     Err(err) => {
+                                        editor.active_program = None;
                                         editor.last_commands.clear();
-                                        editor.last_run_feedback = Some(err.to_string());
+                                        editor.last_run_feedback =
+                                            Some(script_error_message(&localization, &err));
                                         editor.controls_enabled = false;
                                         editor.pending_player_reset = false;
                                         editor.stage_cleared = false;
                                         editor.stage_clear_popup_open = false;
-                                        warn!("Failed to execute script: {}", err);
+                                        warn!("Failed to compile script: {}", err);
                                     }
                                 }
                             }
@@ -267,7 +296,11 @@ pub fn ui(
 
                 if let Some(action) = editor.last_action {
                     info!("Editor action: {:?}", action);
-                    ui.label(action.status_text(editor.last_action_was_running));
+                    let status = tr(
+                        &localization,
+                        action.status_key(editor.last_action_was_running),
+                    );
+                    ui.label(status);
                     editor.last_action = None;
                 }
 
@@ -276,10 +309,13 @@ pub fn ui(
                 }
 
                 if !editor.last_commands.is_empty() {
-                    ui.label(format!(
-                        "命令: {}",
-                        summarize_commands(&editor.last_commands)
-                    ));
+                    let summary = summarize_commands(&editor.last_commands);
+                    let label = tr_with_args(
+                        &localization,
+                        "stage-ui-commands.list",
+                        &[("summary", summary.as_str())],
+                    );
+                    ui.label(label);
                 }
 
                 ui.separator();
@@ -315,20 +351,59 @@ pub fn ui(
         .width()
         .clamp(min_width, max_width);
 
+    if let Some(tutorial) = editor.tutorial_dialog.as_mut()
+        && tutorial.is_open
+    {
+        let mut open = tutorial.is_open;
+        let mut request_close = false;
+        let window_width = if screen_width.is_finite() && screen_width > 0.0 {
+            screen_width.min(420.0)
+        } else {
+            320.0
+        };
+        let title = tr(&localization, tutorial.title_key);
+        egui::Window::new(title)
+            .anchor(Align2::CENTER_TOP, egui::Vec2::new(0.0, 20.0))
+            .resizable(false)
+            .collapsible(false)
+            .default_width(window_width)
+            .open(&mut open)
+            .show(ctx, |ui| {
+                for line_key in tutorial.line_keys {
+                    let line = tr(&localization, line_key);
+                    ui.label(line);
+                }
+                ui.add_space(8.0);
+                let controls = tr(&localization, "stage-ui-tutorial-controls-hint");
+                ui.label(controls);
+                ui.add_space(12.0);
+                let ok = tr(&localization, "stage-ui-tutorial-ok");
+                if ui.button(ok.as_str()).clicked() {
+                    request_close = true;
+                }
+            });
+
+        tutorial.is_open = open && !request_close;
+    }
+
     if editor.stage_clear_popup_open {
         let mut popup_open = editor.stage_clear_popup_open;
         let mut request_close = false;
-        egui::Window::new("ステージクリア!")
+        let window_title = tr(&localization, "stage-ui-clear-window-title");
+        egui::Window::new(window_title)
             .anchor(Align2::CENTER_CENTER, egui::Vec2::ZERO)
             .resizable(false)
             .collapsible(false)
             .open(&mut popup_open)
             .show(ctx, |ui| {
-                ui.heading("ゴールに到達しました。");
+                let heading = tr(&localization, "stage-ui-clear-heading");
+                ui.heading(heading);
                 ui.add_space(8.0);
-                ui.label("次の挑戦へ進む前に少し休憩しましょう。");
+                let body = tr(&localization, "stage-ui-clear-body");
+                ui.label(body);
                 ui.add_space(12.0);
-                if ui.button("OK").clicked() {
+                let ok = tr(&localization, "stage-ui-clear-ok");
+                if ui.button(ok.as_str()).clicked() {
                     request_close = true;
                 }
             });
@@ -338,5 +413,62 @@ pub fn ui(
 
     if (letterbox_offsets.left - left).abs() > f32::EPSILON {
         letterbox_offsets.left = left;
+    }
+}
+
+/// Each frame, pull at most one next command from the active program and append it to the Stone.
+pub fn tick_script_program(
+    mut editor: ResMut<ScriptEditorState>,
+    mut append_writer: MessageWriter<StoneAppendCommandMessage>,
+) {
+    if !editor.controls_enabled {
+        editor.active_program = None;
+        return;
+    }
+
+    let Some(program) = editor.active_program.as_mut() else {
+        return;
+    };
+
+    if let Some(command) = program.next() {
+        append_writer.write(StoneAppendCommandMessage {
+            command: command.clone(),
+        });
+        // Remember last commands for UI purposes (summary).
+        editor.last_commands.push(command);
+    } else {
+        // Program exhausted: stop execution.
+        editor.controls_enabled = false;
+        editor.active_program = None;
+    }
+}
+
+fn tutorial_dialog_for_stage(stage_id: StageId) -> Option<TutorialDialog> {
+    match stage_id.0 {
+        1 => Some(TutorialDialog::new(
+            "stage-ui-tutorial-stage1-title",
+            &[
+                "stage-ui-tutorial-stage1-line1",
+                "stage-ui-tutorial-stage1-line2",
+                "stage-ui-tutorial-stage1-line3",
+            ],
+        )),
+        2 => Some(TutorialDialog::new(
+            "stage-ui-tutorial-stage2-title",
+            &[
+                "stage-ui-tutorial-stage2-line1",
+                "stage-ui-tutorial-stage2-line2",
+                "stage-ui-tutorial-stage2-line3",
+            ],
+        )),
+        3 => Some(TutorialDialog::new(
+            "stage-ui-tutorial-stage3-title",
+            &[
+                "stage-ui-tutorial-stage3-line1",
+                "stage-ui-tutorial-stage3-line2",
+                "stage-ui-tutorial-stage3-line3",
+            ],
+        )),
+        _ => None,
     }
 }
