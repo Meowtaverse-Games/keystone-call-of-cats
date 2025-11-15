@@ -78,10 +78,11 @@ pub fn check_goal_completion(
             motion.is_moving = false;
             motion.is_jumping = false;
 
+            info!("Goal reached!");
             editor_state.controls_enabled = false;
             editor_state.stage_cleared = true;
             editor_state.pending_player_reset = false;
-            editor_state.last_run_feedback = Some(tr(&localization, "stage-ui-feedback.goal"));
+            editor_state.last_run_feedback = Some(tr(&localization, "stage-ui-feedback-goal"));
             editor_state.stage_clear_popup_open = true;
             break;
         }

@@ -22,8 +22,8 @@ impl Plugin for StageScenePlugin {
                     systems::tick_script_program,
                     systems::update_stage_root,
                     systems::reset_player_position,
-                    systems::animate_character,
-                    systems::move_character,
+                    systems::animate_player,
+                    systems::move_player,
                     systems::handle_stone_messages,
                     systems::handle_stone_append_messages,
                     systems::update_stone_behavior,
@@ -33,7 +33,7 @@ impl Plugin for StageScenePlugin {
             .add_systems(
                 Update,
                 systems::check_goal_completion
-                    .after(systems::move_character)
+                    .after(systems::move_player)
                     .run_if(in_state(GameState::Stage)),
             )
             .add_systems(
