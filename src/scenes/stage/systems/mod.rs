@@ -27,10 +27,11 @@ use crate::{
 pub use goal::check_goal_completion;
 pub use player::{animate_character, move_character, reset_player_position};
 pub use stone::{
-    StoneCommandMessage, carry_riders_with_stone, handle_stone_messages, update_stone_behavior,
+    StoneAppendCommandMessage, StoneCommandMessage, carry_riders_with_stone,
+    handle_stone_append_messages, handle_stone_messages, update_stone_behavior,
 };
 use ui::ScriptEditorState;
-pub use ui::ui;
+pub use ui::{tick_script_program, ui};
 
 #[derive(Resource, Default)]
 pub struct StageProgressionState {

@@ -75,6 +75,19 @@ impl fmt::Display for ScriptExecutionError {
 }
 
 /// Abstraction for executing player-authored scripts.
+#[allow(dead_code)]
 pub trait ScriptRunner: Send + Sync + 'static {
     fn run(&self, source: &str) -> Result<Vec<ScriptCommand>, ScriptExecutionError>;
+}
+
+/// Iterator-like interface for step-by-step command generation.
+/// Implementations should be cheap to `next` and honor safety limits internally.
+pub trait ScriptProgram: Send + Sync + 'static {
+    /// Produces the next command, or None if finished.
+    fn next(&mut self) -> Option<ScriptCommand>;
+}
+
+/// Compiles a script into a step-executable program.
+pub trait ScriptStepper: Send + Sync + 'static {
+    fn compile_step(&self, source: &str) -> Result<Box<dyn ScriptProgram>, ScriptExecutionError>;
 }

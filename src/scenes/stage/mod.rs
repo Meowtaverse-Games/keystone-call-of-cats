@@ -13,16 +13,19 @@ impl Plugin for StageScenePlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<systems::StageProgressionState>()
             .add_message::<systems::StoneCommandMessage>()
+            .add_message::<systems::StoneAppendCommandMessage>()
             .add_systems(OnEnter(GameState::Stage), systems::setup)
             .add_systems(OnExit(GameState::Stage), systems::cleanup)
             .add_systems(
                 Update,
                 (
+                    systems::tick_script_program,
                     systems::update_stage_root,
                     systems::reset_player_position,
                     systems::animate_character,
                     systems::move_character,
                     systems::handle_stone_messages,
+                    systems::handle_stone_append_messages,
                     systems::update_stone_behavior,
                 )
                     .run_if(in_state(GameState::Stage)),

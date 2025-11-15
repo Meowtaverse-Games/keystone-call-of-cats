@@ -12,10 +12,10 @@ use crate::{
         script_engine::{Language, ScriptExecutor},
         stage_catalog::StageId,
     },
-    scenes::stage::systems::StoneCommandMessage,
+    scenes::stage::systems::{StoneAppendCommandMessage, StoneCommandMessage},
     util::{
         localization::{script_error_message, tr, tr_with_args},
-        script_types::ScriptCommand,
+        script_types::{ScriptCommand, ScriptProgram},
     },
 };
 
@@ -43,6 +43,7 @@ pub struct ScriptEditorState {
     pub last_action_was_running: bool,
     pub last_run_feedback: Option<String>,
     pub last_commands: Vec<ScriptCommand>,
+    pub active_program: Option<Box<dyn ScriptProgram>>,
     pub controls_enabled: bool,
     pub pending_player_reset: bool,
     pub stage_cleared: bool,
@@ -73,10 +74,10 @@ impl EditorMenuAction {
 
     fn label_key(self, is_running: bool) -> &'static str {
         match self {
-            Self::LoadExample => "stage-ui-menu.load",
-            Self::SaveBuffer => "stage-ui-menu.save",
-            Self::RunScript if is_running => "stage-ui-menu.stop",
-            Self::RunScript => "stage-ui-menu.run",
+            Self::LoadExample => "stage-ui-menu-load",
+            Self::SaveBuffer => "stage-ui-menu-save",
+            Self::RunScript if is_running => "stage-ui-menu-stop",
+            Self::RunScript => "stage-ui-menu-run",
         }
     }
 
@@ -98,10 +99,10 @@ impl EditorMenuAction {
 
     fn status_key(self, was_running: bool) -> &'static str {
         match self {
-            Self::LoadExample => "stage-ui-status.load",
-            Self::SaveBuffer => "stage-ui-status.save",
-            Self::RunScript if was_running => "stage-ui-status.stop",
-            Self::RunScript => "stage-ui-status.run",
+            Self::LoadExample => "stage-ui-status-load",
+            Self::SaveBuffer => "stage-ui-status-save",
+            Self::RunScript if was_running => "stage-ui-status-stop",
+            Self::RunScript => "stage-ui-status-run",
         }
     }
 }
@@ -251,33 +252,25 @@ pub fn ui(
                                 editor.stage_cleared = false;
                                 editor.stage_clear_popup_open = false;
                             } else {
-                                match script_executor.run(Language::Rhai, &editor.buffer) {
-                                    Ok(commands) => {
-                                        let summary = if commands.is_empty() {
-                                            tr(&localization, "stage-ui-feedback.no-commands")
-                                        } else {
-                                            let command_summary = summarize_commands(&commands);
-                                            let count = commands.len().to_string();
-                                            tr_with_args(
-                                                &localization,
-                                                "stage-ui-feedback.commands",
-                                                &[
-                                                    ("count", count.as_str()),
-                                                    ("summary", command_summary.as_str()),
-                                                ],
-                                            )
-                                        };
-                                        stone_writer.write(StoneCommandMessage {
-                                            commands: commands.clone(),
-                                        });
-                                        editor.last_commands = commands;
-                                        editor.last_run_feedback = Some(summary);
+                                match script_executor.compile_step(Language::Rhai, &editor.buffer) {
+                                    Ok(program) => {
+                                        // Clear any existing queue on the Stone
+                                        stone_writer
+                                            .write(StoneCommandMessage { commands: vec![] });
+
+                                        editor.active_program = Some(program);
+                                        editor.last_commands.clear();
+                                        editor.last_run_feedback = Some(tr(
+                                            &localization,
+                                            "stage-ui-feedback.step-started",
+                                        ));
                                         editor.controls_enabled = true;
                                         editor.pending_player_reset = true;
                                         editor.stage_cleared = false;
                                         editor.stage_clear_popup_open = false;
                                     }
                                     Err(err) => {
+                                        editor.active_program = None;
                                         editor.last_commands.clear();
                                         editor.last_run_feedback =
                                             Some(script_error_message(&localization, &err));
@@ -285,7 +278,7 @@ pub fn ui(
                                         editor.pending_player_reset = false;
                                         editor.stage_cleared = false;
                                         editor.stage_clear_popup_open = false;
-                                        warn!("Failed to execute script: {}", err);
+                                        warn!("Failed to compile script: {}", err);
                                     }
                                 }
                             }
@@ -381,10 +374,10 @@ pub fn ui(
                     ui.label(line);
                 }
                 ui.add_space(8.0);
-                let controls = tr(&localization, "stage-ui-tutorial.controls-hint");
+                let controls = tr(&localization, "stage-ui-tutorial-controls-hint");
                 ui.label(controls);
                 ui.add_space(12.0);
-                let ok = tr(&localization, "stage-ui-tutorial.ok");
+                let ok = tr(&localization, "stage-ui-tutorial-ok");
                 if ui.button(ok.as_str()).clicked() {
                     request_close = true;
                 }
@@ -396,20 +389,20 @@ pub fn ui(
     if editor.stage_clear_popup_open {
         let mut popup_open = editor.stage_clear_popup_open;
         let mut request_close = false;
-        let window_title = tr(&localization, "stage-ui-clear.window-title");
+        let window_title = tr(&localization, "stage-ui-clear-window-title");
         egui::Window::new(window_title)
             .anchor(Align2::CENTER_CENTER, egui::Vec2::ZERO)
             .resizable(false)
             .collapsible(false)
             .open(&mut popup_open)
             .show(ctx, |ui| {
-                let heading = tr(&localization, "stage-ui-clear.heading");
+                let heading = tr(&localization, "stage-ui-clear-heading");
                 ui.heading(heading);
                 ui.add_space(8.0);
-                let body = tr(&localization, "stage-ui-clear.body");
+                let body = tr(&localization, "stage-ui-clear-body");
                 ui.label(body);
                 ui.add_space(12.0);
-                let ok = tr(&localization, "stage-ui-clear.ok");
+                let ok = tr(&localization, "stage-ui-clear-ok");
                 if ui.button(ok.as_str()).clicked() {
                     request_close = true;
                 }
@@ -423,30 +416,57 @@ pub fn ui(
     }
 }
 
+/// Each frame, pull at most one next command from the active program and append it to the Stone.
+pub fn tick_script_program(
+    mut editor: ResMut<ScriptEditorState>,
+    mut append_writer: MessageWriter<StoneAppendCommandMessage>,
+) {
+    if !editor.controls_enabled {
+        editor.active_program = None;
+        return;
+    }
+
+    let Some(program) = editor.active_program.as_mut() else {
+        return;
+    };
+
+    if let Some(command) = program.next() {
+        append_writer.write(StoneAppendCommandMessage {
+            command: command.clone(),
+        });
+        // Remember last commands for UI purposes (summary).
+        editor.last_commands.push(command);
+    } else {
+        // Program exhausted: stop execution.
+        editor.controls_enabled = false;
+        editor.active_program = None;
+    }
+}
+
 fn tutorial_dialog_for_stage(stage_id: StageId) -> Option<TutorialDialog> {
     match stage_id.0 {
         1 => Some(TutorialDialog::new(
-            "stage-ui-tutorial.stage1.title",
+            "stage-ui-tutorial-stage1-title",
             &[
-                "stage-ui-tutorial.stage1.line1",
-                "stage-ui-tutorial.stage1.line2",
-                "stage-ui-tutorial.stage1.line3",
+                "stage-ui-tutorial-stage1-line1",
+                "stage-ui-tutorial-stage1-line2",
+                "stage-ui-tutorial-stage1-line3",
             ],
         )),
         2 => Some(TutorialDialog::new(
-            "stage-ui-tutorial.stage2.title",
+            "stage-ui-tutorial-stage2-title",
             &[
-                "stage-ui-tutorial.stage2.line1",
-                "stage-ui-tutorial.stage2.line2",
-                "stage-ui-tutorial.stage2.line3",
+                "stage-ui-tutorial-stage2-line1",
+                "stage-ui-tutorial-stage2-line2",
+                "stage-ui-tutorial-stage2-line3",
             ],
         )),
         3 => Some(TutorialDialog::new(
-            "stage-ui-tutorial.stage3.title",
+            "stage-ui-tutorial-stage3-title",
             &[
-                "stage-ui-tutorial.stage3.line1",
-                "stage-ui-tutorial.stage3.line2",
-                "stage-ui-tutorial.stage3.line3",
+                "stage-ui-tutorial-stage3-line1",
+                "stage-ui-tutorial-stage3-line2",
+                "stage-ui-tutorial-stage3-line3",
             ],
         )),
         _ => None,

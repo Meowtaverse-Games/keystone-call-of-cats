@@ -8,7 +8,8 @@ use crate::{
         asset_store::AssetStore,
         design_resolution::{LetterboxOffsets, LetterboxVisibility},
         game_state::GameState,
-        stage_catalog::*, stage_progress::*,
+        stage_catalog::*,
+        stage_progress::*,
     },
     scenes::{assets::FontKey, stage::StageProgressionState},
     util::localization::{localized_stage_name, tr, tr_with_args},
@@ -96,7 +97,7 @@ impl StageSummary {
             .iter()
             .find(|entry| entry.playable)
             .map(|entry| localized_stage_name(localization, entry.meta.id, &entry.meta.title))
-            .unwrap_or_else(|| tr(localization, "stage-select-highlight.placeholder"));
+            .unwrap_or_else(|| tr(localization, "stage-select-highlight-placeholder"));
 
         Self {
             total,
@@ -346,7 +347,7 @@ fn spawn_hero_section(
                 ..default()
             })
             .with_children(|row| {
-                let badge_label = tr(localization, "stage-select-badge.experimental");
+                let badge_label = tr(localization, "stage-select-badge-experimental");
                 spawn_status_badge(row, font, &badge_label);
                 spawn_back_button(row, font, localization);
             });
@@ -449,9 +450,9 @@ fn spawn_hero_copy(
                 ..default()
             })
             .with_children(|stats| {
-                let unlocked_label = tr(localization, "stage-select-stats.unlocked");
-                let locked_label = tr(localization, "stage-select-stats.locked");
-                let slots_label = tr(localization, "stage-select-stats.slots");
+                let unlocked_label = tr(localization, "stage-select-stats-unlocked");
+                let locked_label = tr(localization, "stage-select-stats-locked");
+                let slots_label = tr(localization, "stage-select-stats-slots");
                 spawn_stat_card(
                     stats,
                     font,
@@ -536,7 +537,7 @@ fn spawn_highlight_card(
             BackgroundColor(hero_card_background()),
         ))
         .with_children(|card| {
-            let featured_label = tr(localization, "stage-select-featured.label");
+            let featured_label = tr(localization, "stage-select-featured-label");
             card.spawn(Text::new(featured_label))
                 .insert(TextFont {
                     font: font.clone(),
@@ -553,7 +554,7 @@ fn spawn_highlight_card(
                 })
                 .insert(TextColor(primary_text_color()));
 
-            let description = tr(localization, "stage-select-featured.description");
+            let description = tr(localization, "stage-select-featured-description");
             card.spawn(Text::new(description))
                 .insert(TextFont {
                     font: font.clone(),
@@ -572,14 +573,14 @@ fn spawn_highlight_card(
                 let total_str = total_pages.to_string();
                 let pages_chip = tr_with_args(
                     localization,
-                    "stage-select-highlight.pages",
+                    "stage-select-highlight-pages",
                     &[
                         ("current", current_str.as_str()),
                         ("total", total_str.as_str()),
                     ],
                 );
                 spawn_highlight_chip(chips, font, &pages_chip);
-                let mode_chip = tr(localization, "stage-select-highlight.mode");
+                let mode_chip = tr(localization, "stage-select-highlight-mode");
                 spawn_highlight_chip(chips, font, &mode_chip);
             });
         });
@@ -650,11 +651,11 @@ fn spawn_stage_cards(
     font: &Handle<Font>,
     localization: &Localization,
 ) {
-    let ready_label = tr(localization, "stage-select-state.ready");
-    let locked_label = tr(localization, "stage-select-state.locked");
+    let ready_label = tr(localization, "stage-select-state-ready");
+    let locked_label = tr(localization, "stage-select-state-locked");
     let play_label = tr(localization, "stage-select-play");
-    let playable_desc = tr(localization, "stage-select-stage.description.ready");
-    let locked_desc = tr(localization, "stage-select-stage.description.locked");
+    let playable_desc = tr(localization, "stage-select-stage-description-ready");
+    let locked_desc = tr(localization, "stage-select-stage-description-locked");
     parent
         .spawn(Node {
             width: Val::Percent(100.0),
@@ -699,7 +700,7 @@ fn spawn_stage_cards(
                         let stage_number = format!("{:02}", index + 1);
                         let stage_header = tr_with_args(
                             localization,
-                            "stage-select-stage.header",
+                            "stage-select-stage-header",
                             &[("number", stage_number.as_str())],
                         );
                         header

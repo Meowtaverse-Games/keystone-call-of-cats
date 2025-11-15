@@ -45,14 +45,14 @@ pub fn localized_stage_name(
 
 pub fn script_error_message(localization: &Localization, error: &ScriptExecutionError) -> String {
     match error {
-        ScriptExecutionError::EmptyScript => tr(localization, "stage-ui-error.empty-script"),
+        ScriptExecutionError::EmptyScript => tr(localization, "stage-ui-error-empty-script"),
         ScriptExecutionError::InvalidMoveDirection { direction } => tr_with_args(
             localization,
             "stage-ui-error.invalid-move-direction",
             &[("direction", direction.as_str())],
         ),
         ScriptExecutionError::InvalidSleepDuration => {
-            tr(localization, "stage-ui-error.invalid-sleep-duration")
+            tr(localization, "stage-ui-error-invalid-sleep-duration")
         }
         ScriptExecutionError::Engine(message) => tr_with_args(
             localization,
