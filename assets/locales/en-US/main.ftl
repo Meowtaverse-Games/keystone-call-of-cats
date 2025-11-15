@@ -43,6 +43,15 @@ stage-ui-clear-heading = Goal reached.
 stage-ui-clear-body = Catch your breath before the next challenge.
 stage-ui-clear-ok = OK
 
+stage-ui-command-help-button = Command reference
+stage-ui-command-help-title = Command reference
+stage-ui-command-help-intro = Use these scripting commands to guide the keystone in this scene.
+stage-ui-command-help-move-title = move(direction)
+stage-ui-command-help-move-body = Moves the keystone one tile toward the given direction. Accepts "left", "right", "up/top", or "down".
+stage-ui-command-help-sleep-title = sleep(seconds)
+stage-ui-command-help-sleep-body = Waits the given number of seconds before running the next command. Fractions are allowed.
+stage-ui-command-help-close = Close
+
 stage-ui-error-empty-script = The script is empty.
 stage-ui-error-invalid-move-direction = move() needs left/top/right/down but got "{$direction}".
 stage-ui-error-invalid-sleep-duration = sleep() duration must be zero or greater.

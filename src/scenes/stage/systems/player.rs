@@ -151,14 +151,12 @@ pub fn move_player(
         return;
     };
 
-    info!("Player position: {:?}", transform.translation);
-
     if !editor_state.controls_enabled {
         velocity.x = 0.0;
         motion.is_moving = false;
         sprite.flip_x = motion.direction < 0.0;
 
-        info!("Player movement disabled");
+        // info!("Player movement disabled");
         return;
     }
 

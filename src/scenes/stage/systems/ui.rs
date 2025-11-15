@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_egui::{
     EguiContexts,
-    egui::{self, Align2, Event, FontId, FontSelection},
+    egui::{self, Align2, Event, FontId, FontSelection, RichText},
 };
 use bevy_fluent::prelude::Localization;
 
@@ -36,6 +36,46 @@ impl TutorialDialog {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
+pub struct CommandHelpEntry {
+    title_key: &'static str,
+    body_key: &'static str,
+}
+
+#[derive(Clone, Debug)]
+pub struct CommandHelpDialog {
+    title_key: &'static str,
+    intro_key: &'static str,
+    entries: &'static [CommandHelpEntry],
+    is_open: bool,
+}
+
+impl CommandHelpDialog {
+    fn new(
+        title_key: &'static str,
+        intro_key: &'static str,
+        entries: &'static [CommandHelpEntry],
+    ) -> Self {
+        Self {
+            title_key,
+            intro_key,
+            entries,
+            is_open: false,
+        }
+    }
+}
+
+const DEFAULT_COMMAND_HELP_ENTRIES: &[CommandHelpEntry] = &[
+    CommandHelpEntry {
+        title_key: "stage-ui-command-help-move-title",
+        body_key: "stage-ui-command-help-move-body",
+    },
+    CommandHelpEntry {
+        title_key: "stage-ui-command-help-sleep-title",
+        body_key: "stage-ui-command-help-sleep-body",
+    },
+];
+
 #[derive(Resource, Default)]
 pub struct ScriptEditorState {
     pub buffer: String,
@@ -49,6 +89,7 @@ pub struct ScriptEditorState {
     pub stage_cleared: bool,
     pub stage_clear_popup_open: bool,
     pub tutorial_dialog: Option<TutorialDialog>,
+    pub command_help: Option<CommandHelpDialog>,
 }
 
 impl ScriptEditorState {
@@ -59,6 +100,10 @@ impl ScriptEditorState {
 
     pub fn set_tutorial_for_stage(&mut self, stage_id: StageId) {
         self.tutorial_dialog = tutorial_dialog_for_stage(stage_id);
+    }
+
+    pub fn set_command_help_for_stage(&mut self, stage_id: StageId) {
+        self.command_help = command_help_for_stage(stage_id);
     }
 }
 
@@ -135,6 +180,7 @@ pub fn init_editor_state(commands: &mut Commands, stage_id: StageId) {
         ..default()
     };
     editor_state.set_tutorial_for_stage(stage_id);
+    editor_state.set_command_help_for_stage(stage_id);
     commands.insert_resource(editor_state);
 }
 
@@ -216,6 +262,7 @@ pub fn ui(
             ui.vertical(|ui| {
                 let back_label = tr(&localization, "stage-ui-back-to-title");
                 if ui.button(back_label.as_str()).clicked() {
+                    info!("Returning to stage select");
                     editor.controls_enabled = false;
                     editor.pending_player_reset = false;
                     editor.stage_cleared = false;
@@ -245,6 +292,7 @@ pub fn ui(
                     match action {
                         EditorMenuAction::RunScript => {
                             if was_running {
+                                info!("Stopping script execution");
                                 editor.controls_enabled = false;
                                 editor.pending_player_reset = true;
                                 editor.last_run_feedback =
@@ -274,6 +322,7 @@ pub fn ui(
                                         editor.last_commands.clear();
                                         editor.last_run_feedback =
                                             Some(script_error_message(&localization, &err));
+                                        info!("Script compilation error: {}", err);
                                         editor.controls_enabled = false;
                                         editor.pending_player_reset = false;
                                         editor.stage_cleared = false;
@@ -284,6 +333,7 @@ pub fn ui(
                             }
                         }
                         EditorMenuAction::LoadExample => {
+                            info!("Loading example script into editor");
                             editor.controls_enabled = false;
                             editor.pending_player_reset = false;
                             editor.stage_cleared = false;
@@ -328,8 +378,10 @@ pub fn ui(
                     available_size.y = ui.max_rect().height();
                 }
 
+                let reserved_height = 200.0;
+                let text_height = (available_size.y - reserved_height).max(160.0);
                 let text_edit_response = ui.add_sized(
-                    available_size,
+                    egui::Vec2::new(available_size.x, text_height),
                     egui::TextEdit::multiline(&mut editor.buffer)
                         .font(FontSelection::FontId(FontId::new(
                             16.0,
@@ -340,9 +392,44 @@ pub fn ui(
                 );
 
                 if text_edit_response.changed() {
+                    info!("Script editor buffer changed");
                     editor.controls_enabled = false;
                     editor.stage_cleared = false;
                     editor.stage_clear_popup_open = false;
+                }
+
+                ui.add_space(8.0);
+                if let Some(help) = editor.command_help.as_mut() {
+                    let open_label = tr(&localization, "stage-ui-command-help-button");
+                    let close_label = tr(&localization, "stage-ui-command-help-close");
+                    let button_label = if help.is_open {
+                        close_label
+                    } else {
+                        open_label
+                    };
+                    if ui.button(button_label.as_str()).clicked() {
+                        help.is_open = !help.is_open;
+                    }
+
+                    if help.is_open {
+                        ui.add_space(6.0);
+                        ui.group(|ui| {
+                            ui.vertical(|ui| {
+                                let title = tr(&localization, help.title_key);
+                                ui.label(RichText::new(title).strong());
+                                let intro = tr(&localization, help.intro_key);
+                                ui.label(intro);
+                                ui.add_space(6.0);
+                                for entry in help.entries {
+                                    let entry_title = tr(&localization, entry.title_key);
+                                    ui.label(RichText::new(entry_title).strong());
+                                    let entry_body = tr(&localization, entry.body_key);
+                                    ui.label(entry_body);
+                                    ui.add_space(4.0);
+                                }
+                            });
+                        });
+                    }
                 }
             });
         })
@@ -437,9 +524,10 @@ pub fn tick_script_program(
         // Remember last commands for UI purposes (summary).
         editor.last_commands.push(command);
     } else {
-        // Program exhausted: stop execution.
-        editor.controls_enabled = false;
-        editor.active_program = None;
+        // // Program exhausted: stop execution.
+        // info!("Script program completed");
+        // editor.controls_enabled = false;
+        // editor.active_program = None;
     }
 }
 
@@ -471,4 +559,12 @@ fn tutorial_dialog_for_stage(stage_id: StageId) -> Option<TutorialDialog> {
         )),
         _ => None,
     }
+}
+
+fn command_help_for_stage(_stage_id: StageId) -> Option<CommandHelpDialog> {
+    Some(CommandHelpDialog::new(
+        "stage-ui-command-help-title",
+        "stage-ui-command-help-intro",
+        DEFAULT_COMMAND_HELP_ENTRIES,
+    ))
 }
