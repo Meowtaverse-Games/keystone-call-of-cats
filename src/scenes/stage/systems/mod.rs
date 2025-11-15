@@ -1,3 +1,4 @@
+mod audio;
 mod goal;
 mod player;
 mod stone;
@@ -23,6 +24,7 @@ use crate::{
     scenes::stage::components::StageTile,
     util::localization::{localized_stage_name, tr, tr_with_args},
 };
+use audio::{StageAudioHandles, StageAudioState};
 
 pub use goal::check_goal_completion;
 pub use player::*;
@@ -238,6 +240,7 @@ pub struct StageSetupParams<'w, 's> {
     window_query: Query<'w, 's, &'static Window, With<PrimaryWindow>>,
     progression: ResMut<'w, StageProgressionState>,
     editor_state: Option<ResMut<'w, ScriptEditorState>>,
+    audio_handles: Option<Res<'w, StageAudioHandles>>,
 }
 
 pub fn setup(mut commands: Commands, mut params: StageSetupParams) {
@@ -249,6 +252,15 @@ pub fn setup(mut commands: Commands, mut params: StageSetupParams) {
         }
         None => ui::init_editor_state(&mut commands, current_stage_id),
     }
+
+    if params.audio_handles.is_none() {
+        let handles = StageAudioHandles::new(
+            params.asset_server.load(audio::STONE_PUSH_SFX_PATH),
+            params.asset_server.load(audio::STAGE_CLEAR_SFX_PATH),
+        );
+        commands.insert_resource(handles);
+    }
+    commands.insert_resource(StageAudioState::default());
 
     let current_map = params.progression.current_map();
 
@@ -376,6 +388,8 @@ pub fn reload_stage_if_needed(mut commands: Commands, mut params: StageReloadPar
         params.asset_server.as_ref(),
         params.atlas_layouts.as_mut(),
     );
+
+    commands.insert_resource(StageAudioState::default());
 
     if let Some(editor) = params.editor_state.as_deref_mut() {
         info!("Setting up editor state for reloaded stage");
