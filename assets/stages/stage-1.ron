@@ -17,8 +17,8 @@
             ChunkTemplate(
                 id: "middle_flat_1",
                 map: [
-                    "...EE.",
-                    "......",
+                    "...EEE",
+                    ".....E",
                     "I.##.E",
                     "######",
                 ]
@@ -26,19 +26,19 @@
             ChunkTemplate(
                 id: "middle_flat_2",
                 map: [
-                    "......",
                     ".....E",
                     "I....E",
-                    "######",
+                    "#....E",
+                    ".#####",
                 ]
             ),
             ChunkTemplate(
                 id: "middle_flat_3",
                 map: [
                     "......",
-                    ".....E",
+                    "......",
                     "I....E",
-                    "#....#",
+                    "#..###",
                 ]
             ),
             ChunkTemplate(
@@ -48,6 +48,24 @@
                     "#....E",
                     "##...E",
                     "######",
+                ]
+            ),
+            ChunkTemplate(
+                id: "middle_flat_5",
+                map: [
+                    "I.....",
+                    ".....E",
+                    "##...E",
+                    "######",
+                ]
+            ),
+            ChunkTemplate(
+                id: "middle_flat_6",
+                map: [
+                    "I.....",
+                    "#....E",
+                    "##...E",
+                    "...###",
                 ]
             )
         ]

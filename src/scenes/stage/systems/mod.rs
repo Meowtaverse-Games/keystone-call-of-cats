@@ -1,3 +1,4 @@
+mod audio;
 mod goal;
 mod player;
 mod stone;
@@ -23,6 +24,7 @@ use crate::{
     scenes::stage::components::StageTile,
     util::localization::{localized_stage_name, tr, tr_with_args},
 };
+use audio::{StageAudioHandles, StageAudioState};
 
 pub use goal::check_goal_completion;
 pub use player::*;
@@ -238,6 +240,8 @@ pub struct StageSetupParams<'w, 's> {
     window_query: Query<'w, 's, &'static Window, With<PrimaryWindow>>,
     progression: ResMut<'w, StageProgressionState>,
     editor_state: Option<ResMut<'w, ScriptEditorState>>,
+    audio_handles: Option<Res<'w, StageAudioHandles>>,
+    audio_state: Option<ResMut<'w, StageAudioState>>,
 }
 
 pub fn setup(mut commands: Commands, mut params: StageSetupParams) {
@@ -248,6 +252,19 @@ pub fn setup(mut commands: Commands, mut params: StageSetupParams) {
             editor.set_command_help_for_stage(current_stage_id);
         }
         None => ui::init_editor_state(&mut commands, current_stage_id),
+    }
+
+    if params.audio_handles.is_none() {
+        let handles = StageAudioHandles::new(
+            params.asset_server.load(audio::STONE_PUSH_SFX_PATH),
+            params.asset_server.load(audio::STAGE_CLEAR_SFX_PATH),
+        );
+        commands.insert_resource(handles);
+    }
+    if let Some(audio_state) = params.audio_state.as_deref_mut() {
+        audio_state.reset(&mut commands);
+    } else {
+        commands.insert_resource(StageAudioState::default());
     }
 
     let current_map = params.progression.current_map();
@@ -280,8 +297,13 @@ pub fn cleanup(
     query: Query<Entity, StageCleanupFilter>,
     tiles: Query<Entity, With<StageTile>>,
     stones: Query<Entity, With<StoneRune>>,
+    audio_state: Option<ResMut<StageAudioState>>,
 ) {
+    if let Some(mut audio_state) = audio_state {
+        audio_state.stop_push_loop(&mut commands);
+    }
     cleanup_stage_entities(&mut commands, &stage_roots, &query, &tiles, &stones);
+    commands.remove_resource::<StageAudioState>();
 }
 
 pub fn advance_stage_if_cleared(
@@ -335,6 +357,7 @@ pub struct StageReloadParams<'w, 's> {
     stones: Query<'w, 's, Entity, With<StoneRune>>,
     editor_state: Option<ResMut<'w, ScriptEditorState>>,
     localization: Res<'w, Localization>,
+    audio_state: Option<ResMut<'w, StageAudioState>>,
 }
 
 pub fn reload_stage_if_needed(mut commands: Commands, mut params: StageReloadParams) {
@@ -357,6 +380,12 @@ pub fn reload_stage_if_needed(mut commands: Commands, mut params: StageReloadPar
         &params.tiles,
         &params.stones,
     );
+
+    if let Some(audio_state) = params.audio_state.as_deref_mut() {
+        audio_state.reset(&mut commands);
+    } else {
+        commands.insert_resource(StageAudioState::default());
+    }
 
     let Ok(window) = params.window_query.single() else {
         warn!("Stage reload: primary window not available");

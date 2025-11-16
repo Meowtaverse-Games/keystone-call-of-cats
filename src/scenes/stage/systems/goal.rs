@@ -8,7 +8,7 @@ use crate::{
     util::localization::tr,
 };
 
-use super::ui::ScriptEditorState;
+use super::{StageAudioHandles, StageAudioState, ui::ScriptEditorState};
 
 const GOAL_OBJECT_ID: u32 = 194;
 
@@ -53,10 +53,13 @@ type GoalCheckPlayer<'w> = (
 );
 
 pub fn check_goal_completion(
+    mut commands: Commands,
     mut editor_state: ResMut<ScriptEditorState>,
     mut player_query: Query<GoalCheckPlayer<'_>, With<Player>>,
     goals: Query<(&GlobalTransform, &Goal)>,
     localization: Res<Localization>,
+    audio_handles: Res<StageAudioHandles>,
+    mut audio_state: ResMut<StageAudioState>,
 ) {
     if !editor_state.controls_enabled || editor_state.stage_cleared {
         return;
@@ -84,6 +87,7 @@ pub fn check_goal_completion(
             editor_state.pending_player_reset = false;
             editor_state.last_run_feedback = Some(tr(&localization, "stage-ui-feedback-goal"));
             editor_state.stage_clear_popup_open = true;
+            audio_state.play_clear_once(&mut commands, &audio_handles);
             break;
         }
     }

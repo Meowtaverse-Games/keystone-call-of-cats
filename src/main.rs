@@ -2,11 +2,13 @@ use std::env;
 
 use bevy::asset::AssetPlugin;
 use bevy::{camera::ScalingMode, prelude::*};
+
 use bevy_fluent::prelude::*;
 
 use bevy_egui::EguiPlugin;
 
 use avian2d::{debug_render::PhysicsDebugPlugin, prelude::*};
+
 use unic_langid::langid;
 
 mod config;
