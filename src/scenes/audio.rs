@@ -1,9 +1,9 @@
 use bevy::{
-    audio::{AudioPlayer, PlaybackSettings},
+    audio::{AudioPlayer, PlaybackSettings, Volume},
     prelude::*,
 };
 
-pub const UI_CLICK_SFX_PATH: &str = "audio/ui_click.wav";
+pub const UI_CLICK_SFX_PATH: &str = "audio/ui_click.ogg";
 
 #[derive(Resource, Clone)]
 pub struct UiAudioHandles {
@@ -28,6 +28,6 @@ fn load_ui_audio(mut commands: Commands, asset_server: Res<AssetServer>) {
 pub fn play_ui_click(commands: &mut Commands, handles: &UiAudioHandles) {
     commands.spawn((
         AudioPlayer::new(handles.click.clone()),
-        PlaybackSettings::DESPAWN,
+        PlaybackSettings::DESPAWN.with_volume(Volume::Linear(0.1)),
     ));
 }
