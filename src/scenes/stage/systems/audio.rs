@@ -3,9 +3,6 @@ use bevy::{
     prelude::*,
 };
 
-pub const STONE_PUSH_SFX_PATH: &str = "audio/stone_push.wav";
-pub const STAGE_CLEAR_SFX_PATH: &str = "audio/stage_clear.wav";
-
 #[derive(Resource, Clone)]
 pub struct StageAudioHandles {
     pub stone_move: Handle<AudioSource>,

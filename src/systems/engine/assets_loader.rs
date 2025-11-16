@@ -24,6 +24,11 @@ pub fn handle_load_requests(
             handles.push(handle.clone().untyped());
             store.insert_font(*key, handle);
         }
+        for (key, path) in req.audio {
+            let handle: Handle<AudioSource> = server.load(*path);
+            handles.push(handle.clone().untyped());
+            store.insert_audio(*key, handle);
+        }
 
         pending.inner.insert(req.group, handles);
     }

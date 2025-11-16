@@ -3,8 +3,7 @@ use bevy::{
     prelude::*,
 };
 
-const UI_CLICK_SFX_PATH: &str = "audio/ui_click.ogg";
-const BGM_PATH: &str = "audio/bgm.wav";
+use crate::{resources::asset_store::AssetStore, scenes::assets::AudioKey};
 
 #[derive(Resource, Clone, Default)]
 pub struct AudioHandles {
@@ -17,17 +16,35 @@ pub struct AudioPlugin;
 
 impl Plugin for AudioPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, load_audio);
+        app.add_systems(Update, init_audio_handles);
     }
 }
 
-fn load_audio(mut commands: Commands, asset_server: Res<AssetServer>) {
-    let handles = AudioHandles {
-        click: asset_server.load(UI_CLICK_SFX_PATH),
-        bgm: asset_server.load(BGM_PATH),
-        ..default()
+fn init_audio_handles(
+    mut commands: Commands,
+    asset_store: Option<Res<AssetStore>>,
+    existing: Option<Res<AudioHandles>>,
+) {
+    if existing.is_some() {
+        return;
+    }
+
+    let Some(store) = asset_store else {
+        return;
     };
-    commands.insert_resource(handles);
+
+    let Some(click) = store.audio(AudioKey::UiClick) else {
+        return;
+    };
+    let Some(bgm) = store.audio(AudioKey::Bgm) else {
+        return;
+    };
+
+    commands.insert_resource(AudioHandles {
+        click,
+        bgm,
+        ..default()
+    });
 }
 
 pub fn play_bgm(commands: &mut Commands, handles: &mut AudioHandles) {

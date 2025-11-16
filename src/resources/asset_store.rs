@@ -1,6 +1,6 @@
 use bevy::{
     asset::{Handle, UntypedHandle},
-    prelude::{Font, Image, Message, Resource},
+    prelude::{AudioSource, Font, Image, Message, Resource},
 };
 use std::collections::HashMap;
 
@@ -9,6 +9,7 @@ pub struct LoadAssetGroup {
     pub group: &'static str,
     pub images: &'static [(u32, &'static str)],
     pub fonts: &'static [(u32, &'static str)],
+    pub audio: &'static [(u32, &'static str)],
 }
 
 #[derive(Message, Clone, Copy)]
@@ -18,6 +19,7 @@ pub struct AssetGroupLoaded;
 pub struct AssetStore {
     images: HashMap<u32, Handle<Image>>,
     fonts: HashMap<u32, Handle<Font>>,
+    audio: HashMap<u32, Handle<AudioSource>>,
 }
 
 impl AssetStore {
@@ -29,12 +31,20 @@ impl AssetStore {
         self.fonts.get(&key.into()).cloned()
     }
 
+    pub fn audio<K: Into<u32>>(&self, key: K) -> Option<Handle<AudioSource>> {
+        self.audio.get(&key.into()).cloned()
+    }
+
     pub(crate) fn insert_image(&mut self, key: u32, handle: Handle<Image>) {
         self.images.insert(key, handle);
     }
 
     pub(crate) fn insert_font(&mut self, key: u32, handle: Handle<Font>) {
         self.fonts.insert(key, handle);
+    }
+
+    pub(crate) fn insert_audio(&mut self, key: u32, handle: Handle<AudioSource>) {
+        self.audio.insert(key, handle);
     }
 }
 

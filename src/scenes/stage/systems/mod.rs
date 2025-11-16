@@ -21,7 +21,7 @@ use crate::{
         stage_progress::StageProgress,
         tiled::TiledMapAssets,
     },
-    scenes::stage::components::StageTile,
+    scenes::{assets::AudioKey, stage::components::StageTile},
     util::localization::{localized_stage_name, tr, tr_with_args},
 };
 use audio::{StageAudioHandles, StageAudioState};
@@ -263,11 +263,15 @@ pub fn setup(mut commands: Commands, mut params: StageSetupParams) {
     }
 
     if params.audio_handles.is_none() {
-        let handles = StageAudioHandles::new(
-            params.asset_server.load(audio::STONE_PUSH_SFX_PATH),
-            params.asset_server.load(audio::STAGE_CLEAR_SFX_PATH),
-        );
-        commands.insert_resource(handles);
+        match (
+            params.asset_store.audio(AudioKey::StonePush),
+            params.asset_store.audio(AudioKey::StageClear),
+        ) {
+            (Some(stone_move), Some(stage_clear)) => {
+                commands.insert_resource(StageAudioHandles::new(stone_move, stage_clear));
+            }
+            _ => warn!("Stage audio handles are not available in the asset store"),
+        }
     }
     if let Some(audio_state) = params.audio_state.as_deref_mut() {
         audio_state.reset(&mut commands);
