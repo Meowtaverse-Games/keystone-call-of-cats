@@ -94,4 +94,5 @@ stage-name-18 = ステージ15
 stage-name-19 = ステージ16
 stage-name-20 = ステージ17
 stage-name-21 = ステージ18
-stage-name-22 = ステージ20
+stage-name-22 = ステージ19
+stage-name-23 = ステージ20
