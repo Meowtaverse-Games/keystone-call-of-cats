@@ -10,7 +10,7 @@ mod select_stage;
 use select_stage::StageSelectPlugin;
 
 pub mod stage;
-use audio::UiAudioPlugin;
+use audio::UIAudioPlugin;
 use stage::StageScenePlugin;
 
 pub struct ScenesPlugin;
@@ -18,7 +18,7 @@ pub struct ScenesPlugin;
 impl Plugin for ScenesPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((
-            UiAudioPlugin,
+            UIAudioPlugin,
             BootPlugin,
             StageSelectPlugin,
             StageScenePlugin,

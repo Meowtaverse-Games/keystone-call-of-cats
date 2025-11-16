@@ -1,9 +1,4 @@
-use bevy::{
-    app::AppExit,
-    audio::{AudioPlayer, PlaybackSettings, Volume},
-    prelude::*,
-    ui::BorderRadius,
-};
+use bevy::{app::AppExit, prelude::*, ui::BorderRadius};
 use bevy_ecs::hierarchy::ChildSpawnerCommands;
 use bevy_fluent::prelude::Localization;
 
@@ -18,7 +13,7 @@ use crate::{
     },
     scenes::{
         assets::FontKey,
-        audio::{UiAudioHandles, play_ui_click},
+        audio::{UiAudioHandles, play_bgm, play_ui_click},
         stage::StageProgressionState,
     },
     util::localization::{localized_stage_name, tr, tr_with_args},
@@ -27,7 +22,6 @@ use crate::{
 const CARDS_PER_PAGE: usize = 3;
 const CARD_WIDTH: f32 = 360.0;
 const CARD_GAP: f32 = 32.0;
-const BGM_PATH: &str = "audio/bgm.wav";
 
 #[derive(Resource)]
 pub struct StageSelectState {
@@ -110,20 +104,8 @@ impl StageSummary {
     }
 }
 
-pub fn setup_bgm(
-    mut commands: Commands,
-    asset_server: Res<AssetServer>,
-    mut not_first: Local<bool>,
-) {
-    if *not_first {
-        return;
-    }
-    *not_first = true;
-
-    commands.spawn((
-        AudioPlayer::new(asset_server.load(BGM_PATH)),
-        PlaybackSettings::LOOP.with_volume(Volume::Linear(0.1)),
-    ));
+pub fn setup_bgm(mut commands: Commands, mut ui_audio: ResMut<UiAudioHandles>) {
+    play_bgm(&mut commands, &mut ui_audio);
 }
 
 pub fn setup(
