@@ -26,15 +26,15 @@ use crate::{
 #[derive(Clone, Debug)]
 pub struct TutorialDialog {
     title_key: &'static str,
-    line_keys: &'static [&'static str],
+    body_key: &'static str,
     is_open: bool,
 }
 
 impl TutorialDialog {
-    fn new(title_key: &'static str, line_keys: &'static [&'static str]) -> Self {
+    fn new(title_key: &'static str, body_key: &'static str) -> Self {
         Self {
             title_key,
-            line_keys,
+            body_key,
             is_open: true,
         }
     }
@@ -482,10 +482,8 @@ pub fn ui(params: StageUiParams) {
             .default_width(window_width)
             .open(&mut open)
             .show(ctx, |ui| {
-                for line_key in tutorial.line_keys {
-                    let line = tr(&localization, line_key);
-                    ui.label(line);
-                }
+                let body = tr(&localization, tutorial.body_key);
+                ui.label(body);
                 ui.add_space(8.0);
                 let controls = tr(&localization, "stage-ui-tutorial-controls-hint");
                 ui.label(controls);
@@ -563,27 +561,15 @@ fn tutorial_dialog_for_stage(stage_id: StageId) -> Option<TutorialDialog> {
     match stage_id.0 {
         1 => Some(TutorialDialog::new(
             "stage-ui-tutorial-stage1-title",
-            &[
-                "stage-ui-tutorial-stage1-line1",
-                "stage-ui-tutorial-stage1-line2",
-                "stage-ui-tutorial-stage1-line3",
-            ],
+            "stage-ui-tutorial-stage1-text",
         )),
         2 => Some(TutorialDialog::new(
             "stage-ui-tutorial-stage2-title",
-            &[
-                "stage-ui-tutorial-stage2-line1",
-                "stage-ui-tutorial-stage2-line2",
-                "stage-ui-tutorial-stage2-line3",
-            ],
+            "stage-ui-tutorial-stage2-text",
         )),
         3 => Some(TutorialDialog::new(
             "stage-ui-tutorial-stage3-title",
-            &[
-                "stage-ui-tutorial-stage3-line1",
-                "stage-ui-tutorial-stage3-line2",
-                "stage-ui-tutorial-stage3-line3",
-            ],
+            "stage-ui-tutorial-stage3-text",
         )),
         _ => None,
     }
