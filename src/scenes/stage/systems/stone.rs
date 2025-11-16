@@ -49,7 +49,7 @@ const STONE_SHEET_ROWS: u32 = 7;
 const STONE_TILE_COORD: UVec2 = UVec2::new(2, 4);
 const STONE_SCALE: f32 = 1.6;
 const STONE_STEP_DISTANCE: f32 = 64.0;
-const STONE_MOVE_DURATION: f32 = 0.2;
+const STONE_MOVE_DURATION: f32 = 0.4;
 const CARRY_VERTICAL_EPS: f32 = 3.0; // 乗っているとみなす高さ誤差
 const CARRY_X_MARGIN: f32 = 2.0; // 横方向の許容マージン
 
@@ -127,11 +127,11 @@ pub fn update_stone_behavior(
     mut query: Query<(&mut StoneCommandState, &mut Transform, &mut StoneMotion), With<StoneRune>>,
 ) {
     let Ok((mut state, mut transform, mut motion)) = query.single_mut() else {
+        audio_state.stop_push_loop(&mut commands);
         return;
     };
     // 前フレーム位置（ローカル空間）
     let prev = transform.translation;
-    audio_state.tick(time.delta_secs());
 
     if state.current.is_none()
         && let Some(command) = state.queue.pop_front()
@@ -142,7 +142,6 @@ pub fn update_stone_behavior(
                 let offset = Vec3::new(dir.x, dir.y, 0.0) * STONE_STEP_DISTANCE;
                 let start = transform.translation;
                 let end = start + offset;
-                audio_state.play_push_if_ready(&mut commands, &audio_handles);
                 StoneAction::Move(MoveCommandProgress {
                     start,
                     end,
@@ -173,6 +172,13 @@ pub fn update_stone_behavior(
                 }
             }
         }
+    }
+
+    let is_stone_moving = matches!(state.current, Some(StoneAction::Move(_)));
+    if is_stone_moving {
+        audio_state.ensure_push_loop(&mut commands, &audio_handles);
+    } else {
+        audio_state.stop_push_loop(&mut commands);
     }
 
     // このフレームの移動デルタを保存（ローカル空間の delta）

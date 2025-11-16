@@ -5,7 +5,6 @@ use bevy::{
 
 pub const STONE_PUSH_SFX_PATH: &str = "audio/stone_push.wav";
 pub const STAGE_CLEAR_SFX_PATH: &str = "audio/stage_clear.wav";
-const STONE_PUSH_SFX_COOLDOWN: f32 = 0.2;
 
 #[derive(Resource, Clone)]
 pub struct StageAudioHandles {
@@ -22,35 +21,37 @@ impl StageAudioHandles {
     }
 }
 
-#[derive(Resource)]
+#[derive(Resource, Default)]
 pub struct StageAudioState {
-    time_since_push: f32,
     clear_played: bool,
-}
-
-impl Default for StageAudioState {
-    fn default() -> Self {
-        Self {
-            time_since_push: STONE_PUSH_SFX_COOLDOWN,
-            clear_played: false,
-        }
-    }
+    push_loop_entity: Option<Entity>,
 }
 
 impl StageAudioState {
-    pub fn tick(&mut self, delta: f32) {
-        self.time_since_push = (self.time_since_push + delta).min(STONE_PUSH_SFX_COOLDOWN);
+    pub fn reset(&mut self, commands: &mut Commands) {
+        self.clear_played = false;
+        self.stop_push_loop(commands);
     }
 
-    pub fn play_push_if_ready(&mut self, commands: &mut Commands, handles: &StageAudioHandles) {
-        if self.time_since_push < STONE_PUSH_SFX_COOLDOWN {
+    pub fn ensure_push_loop(&mut self, commands: &mut Commands, handles: &StageAudioHandles) {
+        if self.push_loop_entity.is_some() {
             return;
         }
-        commands.spawn((
-            AudioPlayer::new(handles.stone_move.clone()),
-            PlaybackSettings::DESPAWN,
-        ));
-        self.time_since_push = 0.0;
+        let entity = commands
+            .spawn((
+                AudioPlayer::new(handles.stone_move.clone()),
+                PlaybackSettings::LOOP,
+            ))
+            .id();
+        self.push_loop_entity = Some(entity);
+    }
+
+    pub fn stop_push_loop(&mut self, commands: &mut Commands) {
+        if let Some(entity) = self.push_loop_entity.take()
+            && let Ok(mut entity_commands) = commands.get_entity(entity)
+        {
+            entity_commands.try_despawn();
+        }
     }
 
     pub fn play_clear_once(&mut self, commands: &mut Commands, handles: &StageAudioHandles) {

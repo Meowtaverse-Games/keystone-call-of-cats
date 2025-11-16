@@ -241,6 +241,7 @@ pub struct StageSetupParams<'w, 's> {
     progression: ResMut<'w, StageProgressionState>,
     editor_state: Option<ResMut<'w, ScriptEditorState>>,
     audio_handles: Option<Res<'w, StageAudioHandles>>,
+    audio_state: Option<ResMut<'w, StageAudioState>>,
 }
 
 pub fn setup(mut commands: Commands, mut params: StageSetupParams) {
@@ -260,7 +261,11 @@ pub fn setup(mut commands: Commands, mut params: StageSetupParams) {
         );
         commands.insert_resource(handles);
     }
-    commands.insert_resource(StageAudioState::default());
+    if let Some(audio_state) = params.audio_state.as_deref_mut() {
+        audio_state.reset(&mut commands);
+    } else {
+        commands.insert_resource(StageAudioState::default());
+    }
 
     let current_map = params.progression.current_map();
 
@@ -292,8 +297,13 @@ pub fn cleanup(
     query: Query<Entity, StageCleanupFilter>,
     tiles: Query<Entity, With<StageTile>>,
     stones: Query<Entity, With<StoneRune>>,
+    audio_state: Option<ResMut<StageAudioState>>,
 ) {
+    if let Some(mut audio_state) = audio_state {
+        audio_state.stop_push_loop(&mut commands);
+    }
     cleanup_stage_entities(&mut commands, &stage_roots, &query, &tiles, &stones);
+    commands.remove_resource::<StageAudioState>();
 }
 
 pub fn advance_stage_if_cleared(
@@ -347,6 +357,7 @@ pub struct StageReloadParams<'w, 's> {
     stones: Query<'w, 's, Entity, With<StoneRune>>,
     editor_state: Option<ResMut<'w, ScriptEditorState>>,
     localization: Res<'w, Localization>,
+    audio_state: Option<ResMut<'w, StageAudioState>>,
 }
 
 pub fn reload_stage_if_needed(mut commands: Commands, mut params: StageReloadParams) {
@@ -370,6 +381,12 @@ pub fn reload_stage_if_needed(mut commands: Commands, mut params: StageReloadPar
         &params.stones,
     );
 
+    if let Some(audio_state) = params.audio_state.as_deref_mut() {
+        audio_state.reset(&mut commands);
+    } else {
+        commands.insert_resource(StageAudioState::default());
+    }
+
     let Ok(window) = params.window_query.single() else {
         warn!("Stage reload: primary window not available");
         return;
@@ -388,8 +405,6 @@ pub fn reload_stage_if_needed(mut commands: Commands, mut params: StageReloadPar
         params.asset_server.as_ref(),
         params.atlas_layouts.as_mut(),
     );
-
-    commands.insert_resource(StageAudioState::default());
 
     if let Some(editor) = params.editor_state.as_deref_mut() {
         info!("Setting up editor state for reloaded stage");
