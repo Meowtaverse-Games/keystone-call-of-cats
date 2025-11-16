@@ -3,6 +3,7 @@ use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::fs::File;
 use std::io::BufReader;
+use std::iter;
 use std::path::Path;
 
 use serde::Deserialize;
@@ -46,6 +47,9 @@ pub enum TileKind {
     PlayerSpawn,
     Goal,
 }
+
+type ExitPoint = ((isize, isize), Dir);
+type PlacedChunkExit = (PlacedChunk, ExitPoint);
 
 #[derive(Clone, Copy, Debug)]
 pub struct Tile {
@@ -369,7 +373,7 @@ fn try_build_random_path(
 
     let required_templates: Vec<&InnerChunkTemplate> = mid_chunks
         .iter()
-        .flat_map(|template| std::iter::repeat(template).take(template.required_count))
+        .flat_map(|template| iter::repeat_n(template, template.required_count))
         .collect();
 
     print!("required_templates: ");
@@ -420,7 +424,7 @@ fn try_build_random_path(
 
             let mut layout = Vec::with_capacity(mandatory_chunks.len() + mid_path.len() + 2);
             layout.push(placed_start.clone());
-            layout.extend(mandatory_chunks.into_iter());
+            layout.extend(mandatory_chunks);
             layout.append(&mut mid_path);
             layout.push(place_chunk(goal_template, goal_target.origin));
             return PlacedChunkLayout {
@@ -471,17 +475,15 @@ fn random_goal_target(
 
 fn place_middle_chunk(
     template: &InnerChunkTemplate,
-    current_exit: ((isize, isize), Dir),
-) -> Option<(PlacedChunk, ((isize, isize), Dir))> {
+    current_exit: ExitPoint,
+) -> Option<PlacedChunkExit> {
     let placed = place_next(template, Dir::Left, current_exit);
     if placed.tiles_world.iter().any(|tile| {
         tile.x < 0 || tile.x >= INNER_MAP_SIZE.0 || tile.y < 0 || tile.y >= INNER_MAP_SIZE.1
     }) {
         return None;
     }
-    let Some(next_exit) = pick_exit_dir(&placed, Dir::Right) else {
-        return None;
-    };
+    let next_exit = pick_exit_dir(&placed, Dir::Right)?;
     let (next_pos, _) = next_exit;
     if next_pos.1 >= INNER_MAP_SIZE.1 {
         return None;
