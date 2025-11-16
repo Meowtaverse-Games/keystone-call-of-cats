@@ -38,6 +38,7 @@ stage-ui-feedback-complete = 全てのステージをクリアしました！
 
 stage-ui-tutorial-controls-hint = F1で例題ロード / F3で実行、矢印キーで移動、スペースでジャンプ。
 stage-ui-tutorial-ok = 了解!
+stage-ui-tutorial-next-hint = ［Enter］で次を表示
 stage-ui-clear-window-title = ステージクリア!
 stage-ui-clear-heading = ゴールに到達しました。
 stage-ui-clear-body = 次の挑戦へ進む前に少し休憩しましょう。
@@ -59,19 +60,38 @@ stage-ui-error-engine = スクリプト実行エラー: {$message}
 stage-ui-error-unsupported-language = サポートされていないスクリプト言語です: {$language}
 
 stage-ui-tutorial-stage1-title = プレイヤー: 第一階層の記録
-stage-ui-tutorial-stage1-line1 = 「ここが遺跡の入口か。まずは光る柱まで歩いて状況を確かめよう。」
-stage-ui-tutorial-stage1-line2 = 「左の石板に命令を書いてF3で実行すれば石が自動で動く。F1を押せば例題も呼び出せる。」
-stage-ui-tutorial-stage1-line3 = 「矢印キーで歩いてスペースでジャンプ、危なくなったら実行を止めて書き直せばいい。」
+stage-ui-tutorial-stage1-text =
+    ここは、地上から遠く離れた地下の洞窟。
+    あなたは、どこからか聞こえる「猫の鳴き声」を追って
+    この暗い穴へと降りてきました。
+
+    この世界では、石だけがプログラミングで動かせます。
+    あなたは自分の体を動かしながら、
+    石には「命令」を書いて動かしていきます。
+
+    まずは自分の体を動かしてみましょう。
+
+    左右移動ボタン … 左右に移動
+
+    ジャンプボタン … 段差を飛び越える
+    崩れた足場に気をつけながら、先へ進んでください。
+
+    先へ進むには、石を動かして足場を作る必要があります。
+    画面の「石のプログラム」を編集して、
+    「右へ進む」命令を並べてから「実行ボタン」で動かしてみましょう。
+    うまくいけば、石が道を作ってくれます。
 
 stage-ui-tutorial-stage2-title = プレイヤー: 第二階層の記録
-stage-ui-tutorial-stage2-line1 = 「地下水路は滑るな…。崩れた足場は石を押し出して橋にするしかない。」
-stage-ui-tutorial-stage2-line2 = 「move("left") みたいに向きを変えつつ、sleep(秒)でタイミングを整えれば安全に渡れそうだ。」
-stage-ui-tutorial-stage2-line3 = 「F3で結果を確かめて、うまくいかなければ停止して命令を修正だ。」
+stage-ui-tutorial-stage2-text =
+    「地下水路は滑るな…。崩れた足場は石を押し出して橋にするしかない。」
+    「move(\"left\") みたいに向きを変えつつ、sleep(秒)でタイミングを整えれば安全に渡れそうだ。」
+    「F3で結果を確かめて、うまくいかなければ停止して命令を修正だ。」
 
 stage-ui-tutorial-stage3-title = プレイヤー: 第三階層の記録
-stage-ui-tutorial-stage3-line1 = 「地鳴りがひどい。高低差もあるしジャンプだけじゃ届かない場所が多い。」
-stage-ui-tutorial-stage3-line2 = 「石をジャンプ台にしたり、sleepで間を空けて落下を待てば道が開けるはず。」
-stage-ui-tutorial-stage3-line3 = 「焦らず、危なければいつでも実行を止めて新しい作戦を考えよう。」
+stage-ui-tutorial-stage3-text =
+    「地鳴りがひどい。高低差もあるしジャンプだけじゃ届かない場所が多い。」
+    「石をジャンプ台にしたり、sleepで間を空けて落下を待てば道が開けるはず。」
+    「焦らず、危なければいつでも実行を止めて新しい作戦を考えよう。」
 
 stage-name-1 = チュートリアル1
 stage-name-2 = チュートリアル2
@@ -94,4 +114,5 @@ stage-name-18 = ステージ15
 stage-name-19 = ステージ16
 stage-name-20 = ステージ17
 stage-name-21 = ステージ18
-stage-name-22 = ステージ20
+stage-name-22 = ステージ19
+stage-name-23 = ステージ20

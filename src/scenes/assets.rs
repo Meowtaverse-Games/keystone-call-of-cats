@@ -60,6 +60,21 @@ impl From<FontKey> for u32 {
     }
 }
 
+#[repr(u32)]
+#[derive(Clone, Copy, Debug)]
+pub enum AudioKey {
+    UiClick,
+    Bgm,
+    StonePush,
+    StageClear,
+}
+
+impl From<AudioKey> for u32 {
+    fn from(v: AudioKey) -> u32 {
+        v as u32
+    }
+}
+
 pub const DEFAULT_GROUP: LoadAssetGroup = LoadAssetGroup {
     group: "default",
     images: &[
@@ -94,5 +109,11 @@ pub const DEFAULT_GROUP: LoadAssetGroup = LoadAssetGroup {
     fonts: &[
         (FontKey::Default as u32, "fonts/PixelMplus12-Regular.ttf"),
         (FontKey::Title as u32, "fonts/Quicky Story.ttf"),
+    ],
+    audio: &[
+        (AudioKey::UiClick as u32, "audio/ui_click.ogg"),
+        (AudioKey::Bgm as u32, "audio/bgm.wav"),
+        (AudioKey::StonePush as u32, "audio/stone_push.wav"),
+        (AudioKey::StageClear as u32, "audio/stage_clear.wav"),
     ],
 };

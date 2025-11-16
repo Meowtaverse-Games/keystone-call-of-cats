@@ -38,6 +38,7 @@ stage-ui-feedback-complete = All stages cleared!
 
 stage-ui-tutorial-controls-hint = F1 loads the sample, F3 runs the script, arrows move, Space jumps.
 stage-ui-tutorial-ok = Got it!
+stage-ui-tutorial-next-hint = Press Enter to continue
 stage-ui-clear-window-title = Stage Clear!
 stage-ui-clear-heading = Goal reached.
 stage-ui-clear-body = Catch your breath before the next challenge.
@@ -59,19 +60,22 @@ stage-ui-error-engine = Script runtime error: {$message}
 stage-ui-error-unsupported-language = Script language "{$language}" is not supported.
 
 stage-ui-tutorial-stage1-title = Player Log: Floor I
-stage-ui-tutorial-stage1-line1 = This must be the entrance. Walk to the glowing pillar and scout the room.
-stage-ui-tutorial-stage1-line2 = Write commands on the left tablet and press F3 to run them. Press F1 anytime to load the sample.
-stage-ui-tutorial-stage1-line3 = Move with the arrow keys and jump with Space. Stop the script if the plan looks risky.
+stage-ui-tutorial-stage1-text =
+    This must be the entrance. Walk to the glowing pillar and scout the room.
+    Write commands on the left tablet and press F3 to run them. Press F1 anytime to load the sample.
+    Move with the arrow keys and jump with Space. Stop the script if the plan looks risky.
 
 stage-ui-tutorial-stage2-title = Player Log: Floor II
-stage-ui-tutorial-stage2-line1 = These aqueduct stones are slick. I need the keystone as a bridge over broken ground.
-stage-ui-tutorial-stage2-line2 = Use move("left") and friends, timing sleep() to keep the stone steady.
-stage-ui-tutorial-stage2-line3 = Run with F3, stop, adjust, and retry until every step feels safe.
+stage-ui-tutorial-stage2-text =
+    These aqueduct stones are slick. I need the keystone as a bridge over broken ground.
+    Use move("left") and friends, timing sleep() to keep the stone steady.
+    Run with F3, stop, adjust, and retry until every step feels safe.
 
 stage-ui-tutorial-stage3-title = Player Log: Floor III
-stage-ui-tutorial-stage3-line1 = The tremors are louder here and the gaps are brutal.
-stage-ui-tutorial-stage3-line2 = Turn the keystone into ramps or wait for hazards to settle with sleep().
-stage-ui-tutorial-stage3-line3 = No need to rush—stop execution and rethink whenever danger creeps in.
+stage-ui-tutorial-stage3-text =
+    The tremors are louder here and the gaps are brutal.
+    Turn the keystone into ramps or wait for hazards to settle with sleep().
+    No need to rush—stop execution and rethink whenever danger creeps in.
 
 stage-name-1 = TUTORIAL-1
 stage-name-2 = TUTORIAL-2
@@ -94,4 +98,5 @@ stage-name-18 = STAGE-15
 stage-name-19 = STAGE-16
 stage-name-20 = STAGE-17
 stage-name-21 = STAGE-18
-stage-name-22 = STAGE-20
+stage-name-22 = STAGE-19
+stage-name-23 = STAGE-20

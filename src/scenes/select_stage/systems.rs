@@ -1,9 +1,4 @@
-use bevy::{
-    app::AppExit,
-    audio::{AudioPlayer, PlaybackSettings, Volume},
-    prelude::*,
-    ui::BorderRadius,
-};
+use bevy::{app::AppExit, prelude::*, ui::BorderRadius};
 use bevy_ecs::hierarchy::ChildSpawnerCommands;
 use bevy_fluent::prelude::Localization;
 
@@ -18,7 +13,7 @@ use crate::{
     },
     scenes::{
         assets::FontKey,
-        audio::{UiAudioHandles, play_ui_click},
+        audio::{AudioHandles, play_bgm, play_ui_click},
         stage::StageProgressionState,
     },
     util::localization::{localized_stage_name, tr, tr_with_args},
@@ -27,7 +22,6 @@ use crate::{
 const CARDS_PER_PAGE: usize = 3;
 const CARD_WIDTH: f32 = 360.0;
 const CARD_GAP: f32 = 32.0;
-const BGM_PATH: &str = "audio/bgm.wav";
 
 #[derive(Resource)]
 pub struct StageSelectState {
@@ -110,20 +104,8 @@ impl StageSummary {
     }
 }
 
-pub fn setup_bgm(
-    mut commands: Commands,
-    asset_server: Res<AssetServer>,
-    mut not_first: Local<bool>,
-) {
-    if *not_first {
-        return;
-    }
-    *not_first = true;
-
-    commands.spawn((
-        AudioPlayer::new(asset_server.load(BGM_PATH)),
-        PlaybackSettings::LOOP.with_volume(Volume::Linear(0.1)),
-    ));
+pub fn setup_bgm(mut commands: Commands, mut audio: ResMut<AudioHandles>) {
+    play_bgm(&mut commands, &mut audio);
 }
 
 pub fn setup(
@@ -208,13 +190,13 @@ pub fn cleanup(
 
 pub fn handle_back_button(
     mut commands: Commands,
-    ui_audio: Res<UiAudioHandles>,
+    audio: Res<AudioHandles>,
     mut interactions: Query<(&StageBackButton, &Interaction), Changed<Interaction>>,
     mut exit_events: MessageWriter<AppExit>,
 ) {
     for (_, interaction) in &mut interactions {
         if *interaction == Interaction::Pressed {
-            play_ui_click(&mut commands, &ui_audio);
+            play_ui_click(&mut commands, &audio);
             exit_events.write(AppExit::Success);
         }
     }
@@ -222,13 +204,13 @@ pub fn handle_back_button(
 
 pub fn handle_nav_buttons(
     mut commands: Commands,
-    ui_audio: Res<UiAudioHandles>,
+    audio: Res<AudioHandles>,
     mut interactions: Query<(&StagePageButton, &Interaction), Changed<Interaction>>,
     mut state: ResMut<StageSelectState>,
 ) {
     for (button, interaction) in &mut interactions {
         if *interaction == Interaction::Pressed {
-            play_ui_click(&mut commands, &ui_audio);
+            play_ui_click(&mut commands, &audio);
             state.move_page(button.delta);
         }
     }
@@ -236,7 +218,7 @@ pub fn handle_nav_buttons(
 
 pub fn handle_play_buttons(
     mut commands: Commands,
-    ui_audio: Res<UiAudioHandles>,
+    audio: Res<AudioHandles>,
     mut interactions: Query<(&StagePlayButton, &Interaction), Changed<Interaction>>,
     mut progression: ResMut<StageProgressionState>,
     catalog: Res<StageCatalog>,
@@ -248,7 +230,7 @@ pub fn handle_play_buttons(
         }
 
         if *interaction == Interaction::Pressed {
-            play_ui_click(&mut commands, &ui_audio);
+            play_ui_click(&mut commands, &audio);
             if let Some(stage) = catalog.stage_by_index(button.stage_index) {
                 progression.select_stage(stage);
                 next_state.set(GameState::Stage);
