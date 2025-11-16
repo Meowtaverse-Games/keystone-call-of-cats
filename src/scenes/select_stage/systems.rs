@@ -1,4 +1,9 @@
-use bevy::{app::AppExit, asset::ron::de, prelude::*, ui::BorderRadius};
+use bevy::{
+    app::AppExit,
+    audio::{AudioPlayer, PlaybackSettings, Volume},
+    prelude::*,
+    ui::BorderRadius,
+};
 use bevy_ecs::hierarchy::ChildSpawnerCommands;
 use bevy_fluent::prelude::Localization;
 
@@ -18,6 +23,7 @@ use crate::{
 const CARDS_PER_PAGE: usize = 3;
 const CARD_WIDTH: f32 = 360.0;
 const CARD_GAP: f32 = 32.0;
+const BGM_PATH: &str = "audio/bgm.wav";
 
 #[derive(Resource)]
 pub struct StageSelectState {
@@ -100,6 +106,22 @@ impl StageSummary {
     }
 }
 
+pub fn setup_bgm(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut not_first: Local<bool>,
+) {
+    if *not_first {
+        return;
+    }
+    *not_first = true;
+
+    commands.spawn((
+        AudioPlayer::new(asset_server.load(BGM_PATH)),
+        PlaybackSettings::LOOP.with_volume(Volume::Linear(0.1)),
+    ));
+}
+
 pub fn setup(
     mut commands: Commands,
     mut clear_color: ResMut<ClearColor>,
@@ -164,11 +186,17 @@ pub fn setup(
 pub fn cleanup(
     mut commands: Commands,
     roots: Query<Entity, With<StageSelectRoot>>,
+    // bgm_entities: Query<Entity, With<StageSelectBgm>>,
     mut letterbox_visibility: ResMut<LetterboxVisibility>,
 ) {
     for entity in roots.iter() {
         commands.entity(entity).despawn();
     }
+
+    // for entity in bgm_entities.iter() {
+    //     commands.entity(entity).despawn();
+    // }
+
     commands.remove_resource::<StageSelectState>();
     // Restore visibility for other scenes
     letterbox_visibility.0 = true;
@@ -548,7 +576,7 @@ fn spawn_stage_cards(
             justify_content: JustifyContent::FlexStart,
             align_items: AlignItems::FlexStart,
             margin: UiRect {
-                top: Val::Px(20.0), 
+                top: Val::Px(20.0),
                 ..default()
             },
             ..default()
