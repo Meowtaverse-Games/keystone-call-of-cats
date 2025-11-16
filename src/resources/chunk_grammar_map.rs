@@ -125,9 +125,14 @@ impl ChunkTemplate {
             }
         }
 
-        let entry= if check_entry { entry.expect("entry point 'I' not found") } else {
+        let entry = if check_entry {
             entry.expect("entry point 'I' not found")
-            // Port::default()
+        } else {
+            Port {
+                x: 0,
+                y: 0,
+                dir: Dir::Left,
+            }
         };
 
         InnerChunkTemplate {
@@ -413,8 +418,7 @@ fn try_build_random_path(
                 continue;
             }
 
-            let mut layout =
-                Vec::with_capacity(mandatory_chunks.len() + mid_path.len() + 2);
+            let mut layout = Vec::with_capacity(mandatory_chunks.len() + mid_path.len() + 2);
             layout.push(placed_start.clone());
             layout.extend(mandatory_chunks.into_iter());
             layout.append(&mut mid_path);
