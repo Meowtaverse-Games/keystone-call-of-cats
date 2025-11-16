@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy_ecs::system::SystemParam;
 use bevy_egui::{
     EguiContexts,
     egui::{self, Align2, Event, FontId, FontSelection, RichText},
@@ -12,7 +13,10 @@ use crate::{
         script_engine::{Language, ScriptExecutor},
         stage_catalog::StageId,
     },
-    scenes::stage::systems::{StoneAppendCommandMessage, StoneCommandMessage},
+    scenes::{
+        audio::{UiAudioHandles, play_ui_click},
+        stage::systems::{StoneAppendCommandMessage, StoneCommandMessage},
+    },
     util::{
         localization::{script_error_message, tr, tr_with_args},
         script_types::{ScriptCommand, ScriptProgram},
@@ -167,6 +171,19 @@ fn summarize_commands(commands: &[ScriptCommand]) -> String {
         .join(", ")
 }
 
+#[derive(SystemParam)]
+pub struct StageUiParams<'w, 's> {
+    commands: Commands<'w, 's>,
+    contexts: EguiContexts<'w, 's>,
+    letterbox_offsets: ResMut<'w, LetterboxOffsets>,
+    editor: ResMut<'w, ScriptEditorState>,
+    script_executor: Res<'w, ScriptExecutor>,
+    localization: Res<'w, Localization>,
+    stone_writer: MessageWriter<'w, StoneCommandMessage>,
+    next_state: ResMut<'w, NextState<GameState>>,
+    ui_audio: Res<'w, UiAudioHandles>,
+}
+
 pub fn init_editor_state(commands: &mut Commands, stage_id: StageId) {
     let mut editor_state = ScriptEditorState {
         buffer: String::from(
@@ -184,15 +201,18 @@ pub fn init_editor_state(commands: &mut Commands, stage_id: StageId) {
     commands.insert_resource(editor_state);
 }
 
-pub fn ui(
-    mut contexts: EguiContexts,
-    mut letterbox_offsets: ResMut<LetterboxOffsets>,
-    mut editor: ResMut<ScriptEditorState>,
-    script_executor: Res<ScriptExecutor>,
-    localization: Res<Localization>,
-    mut stone_writer: MessageWriter<StoneCommandMessage>,
-    mut next_state: ResMut<NextState<GameState>>,
-) {
+pub fn ui(params: StageUiParams) {
+    let StageUiParams {
+        mut commands,
+        mut contexts,
+        mut letterbox_offsets,
+        mut editor,
+        script_executor,
+        localization,
+        mut stone_writer,
+        mut next_state,
+        ui_audio,
+    } = params;
     let Ok(ctx) = contexts.ctx_mut() else {
         return;
     };
@@ -262,6 +282,7 @@ pub fn ui(
             ui.vertical(|ui| {
                 let back_label = tr(&localization, "stage-ui-back-to-title");
                 if ui.button(back_label.as_str()).clicked() {
+                    play_ui_click(&mut commands, &ui_audio);
                     info!("Returning to stage select");
                     editor.controls_enabled = false;
                     editor.pending_player_reset = false;
@@ -272,7 +293,7 @@ pub fn ui(
 
                 ui.separator();
 
-                let mut pending_action = action_from_keys;
+                let mut pending_action = action_from_keys.map(|action| (action, false));
 
                 ui.horizontal(|ui| {
                     ui.spacing_mut().item_spacing.x = 8.0;
@@ -282,12 +303,16 @@ pub fn ui(
                             tr(&localization, action.label_key(editor.controls_enabled));
                         let label = format!("{} ({})", button_label, action.key_text());
                         if ui.button(label).clicked() {
-                            pending_action = Some(action);
+                            play_ui_click(&mut commands, &ui_audio);
+                            pending_action = Some((action, true));
                         }
                     }
                 });
 
-                if let Some(action) = pending_action {
+                if let Some((action, triggered_via_ui)) = pending_action {
+                    if !triggered_via_ui {
+                        play_ui_click(&mut commands, &ui_audio);
+                    }
                     let was_running = editor.controls_enabled;
                     match action {
                         EditorMenuAction::RunScript => {
@@ -408,6 +433,7 @@ pub fn ui(
                         open_label
                     };
                     if ui.button(button_label.as_str()).clicked() {
+                        play_ui_click(&mut commands, &ui_audio);
                         help.is_open = !help.is_open;
                     }
 
@@ -466,6 +492,7 @@ pub fn ui(
                 ui.add_space(12.0);
                 let ok = tr(&localization, "stage-ui-tutorial-ok");
                 if ui.button(ok.as_str()).clicked() {
+                    play_ui_click(&mut commands, &ui_audio);
                     request_close = true;
                 }
             });
@@ -491,6 +518,7 @@ pub fn ui(
                 ui.add_space(12.0);
                 let ok = tr(&localization, "stage-ui-clear-ok");
                 if ui.button(ok.as_str()).clicked() {
+                    play_ui_click(&mut commands, &ui_audio);
                     request_close = true;
                 }
             });

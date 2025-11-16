@@ -16,7 +16,11 @@ use crate::{
         stage_catalog::*,
         stage_progress::*,
     },
-    scenes::{assets::FontKey, stage::StageProgressionState},
+    scenes::{
+        assets::FontKey,
+        audio::{UiAudioHandles, play_ui_click},
+        stage::StageProgressionState,
+    },
     util::localization::{localized_stage_name, tr, tr_with_args},
 };
 
@@ -203,28 +207,36 @@ pub fn cleanup(
 }
 
 pub fn handle_back_button(
+    mut commands: Commands,
+    ui_audio: Res<UiAudioHandles>,
     mut interactions: Query<(&StageBackButton, &Interaction), Changed<Interaction>>,
     mut exit_events: MessageWriter<AppExit>,
 ) {
     for (_, interaction) in &mut interactions {
         if *interaction == Interaction::Pressed {
+            play_ui_click(&mut commands, &ui_audio);
             exit_events.write(AppExit::Success);
         }
     }
 }
 
 pub fn handle_nav_buttons(
+    mut commands: Commands,
+    ui_audio: Res<UiAudioHandles>,
     mut interactions: Query<(&StagePageButton, &Interaction), Changed<Interaction>>,
     mut state: ResMut<StageSelectState>,
 ) {
     for (button, interaction) in &mut interactions {
         if *interaction == Interaction::Pressed {
+            play_ui_click(&mut commands, &ui_audio);
             state.move_page(button.delta);
         }
     }
 }
 
 pub fn handle_play_buttons(
+    mut commands: Commands,
+    ui_audio: Res<UiAudioHandles>,
     mut interactions: Query<(&StagePlayButton, &Interaction), Changed<Interaction>>,
     mut progression: ResMut<StageProgressionState>,
     catalog: Res<StageCatalog>,
@@ -236,6 +248,7 @@ pub fn handle_play_buttons(
         }
 
         if *interaction == Interaction::Pressed {
+            play_ui_click(&mut commands, &ui_audio);
             if let Some(stage) = catalog.stage_by_index(button.stage_index) {
                 progression.select_stage(stage);
                 next_state.set(GameState::Stage);
