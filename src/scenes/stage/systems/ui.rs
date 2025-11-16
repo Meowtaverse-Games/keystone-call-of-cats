@@ -14,7 +14,7 @@ use crate::{
         stage_catalog::StageId,
     },
     scenes::{
-        audio::{UiAudioHandles, play_ui_click},
+        audio::{AudioHandles, play_ui_click},
         stage::systems::{StoneAppendCommandMessage, StoneCommandMessage},
     },
     util::{
@@ -181,7 +181,7 @@ pub struct StageUiParams<'w, 's> {
     localization: Res<'w, Localization>,
     stone_writer: MessageWriter<'w, StoneCommandMessage>,
     next_state: ResMut<'w, NextState<GameState>>,
-    ui_audio: Res<'w, UiAudioHandles>,
+    audio: Res<'w, AudioHandles>,
 }
 
 pub fn init_editor_state(commands: &mut Commands, stage_id: StageId) {
@@ -211,7 +211,7 @@ pub fn ui(params: StageUiParams) {
         localization,
         mut stone_writer,
         mut next_state,
-        ui_audio,
+        audio,
     } = params;
     let Ok(ctx) = contexts.ctx_mut() else {
         return;
@@ -282,7 +282,7 @@ pub fn ui(params: StageUiParams) {
             ui.vertical(|ui| {
                 let back_label = tr(&localization, "stage-ui-back-to-title");
                 if ui.button(back_label.as_str()).clicked() {
-                    play_ui_click(&mut commands, &ui_audio);
+                    play_ui_click(&mut commands, &audio);
                     info!("Returning to stage select");
                     editor.controls_enabled = false;
                     editor.pending_player_reset = false;
@@ -303,7 +303,7 @@ pub fn ui(params: StageUiParams) {
                             tr(&localization, action.label_key(editor.controls_enabled));
                         let label = format!("{} ({})", button_label, action.key_text());
                         if ui.button(label).clicked() {
-                            play_ui_click(&mut commands, &ui_audio);
+                            play_ui_click(&mut commands, &audio);
                             pending_action = Some((action, true));
                         }
                     }
@@ -311,7 +311,7 @@ pub fn ui(params: StageUiParams) {
 
                 if let Some((action, triggered_via_ui)) = pending_action {
                     if !triggered_via_ui {
-                        play_ui_click(&mut commands, &ui_audio);
+                        play_ui_click(&mut commands, &audio);
                     }
                     let was_running = editor.controls_enabled;
                     match action {
@@ -433,7 +433,7 @@ pub fn ui(params: StageUiParams) {
                         open_label
                     };
                     if ui.button(button_label.as_str()).clicked() {
-                        play_ui_click(&mut commands, &ui_audio);
+                        play_ui_click(&mut commands, &audio);
                         help.is_open = !help.is_open;
                     }
 
@@ -492,7 +492,7 @@ pub fn ui(params: StageUiParams) {
                 ui.add_space(12.0);
                 let ok = tr(&localization, "stage-ui-tutorial-ok");
                 if ui.button(ok.as_str()).clicked() {
-                    play_ui_click(&mut commands, &ui_audio);
+                    play_ui_click(&mut commands, &audio);
                     request_close = true;
                 }
             });
@@ -518,7 +518,7 @@ pub fn ui(params: StageUiParams) {
                 ui.add_space(12.0);
                 let ok = tr(&localization, "stage-ui-clear-ok");
                 if ui.button(ok.as_str()).clicked() {
-                    play_ui_click(&mut commands, &ui_audio);
+                    play_ui_click(&mut commands, &audio);
                     request_close = true;
                 }
             });

@@ -7,22 +7,22 @@ const UI_CLICK_SFX_PATH: &str = "audio/ui_click.ogg";
 const BGM_PATH: &str = "audio/bgm.wav";
 
 #[derive(Resource, Clone, Default)]
-pub struct UiAudioHandles {
+pub struct AudioHandles {
     pub click: Handle<AudioSource>,
     pub bgm: Handle<AudioSource>,
     played_bgm: bool,
 }
 
-pub struct UIAudioPlugin;
+pub struct AudioPlugin;
 
-impl Plugin for UIAudioPlugin {
+impl Plugin for AudioPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, load_ui_audio);
+        app.add_systems(Startup, load_audio);
     }
 }
 
-fn load_ui_audio(mut commands: Commands, asset_server: Res<AssetServer>) {
-    let handles = UiAudioHandles {
+fn load_audio(mut commands: Commands, asset_server: Res<AssetServer>) {
+    let handles = AudioHandles {
         click: asset_server.load(UI_CLICK_SFX_PATH),
         bgm: asset_server.load(BGM_PATH),
         ..default()
@@ -30,7 +30,7 @@ fn load_ui_audio(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.insert_resource(handles);
 }
 
-pub fn play_bgm(commands: &mut Commands, handles: &mut UiAudioHandles) {
+pub fn play_bgm(commands: &mut Commands, handles: &mut AudioHandles) {
     if handles.played_bgm {
         return;
     }
@@ -44,7 +44,7 @@ pub fn play_bgm(commands: &mut Commands, handles: &mut UiAudioHandles) {
     ));
 }
 
-pub fn play_ui_click(commands: &mut Commands, handles: &UiAudioHandles) {
+pub fn play_ui_click(commands: &mut Commands, handles: &AudioHandles) {
     commands.spawn((
         AudioPlayer::new(handles.click.clone()),
         PlaybackSettings::DESPAWN.with_volume(Volume::Linear(0.1)),
