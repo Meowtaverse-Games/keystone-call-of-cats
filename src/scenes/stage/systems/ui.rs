@@ -624,13 +624,13 @@ pub fn spawn_tutorial_overlay(
         return;
     };
 
-    let title = tr(&localization, dialog.title_key);
-    let body = tr(&localization, dialog.body_key);
+    let title = tr(localization, dialog.title_key);
+    let body = tr(localization, dialog.body_key);
     let chunks = chunk_tutorial_text(&body);
     if chunks.is_empty() {
         return;
     }
-    let hint = tr(&localization, "stage-ui-tutorial-next-hint");
+    let hint = tr(localization, "stage-ui-tutorial-next-hint");
     let mut body_value = chunks[0].clone();
     if chunks.len() > 1 {
         body_value.push_str("\n\n");
@@ -706,10 +706,10 @@ pub fn handle_tutorial_overlay_input(
     }
 
     for mut overlay in &mut overlays {
-        if overlay.advance() {
-            if let Ok(mut text) = texts.get_mut(overlay.body_entity) {
-                update_overlay_text(&overlay, &mut text);
-            }
+        if overlay.advance()
+            && let Ok(mut text) = texts.get_mut(overlay.body_entity)
+        {
+            update_overlay_text(&overlay, &mut text);
         }
     }
 }
