@@ -3,6 +3,7 @@ use std::collections::VecDeque;
 use avian2d::prelude::*;
 use bevy::prelude::*;
 
+use super::{StageAudioHandles, StageAudioState};
 use crate::{
     scenes::stage::components::{Player, StoneRune},
     util::script_types::{MoveDirection, ScriptCommand},
@@ -31,8 +32,9 @@ pub struct StoneMotion {
 }
 
 struct MoveCommandProgress {
-    direction: Vec2,
-    remaining: f32,
+    start: Vec3,
+    end: Vec3,
+    timer: Timer,
 }
 
 enum StoneAction {
@@ -46,8 +48,8 @@ const STONE_SHEET_COLUMNS: u32 = 10;
 const STONE_SHEET_ROWS: u32 = 7;
 const STONE_TILE_COORD: UVec2 = UVec2::new(2, 4);
 const STONE_SCALE: f32 = 1.6;
-const STONE_MOVE_SPEED: f32 = 80.0;
 const STONE_STEP_DISTANCE: f32 = 64.0;
+const STONE_MOVE_DURATION: f32 = 0.2;
 const CARRY_VERTICAL_EPS: f32 = 3.0; // 乗っているとみなす高さ誤差
 const CARRY_X_MARGIN: f32 = 2.0; // 横方向の許容マージン
 
@@ -118,7 +120,10 @@ pub fn handle_stone_append_messages(
 }
 
 pub fn update_stone_behavior(
+    mut commands: Commands,
     time: Res<Time>,
+    audio_handles: Res<StageAudioHandles>,
+    mut audio_state: ResMut<StageAudioState>,
     mut query: Query<(&mut StoneCommandState, &mut Transform, &mut StoneMotion), With<StoneRune>>,
 ) {
     let Ok((mut state, mut transform, mut motion)) = query.single_mut() else {
@@ -126,15 +131,24 @@ pub fn update_stone_behavior(
     };
     // 前フレーム位置（ローカル空間）
     let prev = transform.translation;
+    audio_state.tick(time.delta_secs());
 
     if state.current.is_none()
         && let Some(command) = state.queue.pop_front()
     {
         state.current = Some(match command {
-            ScriptCommand::Move(direction) => StoneAction::Move(MoveCommandProgress {
-                direction: direction_to_vec(direction),
-                remaining: STONE_STEP_DISTANCE,
-            }),
+            ScriptCommand::Move(direction) => {
+                let dir = direction_to_vec(direction);
+                let offset = Vec3::new(dir.x, dir.y, 0.0) * STONE_STEP_DISTANCE;
+                let start = transform.translation;
+                let end = start + offset;
+                audio_state.play_push_if_ready(&mut commands, &audio_handles);
+                StoneAction::Move(MoveCommandProgress {
+                    start,
+                    end,
+                    timer: Timer::from_seconds(STONE_MOVE_DURATION, TimerMode::Once),
+                })
+            }
             ScriptCommand::Sleep(seconds) => {
                 StoneAction::Sleep(Timer::from_seconds(seconds.max(0.0), TimerMode::Once))
             }
@@ -144,17 +158,12 @@ pub fn update_stone_behavior(
     if let Some(action) = state.current.as_mut() {
         match action {
             StoneAction::Move(progress) => {
-                let direction = progress.direction;
-                if direction.length_squared() <= f32::EPSILON {
-                    state.current = None;
-                    return;
-                }
-
-                let distance = (STONE_MOVE_SPEED * time.delta_secs()).min(progress.remaining);
-                transform.translation += Vec3::new(direction.x, direction.y, 0.0) * distance;
-                progress.remaining -= distance;
-
-                if progress.remaining <= f32::EPSILON {
+                let duration = progress.timer.duration().as_secs_f32().max(f32::EPSILON);
+                progress.timer.tick(time.delta());
+                let t = (progress.timer.elapsed_secs() / duration).clamp(0.0, 1.0);
+                transform.translation = progress.start.lerp(progress.end, t);
+                if progress.timer.is_finished() {
+                    transform.translation = progress.end;
                     state.current = None;
                 }
             }
