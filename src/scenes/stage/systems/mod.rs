@@ -32,8 +32,8 @@ pub use stone::{
     StoneAppendCommandMessage, StoneCommandMessage, carry_riders_with_stone,
     handle_stone_append_messages, handle_stone_messages, update_stone_behavior,
 };
-use ui::ScriptEditorState;
-pub use ui::{tick_script_program, ui};
+use ui::{ScriptEditorState, StageTutorialOverlay};
+pub use ui::{handle_tutorial_overlay_input, tick_script_program, ui};
 
 #[derive(Resource, Default)]
 pub struct StageProgressionState {
@@ -205,6 +205,7 @@ fn cleanup_stage_entities(
     query: &Query<Entity, StageCleanupFilter>,
     tiles: &Query<Entity, With<StageTile>>,
     stones: &Query<Entity, With<StoneRune>>,
+    tutorial_overlays: &Query<Entity, With<StageTutorialOverlay>>,
 ) {
     for entity in stage_roots.iter() {
         if let Ok(mut entity_cmd) = commands.get_entity(entity) {
@@ -229,6 +230,12 @@ fn cleanup_stage_entities(
             entity_cmd.try_despawn();
         }
     }
+
+    for entity in tutorial_overlays.iter() {
+        if let Ok(mut entity_cmd) = commands.get_entity(entity) {
+            entity_cmd.despawn();
+        }
+    }
 }
 #[derive(SystemParam)]
 pub struct StageSetupParams<'w, 's> {
@@ -242,6 +249,7 @@ pub struct StageSetupParams<'w, 's> {
     editor_state: Option<ResMut<'w, ScriptEditorState>>,
     audio_handles: Option<Res<'w, StageAudioHandles>>,
     audio_state: Option<ResMut<'w, StageAudioState>>,
+    localization: Res<'w, Localization>,
 }
 
 pub fn setup(mut commands: Commands, mut params: StageSetupParams) {
@@ -288,6 +296,20 @@ pub fn setup(mut commands: Commands, mut params: StageSetupParams) {
         params.atlas_layouts.as_mut(),
     );
 
+    let tutorial_dialog = params
+        .editor_state
+        .as_ref()
+        .and_then(|editor| editor.tutorial_dialog.clone())
+        .or_else(|| ui::tutorial_dialog_for_stage(current_stage_id));
+    if let Some(dialog) = tutorial_dialog {
+        ui::spawn_tutorial_overlay(
+            &mut commands,
+            params.asset_store.as_ref(),
+            params.localization.as_ref(),
+            &dialog,
+        );
+    }
+
     params.progression.clear_reload();
 }
 
@@ -297,12 +319,20 @@ pub fn cleanup(
     query: Query<Entity, StageCleanupFilter>,
     tiles: Query<Entity, With<StageTile>>,
     stones: Query<Entity, With<StoneRune>>,
+    tutorial_overlays: Query<Entity, With<StageTutorialOverlay>>,
     audio_state: Option<ResMut<StageAudioState>>,
 ) {
     if let Some(mut audio_state) = audio_state {
         audio_state.stop_push_loop(&mut commands);
     }
-    cleanup_stage_entities(&mut commands, &stage_roots, &query, &tiles, &stones);
+    cleanup_stage_entities(
+        &mut commands,
+        &stage_roots,
+        &query,
+        &tiles,
+        &stones,
+        &tutorial_overlays,
+    );
     commands.remove_resource::<StageAudioState>();
 }
 
@@ -355,6 +385,7 @@ pub struct StageReloadParams<'w, 's> {
     query: Query<'w, 's, Entity, StageCleanupFilter>,
     tiles: Query<'w, 's, Entity, With<StageTile>>,
     stones: Query<'w, 's, Entity, With<StoneRune>>,
+    tutorial_overlays: Query<'w, 's, Entity, With<StageTutorialOverlay>>,
     editor_state: Option<ResMut<'w, ScriptEditorState>>,
     localization: Res<'w, Localization>,
     audio_state: Option<ResMut<'w, StageAudioState>>,
@@ -379,6 +410,7 @@ pub fn reload_stage_if_needed(mut commands: Commands, mut params: StageReloadPar
         &params.query,
         &params.tiles,
         &params.stones,
+        &params.tutorial_overlays,
     );
 
     if let Some(audio_state) = params.audio_state.as_deref_mut() {
@@ -418,6 +450,20 @@ pub fn reload_stage_if_needed(mut commands: Commands, mut params: StageReloadPar
             "stage-ui-feedback-start",
             &[("stage", stage_label.as_str())],
         ));
+    }
+
+    let tutorial_dialog = params
+        .editor_state
+        .as_ref()
+        .and_then(|editor| editor.tutorial_dialog.clone())
+        .or_else(|| ui::tutorial_dialog_for_stage(stage_id));
+    if let Some(dialog) = tutorial_dialog {
+        ui::spawn_tutorial_overlay(
+            &mut commands,
+            params.asset_store.as_ref(),
+            params.localization.as_ref(),
+            &dialog,
+        );
     }
 }
 

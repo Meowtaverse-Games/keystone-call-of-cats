@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{input::ButtonInput, prelude::*};
 use bevy_ecs::system::SystemParam;
 use bevy_egui::{
     EguiContexts,
@@ -8,12 +8,14 @@ use bevy_fluent::prelude::Localization;
 
 use crate::{
     resources::{
+        asset_store::AssetStore,
         design_resolution::LetterboxOffsets,
         game_state::GameState,
         script_engine::{Language, ScriptExecutor},
         stage_catalog::StageId,
     },
     scenes::{
+        assets::FontKey,
         audio::{AudioHandles, play_ui_click},
         stage::systems::{StoneAppendCommandMessage, StoneCommandMessage},
     },
@@ -25,9 +27,8 @@ use crate::{
 
 #[derive(Clone, Debug)]
 pub struct TutorialDialog {
-    title_key: &'static str,
-    body_key: &'static str,
-    is_open: bool,
+    pub title_key: &'static str,
+    pub body_key: &'static str,
 }
 
 impl TutorialDialog {
@@ -35,8 +36,40 @@ impl TutorialDialog {
         Self {
             title_key,
             body_key,
-            is_open: true,
         }
+    }
+}
+
+#[derive(Component)]
+pub struct StageTutorialOverlay;
+
+#[derive(Component)]
+pub struct TutorialOverlayPanel {
+    chunks: Vec<String>,
+    current_chunk: usize,
+    hint: String,
+    body_entity: Entity,
+}
+
+impl TutorialOverlayPanel {
+    fn has_next(&self) -> bool {
+        self.current_chunk + 1 < self.chunks.len()
+    }
+
+    fn advance(&mut self) -> bool {
+        if self.has_next() {
+            self.current_chunk += 1;
+            true
+        } else {
+            false
+        }
+    }
+
+    fn current_text(&self) -> &str {
+        self.chunks
+            .get(self.current_chunk)
+            .map(String::as_str)
+            .unwrap_or("")
     }
 }
 
@@ -464,40 +497,6 @@ pub fn ui(params: StageUiParams) {
         .width()
         .clamp(min_width, max_width);
 
-    if let Some(tutorial) = editor.tutorial_dialog.as_mut()
-        && tutorial.is_open
-    {
-        let mut open = tutorial.is_open;
-        let mut request_close = false;
-        let window_width = if screen_width.is_finite() && screen_width > 0.0 {
-            screen_width.min(420.0)
-        } else {
-            320.0
-        };
-        let title = tr(&localization, tutorial.title_key);
-        egui::Window::new(title)
-            .anchor(Align2::CENTER_TOP, egui::Vec2::new(0.0, 20.0))
-            .resizable(false)
-            .collapsible(false)
-            .default_width(window_width)
-            .open(&mut open)
-            .show(ctx, |ui| {
-                let body = tr(&localization, tutorial.body_key);
-                ui.label(body);
-                ui.add_space(8.0);
-                let controls = tr(&localization, "stage-ui-tutorial-controls-hint");
-                ui.label(controls);
-                ui.add_space(12.0);
-                let ok = tr(&localization, "stage-ui-tutorial-ok");
-                if ui.button(ok.as_str()).clicked() {
-                    play_ui_click(&mut commands, &audio);
-                    request_close = true;
-                }
-            });
-
-        tutorial.is_open = open && !request_close;
-    }
-
     if editor.stage_clear_popup_open {
         let mut popup_open = editor.stage_clear_popup_open;
         let mut request_close = false;
@@ -557,7 +556,7 @@ pub fn tick_script_program(
     }
 }
 
-fn tutorial_dialog_for_stage(stage_id: StageId) -> Option<TutorialDialog> {
+pub fn tutorial_dialog_for_stage(stage_id: StageId) -> Option<TutorialDialog> {
     match stage_id.0 {
         1 => Some(TutorialDialog::new(
             "stage-ui-tutorial-stage1-title",
@@ -581,4 +580,136 @@ fn command_help_for_stage(_stage_id: StageId) -> Option<CommandHelpDialog> {
         "stage-ui-command-help-intro",
         DEFAULT_COMMAND_HELP_ENTRIES,
     ))
+}
+
+fn chunk_tutorial_text(input: &str) -> Vec<String> {
+    let mut chunks = Vec::new();
+    let mut current = Vec::new();
+
+    for line in input.lines() {
+        if line.trim().is_empty() {
+            if !current.is_empty() {
+                chunks.push(current.join("\n"));
+                current.clear();
+            }
+        } else {
+            current.push(line.trim().to_string());
+        }
+    }
+
+    if !current.is_empty() {
+        chunks.push(current.join("\n"));
+    }
+
+    chunks
+}
+
+fn update_overlay_text(panel: &TutorialOverlayPanel, text: &mut Text) {
+    text.0.clear();
+    text.0.push_str(panel.current_text());
+    if panel.has_next() {
+        text.0.push_str("\n\n");
+        text.0.push_str(&panel.hint);
+    }
+}
+
+pub fn spawn_tutorial_overlay(
+    commands: &mut Commands,
+    asset_store: &AssetStore,
+    localization: &Localization,
+    dialog: &TutorialDialog,
+) {
+    let Some(font) = asset_store.font(FontKey::Default) else {
+        warn!("Tutorial overlay: default font is missing");
+        return;
+    };
+
+    let title = tr(&localization, dialog.title_key);
+    let body = tr(&localization, dialog.body_key);
+    let chunks = chunk_tutorial_text(&body);
+    if chunks.is_empty() {
+        return;
+    }
+    let hint = tr(&localization, "stage-ui-tutorial-next-hint");
+    let mut body_value = chunks[0].clone();
+    if chunks.len() > 1 {
+        body_value.push_str("\n\n");
+        body_value.push_str(&hint);
+    }
+
+    let mut body_entity = None;
+    let panel_entity = commands
+        .spawn((
+            Node {
+                position_type: PositionType::Absolute,
+                top: Val::Px(40.0),
+                right: Val::Px(32.0),
+                width: Val::Px(420.0),
+                padding: UiRect {
+                    left: Val::Px(16.0),
+                    right: Val::Px(16.0),
+                    top: Val::Px(12.0),
+                    bottom: Val::Px(14.0),
+                },
+                flex_direction: FlexDirection::Column,
+                align_items: AlignItems::FlexEnd,
+                row_gap: Val::Px(8.0),
+                ..default()
+            },
+            BackgroundColor(Color::srgba(0.08, 0.08, 0.1, 0.78)),
+            ZIndex(5),
+            StageTutorialOverlay,
+        ))
+        .with_children(|parent| {
+            parent.spawn((
+                Text::new(title),
+                TextFont {
+                    font: font.clone(),
+                    font_size: 28.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(0.95, 0.9, 0.65)),
+            ));
+
+            let entity = parent
+                .spawn((
+                    Text::new(body_value),
+                    TextFont {
+                        font: font.clone(),
+                        font_size: 20.0,
+                        ..default()
+                    },
+                    TextColor(Color::srgb(0.95, 0.95, 0.95)),
+                ))
+                .id();
+            body_entity = Some(entity);
+        })
+        .id();
+
+    if let Some(body_entity) = body_entity {
+        commands.entity(panel_entity).insert(TutorialOverlayPanel {
+            chunks,
+            current_chunk: 0,
+            hint,
+            body_entity,
+        });
+    }
+}
+
+pub fn handle_tutorial_overlay_input(
+    keys: Res<ButtonInput<KeyCode>>,
+    mut overlays: Query<&mut TutorialOverlayPanel>,
+    mut texts: Query<&mut Text>,
+) {
+    if !keys.just_pressed(KeyCode::Enter) {
+        return;
+    }
+
+    for mut overlay in &mut overlays {
+        if overlay.advance() {
+            if let Ok(mut text) = texts.get_mut(overlay.body_entity) {
+                update_overlay_text(&overlay, &mut text);
+            }
+        }
+    }
 }

@@ -55,6 +55,10 @@ impl Plugin for StageScenePlugin {
                     .run_if(in_state(GameState::Stage)),
             )
             .add_systems(
+                Update,
+                systems::handle_tutorial_overlay_input.run_if(in_state(GameState::Stage)),
+            )
+            .add_systems(
                 EguiPrimaryContextPass,
                 systems::ui.run_if(in_state(GameState::Stage)),
             );

@@ -38,6 +38,7 @@ stage-ui-feedback-complete = All stages cleared!
 
 stage-ui-tutorial-controls-hint = F1 loads the sample, F3 runs the script, arrows move, Space jumps.
 stage-ui-tutorial-ok = Got it!
+stage-ui-tutorial-next-hint = Press Enter to continue
 stage-ui-clear-window-title = Stage Clear!
 stage-ui-clear-heading = Goal reached.
 stage-ui-clear-body = Catch your breath before the next challenge.
