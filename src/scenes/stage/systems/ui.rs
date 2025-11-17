@@ -204,19 +204,6 @@ fn summarize_commands(commands: &[ScriptCommand]) -> String {
         .join(", ")
 }
 
-#[derive(SystemParam)]
-pub struct StageUiParams<'w, 's> {
-    commands: Commands<'w, 's>,
-    contexts: EguiContexts<'w, 's>,
-    letterbox_offsets: ResMut<'w, LetterboxOffsets>,
-    editor: ResMut<'w, ScriptEditorState>,
-    script_executor: Res<'w, ScriptExecutor>,
-    localization: Res<'w, Localization>,
-    stone_writer: MessageWriter<'w, StoneCommandMessage>,
-    next_state: ResMut<'w, NextState<GameState>>,
-    audio: Res<'w, AudioHandles>,
-}
-
 pub fn init_editor_state(commands: &mut Commands, stage_id: StageId) {
     let mut editor_state = ScriptEditorState {
         buffer: String::from(
@@ -234,8 +221,21 @@ pub fn init_editor_state(commands: &mut Commands, stage_id: StageId) {
     commands.insert_resource(editor_state);
 }
 
-pub fn ui(params: StageUiParams) {
-    let StageUiParams {
+#[derive(SystemParam)]
+pub struct StageUIParams<'w, 's> {
+    commands: Commands<'w, 's>,
+    contexts: EguiContexts<'w, 's>,
+    letterbox_offsets: ResMut<'w, LetterboxOffsets>,
+    editor: ResMut<'w, ScriptEditorState>,
+    script_executor: Res<'w, ScriptExecutor>,
+    localization: Res<'w, Localization>,
+    stone_writer: MessageWriter<'w, StoneCommandMessage>,
+    next_state: ResMut<'w, NextState<GameState>>,
+    audio: Res<'w, AudioHandles>,
+}
+
+pub fn ui(params: StageUIParams) {
+    let StageUIParams {
         mut commands,
         mut contexts,
         mut letterbox_offsets,
@@ -524,6 +524,10 @@ pub fn ui(params: StageUiParams) {
     }
 
     if (letterbox_offsets.left - left).abs() > f32::EPSILON {
+        info!(
+            "Updating letterbox offsets: left={} (was {})",
+            left, letterbox_offsets.left
+        );
         letterbox_offsets.left = left;
     }
 }
@@ -618,6 +622,7 @@ pub fn spawn_tutorial_overlay(
     asset_store: &AssetStore,
     localization: &Localization,
     dialog: &TutorialDialog,
+    letterbox_offsets: &LetterboxOffsets,
 ) {
     let Some(font) = asset_store.font(FontKey::Default) else {
         warn!("Tutorial overlay: default font is missing");
@@ -637,79 +642,111 @@ pub fn spawn_tutorial_overlay(
         body_value.push_str(&hint);
     }
 
+    info!("letter box offsets: {:?}", letterbox_offsets);
+
     let mut body_entity = None;
-    let panel_entity = commands
+    let overlay_entity = commands
         .spawn((
             Node {
+                width: Val::Percent(100.0),
+                height: Val::Percent(100.0),
                 position_type: PositionType::Absolute,
-                top: Val::Px(40.0),
-                right: Val::Px(32.0),
-                width: Val::Px(420.0),
                 padding: UiRect {
-                    left: Val::Px(16.0),
-                    right: Val::Px(16.0),
-                    top: Val::Px(12.0),
-                    bottom: Val::Px(14.0),
+                    left: Val::Px(letterbox_offsets.left),
+                    right: Val::Px(letterbox_offsets.right),
+                    top: Val::Px(0.0),
+                    bottom: Val::Px(0.0),
                 },
-                flex_direction: FlexDirection::Column,
-                align_items: AlignItems::FlexEnd,
-                row_gap: Val::Px(8.0),
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
                 ..default()
             },
-            BackgroundColor(Color::srgba(0.08, 0.08, 0.1, 0.78)),
             ZIndex(5),
             StageTutorialOverlay,
         ))
         .with_children(|parent| {
-            parent.spawn((
-                Text::new(title),
-                TextFont {
-                    font: font.clone(),
-                    font_size: 28.0,
-                    ..default()
-                },
-                TextColor(Color::srgb(0.95, 0.9, 0.65)),
-            ));
-
-            let entity = parent
+            parent
                 .spawn((
-                    Text::new(body_value),
-                    TextFont {
-                        font: font.clone(),
-                        font_size: 20.0,
+                    Node {
+                        width: Val::Px(460.0),
+                        padding: UiRect {
+                            left: Val::Px(18.0),
+                            right: Val::Px(18.0),
+                            top: Val::Px(16.0),
+                            bottom: Val::Px(18.0),
+                        },
+                        flex_direction: FlexDirection::Column,
+                        align_items: AlignItems::FlexEnd,
+                        row_gap: Val::Px(8.0),
                         ..default()
                     },
-                    TextColor(Color::srgb(0.95, 0.95, 0.95)),
+                    BackgroundColor(Color::srgba(0.04, 0.04, 0.04, 0.88)),
                 ))
-                .id();
-            body_entity = Some(entity);
+                .with_children(|panel| {
+                    panel.spawn((
+                        Text::new(title),
+                        TextFont {
+                            font: font.clone(),
+                            font_size: 28.0,
+                            ..default()
+                        },
+                        TextColor(Color::srgb(0.95, 0.9, 0.65)),
+                    ));
+
+                    let entity = panel
+                        .spawn((
+                            Text::new(body_value),
+                            TextFont {
+                                font: font.clone(),
+                                font_size: 20.0,
+                                ..default()
+                            },
+                            TextColor(Color::srgb(0.95, 0.95, 0.95)),
+                        ))
+                        .id();
+                    body_entity = Some(entity);
+                });
         })
         .id();
 
     if let Some(body_entity) = body_entity {
-        commands.entity(panel_entity).insert(TutorialOverlayPanel {
-            chunks,
-            current_chunk: 0,
-            hint,
-            body_entity,
-        });
+        commands
+            .entity(overlay_entity)
+            .insert(TutorialOverlayPanel {
+                chunks,
+                current_chunk: 0,
+                hint,
+                body_entity,
+            });
     }
 }
 
 pub fn handle_tutorial_overlay_input(
+    mut commands: Commands,
     keys: Res<ButtonInput<KeyCode>>,
-    mut overlays: Query<&mut TutorialOverlayPanel>,
+    mut tutorial_overlay: Query<(&StageTutorialOverlay, &mut Node)>,
+    mut overlays: Query<(Entity, &mut TutorialOverlayPanel), With<StageTutorialOverlay>>,
     mut texts: Query<&mut Text>,
+    letterbox_offsets: ResMut<LetterboxOffsets>,
 ) {
+    if letterbox_offsets.is_changed() 
+      && let Ok((_, mut overlay)) = tutorial_overlay.single_mut() {
+        overlay.padding.left = Val::Px(letterbox_offsets.left);
+        info!("update offsets: {:?}", letterbox_offsets);
+    }
+
     if !keys.just_pressed(KeyCode::Enter) {
         return;
     }
 
     for mut overlay in &mut overlays {
-        if overlay.advance()
-            && let Ok(mut text) = texts.get_mut(overlay.body_entity)
-        {
-            update_overlay_text(&overlay, &mut text);
+        let (entity, overlay) = &mut overlay;
+        if overlay.advance() {
+            if let Ok(mut text) = texts.get_mut(overlay.body_entity) {
+                update_overlay_text(&overlay, &mut text);
+            }
+        } else {
+            commands.entity(entity.entity()).despawn();
         }
     }
 }
