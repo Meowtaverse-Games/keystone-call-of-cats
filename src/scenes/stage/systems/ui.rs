@@ -680,7 +680,7 @@ pub fn spawn_tutorial_overlay(
                         row_gap: Val::Px(8.0),
                         ..default()
                     },
-                    BackgroundColor(Color::srgba(0.04, 0.04, 0.04, 0.88)),
+                    BackgroundColor(Color::srgba(0.04, 0.04, 0.04, 0.75)),
                 ))
                 .with_children(|panel| {
                     panel.spawn((
@@ -699,7 +699,6 @@ pub fn spawn_tutorial_overlay(
                                 width: Val::Percent(100.0),
                                 ..default()
                             },
-                            BackgroundColor(Color::srgba(0.1, 0.1, 0.8, 1.0)),
                             Text::new(body_value),
                             TextFont {
                                 font: font.clone(),

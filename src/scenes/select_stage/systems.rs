@@ -586,6 +586,10 @@ fn spawn_stage_cards(
                         flex_direction: FlexDirection::Column,
                         row_gap: Val::Px(16.0),
                         padding: UiRect::all(Val::Px(24.0)),
+                        margin: UiRect {
+                            bottom: Val::Px(12.0),
+                            ..default()
+                        },
                         border: UiRect::all(Val::Px(2.0)),
                         display: if index < CARDS_PER_PAGE {
                             Display::Flex
@@ -752,6 +756,10 @@ fn spawn_bottom_bar(parent: &mut ChildSpawnerCommands, font: &Handle<Font>, init
                 align_items: AlignItems::Center,
                 column_gap: Val::Px(20.0),
                 padding: UiRect::axes(Val::Px(8.0), Val::Px(8.0)),
+                margin: UiRect {
+                    bottom: Val::Px(24.0),
+                    ..default()
+                },
                 border: UiRect::all(Val::Px(1.0)),
                 ..default()
             },
