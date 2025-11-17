@@ -13,10 +13,8 @@ use super::components::*;
 use crate::{
     resources::{
         asset_store::AssetStore,
-        chunk_grammar_map::{
-            self, MAP_SIZE, PlacedChunkLayout, TileKind, generate_random_layout_from_file,
-        },
-        design_resolution::ScaledViewport,
+        chunk_grammar_map::{self, PlacedChunkLayout, TileKind, generate_random_layout_from_file},
+        design_resolution::{LetterboxOffsets, ScaledViewport},
         stage_catalog::*,
         stage_progress::StageProgress,
         tiled::TiledMapAssets,
@@ -168,35 +166,44 @@ fn populate_stage_contents(
     let (real_tile_size, scale) =
         tiled_map_assets.scaled_tile_size_and_scale(viewport_size, tile_size);
 
-    let player_position = placed_chunks
-        .tile_position(TileKind::PlayerSpawn)
-        .unwrap_or((1, 1));
-
-    let player_x = (player_position.0 as f32 + 1.5) * real_tile_size.x - viewport_size.x / 2.0;
-    let player_y = (player_position.1 as f32 + 4.0) * real_tile_size.y - viewport_size.y / 2.0;
-
+    let player_position = placed_chunks.tile_position(TileKind::PlayerSpawn);
     player::spawn_player(
         commands,
         stage_root,
         asset_store,
-        (player_x, player_y, scale),
+        tile_position_to_world(player_position, real_tile_size, viewport_size, scale),
     );
 
-    let goal_position = placed_chunks
-        .tile_position(TileKind::Goal)
-        .unwrap_or((MAP_SIZE.0 - 2, MAP_SIZE.1 - 2));
-    let goal_x = (goal_position.0 as f32 + 1.5) * real_tile_size.x - viewport_size.x / 2.0;
-    let goal_y = (goal_position.1 as f32 + 4.0) * real_tile_size.y - viewport_size.y / 2.0;
+    let stone_position = placed_chunks.tile_position(TileKind::Stone);
+    stone::spawn_stone(
+        commands,
+        stage_root,
+        asset_server,
+        atlas_layouts,
+        tile_position_to_world(stone_position, real_tile_size, viewport_size, scale),
+    );
 
+    let goal_position = placed_chunks.tile_position(TileKind::Goal);
     goal::spawn_goal(
         commands,
         stage_root,
         tiled_map_assets,
         viewport,
-        (goal_x, goal_y),
+        tile_position_to_world(goal_position, real_tile_size, viewport_size, scale),
     );
+}
 
-    stone::spawn_stone_display(commands, stage_root, asset_server, atlas_layouts);
+fn tile_position_to_world(
+    tile_pos: (isize, isize),
+    tile_size: Vec2,
+    viewport_size: Vec2,
+    scale: f32,
+) -> (f32, f32, f32) {
+    (
+        (tile_pos.0 as f32 + 1.5) * tile_size.x - viewport_size.x / 2.0,
+        (tile_pos.1 as f32 + 4.0) * tile_size.y - viewport_size.y / 2.0,
+        scale,
+    )
 }
 
 fn cleanup_stage_entities(
@@ -242,6 +249,7 @@ pub struct StageSetupParams<'w, 's> {
     asset_store: Res<'w, AssetStore>,
     tiled_map_assets: Res<'w, TiledMapAssets>,
     viewport: Res<'w, ScaledViewport>,
+    letterbox_offsets: Res<'w, LetterboxOffsets>,
     asset_server: Res<'w, AssetServer>,
     atlas_layouts: ResMut<'w, Assets<TextureAtlasLayout>>,
     window_query: Query<'w, 's, &'static Window, With<PrimaryWindow>>,
@@ -311,6 +319,7 @@ pub fn setup(mut commands: Commands, mut params: StageSetupParams) {
             params.asset_store.as_ref(),
             params.localization.as_ref(),
             &dialog,
+            params.letterbox_offsets.as_ref(),
         );
     }
 
@@ -380,6 +389,7 @@ pub fn advance_stage_if_cleared(
 pub struct StageReloadParams<'w, 's> {
     asset_store: Res<'w, AssetStore>,
     viewport: Res<'w, ScaledViewport>,
+    letterbox_offsets: Res<'w, LetterboxOffsets>,
     asset_server: Res<'w, AssetServer>,
     atlas_layouts: ResMut<'w, Assets<TextureAtlasLayout>>,
     tiled_map_assets: Res<'w, TiledMapAssets>,
@@ -467,6 +477,7 @@ pub fn reload_stage_if_needed(mut commands: Commands, mut params: StageReloadPar
             params.asset_store.as_ref(),
             params.localization.as_ref(),
             &dialog,
+            params.letterbox_offsets.as_ref(),
         );
     }
 }

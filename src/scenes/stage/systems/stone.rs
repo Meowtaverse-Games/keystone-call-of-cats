@@ -53,11 +53,12 @@ const STONE_MOVE_DURATION: f32 = 0.7;
 const CARRY_VERTICAL_EPS: f32 = 3.0; // 乗っているとみなす高さ誤差
 const CARRY_X_MARGIN: f32 = 2.0; // 横方向の許容マージン
 
-pub fn spawn_stone_display(
+pub fn spawn_stone(
     commands: &mut Commands,
     stage_root: Entity,
     asset_server: &AssetServer,
     layouts: &mut Assets<TextureAtlasLayout>,
+    (object_x, object_y, _scale): (f32, f32, f32),
 ) {
     let texture = asset_server.load(STONE_ATLAS_PATH);
     let layout = layouts.add(TextureAtlasLayout::from_grid(
@@ -78,7 +79,7 @@ pub fn spawn_stone_display(
         parent.spawn((
             StoneRune,
             Sprite::from_atlas_image(texture, atlas),
-            Transform::from_xyz(0.0, 0.0, 1.0).with_scale(Vec3::splat(STONE_SCALE)),
+            Transform::from_xyz(object_x, object_y, 1.0).with_scale(Vec3::splat(STONE_SCALE)),
             StoneCommandState::default(),
             StoneMotion::default(),
             RigidBody::Kinematic,

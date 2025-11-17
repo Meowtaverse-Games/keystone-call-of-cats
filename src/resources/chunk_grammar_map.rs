@@ -45,6 +45,7 @@ struct Port {
 pub enum TileKind {
     Solid,
     PlayerSpawn,
+    Stone,
     Goal,
 }
 
@@ -95,37 +96,33 @@ impl ChunkTemplate {
         for (y, row) in self.map.iter().enumerate() {
             for (x, ch) in row.chars().enumerate() {
                 let x = x as isize;
-                let y = height - 1 - y as isize; // 上下反転
-                match ch {
-                    '#' => tiles.push(Tile {
-                        x,
-                        y,
-                        kind: TileKind::Solid,
-                    }),
-                    '@' => tiles.push(Tile {
-                        x,
-                        y,
-                        kind: TileKind::PlayerSpawn,
-                    }),
-                    'G' => tiles.push(Tile {
-                        x,
-                        y,
-                        kind: TileKind::Goal,
-                    }),
-                    'I' => {
-                        entry = Some(Port {
+                let y = height - 1 - y as isize;
+                let kind = match ch {
+                    '#' => Some(TileKind::Solid),
+                    '@' => Some(TileKind::PlayerSpawn),
+                    'S' => Some(TileKind::Stone),
+                    'G' => Some(TileKind::Goal),
+                    _ => None,
+                };
+                let Some(kind) = kind else {
+                    match ch {
+                        'I' => {
+                            entry = Some(Port {
+                                x,
+                                y,
+                                dir: Dir::Left,
+                            })
+                        }
+                        'E' => exits.push(Port {
                             x,
                             y,
-                            dir: Dir::Left, // 仮
-                        });
+                            dir: Dir::Right,
+                        }),
+                        _ => {}
                     }
-                    'E' => exits.push(Port {
-                        x,
-                        y,
-                        dir: Dir::Right, // 仮
-                    }),
-                    _ => {}
-                }
+                    continue;
+                };
+                tiles.push(Tile { x, y, kind });
             }
         }
 
@@ -254,6 +251,7 @@ fn build_tile_char_map(placed_chunks: &PlacedChunkLayout) -> HashMap<(isize, isi
             let ch = match tile.kind {
                 TileKind::Solid => '#',
                 TileKind::PlayerSpawn => '@',
+                TileKind::Stone => 'S',
                 TileKind::Goal => 'G',
             };
             map.insert((tile.x, tile.y), ch);
@@ -338,15 +336,15 @@ impl<'a> IntoIterator for &'a PlacedChunkLayout {
 }
 
 impl PlacedChunkLayout {
-    pub fn tile_position(&self, kind: TileKind) -> Option<(isize, isize)> {
+    pub fn tile_position(&self, kind: TileKind) -> (isize, isize) {
         for chunk in &self.placed_chunks {
             for tile in &chunk.tiles_world {
                 if tile.kind == kind {
-                    return Some((tile.x, tile.y));
+                    return (tile.x, tile.y);
                 }
             }
         }
-        None
+        panic!("tile_position: no tile found for kind {:?}", kind);
     }
 
     pub fn map_iter(&self) -> impl Iterator<Item = ((isize, isize), TileKind)> + '_ {

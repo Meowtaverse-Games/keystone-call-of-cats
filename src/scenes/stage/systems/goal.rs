@@ -17,16 +17,12 @@ pub fn spawn_goal(
     stage_root: Entity,
     tiled_map_assets: &TiledMapAssets,
     viewport: &ScaledViewport,
-    (object_x, object_y): (f32, f32),
+    (object_x, object_y, scale): (f32, f32, f32),
 ) {
     let viewport_size = viewport.size;
     let tile_size = tiled_map_assets.tile_size();
-    let (real_tile_size, scale) =
+    let (real_tile_size, _scale) =
         tiled_map_assets.scaled_tile_size_and_scale(viewport_size, tile_size);
-    info!(
-        "Computed tile size!!!1: {:?}, scale: {}",
-        real_tile_size, scale
-    );
 
     commands.entity(stage_root).with_children(|parent| {
         parent.spawn((
