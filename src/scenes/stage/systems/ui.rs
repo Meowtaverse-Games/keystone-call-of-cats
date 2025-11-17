@@ -2,7 +2,7 @@ use bevy::{input::ButtonInput, prelude::*};
 use bevy_ecs::system::SystemParam;
 use bevy_egui::{
     EguiContexts,
-    egui::{self, Align2, Event, FontId, FontSelection, RichText},
+    egui::{self, Align2, Event, FontFamily::Proportional, FontId, FontSelection, RichText},
 };
 use bevy_fluent::prelude::Localization;
 
@@ -232,9 +232,10 @@ pub struct StageUIParams<'w, 's> {
     stone_writer: MessageWriter<'w, StoneCommandMessage>,
     next_state: ResMut<'w, NextState<GameState>>,
     audio: Res<'w, AudioHandles>,
+    tutorial_overlays: Query<'w, 's, Entity, With<StageTutorialOverlay>>,
 }
 
-pub fn ui(params: StageUIParams) {
+pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
     let StageUIParams {
         mut commands,
         mut contexts,
@@ -245,6 +246,7 @@ pub fn ui(params: StageUIParams) {
         mut stone_writer,
         mut next_state,
         audio,
+        tutorial_overlays,
     } = params;
     let Ok(ctx) = contexts.ctx_mut() else {
         return;
@@ -287,6 +289,31 @@ pub fn ui(params: StageUIParams) {
 
     let screen_width = ctx.input(|input| input.content_rect().width());
 
+    if !*not_first {
+        // First frame setup
+        let mut style = (*ctx.style()).clone();
+        style.text_styles.iter().for_each(|s| {
+            info!("Text style: {:?} => {:?}", s.0, s.1);
+        });
+        style.text_styles = style
+            .text_styles
+            .clone()
+            .iter()
+            .map(|(style, font_id)| (style.clone(), FontId::new(font_id.size * 1.4, Proportional)))
+            .collect();
+        // style.text_styles = [
+        //     (Heading, FontId::new(30.0 * 2.0, Proportional)),
+        //     (Body, FontId::new(18.0 * 2.0, Proportional)),
+        //     (Monospace, FontId::new(14.0 * 2.0, Proportional)),
+        //     (TextStyle::Button, FontId::new(14.0 * 2.0, Proportional)),
+        //     (Small, FontId::new(10.0 * 2.0, Proportional)),
+        // ]
+        // .into();
+        ctx.set_style(style);
+
+        *not_first = true;
+    }
+
     let (min_width, max_width) = if screen_width.is_finite() && screen_width > 0.0 {
         (screen_width * 0.125, screen_width * 0.5)
     } else {
@@ -316,7 +343,7 @@ pub fn ui(params: StageUIParams) {
                 let back_label = tr(&localization, "stage-ui-back-to-title");
                 if ui.button(back_label.as_str()).clicked() {
                     play_ui_click(&mut commands, &audio);
-                    info!("Returning to stage select");
+
                     editor.controls_enabled = false;
                     editor.pending_player_reset = false;
                     editor.stage_cleared = false;
@@ -358,6 +385,7 @@ pub fn ui(params: StageUIParams) {
                                 editor.stage_cleared = false;
                                 editor.stage_clear_popup_open = false;
                             } else {
+                                hide_tutorial_overlays(&mut commands, &tutorial_overlays);
                                 match script_executor.compile_step(Language::Rhai, &editor.buffer) {
                                     Ok(program) => {
                                         // Clear any existing queue on the Stone
@@ -610,6 +638,15 @@ fn update_overlay_text(panel: &TutorialOverlayPanel, text: &mut Text) {
     if panel.has_next() {
         text.0.push_str("\n\n");
         text.0.push_str(&panel.hint);
+    }
+}
+
+fn hide_tutorial_overlays(
+    commands: &mut Commands,
+    overlays: &Query<Entity, With<StageTutorialOverlay>>,
+) {
+    for entity in overlays.iter() {
+        commands.entity(entity).despawn();
     }
 }
 
