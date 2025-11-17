@@ -596,7 +596,7 @@ fn chunk_tutorial_text(input: &str) -> Vec<String> {
                 chunks.push(current.join("\n"));
                 current.clear();
             }
-        } else if (line == "____") {
+        } else if line == "____" {
             current.push("".to_string());
         } else {
             current.push(line.trim().to_string());
