@@ -59,29 +59,25 @@ stage-ui-error-invalid-sleep-duration = sleep命令の秒数は0以上である�
 stage-ui-error-engine = スクリプト実行エラー: {$message}
 stage-ui-error-unsupported-language = サポートされていないスクリプト言語です: {$language}
 
-stage-ui-tutorial-stage1-title = プレイヤー: 第一階層の記録
+stage-ui-tutorial-stage1-title = チュートリアル1
 stage-ui-tutorial-stage1-text =
     ここは、地上から遠く離れた地下の洞窟。
-    あなたは、どこからか聞こえる「猫の鳴き声」を追って
-    この暗い穴へと降りてきました。
+    あなたは、どこからか聞こえる「猫の鳴き声」を追ってこの暗い穴へと降りてきました。
 
     この世界では、石だけがプログラミングで動かせます。
-    あなたは自分の体を動かしながら、
-    石には「命令」を書いて動かしていきます。
+    あなたは自分の体を動かしながら、石には「命令」を書いて動かしていきます。
 
     まずは自分の体を動かしてみましょう。
-
+    ____
     左右移動ボタン … 左右に移動
-
     ジャンプボタン … 段差を飛び越える
     崩れた足場に気をつけながら、先へ進んでください。
 
     先へ進むには、石を動かして足場を作る必要があります。
-    画面の「石のプログラム」を編集して、
-    「右へ進む」命令を並べてから「実行ボタン」で動かしてみましょう。
+    画面の「石のプログラム」を編集して、「右へ進む」命令を並べてから「実行ボタン」で動かしてみましょう。
     うまくいけば、石が道を作ってくれます。
 
-stage-ui-tutorial-stage2-title = プレイヤー: 第二階層の記録
+stage-ui-tutorial-stage2-title = チュートリアル2
 stage-ui-tutorial-stage2-text =
     洞窟の奥へ進むと、同じような小さな谷が
     いくつも続いている場所に出ました。
@@ -101,7 +97,7 @@ stage-ui-tutorial-stage2-text =
     もう一度プログラムを開き、
     命令の数を変えて、何度か試してみましょう。
 
-stage-ui-tutorial-stage3-title = プレイヤー: 第三階層の記録
+stage-ui-tutorial-stage3-title = チュートリアル3
 stage-ui-tutorial-stage3-text =
     洞窟の奥に、重たい石が乗ると開く
     不思議な扉を見つけました。

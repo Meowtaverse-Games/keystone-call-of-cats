@@ -596,6 +596,8 @@ fn chunk_tutorial_text(input: &str) -> Vec<String> {
                 chunks.push(current.join("\n"));
                 current.clear();
             }
+        } else if (line == "____") {
+            current.push("".to_string());
         } else {
             current.push(line.trim().to_string());
         }
@@ -641,8 +643,6 @@ pub fn spawn_tutorial_overlay(
         body_value.push_str("\n\n");
         body_value.push_str(&hint);
     }
-
-    info!("letter box offsets: {:?}", letterbox_offsets);
 
     let mut body_entity = None;
     let overlay_entity = commands
@@ -695,12 +695,18 @@ pub fn spawn_tutorial_overlay(
 
                     let entity = panel
                         .spawn((
+                            Node {
+                                width: Val::Percent(100.0),
+                                ..default()
+                            },
+                            BackgroundColor(Color::srgba(0.1, 0.1, 0.8, 1.0)),
                             Text::new(body_value),
                             TextFont {
                                 font: font.clone(),
                                 font_size: 20.0,
                                 ..default()
                             },
+                            TextLayout::new(Justify::Left, LineBreak::WordBoundary),
                             TextColor(Color::srgb(0.95, 0.95, 0.95)),
                         ))
                         .id();
@@ -733,7 +739,6 @@ pub fn handle_tutorial_overlay_input(
         && let Ok((_, mut overlay)) = tutorial_overlay.single_mut()
     {
         overlay.padding.left = Val::Px(letterbox_offsets.left);
-        info!("update offsets: {:?}", letterbox_offsets);
     }
 
     if !keys.just_pressed(KeyCode::Enter) {
