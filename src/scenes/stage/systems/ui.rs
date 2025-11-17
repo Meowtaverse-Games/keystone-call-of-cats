@@ -729,8 +729,9 @@ pub fn handle_tutorial_overlay_input(
     mut texts: Query<&mut Text>,
     letterbox_offsets: ResMut<LetterboxOffsets>,
 ) {
-    if letterbox_offsets.is_changed() 
-      && let Ok((_, mut overlay)) = tutorial_overlay.single_mut() {
+    if letterbox_offsets.is_changed()
+        && let Ok((_, mut overlay)) = tutorial_overlay.single_mut()
+    {
         overlay.padding.left = Val::Px(letterbox_offsets.left);
         info!("update offsets: {:?}", letterbox_offsets);
     }
@@ -743,7 +744,7 @@ pub fn handle_tutorial_overlay_input(
         let (entity, overlay) = &mut overlay;
         if overlay.advance() {
             if let Ok(mut text) = texts.get_mut(overlay.body_entity) {
-                update_overlay_text(&overlay, &mut text);
+                update_overlay_text(overlay, &mut text);
             }
         } else {
             commands.entity(entity.entity()).despawn();
