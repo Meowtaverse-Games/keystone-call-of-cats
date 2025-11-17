@@ -27,12 +27,12 @@ use crate::{
 
 #[derive(Clone, Debug)]
 pub struct TutorialDialog {
-    pub title_key: &'static str,
-    pub body_key: &'static str,
+    pub title_key: String,
+    pub body_key: String,
 }
 
 impl TutorialDialog {
-    fn new(title_key: &'static str, body_key: &'static str) -> Self {
+    fn new(title_key: String, body_key: String) -> Self {
         Self {
             title_key,
             body_key,
@@ -561,20 +561,14 @@ pub fn tick_script_program(
 }
 
 pub fn tutorial_dialog_for_stage(stage_id: StageId) -> Option<TutorialDialog> {
-    match stage_id.0 {
-        1 => Some(TutorialDialog::new(
-            "stage-ui-tutorial-stage1-title",
-            "stage-ui-tutorial-stage1-text",
-        )),
-        2 => Some(TutorialDialog::new(
-            "stage-ui-tutorial-stage2-title",
-            "stage-ui-tutorial-stage2-text",
-        )),
-        3 => Some(TutorialDialog::new(
-            "stage-ui-tutorial-stage3-title",
-            "stage-ui-tutorial-stage3-text",
-        )),
-        _ => None,
+    if stage_id.0 <= 3 {
+        let id = stage_id.0;
+        Some(TutorialDialog::new(
+            format!("stage-ui-tutorial-stage{}-title", id),
+            format!("stage-ui-tutorial-stage{}-text", id),
+        ))
+    } else {
+        None
     }
 }
 
@@ -631,8 +625,8 @@ pub fn spawn_tutorial_overlay(
         return;
     };
 
-    let title = tr(localization, dialog.title_key);
-    let body = tr(localization, dialog.body_key);
+    let title = tr(localization, &dialog.title_key);
+    let body = tr(localization, &dialog.body_key);
     let chunks = chunk_tutorial_text(&body);
     if chunks.is_empty() {
         return;
