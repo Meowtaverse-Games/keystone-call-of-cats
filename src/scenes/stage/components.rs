@@ -27,12 +27,14 @@ pub struct Goal {
 pub enum PlayerAnimationState {
     Idle,
     Run,
+    Climb,
 }
 
 #[derive(Default)]
 pub struct PlayerAnimationClips {
     pub idle: Vec<Handle<Image>>,
     pub run: Vec<Handle<Image>>,
+    pub climb: Vec<Handle<Image>>,
 }
 
 impl PlayerAnimationClips {
@@ -40,6 +42,7 @@ impl PlayerAnimationClips {
         match state {
             PlayerAnimationState::Idle => &self.idle,
             PlayerAnimationState::Run => &self.run,
+            PlayerAnimationState::Climb => &self.climb,
         }
     }
 }
