@@ -806,7 +806,7 @@ pub fn handle_tutorial_overlay_input(
     if let Ok((entity, mut overlay)) = tutorial_overlay_panels.single_mut() {
         if overlay.advance() {
             if let Ok(mut text) = texts.get_mut(overlay.body_entity) {
-                update_overlay_text(&mut overlay, &mut text);
+                update_overlay_text(&overlay, &mut text);
             }
             if overlay.next_is_last() {
                 tutorial_hints
