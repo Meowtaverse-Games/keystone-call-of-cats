@@ -61,7 +61,7 @@ impl PlayerAnimation {
     }
 }
 
-#[derive(Component)]
+#[derive(Component, Default)]
 pub struct PlayerMotion {
     pub speed: f32,
     pub direction: f32,
@@ -69,6 +69,7 @@ pub struct PlayerMotion {
     pub jump_speed: f32,
     pub ground_y: f32,
     pub is_jumping: bool,
+    pub is_climbing: bool,
 }
 
 #[derive(Component)]
