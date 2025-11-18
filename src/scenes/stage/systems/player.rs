@@ -203,6 +203,16 @@ type ResetPlayerComponents<'w> = (
     &'w PlayerSpawnState,
 );
 
+type PlayerGoalDescentComponents<'w> = (
+    Entity,
+    &'w mut Transform,
+    &'w mut LinearVelocity,
+    &'w mut PlayerMotion,
+    &'w mut CollisionLayers,
+    &'w mut GravityScale,
+    &'w PlayerGoalDescent,
+);
+
 pub fn reset_player_position(
     mut editor_state: ResMut<ScriptEditorState>,
     mut query: Query<ResetPlayerComponents<'_>, With<Player>>,
@@ -238,18 +248,7 @@ pub fn reset_player_position(
 pub fn drive_player_goal_descent(
     time: Res<Time>,
     mut commands: Commands,
-    mut query: Query<
-        (
-            Entity,
-            &mut Transform,
-            &mut LinearVelocity,
-            &mut PlayerMotion,
-            &mut CollisionLayers,
-            &mut GravityScale,
-            &PlayerGoalDescent,
-        ),
-        With<Player>,
-    >,
+    mut query: Query<PlayerGoalDescentComponents<'_>, With<Player>>,
 ) {
     let Ok((
         entity,

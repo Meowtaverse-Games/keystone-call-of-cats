@@ -1,6 +1,6 @@
 use avian2d::prelude::*;
 use bevy::prelude::*;
-use bevy_ecs::spawn;
+
 use rand::Rng;
 
 use crate::{
@@ -13,10 +13,7 @@ use crate::{
 };
 
 const BACKGROUND_IDS: [u32; 16] = [
-    251, 252, 253, 254,
-    268, 269, 270, 271,
-    285, 286, 287, 288,
-    302, 303, 304, 305,
+    251, 252, 253, 254, 268, 269, 270, 271, 285, 286, 287, 288, 302, 303, 304, 305,
 ];
 
 fn background_tile_id(rng: &mut rand::rngs::ThreadRng) -> u32 {
@@ -88,18 +85,16 @@ pub fn spawn_tiles(
                     let image = image_from_tileset(&tileset, tile_id as usize).unwrap();
                     spawn_boundary_tile(parent, image, transform, tile_size, is_boundary);
 
-                    let ladder_tile_id = if x == 1 && y == 0 {
-                        Some(178)
-                    } else if x == 1 && y == 1 {
-                        Some(178)
-                    } else if x == 1 && y == 2 {
-                        Some(178)
-                    } else {
-                        None
-                    };
-                    if let Some(ladder_tile_id) = ladder_tile_id {
-                        let ladder_image = image_from_tileset(&tileset, ladder_tile_id as usize).unwrap();
-                        spawn_boundary_tile(parent, ladder_image, Transform::from_xyz(tile_x, tile_y, -8.0).with_scale(Vec3::new(scale, scale, 1.0)), tile_size, false);
+                    if x == 1 && y <= 2 {
+                        let ladder_image = image_from_tileset(&tileset, 178).unwrap();
+                        spawn_boundary_tile(
+                            parent,
+                            ladder_image,
+                            Transform::from_xyz(tile_x, tile_y, -8.0)
+                                .with_scale(Vec3::new(scale, scale, 1.0)),
+                            tile_size,
+                            false,
+                        );
                     }
                 }
             }
