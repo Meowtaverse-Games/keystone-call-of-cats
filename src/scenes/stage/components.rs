@@ -1,3 +1,4 @@
+use avian2d::prelude::LayerMask;
 use bevy::prelude::*;
 
 #[derive(Component)]
@@ -76,4 +77,14 @@ pub struct PlayerMotion {
 pub struct PlayerSpawnState {
     pub translation: Vec3,
     pub scale: f32,
+}
+
+#[derive(Component)]
+pub struct PlayerGoalDescent {
+    pub target_y: f32,
+    pub align_x: f32,
+    pub speed: f32,
+    pub original_memberships: LayerMask,
+    pub original_filters: LayerMask,
+    pub original_gravity: f32,
 }

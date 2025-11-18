@@ -4,13 +4,14 @@ use bevy_fluent::prelude::Localization;
 
 use crate::{
     resources::{design_resolution::ScaledViewport, tiled::*},
-    scenes::stage::components::{Goal, Player, PlayerMotion},
+    scenes::stage::components::{Goal, Player, PlayerGoalDescent, PlayerMotion},
     util::localization::tr,
 };
 
 use super::{StageAudioHandles, StageAudioState, ui::ScriptEditorState};
 
 const GOAL_OBJECT_ID: u32 = 194;
+const GOAL_DESCENT_SPEED: f32 = 32.0;
 
 pub fn spawn_goal(
     commands: &mut Commands,
@@ -43,9 +44,13 @@ fn image_from_tileset(tileset: &Tileset, id: u32) -> Option<Sprite> {
 }
 
 type GoalCheckPlayer<'w> = (
+    Entity,
     &'w GlobalTransform,
     &'w mut LinearVelocity,
     &'w mut PlayerMotion,
+    Option<&'w PlayerGoalDescent>,
+    &'w mut CollisionLayers,
+    &'w GravityScale,
 );
 
 pub fn check_goal_completion(
@@ -61,9 +66,22 @@ pub fn check_goal_completion(
         return;
     }
 
-    let Ok((player_transform, mut velocity, mut motion)) = player_query.single_mut() else {
+    let Ok((
+        player_entity,
+        player_transform,
+        mut velocity,
+        mut motion,
+        active_descent,
+        mut layers,
+        gravity,
+    )) = player_query.single_mut()
+    else {
         return;
     };
+
+    if active_descent.is_some() {
+        return;
+    }
 
     let player_pos = player_transform.translation().truncate();
 
@@ -76,6 +94,7 @@ pub fn check_goal_completion(
             velocity.y = 0.0;
             motion.is_moving = false;
             motion.is_jumping = false;
+            motion.is_climbing = true;
 
             info!("Goal reached!");
             editor_state.controls_enabled = false;
@@ -84,6 +103,21 @@ pub fn check_goal_completion(
             editor_state.last_run_feedback = Some(tr(&localization, "stage-ui-feedback-goal"));
             editor_state.stage_clear_popup_open = true;
             audio_state.play_clear_once(&mut commands, &audio_handles);
+
+            let target_y = goal_pos.y - goal.half_extents.y;
+            let original_memberships = layers.memberships;
+            let original_filters = layers.filters;
+            layers.memberships = LayerMask::NONE;
+            layers.filters = LayerMask::NONE;
+
+            commands.entity(player_entity).insert(PlayerGoalDescent {
+                target_y,
+                align_x: goal_pos.x,
+                speed: GOAL_DESCENT_SPEED,
+                original_memberships,
+                original_filters,
+                original_gravity: gravity.0,
+            });
             break;
         }
     }

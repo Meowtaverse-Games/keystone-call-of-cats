@@ -234,3 +234,65 @@ pub fn reset_player_position(
         sprite.flip_x = false;
     }
 }
+
+const GOAL_ALIGNMENT_EPSILON: f32 = 0.1;
+
+pub fn drive_player_goal_descent(
+    time: Res<Time>,
+    mut commands: Commands,
+    mut query: Query<
+        (
+            Entity,
+            &mut Transform,
+            &mut LinearVelocity,
+            &mut PlayerMotion,
+            &mut CollisionLayers,
+            &mut GravityScale,
+            &PlayerGoalDescent,
+        ),
+        With<Player>,
+    >,
+) {
+    let Ok((
+        entity,
+        mut transform,
+        mut velocity,
+        mut motion,
+        mut layers,
+        mut gravity_scale,
+        descent,
+    )) = query.single_mut()
+    else {
+        return;
+    };
+
+    layers.memberships = LayerMask::NONE;
+    layers.filters = LayerMask::NONE;
+    motion.is_moving = false;
+    motion.is_jumping = false;
+    motion.is_climbing = true;
+    gravity_scale.0 = 0.0;
+    velocity.x = 0.0;
+    velocity.y = 0.0;
+
+    let align_step = descent.speed * 0.5 * time.delta_secs();
+    let horizontal_delta = descent.align_x - transform.translation.x;
+    if horizontal_delta.abs() > GOAL_ALIGNMENT_EPSILON {
+        transform.translation.x += horizontal_delta.clamp(-align_step, align_step);
+    } else {
+        transform.translation.x = descent.align_x;
+    }
+
+    let descend_step = descent.speed * time.delta_secs();
+    if transform.translation.y - descend_step > descent.target_y {
+        transform.translation.y -= descend_step;
+        return;
+    }
+
+    transform.translation.y = descent.target_y;
+    motion.is_climbing = false;
+    layers.memberships = descent.original_memberships;
+    layers.filters = descent.original_filters;
+    gravity_scale.0 = descent.original_gravity;
+    commands.entity(entity).remove::<PlayerGoalDescent>();
+}

@@ -355,8 +355,9 @@ pub fn advance_stage_if_cleared(
     mut progress: ResMut<StageProgress>,
     stage_catalog: Res<StageCatalog>,
     localization: Res<Localization>,
+    descent_query: Query<(), With<PlayerGoalDescent>>,
 ) {
-    if !editor_state.stage_cleared {
+    if !editor_state.stage_cleared || !descent_query.is_empty() {
         return;
     }
 
