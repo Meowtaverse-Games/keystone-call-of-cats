@@ -212,14 +212,7 @@ fn summarize_commands(commands: &[ScriptCommand]) -> String {
 
 pub fn init_editor_state(commands: &mut Commands, stage_id: StageId) {
     let mut editor_state = ScriptEditorState {
-        buffer: String::from(
-            "move(\"left\");\n\
-             sleep(1.0);\n\
-             move(\"right\");\n\
-             sleep(1.0);\n\
-             for i in 1..=2 {\n  move(\"up\");\n  sleep(0.5);\n\
-             }\n",
-        ),
+        buffer: String::from(""),
         ..default()
     };
     editor_state.set_tutorial_for_stage(stage_id);
