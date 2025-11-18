@@ -235,8 +235,6 @@ pub fn reset_player_position(
     }
 }
 
-const GOAL_ALIGNMENT_EPSILON: f32 = 0.1;
-
 pub fn drive_player_goal_descent(
     time: Res<Time>,
     mut commands: Commands,
@@ -275,13 +273,7 @@ pub fn drive_player_goal_descent(
     velocity.x = 0.0;
     velocity.y = 0.0;
 
-    let align_step = descent.speed * 0.5 * time.delta_secs();
-    let horizontal_delta = descent.align_x - transform.translation.x;
-    if horizontal_delta.abs() > GOAL_ALIGNMENT_EPSILON {
-        transform.translation.x += horizontal_delta.clamp(-align_step, align_step);
-    } else {
-        transform.translation.x = descent.align_x;
-    }
+    transform.translation.x = descent.align_x;
 
     let descend_step = descent.speed * time.delta_secs();
     if transform.translation.y - descend_step > descent.target_y {

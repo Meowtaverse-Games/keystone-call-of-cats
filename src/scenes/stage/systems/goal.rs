@@ -105,6 +105,7 @@ pub fn check_goal_completion(
             audio_state.play_clear_once(&mut commands, &audio_handles);
 
             let target_y = goal_pos.y - goal.half_extents.y;
+            let align_x = player_transform.translation().x;
             let original_memberships = layers.memberships;
             let original_filters = layers.filters;
             layers.memberships = LayerMask::NONE;
@@ -112,7 +113,7 @@ pub fn check_goal_completion(
 
             commands.entity(player_entity).insert(PlayerGoalDescent {
                 target_y,
-                align_x: goal_pos.x,
+                align_x,
                 speed: GOAL_DESCENT_SPEED,
                 original_memberships,
                 original_filters,

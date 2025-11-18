@@ -1,5 +1,6 @@
 use avian2d::prelude::*;
 use bevy::prelude::*;
+use bevy_ecs::spawn;
 use rand::Rng;
 
 use crate::{
@@ -10,6 +11,18 @@ use crate::{
     },
     scenes::stage::components::StageTile,
 };
+
+const BACKGROUND_IDS: [u32; 16] = [
+    251, 252, 253, 254,
+    268, 269, 270, 271,
+    285, 286, 287, 288,
+    302, 303, 304, 305,
+];
+
+fn background_tile_id(rng: &mut rand::rngs::ThreadRng) -> u32 {
+    let index = rng.random_range(0..(BACKGROUND_IDS.len()));
+    BACKGROUND_IDS[index]
+}
 
 pub fn spawn_tiles(
     commands: &mut Commands,
@@ -38,17 +51,19 @@ pub fn spawn_tiles(
                     let tile_x = (x as f32 + 0.5) * real_tile_size.x - viewport_size.x / 2.0;
                     let tile_y = -((y as f32 + 0.5) * real_tile_size.y - viewport_size.y / 2.0);
 
-                    let transform = Transform::from_xyz(tile_x, tile_y, -10.0)
+                    let mut transform = Transform::from_xyz(tile_x, tile_y, -10.0)
                         .with_scale(Vec3::new(scale, scale, 1.0));
                     let is_boundary =
                         x == 0 || y == 0 || x == MAP_SIZE.0 - 1 || y == MAP_SIZE.1 - 1;
-                    let background_ids = [
-                        251, 252, 253, 254, 268, 269, 270, 271, 285, 286, 287, 288, 302, 303, 304,
-                        305,
-                    ];
+
                     let tile_id = if is_boundary {
                         if x == 0 && y == 0 {
-                            113
+                            112
+                        } else if x == 1 && y == 0 {
+                            270
+                        } else if x == 2 && y == 0 {
+                            transform.rotate_z((90.0f32).to_radians());
+                            114
                         } else if x == MAP_SIZE.0 - 1 && y == 0 {
                             130
                         } else if x == 0 && y == MAP_SIZE.1 - 1 {
@@ -67,14 +82,25 @@ pub fn spawn_tiles(
                             0 // Fallback, should not happen
                         }
                     } else {
-                        let index = rng.random_range(0..(background_ids.len()));
-                        background_ids[index]
+                        background_tile_id(&mut rng)
                     };
 
-                    let Some(image) = image_from_tileset(&tileset, tile_id as usize) else {
-                        continue;
-                    };
+                    let image = image_from_tileset(&tileset, tile_id as usize).unwrap();
                     spawn_boundary_tile(parent, image, transform, tile_size, is_boundary);
+
+                    let ladder_tile_id = if x == 1 && y == 0 {
+                        Some(178)
+                    } else if x == 1 && y == 1 {
+                        Some(178)
+                    } else if x == 1 && y == 2 {
+                        Some(178)
+                    } else {
+                        None
+                    };
+                    if let Some(ladder_tile_id) = ladder_tile_id {
+                        let ladder_image = image_from_tileset(&tileset, ladder_tile_id as usize).unwrap();
+                        spawn_boundary_tile(parent, ladder_image, Transform::from_xyz(tile_x, tile_y, -8.0).with_scale(Vec3::new(scale, scale, 1.0)), tile_size, false);
+                    }
                 }
             }
 
