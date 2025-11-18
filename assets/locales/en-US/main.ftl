@@ -53,7 +53,6 @@ stage-ui-command-help-sleep-title = sleep(seconds)
 stage-ui-command-help-sleep-body = Waits the given number of seconds before running the next command. Fractions are allowed.
 stage-ui-command-help-close = Close
 
-stage-ui-error-empty-script = The script is empty.
 stage-ui-error-invalid-move-direction = move() needs left/top/right/down but got "{$direction}".
 stage-ui-error-invalid-sleep-duration = sleep() duration must be zero or greater.
 stage-ui-error-engine = Script runtime error: {$message}

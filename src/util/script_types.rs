@@ -42,7 +42,6 @@ impl fmt::Display for MoveDirection {
 /// High-level errors surfaced when running scripts.
 #[derive(Debug)]
 pub enum ScriptExecutionError {
-    EmptyScript,
     InvalidMoveDirection {
         direction: String,
     },

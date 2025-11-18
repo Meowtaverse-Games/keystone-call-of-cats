@@ -15,9 +15,9 @@ impl RhaiScriptExecutor {
 
     fn parse_commands(&self, source: &str) -> Result<Vec<ScriptCommand>, ScriptExecutionError> {
         let script = source.trim();
-        if script.is_empty() {
-            return Err(ScriptExecutionError::EmptyScript);
-        }
+        // if script.is_empty() {
+        //     return Err(ScriptExecutionError::EmptyScript);
+        // }
 
         let recorder = CommandRecorder::with_limit(MAX_COMMANDS);
         let mut engine = Engine::new();

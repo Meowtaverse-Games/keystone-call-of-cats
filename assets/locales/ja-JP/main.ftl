@@ -53,7 +53,6 @@ stage-ui-command-help-sleep-title = sleep(seconds)
 stage-ui-command-help-sleep-body = 指定した秒数だけ待ってから次の命令へ進みます。小数も使えます。
 stage-ui-command-help-close = 閉じる
 
-stage-ui-error-empty-script = スクリプトが空です。
 stage-ui-error-invalid-move-direction = move命令にはleft/top/right/downのいずれかを指定してください: {$direction}
 stage-ui-error-invalid-sleep-duration = sleep命令の秒数は0以上である必要があります。
 stage-ui-error-engine = スクリプト実行エラー: {$message}
