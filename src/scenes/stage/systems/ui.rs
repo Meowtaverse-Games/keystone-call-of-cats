@@ -44,16 +44,22 @@ impl TutorialDialog {
 pub struct StageTutorialOverlay;
 
 #[derive(Component)]
+pub struct StageTutorialHint;
+
+#[derive(Component)]
 pub struct TutorialOverlayPanel {
     chunks: Vec<String>,
     current_chunk: usize,
-    hint: String,
     body_entity: Entity,
 }
 
 impl TutorialOverlayPanel {
     fn has_next(&self) -> bool {
         self.current_chunk + 1 < self.chunks.len()
+    }
+
+    fn next_is_last(&self) -> bool {
+        self.current_chunk + 1 == self.chunks.len()
     }
 
     fn advance(&mut self) -> bool {
@@ -637,7 +643,6 @@ fn update_overlay_text(panel: &TutorialOverlayPanel, text: &mut Text) {
     text.0.push_str(panel.current_text());
     if panel.has_next() {
         text.0.push_str("\n\n");
-        text.0.push_str(&panel.hint);
     }
 }
 
@@ -672,7 +677,6 @@ pub fn spawn_tutorial_overlay(
     let mut body_value = chunks[0].clone();
     if chunks.len() > 1 {
         body_value.push_str("\n\n");
-        body_value.push_str(&hint);
     }
 
     let mut body_entity = None;
@@ -715,12 +719,17 @@ pub fn spawn_tutorial_overlay(
                 ))
                 .with_children(|panel| {
                     panel.spawn((
+                        Node {
+                            width: Val::Percent(100.0),
+                            ..default()
+                        },
                         Text::new(title),
                         TextFont {
                             font: font.clone(),
                             font_size: 28.0,
                             ..default()
                         },
+                        TextLayout::new(Justify::Left, LineBreak::WordBoundary),
                         TextColor(Color::srgb(0.95, 0.9, 0.65)),
                     ));
 
@@ -741,6 +750,22 @@ pub fn spawn_tutorial_overlay(
                         ))
                         .id();
                     body_entity = Some(entity);
+
+                    panel.spawn((
+                        StageTutorialHint,
+                        Node {
+                            width: Val::Percent(100.0),
+                            ..default()
+                        },
+                        Text::new(hint.clone()),
+                        TextFont {
+                            font: font.clone(),
+                            font_size: 20.0,
+                            ..default()
+                        },
+                        TextLayout::new(Justify::Right, LineBreak::WordBoundary),
+                        TextColor(Color::srgb(0.95, 0.95, 0.95)),
+                    ));
                 });
         })
         .id();
@@ -751,7 +776,6 @@ pub fn spawn_tutorial_overlay(
             .insert(TutorialOverlayPanel {
                 chunks,
                 current_chunk: 0,
-                hint,
                 body_entity,
             });
     }
@@ -760,13 +784,17 @@ pub fn spawn_tutorial_overlay(
 pub fn handle_tutorial_overlay_input(
     mut commands: Commands,
     keys: Res<ButtonInput<KeyCode>>,
-    mut tutorial_overlay: Query<(&StageTutorialOverlay, &mut Node)>,
-    mut overlays: Query<(Entity, &mut TutorialOverlayPanel), With<StageTutorialOverlay>>,
+    mut tutorial_overlays: Query<(&StageTutorialOverlay, &mut Node)>,
+    mut tutorial_overlay_panels: Query<
+        (Entity, &mut TutorialOverlayPanel),
+        With<StageTutorialOverlay>,
+    >,
+    mut tutorial_hints: Query<(Entity, &mut StageTutorialHint)>,
     mut texts: Query<&mut Text>,
     letterbox_offsets: ResMut<LetterboxOffsets>,
 ) {
     if letterbox_offsets.is_changed()
-        && let Ok((_, mut overlay)) = tutorial_overlay.single_mut()
+        && let Ok((_, mut overlay)) = tutorial_overlays.single_mut()
     {
         overlay.padding.left = Val::Px(letterbox_offsets.left);
     }
@@ -775,14 +803,20 @@ pub fn handle_tutorial_overlay_input(
         return;
     }
 
-    for mut overlay in &mut overlays {
-        let (entity, overlay) = &mut overlay;
+    if let Ok((entity, mut overlay)) = tutorial_overlay_panels.single_mut() {
         if overlay.advance() {
             if let Ok(mut text) = texts.get_mut(overlay.body_entity) {
-                update_overlay_text(overlay, &mut text);
+                update_overlay_text(&mut overlay, &mut text);
+            }
+            if overlay.next_is_last() {
+                tutorial_hints
+                    .iter_mut()
+                    .for_each(|(entity, mut _hint_text)| {
+                        commands.entity(entity).despawn();
+                    });
             }
         } else {
-            commands.entity(entity.entity()).despawn();
+            commands.entity(entity).despawn();
         }
     }
 }
