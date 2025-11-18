@@ -55,7 +55,6 @@ pub enum ScriptExecutionError {
 impl fmt::Display for ScriptExecutionError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ScriptExecutionError::EmptyScript => write!(f, "Script is empty."),
             ScriptExecutionError::InvalidMoveDirection { direction } => {
                 write!(f, "Invalid move direction: {direction}")
             }
