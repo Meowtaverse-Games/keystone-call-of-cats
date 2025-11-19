@@ -169,7 +169,10 @@ pub fn update_letterbox(
         size: viewport.size,
         scale: scale_min,
     };
-    if viewport.center != new_viewport.center || viewport.size != new_viewport.size || viewport.scale != new_viewport.scale {
+    if viewport.center != new_viewport.center
+        || viewport.size != new_viewport.size
+        || viewport.scale != new_viewport.scale
+    {
         *viewport = new_viewport;
     }
 }
