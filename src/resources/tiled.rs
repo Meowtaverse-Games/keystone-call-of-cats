@@ -64,7 +64,7 @@ impl TiledMapAssets {
     }
 }
 
-pub const MAP_SIZE: (usize, usize) = (30, 15);
+pub const MAP_SIZE: (usize, usize) = (30, 20);
 pub const TILE_SIZE: (f32, f32) = (16.0, 16.0);
 
 #[derive(Debug)]
