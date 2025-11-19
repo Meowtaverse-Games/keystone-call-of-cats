@@ -21,6 +21,7 @@ impl Plugin for StageScenePlugin {
                 (
                     systems::tick_script_program,
                     systems::update_stage_root,
+                    systems::update_stage_color_grading,
                     systems::reset_player_position,
                     systems::animate_player,
                     systems::move_player,

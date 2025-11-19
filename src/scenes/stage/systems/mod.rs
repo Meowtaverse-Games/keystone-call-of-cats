@@ -5,12 +5,15 @@ mod stone;
 mod tiles;
 mod ui;
 
-use bevy::{ecs::system::SystemParam, prelude::*, window::PrimaryWindow};
+use bevy::{
+    ecs::system::SystemParam, prelude::*, render::view::ColorGrading, window::PrimaryWindow,
+};
 use bevy_fluent::prelude::Localization;
 
 use super::components::*;
 
 use crate::{
+    MainCamera,
     resources::{
         asset_store::AssetStore,
         chunk_grammar_map::{self, PlacedChunkLayout, TileKind, generate_random_layout_from_file},
@@ -507,4 +510,37 @@ pub fn update_stage_root(
 
     transform.translation = translation;
     transform.scale = Vec3::splat(viewport.scale);
+}
+
+const DISABLED_SCENE_SATURATION: f32 = 0.01;
+const SATURATION_EPSILON: f32 = 0.005;
+
+pub fn update_stage_color_grading(
+    editor_state: Option<Res<ScriptEditorState>>,
+    mut camera_query: Query<&mut ColorGrading, With<MainCamera>>,
+) {
+    let Ok(mut color_grading) = camera_query.single_mut() else {
+        return;
+    };
+
+    let controls_enabled = editor_state
+        .as_ref()
+        .map(|state| state.controls_enabled)
+        .unwrap_or(true);
+
+    let target_saturation = if controls_enabled {
+        1.0
+    } else {
+        DISABLED_SCENE_SATURATION
+    };
+
+    if (color_grading.global.post_saturation - target_saturation).abs() > SATURATION_EPSILON {
+        color_grading.global.post_saturation = target_saturation;
+    }
+
+    for section in color_grading.all_sections_mut() {
+        if (section.saturation - target_saturation).abs() > SATURATION_EPSILON {
+            section.saturation = target_saturation;
+        }
+    }
 }
