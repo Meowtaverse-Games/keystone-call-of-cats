@@ -1,3 +1,4 @@
+use avian2d::prelude::LayerMask;
 use bevy::prelude::*;
 
 #[derive(Component)]
@@ -27,12 +28,14 @@ pub struct Goal {
 pub enum PlayerAnimationState {
     Idle,
     Run,
+    Climb,
 }
 
 #[derive(Default)]
 pub struct PlayerAnimationClips {
     pub idle: Vec<Handle<Image>>,
     pub run: Vec<Handle<Image>>,
+    pub climb: Vec<Handle<Image>>,
 }
 
 impl PlayerAnimationClips {
@@ -40,6 +43,7 @@ impl PlayerAnimationClips {
         match state {
             PlayerAnimationState::Idle => &self.idle,
             PlayerAnimationState::Run => &self.run,
+            PlayerAnimationState::Climb => &self.climb,
         }
     }
 }
@@ -58,7 +62,7 @@ impl PlayerAnimation {
     }
 }
 
-#[derive(Component)]
+#[derive(Component, Default)]
 pub struct PlayerMotion {
     pub speed: f32,
     pub direction: f32,
@@ -66,10 +70,21 @@ pub struct PlayerMotion {
     pub jump_speed: f32,
     pub ground_y: f32,
     pub is_jumping: bool,
+    pub is_climbing: bool,
 }
 
 #[derive(Component)]
 pub struct PlayerSpawnState {
     pub translation: Vec3,
     pub scale: f32,
+}
+
+#[derive(Component)]
+pub struct PlayerGoalDescent {
+    pub target_y: f32,
+    pub align_x: f32,
+    pub speed: f32,
+    pub original_memberships: LayerMask,
+    pub original_filters: LayerMask,
+    pub original_gravity: f32,
 }

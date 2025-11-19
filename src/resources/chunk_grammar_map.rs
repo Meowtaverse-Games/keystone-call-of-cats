@@ -3,6 +3,7 @@ use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::fs::File;
 use std::io::BufReader;
+use std::iter;
 use std::path::Path;
 
 use serde::Deserialize;
@@ -14,8 +15,9 @@ const INNER_MAP_SIZE: (isize, isize) = (
     MAP_SIZE.1 - 2 * BOUNDARY_MARGIN,
 );
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 enum Dir {
+    #[default]
     Left,
     Right,
     Up,
@@ -32,7 +34,7 @@ impl Dir {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Default)]
 struct Port {
     x: isize,
     y: isize,
@@ -43,8 +45,12 @@ struct Port {
 pub enum TileKind {
     Solid,
     PlayerSpawn,
+    Stone,
     Goal,
 }
+
+type ExitPoint = ((isize, isize), Dir);
+type PlacedChunkExit = (PlacedChunk, ExitPoint);
 
 #[derive(Clone, Copy, Debug)]
 pub struct Tile {
@@ -60,6 +66,7 @@ struct InnerChunkTemplate {
     entry: Port,
     exits: Vec<Port>,
     tiles: Vec<Tile>,
+    required_count: usize,
 }
 
 #[derive(Clone, Debug)]
@@ -73,10 +80,12 @@ pub struct PlacedChunk {
 struct ChunkTemplate {
     id: String,
     map: Vec<String>,
+    #[serde(default)]
+    required_count: usize,
 }
 
 impl ChunkTemplate {
-    fn to_inner_template(&self) -> InnerChunkTemplate {
+    fn to_inner_template(&self, check_entry: bool) -> InnerChunkTemplate {
         let height = self.map.len() as isize;
         let width = self.map.iter().map(|row| row.len()).max().unwrap_or(0) as isize;
 
@@ -87,46 +96,53 @@ impl ChunkTemplate {
         for (y, row) in self.map.iter().enumerate() {
             for (x, ch) in row.chars().enumerate() {
                 let x = x as isize;
-                let y = height - 1 - y as isize; // 上下反転
-                match ch {
-                    '#' => tiles.push(Tile {
-                        x,
-                        y,
-                        kind: TileKind::Solid,
-                    }),
-                    '@' => tiles.push(Tile {
-                        x,
-                        y,
-                        kind: TileKind::PlayerSpawn,
-                    }),
-                    'G' => tiles.push(Tile {
-                        x,
-                        y,
-                        kind: TileKind::Goal,
-                    }),
-                    'I' => {
-                        entry = Some(Port {
+                let y = height - 1 - y as isize;
+                let kind = match ch {
+                    '#' => Some(TileKind::Solid),
+                    '@' => Some(TileKind::PlayerSpawn),
+                    'S' => Some(TileKind::Stone),
+                    'G' => Some(TileKind::Goal),
+                    _ => None,
+                };
+                let Some(kind) = kind else {
+                    match ch {
+                        'I' => {
+                            entry = Some(Port {
+                                x,
+                                y,
+                                dir: Dir::Left,
+                            })
+                        }
+                        'E' => exits.push(Port {
                             x,
                             y,
-                            dir: Dir::Left, // 仮
-                        });
+                            dir: Dir::Right,
+                        }),
+                        _ => {}
                     }
-                    'E' => exits.push(Port {
-                        x,
-                        y,
-                        dir: Dir::Right, // 仮
-                    }),
-                    _ => {}
-                }
+                    continue;
+                };
+                tiles.push(Tile { x, y, kind });
             }
         }
+
+        let entry = if check_entry {
+            entry.expect("entry point 'I' not found")
+        } else {
+            Port {
+                x: 0,
+                y: 0,
+                dir: Dir::Left,
+            }
+        };
 
         InnerChunkTemplate {
             id: self.id.clone(),
             size: (width, height),
-            entry: entry.expect("entry point 'I' not found"),
+            entry,
             exits,
             tiles,
+            required_count: self.required_count,
         }
     }
 }
@@ -154,7 +170,7 @@ impl ChunkGrammarConfig {
         self.0
             .templates
             .iter()
-            .map(|t| t.to_inner_template())
+            .map(|t| t.to_inner_template(false))
             .collect()
     }
 
@@ -162,7 +178,7 @@ impl ChunkGrammarConfig {
         self.1
             .templates
             .iter()
-            .map(|t| t.to_inner_template())
+            .map(|t| t.to_inner_template(true))
             .collect()
     }
 
@@ -170,7 +186,7 @@ impl ChunkGrammarConfig {
         self.2
             .templates
             .iter()
-            .map(|t| t.to_inner_template())
+            .map(|t| t.to_inner_template(true))
             .collect()
     }
 }
@@ -235,6 +251,7 @@ fn build_tile_char_map(placed_chunks: &PlacedChunkLayout) -> HashMap<(isize, isi
             let ch = match tile.kind {
                 TileKind::Solid => '#',
                 TileKind::PlayerSpawn => '@',
+                TileKind::Stone => 'S',
                 TileKind::Goal => 'G',
             };
             map.insert((tile.x, tile.y), ch);
@@ -259,7 +276,7 @@ fn place_next(
         template.entry.dir, required_entry_dir,
         "entryの向きが合っていません"
     );
-    let (exit_pos, exit_dir) = exit;
+    let ((exit_pos_x, exit_pos_y), exit_dir) = exit;
     // entry.dir と exit.dir は反対向きが正しい
     assert_eq!(
         required_entry_dir.opposite(),
@@ -268,23 +285,23 @@ fn place_next(
     );
 
     // 原点 = exit_world - entry_local
-    let origin = (exit_pos.0 - template.entry.x, exit_pos.1 - template.entry.y);
+    let origin = (exit_pos_x - template.entry.x, exit_pos_y - template.entry.y);
     place_chunk(template, origin)
 }
 
 /// チャンクをワールドに敷く（原点のみ指定）
-fn place_chunk(t: &InnerChunkTemplate, origin: (isize, isize)) -> PlacedChunk {
+fn place_chunk(t: &InnerChunkTemplate, (origin_x, origin_y): (isize, isize)) -> PlacedChunk {
     let exits_world = t
         .exits
         .iter()
-        .map(|p| ((origin.0 + p.x, origin.1 + p.y), p.dir))
+        .map(|p| ((origin_x + p.x, origin_y + p.y), p.dir))
         .collect::<Vec<_>>();
     let tiles_world = t
         .tiles
         .iter()
         .map(|tile| Tile {
-            x: origin.0 + tile.x,
-            y: origin.1 + tile.y,
+            x: origin_x + tile.x,
+            y: origin_y + tile.y,
             kind: tile.kind,
         })
         .collect::<Vec<_>>();
@@ -319,15 +336,15 @@ impl<'a> IntoIterator for &'a PlacedChunkLayout {
 }
 
 impl PlacedChunkLayout {
-    pub fn tile_position(&self, kind: TileKind) -> Option<(isize, isize)> {
+    pub fn tile_position(&self, kind: TileKind) -> (isize, isize) {
         for chunk in &self.placed_chunks {
             for tile in &chunk.tiles_world {
                 if tile.kind == kind {
-                    return Some((tile.x, tile.y));
+                    return (tile.x, tile.y);
                 }
             }
         }
-        None
+        panic!("tile_position: no tile found for kind {:?}", kind);
     }
 
     pub fn map_iter(&self) -> impl Iterator<Item = ((isize, isize), TileKind)> + '_ {
@@ -352,26 +369,61 @@ fn try_build_random_path(
     );
     let start_exit = pick_exit_dir(&placed_start, Dir::Right).unwrap();
 
+    let required_templates: Vec<&InnerChunkTemplate> = mid_chunks
+        .iter()
+        .flat_map(|template| iter::repeat_n(template, template.required_count))
+        .collect();
+
+    print!("required_templates: ");
+    for t in &required_templates {
+        print!("{} ", t.id);
+    }
+    println!();
+
     loop {
+        let mut mandatory_queue = required_templates.clone();
+        mandatory_queue.shuffle(&mut rng);
+
+        let mut mandatory_chunks = Vec::with_capacity(mandatory_queue.len());
+        let mut path_start_exit = start_exit;
+        let mut mandatory_failed = false;
+        for template in mandatory_queue {
+            let ((current_pos_x, current_pos_y), _) = path_start_exit;
+            if current_pos_x < template.entry.x || current_pos_y < template.entry.y {
+                mandatory_failed = true;
+                break;
+            }
+            let Some((placed, next_exit)) = place_middle_chunk(template, path_start_exit) else {
+                mandatory_failed = true;
+                break;
+            };
+            path_start_exit = next_exit;
+            mandatory_chunks.push(placed);
+        }
+        if mandatory_failed {
+            continue;
+        }
+
         let goal_template = &goal_chunks[rng.random_range(0..goal_chunks.len())];
-        let Some(goal_target) = random_goal_target(&mut rng, start_exit, goal_template) else {
+        let Some(goal_target) = random_goal_target(&mut rng, path_start_exit, goal_template) else {
             continue;
         };
 
-        if let Some(mut mid_chunks) =
-            find_path_to_goal(&mut rng, mid_chunks, start_exit, goal_target.entry)
+        if let Some(mut mid_path) =
+            find_path_to_goal(&mut rng, mid_chunks, path_start_exit, goal_target.entry)
         {
-            let final_exit = mid_chunks
+            let (final_exit_pos, _) = mid_path
                 .last()
                 .and_then(|chunk| pick_exit_dir(chunk, Dir::Right))
-                .unwrap_or(start_exit);
-            if final_exit.0 != goal_target.entry {
+                .unwrap_or(path_start_exit);
+            if final_exit_pos != goal_target.entry {
                 continue;
             }
 
-            let mut layout = Vec::with_capacity(mid_chunks.len() + 2);
+            let mut layout = Vec::with_capacity(mandatory_chunks.len() + mid_path.len() + 2);
             layout.push(placed_start.clone());
-            layout.append(&mut mid_chunks);
+            layout.extend(mandatory_chunks);
+            layout.append(&mut mid_path);
             layout.push(place_chunk(goal_template, goal_target.origin));
             return PlacedChunkLayout {
                 placed_chunks: layout,
@@ -419,6 +471,24 @@ fn random_goal_target(
     })
 }
 
+fn place_middle_chunk(
+    template: &InnerChunkTemplate,
+    current_exit: ExitPoint,
+) -> Option<PlacedChunkExit> {
+    let placed = place_next(template, Dir::Left, current_exit);
+    if placed.tiles_world.iter().any(|tile| {
+        tile.x < 0 || tile.x >= INNER_MAP_SIZE.0 || tile.y < 0 || tile.y >= INNER_MAP_SIZE.1
+    }) {
+        return None;
+    }
+    let next_exit = pick_exit_dir(&placed, Dir::Right)?;
+    let ((_, next_pos_y), _) = next_exit;
+    if next_pos_y >= INNER_MAP_SIZE.1 {
+        return None;
+    }
+    Some((placed, next_exit))
+}
+
 fn find_path_to_goal(
     rng: &mut impl Rng,
     mid_chunks: &[InnerChunkTemplate],
@@ -461,20 +531,11 @@ fn search_path_to_goal(
         if current_pos.0 < template.entry.x || current_pos.1 < template.entry.y {
             continue;
         }
-        let placed = place_next(template, Dir::Left, current_exit);
-        if placed.tiles_world.iter().any(|tile| {
-            tile.x < 0 || tile.x >= INNER_MAP_SIZE.0 || tile.y < 0 || tile.y >= INNER_MAP_SIZE.1
-        }) {
-            continue;
-        }
-        let Some(next_exit) = pick_exit_dir(&placed, Dir::Right) else {
+        let Some((placed, next_exit)) = place_middle_chunk(template, current_exit) else {
             continue;
         };
         let (next_pos, _) = next_exit;
         if next_pos.0 > goal_entry.0 {
-            continue;
-        }
-        if next_pos.1 >= INNER_MAP_SIZE.1 {
             continue;
         }
         if !visited.insert(next_pos) {

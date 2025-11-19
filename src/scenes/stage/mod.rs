@@ -21,6 +21,7 @@ impl Plugin for StageScenePlugin {
                 (
                     systems::tick_script_program,
                     systems::update_stage_root,
+                    systems::update_stage_color_grading,
                     systems::reset_player_position,
                     systems::animate_player,
                     systems::move_player,
@@ -38,8 +39,14 @@ impl Plugin for StageScenePlugin {
             )
             .add_systems(
                 Update,
-                systems::advance_stage_if_cleared
+                systems::drive_player_goal_descent
                     .after(systems::check_goal_completion)
+                    .run_if(in_state(GameState::Stage)),
+            )
+            .add_systems(
+                Update,
+                systems::advance_stage_if_cleared
+                    .after(systems::drive_player_goal_descent)
                     .run_if(in_state(GameState::Stage)),
             )
             .add_systems(

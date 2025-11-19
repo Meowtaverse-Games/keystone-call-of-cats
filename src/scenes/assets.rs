@@ -19,6 +19,8 @@ pub enum ImageKey {
     PlayerRun8,
     PlayerRun9,
     PlayerRun10,
+    PlayerClimb1,
+    PlayerClimb2,
 }
 
 impl From<ImageKey> for u32 {
@@ -46,6 +48,8 @@ pub const PLAYER_RUN_KEYS: [ImageKey; 10] = [
     ImageKey::PlayerRun9,
     ImageKey::PlayerRun10,
 ];
+
+pub const PLAYER_CLIMB_KEYS: [ImageKey; 2] = [ImageKey::PlayerClimb1, ImageKey::PlayerClimb2];
 
 #[repr(u32)]
 #[derive(Clone, Copy, Debug)]
@@ -105,6 +109,14 @@ pub const DEFAULT_GROUP: LoadAssetGroup = LoadAssetGroup {
         (ImageKey::PlayerRun8 as u32, "images/SPA/Player/Run/8.png"),
         (ImageKey::PlayerRun9 as u32, "images/SPA/Player/Run/9.png"),
         (ImageKey::PlayerRun10 as u32, "images/SPA/Player/Run/10.png"),
+        (
+            ImageKey::PlayerClimb1 as u32,
+            "images/SPA/Player/Climb/1.png",
+        ),
+        (
+            ImageKey::PlayerClimb2 as u32,
+            "images/SPA/Player/Climb/2.png",
+        ),
     ],
     fonts: &[
         (FontKey::Default as u32, "fonts/PixelMplus12-Regular.ttf"),

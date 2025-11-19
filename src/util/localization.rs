@@ -45,7 +45,6 @@ pub fn localized_stage_name(
 
 pub fn script_error_message(localization: &Localization, error: &ScriptExecutionError) -> String {
     match error {
-        ScriptExecutionError::EmptyScript => tr(localization, "stage-ui-error-empty-script"),
         ScriptExecutionError::InvalidMoveDirection { direction } => tr_with_args(
             localization,
             "stage-ui-error.invalid-move-direction",

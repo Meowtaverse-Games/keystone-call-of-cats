@@ -1,7 +1,7 @@
 use std::env;
 
 use bevy::asset::AssetPlugin;
-use bevy::{camera::ScalingMode, prelude::*};
+use bevy::{camera::ScalingMode, prelude::*, render::view::ColorGrading};
 
 use bevy_fluent::prelude::*;
 
@@ -106,5 +106,6 @@ fn setup_camera(mut commands: Commands) {
             scaling_mode: ScalingMode::WindowSize,
             ..OrthographicProjection::default_2d()
         }),
+        ColorGrading::default(),
     ));
 }

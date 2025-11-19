@@ -2,7 +2,7 @@ use bevy::{input::ButtonInput, prelude::*};
 use bevy_ecs::system::SystemParam;
 use bevy_egui::{
     EguiContexts,
-    egui::{self, Align2, Event, FontId, FontSelection, RichText},
+    egui::{self, Align2, Event, FontFamily::Proportional, FontId, FontSelection, RichText},
 };
 use bevy_fluent::prelude::Localization;
 
@@ -27,12 +27,12 @@ use crate::{
 
 #[derive(Clone, Debug)]
 pub struct TutorialDialog {
-    pub title_key: &'static str,
-    pub body_key: &'static str,
+    pub title_key: String,
+    pub body_key: String,
 }
 
 impl TutorialDialog {
-    fn new(title_key: &'static str, body_key: &'static str) -> Self {
+    fn new(title_key: String, body_key: String) -> Self {
         Self {
             title_key,
             body_key,
@@ -44,16 +44,22 @@ impl TutorialDialog {
 pub struct StageTutorialOverlay;
 
 #[derive(Component)]
+pub struct StageTutorialHint;
+
+#[derive(Component)]
 pub struct TutorialOverlayPanel {
     chunks: Vec<String>,
     current_chunk: usize,
-    hint: String,
     body_entity: Entity,
 }
 
 impl TutorialOverlayPanel {
     fn has_next(&self) -> bool {
         self.current_chunk + 1 < self.chunks.len()
+    }
+
+    fn next_is_last(&self) -> bool {
+        self.current_chunk + 1 == self.chunks.len()
     }
 
     fn advance(&mut self) -> bool {
@@ -204,8 +210,18 @@ fn summarize_commands(commands: &[ScriptCommand]) -> String {
         .join(", ")
 }
 
+pub fn init_editor_state(commands: &mut Commands, stage_id: StageId) {
+    let mut editor_state = ScriptEditorState {
+        buffer: String::from(""),
+        ..default()
+    };
+    editor_state.set_tutorial_for_stage(stage_id);
+    editor_state.set_command_help_for_stage(stage_id);
+    commands.insert_resource(editor_state);
+}
+
 #[derive(SystemParam)]
-pub struct StageUiParams<'w, 's> {
+pub struct StageUIParams<'w, 's> {
     commands: Commands<'w, 's>,
     contexts: EguiContexts<'w, 's>,
     letterbox_offsets: ResMut<'w, LetterboxOffsets>,
@@ -215,27 +231,11 @@ pub struct StageUiParams<'w, 's> {
     stone_writer: MessageWriter<'w, StoneCommandMessage>,
     next_state: ResMut<'w, NextState<GameState>>,
     audio: Res<'w, AudioHandles>,
+    tutorial_overlays: Query<'w, 's, Entity, With<StageTutorialOverlay>>,
 }
 
-pub fn init_editor_state(commands: &mut Commands, stage_id: StageId) {
-    let mut editor_state = ScriptEditorState {
-        buffer: String::from(
-            "move(\"left\");\n\
-             sleep(1.0);\n\
-             move(\"right\");\n\
-             sleep(1.0);\n\
-             for i in 1..=2 {\n  move(\"up\");\n  sleep(0.5);\n\
-             }\n",
-        ),
-        ..default()
-    };
-    editor_state.set_tutorial_for_stage(stage_id);
-    editor_state.set_command_help_for_stage(stage_id);
-    commands.insert_resource(editor_state);
-}
-
-pub fn ui(params: StageUiParams) {
-    let StageUiParams {
+pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
+    let StageUIParams {
         mut commands,
         mut contexts,
         mut letterbox_offsets,
@@ -245,6 +245,7 @@ pub fn ui(params: StageUiParams) {
         mut stone_writer,
         mut next_state,
         audio,
+        tutorial_overlays,
     } = params;
     let Ok(ctx) = contexts.ctx_mut() else {
         return;
@@ -287,6 +288,31 @@ pub fn ui(params: StageUiParams) {
 
     let screen_width = ctx.input(|input| input.content_rect().width());
 
+    if !*not_first {
+        // First frame setup
+        let mut style = (*ctx.style()).clone();
+        style.text_styles.iter().for_each(|s| {
+            info!("Text style: {:?} => {:?}", s.0, s.1);
+        });
+        style.text_styles = style
+            .text_styles
+            .clone()
+            .iter()
+            .map(|(style, font_id)| (style.clone(), FontId::new(font_id.size * 1.4, Proportional)))
+            .collect();
+        // style.text_styles = [
+        //     (Heading, FontId::new(30.0 * 2.0, Proportional)),
+        //     (Body, FontId::new(18.0 * 2.0, Proportional)),
+        //     (Monospace, FontId::new(14.0 * 2.0, Proportional)),
+        //     (TextStyle::Button, FontId::new(14.0 * 2.0, Proportional)),
+        //     (Small, FontId::new(10.0 * 2.0, Proportional)),
+        // ]
+        // .into();
+        ctx.set_style(style);
+
+        *not_first = true;
+    }
+
     let (min_width, max_width) = if screen_width.is_finite() && screen_width > 0.0 {
         (screen_width * 0.125, screen_width * 0.5)
     } else {
@@ -316,7 +342,7 @@ pub fn ui(params: StageUiParams) {
                 let back_label = tr(&localization, "stage-ui-back-to-title");
                 if ui.button(back_label.as_str()).clicked() {
                     play_ui_click(&mut commands, &audio);
-                    info!("Returning to stage select");
+
                     editor.controls_enabled = false;
                     editor.pending_player_reset = false;
                     editor.stage_cleared = false;
@@ -358,6 +384,7 @@ pub fn ui(params: StageUiParams) {
                                 editor.stage_cleared = false;
                                 editor.stage_clear_popup_open = false;
                             } else {
+                                hide_tutorial_overlays(&mut commands, &tutorial_overlays);
                                 match script_executor.compile_step(Language::Rhai, &editor.buffer) {
                                     Ok(program) => {
                                         // Clear any existing queue on the Stone
@@ -524,6 +551,10 @@ pub fn ui(params: StageUiParams) {
     }
 
     if (letterbox_offsets.left - left).abs() > f32::EPSILON {
+        info!(
+            "Updating letterbox offsets: left={} (was {})",
+            left, letterbox_offsets.left
+        );
         letterbox_offsets.left = left;
     }
 }
@@ -557,20 +588,14 @@ pub fn tick_script_program(
 }
 
 pub fn tutorial_dialog_for_stage(stage_id: StageId) -> Option<TutorialDialog> {
-    match stage_id.0 {
-        1 => Some(TutorialDialog::new(
-            "stage-ui-tutorial-stage1-title",
-            "stage-ui-tutorial-stage1-text",
-        )),
-        2 => Some(TutorialDialog::new(
-            "stage-ui-tutorial-stage2-title",
-            "stage-ui-tutorial-stage2-text",
-        )),
-        3 => Some(TutorialDialog::new(
-            "stage-ui-tutorial-stage3-title",
-            "stage-ui-tutorial-stage3-text",
-        )),
-        _ => None,
+    if stage_id.0 <= 3 {
+        let id = stage_id.0;
+        Some(TutorialDialog::new(
+            format!("stage-ui-tutorial-stage{}-title", id),
+            format!("stage-ui-tutorial-stage{}-text", id),
+        ))
+    } else {
+        None
     }
 }
 
@@ -592,6 +617,8 @@ fn chunk_tutorial_text(input: &str) -> Vec<String> {
                 chunks.push(current.join("\n"));
                 current.clear();
             }
+        } else if line == "____" {
+            current.push("".to_string());
         } else {
             current.push(line.trim().to_string());
         }
@@ -609,7 +636,15 @@ fn update_overlay_text(panel: &TutorialOverlayPanel, text: &mut Text) {
     text.0.push_str(panel.current_text());
     if panel.has_next() {
         text.0.push_str("\n\n");
-        text.0.push_str(&panel.hint);
+    }
+}
+
+fn hide_tutorial_overlays(
+    commands: &mut Commands,
+    overlays: &Query<Entity, With<StageTutorialOverlay>>,
+) {
+    for entity in overlays.iter() {
+        commands.entity(entity).despawn();
     }
 }
 
@@ -618,14 +653,15 @@ pub fn spawn_tutorial_overlay(
     asset_store: &AssetStore,
     localization: &Localization,
     dialog: &TutorialDialog,
+    letterbox_offsets: &LetterboxOffsets,
 ) {
     let Some(font) = asset_store.font(FontKey::Default) else {
         warn!("Tutorial overlay: default font is missing");
         return;
     };
 
-    let title = tr(localization, dialog.title_key);
-    let body = tr(localization, dialog.body_key);
+    let title = tr(localization, &dialog.title_key);
+    let body = tr(localization, &dialog.body_key);
     let chunks = chunk_tutorial_text(&body);
     if chunks.is_empty() {
         return;
@@ -634,82 +670,146 @@ pub fn spawn_tutorial_overlay(
     let mut body_value = chunks[0].clone();
     if chunks.len() > 1 {
         body_value.push_str("\n\n");
-        body_value.push_str(&hint);
     }
 
     let mut body_entity = None;
-    let panel_entity = commands
+    let overlay_entity = commands
         .spawn((
             Node {
+                width: Val::Percent(100.0),
+                height: Val::Percent(100.0),
                 position_type: PositionType::Absolute,
-                top: Val::Px(40.0),
-                right: Val::Px(32.0),
-                width: Val::Px(420.0),
                 padding: UiRect {
-                    left: Val::Px(16.0),
-                    right: Val::Px(16.0),
-                    top: Val::Px(12.0),
-                    bottom: Val::Px(14.0),
+                    left: Val::Px(letterbox_offsets.left),
+                    right: Val::Px(letterbox_offsets.right),
+                    top: Val::Px(0.0),
+                    bottom: Val::Px(0.0),
                 },
-                flex_direction: FlexDirection::Column,
-                align_items: AlignItems::FlexEnd,
-                row_gap: Val::Px(8.0),
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
                 ..default()
             },
-            BackgroundColor(Color::srgba(0.08, 0.08, 0.1, 0.78)),
             ZIndex(5),
             StageTutorialOverlay,
         ))
         .with_children(|parent| {
-            parent.spawn((
-                Text::new(title),
-                TextFont {
-                    font: font.clone(),
-                    font_size: 28.0,
-                    ..default()
-                },
-                TextColor(Color::srgb(0.95, 0.9, 0.65)),
-            ));
-
-            let entity = parent
+            parent
                 .spawn((
-                    Text::new(body_value),
-                    TextFont {
-                        font: font.clone(),
-                        font_size: 20.0,
+                    Node {
+                        width: Val::Px(460.0),
+                        padding: UiRect {
+                            left: Val::Px(18.0),
+                            right: Val::Px(18.0),
+                            top: Val::Px(16.0),
+                            bottom: Val::Px(18.0),
+                        },
+                        flex_direction: FlexDirection::Column,
+                        align_items: AlignItems::FlexEnd,
+                        row_gap: Val::Px(8.0),
                         ..default()
                     },
-                    TextColor(Color::srgb(0.95, 0.95, 0.95)),
+                    BackgroundColor(Color::srgba(0.04, 0.04, 0.04, 0.75)),
                 ))
-                .id();
-            body_entity = Some(entity);
+                .with_children(|panel| {
+                    panel.spawn((
+                        Node {
+                            width: Val::Percent(100.0),
+                            ..default()
+                        },
+                        Text::new(title),
+                        TextFont {
+                            font: font.clone(),
+                            font_size: 28.0,
+                            ..default()
+                        },
+                        TextLayout::new(Justify::Left, LineBreak::WordBoundary),
+                        TextColor(Color::srgb(0.95, 0.9, 0.65)),
+                    ));
+
+                    let entity = panel
+                        .spawn((
+                            Node {
+                                width: Val::Percent(100.0),
+                                ..default()
+                            },
+                            Text::new(body_value),
+                            TextFont {
+                                font: font.clone(),
+                                font_size: 20.0,
+                                ..default()
+                            },
+                            TextLayout::new(Justify::Left, LineBreak::WordBoundary),
+                            TextColor(Color::srgb(0.95, 0.95, 0.95)),
+                        ))
+                        .id();
+                    body_entity = Some(entity);
+
+                    panel.spawn((
+                        StageTutorialHint,
+                        Node {
+                            width: Val::Percent(100.0),
+                            ..default()
+                        },
+                        Text::new(hint.clone()),
+                        TextFont {
+                            font: font.clone(),
+                            font_size: 20.0,
+                            ..default()
+                        },
+                        TextLayout::new(Justify::Right, LineBreak::WordBoundary),
+                        TextColor(Color::srgb(0.95, 0.95, 0.95)),
+                    ));
+                });
         })
         .id();
 
     if let Some(body_entity) = body_entity {
-        commands.entity(panel_entity).insert(TutorialOverlayPanel {
-            chunks,
-            current_chunk: 0,
-            hint,
-            body_entity,
-        });
+        commands
+            .entity(overlay_entity)
+            .insert(TutorialOverlayPanel {
+                chunks,
+                current_chunk: 0,
+                body_entity,
+            });
     }
 }
 
 pub fn handle_tutorial_overlay_input(
+    mut commands: Commands,
     keys: Res<ButtonInput<KeyCode>>,
-    mut overlays: Query<&mut TutorialOverlayPanel>,
+    mut tutorial_overlays: Query<(&StageTutorialOverlay, &mut Node)>,
+    mut tutorial_overlay_panels: Query<
+        (Entity, &mut TutorialOverlayPanel),
+        With<StageTutorialOverlay>,
+    >,
+    mut tutorial_hints: Query<(Entity, &mut StageTutorialHint)>,
     mut texts: Query<&mut Text>,
+    letterbox_offsets: ResMut<LetterboxOffsets>,
 ) {
+    if letterbox_offsets.is_changed()
+        && let Ok((_, mut overlay)) = tutorial_overlays.single_mut()
+    {
+        overlay.padding.left = Val::Px(letterbox_offsets.left);
+    }
+
     if !keys.just_pressed(KeyCode::Enter) {
         return;
     }
 
-    for mut overlay in &mut overlays {
-        if overlay.advance()
-            && let Ok(mut text) = texts.get_mut(overlay.body_entity)
-        {
-            update_overlay_text(&overlay, &mut text);
+    if let Ok((entity, mut overlay)) = tutorial_overlay_panels.single_mut() {
+        if overlay.advance() {
+            if let Ok(mut text) = texts.get_mut(overlay.body_entity) {
+                update_overlay_text(&overlay, &mut text);
+            }
+            if overlay.next_is_last() {
+                tutorial_hints
+                    .iter_mut()
+                    .for_each(|(entity, mut _hint_text)| {
+                        commands.entity(entity).despawn();
+                    });
+            }
+        } else {
+            commands.entity(entity).despawn();
         }
     }
 }
