@@ -167,11 +167,12 @@ fn populate_stage_contents(
         tiled_map_assets.scaled_tile_size_and_scale(viewport_size, tile_size);
 
     let player_position = placed_chunks.tile_position(TileKind::PlayerSpawn);
+    info!("Spawning player at tile position {:?}", player_position);
     player::spawn_player(
         commands,
         stage_root,
         asset_store,
-        tile_position_to_world(player_position, real_tile_size, viewport_size, scale),
+        tile_position_to_world(player_position, real_tile_size, viewport_size, scale, 2.2),
     );
 
     let stone_position = placed_chunks.tile_position(TileKind::Stone);
@@ -180,7 +181,7 @@ fn populate_stage_contents(
         stage_root,
         asset_server,
         atlas_layouts,
-        tile_position_to_world(stone_position, real_tile_size, viewport_size, scale),
+        tile_position_to_world(stone_position, real_tile_size, viewport_size, scale, 0.0),
     );
 
     let goal_position = placed_chunks.tile_position(TileKind::Goal);
@@ -189,7 +190,7 @@ fn populate_stage_contents(
         stage_root,
         tiled_map_assets,
         viewport,
-        tile_position_to_world(goal_position, real_tile_size, viewport_size, scale),
+        tile_position_to_world(goal_position, real_tile_size, viewport_size, scale, 2.0),
     );
 }
 
@@ -198,10 +199,11 @@ fn tile_position_to_world(
     tile_size: Vec2,
     viewport_size: Vec2,
     scale: f32,
+    adjust_y: f32,
 ) -> (f32, f32, f32) {
     (
         (tile_pos.0 as f32 + 1.5) * tile_size.x - viewport_size.x / 2.0,
-        (tile_pos.1 as f32 + 4.0) * tile_size.y - viewport_size.y / 2.0,
+        (tile_pos.1 as f32 + 4.0) * tile_size.y - adjust_y - viewport_size.y / 2.0,
         scale,
     )
 }

@@ -180,6 +180,7 @@ pub fn move_player(
     if grounded && velocity.y.abs() < 1.0 {
         motion.is_jumping = false;
     } else if !grounded {
+        info!("Player is airborne");
         motion.is_jumping = true;
     }
 
@@ -188,6 +189,7 @@ pub fn move_player(
         && grounded
     {
         velocity.y = motion.jump_speed;
+        info!("Player jump initiated");
         motion.is_jumping = true;
     }
 

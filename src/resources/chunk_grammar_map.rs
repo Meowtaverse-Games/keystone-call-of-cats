@@ -306,15 +306,6 @@ fn place_chunk(t: &InnerChunkTemplate, (origin_x, origin_y): (isize, isize)) -> 
         })
         .collect::<Vec<_>>();
 
-    println!(
-        "Placed chunk '{}' at origin ({}, {}) with {} tiles and {} exits",
-        t.id,
-        origin_x,
-        origin_y,
-        tiles_world.len(),
-        exits_world.len()
-    );
-
     PlacedChunk {
         id: t.id.to_string(),
         exits_world,
