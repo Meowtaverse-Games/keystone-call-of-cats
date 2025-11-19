@@ -48,7 +48,7 @@ pub fn spawn_tiles(
                     let tile_x = (x as f32 + 0.5) * real_tile_size.x - viewport_size.x / 2.0;
                     let tile_y = -((y as f32 + 0.5) * real_tile_size.y - viewport_size.y / 2.0);
 
-                    let mut transform = Transform::from_xyz(tile_x, tile_y, -10.0)
+                    let mut transform = Transform::from_xyz(tile_x, tile_y, -20.0)
                         .with_scale(Vec3::new(scale, scale, 1.0));
                     let is_boundary =
                         x == 0 || y == 0 || x == MAP_SIZE.0 - 1 || y == MAP_SIZE.1 - 1;
@@ -109,7 +109,7 @@ pub fn spawn_tiles(
 
                 let tile_x = (x as f32 + 1.5) * real_tile_size.x - viewport_size.x / 2.0;
                 let tile_y = (y as f32 + 4.0) * real_tile_size.y - viewport_size.y / 2.0;
-                let transform = Transform::from_xyz(tile_x, tile_y, -10.0)
+                let transform = Transform::from_xyz(tile_x, tile_y, -5.0)
                     .with_scale(Vec3::new(scale, scale, 1.0));
 
                 // spawn_boundary_tile(parent, image, transform, tile_size, true);
