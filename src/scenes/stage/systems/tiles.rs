@@ -129,20 +129,24 @@ pub fn spawn_tiles(
                     }
 
                     // Glass
-                    if is_edge_bottom && placed_chunks.tile_by_position((x, y - 1)).is_none() && rng.random_bool(0.2) {
+                    if is_edge_bottom
+                        && placed_chunks.tile_by_position((x, y - 1)).is_none()
+                        && rng.random_bool(0.2)
+                    {
                         let glass_image = image_from_tileset(&tileset, 226).unwrap();
                         let transform = Transform::from_xyz(
                             tile_x,
-                            -(((y - 1) as f32 + 0.5) * real_tile_size.y - viewport_size.y / 2.0), 
-                            20.0)
-                            .with_scale(Vec3::new(scale, scale, 1.0));
+                            -(((y - 1) as f32 + 0.5) * real_tile_size.y - viewport_size.y / 2.0),
+                            20.0,
+                        )
+                        .with_scale(Vec3::new(scale, scale, 1.0));
                         spawn_boundary_tile(parent, glass_image, transform, tile_size, false);
                     }
                 }
             }
 
             for ((x, y), kind) in placed_chunks.map_iter() {
-                let Some(tile_id) = tile_id_for_kind(placed_chunks, kind) else {
+                let Some(tile_id) = tile_id_for_kind(&mut rng, kind) else {
                     continue;
                 };
                 let Some(image) = image_from_tileset(&tileset, tile_id as usize) else {
@@ -188,8 +192,23 @@ pub fn spawn_tiles(
                     image,
                     transform,
                     RigidBody::Static,
-                    Collider::compound(shapes),
+                    Collider::compound(shapes.clone()),
                 ));
+
+                if kind == TileKind::Solid && rng.random_bool(0.1) {
+                    let Some(moss_image) = image_from_tileset(&tileset, rng.random_range(224..226))
+                    else {
+                        continue;
+                    };
+                    let transform = transform.with_translation(Vec3::new(tile_x, tile_y, -2.5));
+                    parent.spawn((
+                        StageTile,
+                        moss_image,
+                        transform,
+                        RigidBody::Static,
+                        Collider::compound(shapes),
+                    ));
+                }
             }
         },
     );
@@ -201,9 +220,9 @@ fn image_from_tileset(tileset: &Tileset, id: usize) -> Option<Sprite> {
     Some(image)
 }
 
-fn tile_id_for_kind(_placed_chunks: &PlacedChunkLayout, kind: TileKind) -> Option<u32> {
+fn tile_id_for_kind(rng: &mut impl Rng, kind: TileKind) -> Option<u32> {
     match kind {
-        TileKind::Solid => Some(235),
+        TileKind::Solid => Some(rng.random_range(235..237)),
         TileKind::Goal => Some(194),
         TileKind::Wall => None, // Some(152),
         TileKind::PlayerSpawn | TileKind::Stone => None,
