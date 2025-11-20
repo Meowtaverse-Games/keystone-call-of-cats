@@ -2,7 +2,9 @@ use bevy::{input::ButtonInput, prelude::*};
 use bevy_ecs::system::SystemParam;
 use bevy_egui::{
     EguiContexts,
-    egui::{self, Align2, Event, FontFamily::Proportional, FontId, FontSelection, RichText},
+    egui::{
+        self, Align2, Event, FontFamily::Proportional, FontId, FontSelection, RichText, TextStyle,
+    },
 };
 use bevy_fluent::prelude::Localization;
 
@@ -116,7 +118,18 @@ const DEFAULT_COMMAND_HELP_ENTRIES: &[CommandHelpEntry] = &[
     },
 ];
 
-#[derive(Resource, Default)]
+const BASE_EDITOR_FONT_SIZE: f32 = 16.0;
+const MIN_EDITOR_FONT_SIZE: f32 = 12.0;
+const MAX_EDITOR_FONT_SIZE: f32 = 36.0;
+const FONT_OFFSET_STEP: f32 = 1.0;
+const FONT_OFFSET_MIN: f32 = -6.0;
+const FONT_OFFSET_MAX: f32 = 12.0;
+
+fn scaled_panel_font_size(base: f32, offset: f32) -> f32 {
+    ((base + offset).max(4.0)) * 2.0
+}
+
+#[derive(Resource)]
 pub struct ScriptEditorState {
     pub buffer: String,
     pub last_action: Option<EditorMenuAction>,
@@ -130,6 +143,27 @@ pub struct ScriptEditorState {
     pub stage_clear_popup_open: bool,
     pub tutorial_dialog: Option<TutorialDialog>,
     pub command_help: Option<CommandHelpDialog>,
+    pub font_offset: f32,
+}
+
+impl Default for ScriptEditorState {
+    fn default() -> Self {
+        Self {
+            buffer: String::new(),
+            last_action: None,
+            last_action_was_running: false,
+            last_run_feedback: None,
+            last_commands: Vec::new(),
+            active_program: None,
+            controls_enabled: false,
+            pending_player_reset: false,
+            stage_cleared: false,
+            stage_clear_popup_open: false,
+            tutorial_dialog: None,
+            command_help: None,
+            font_offset: 0.0,
+        }
+    }
 }
 
 impl ScriptEditorState {
@@ -149,45 +183,45 @@ impl ScriptEditorState {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum EditorMenuAction {
-    LoadExample,
-    SaveBuffer,
     RunScript,
+    DecreaseFont,
+    IncreaseFont,
 }
 
 impl EditorMenuAction {
-    const ALL: [Self; 3] = [Self::LoadExample, Self::SaveBuffer, Self::RunScript];
+    const ALL: [Self; 3] = [Self::RunScript, Self::DecreaseFont, Self::IncreaseFont];
 
     fn label_key(self, is_running: bool) -> &'static str {
         match self {
-            Self::LoadExample => "stage-ui-menu-load",
-            Self::SaveBuffer => "stage-ui-menu-save",
             Self::RunScript if is_running => "stage-ui-menu-stop",
             Self::RunScript => "stage-ui-menu-run",
+            Self::DecreaseFont => "stage-ui-menu-font-decrease",
+            Self::IncreaseFont => "stage-ui-menu-font-increase",
         }
     }
 
     fn key_text(self) -> &'static str {
         match self {
-            Self::LoadExample => "F1",
-            Self::SaveBuffer => "F2",
-            Self::RunScript => "F3",
+            Self::RunScript => "F1",
+            Self::DecreaseFont => "F2",
+            Self::IncreaseFont => "F3",
         }
     }
 
     fn key(self) -> egui::Key {
         match self {
-            Self::LoadExample => egui::Key::F1,
-            Self::SaveBuffer => egui::Key::F2,
-            Self::RunScript => egui::Key::F3,
+            Self::RunScript => egui::Key::F1,
+            Self::DecreaseFont => egui::Key::F2,
+            Self::IncreaseFont => egui::Key::F3,
         }
     }
 
     fn status_key(self, was_running: bool) -> &'static str {
         match self {
-            Self::LoadExample => "stage-ui-status-load",
-            Self::SaveBuffer => "stage-ui-status-save",
             Self::RunScript if was_running => "stage-ui-status-stop",
             Self::RunScript => "stage-ui-status-run",
+            Self::DecreaseFont => "stage-ui-status-font-decrease",
+            Self::IncreaseFont => "stage-ui-status-font-increase",
         }
     }
 }
@@ -287,30 +321,38 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
 
     let screen_width = ctx.input(|input| input.content_rect().width());
 
+    let mut style = (*ctx.style()).clone();
     if !*not_first {
-        // First frame setup
-        let mut style = (*ctx.style()).clone();
         style.text_styles.iter().for_each(|s| {
             info!("Text style: {:?} => {:?}", s.0, s.1);
         });
-        style.text_styles = style
-            .text_styles
-            .clone()
-            .iter()
-            .map(|(style, font_id)| (style.clone(), FontId::new(font_id.size * 1.4, Proportional)))
-            .collect();
-        // style.text_styles = [
-        //     (Heading, FontId::new(30.0 * 2.0, Proportional)),
-        //     (Body, FontId::new(18.0 * 2.0, Proportional)),
-        //     (Monospace, FontId::new(14.0 * 2.0, Proportional)),
-        //     (TextStyle::Button, FontId::new(14.0 * 2.0, Proportional)),
-        //     (Small, FontId::new(10.0 * 2.0, Proportional)),
-        // ]
-        // .into();
-        ctx.set_style(style);
-
         *not_first = true;
     }
+    let font_offset = editor.font_offset;
+    style.text_styles = [
+        (
+            TextStyle::Heading,
+            FontId::new(scaled_panel_font_size(30.0, font_offset), Proportional),
+        ),
+        (
+            TextStyle::Body,
+            FontId::new(scaled_panel_font_size(18.0, font_offset), Proportional),
+        ),
+        (
+            TextStyle::Monospace,
+            FontId::new(scaled_panel_font_size(14.0, font_offset), Proportional),
+        ),
+        (
+            TextStyle::Button,
+            FontId::new(scaled_panel_font_size(14.0, font_offset), Proportional),
+        ),
+        (
+            TextStyle::Small,
+            FontId::new(scaled_panel_font_size(10.0, font_offset), Proportional),
+        ),
+    ]
+    .into();
+    ctx.set_style(style);
 
     let (min_width, max_width) = if screen_width.is_finite() && screen_width > 0.0 {
         (screen_width * 0.125, screen_width * 0.5)
@@ -417,14 +459,14 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                                 }
                             }
                         }
-                        EditorMenuAction::LoadExample => {
-                            info!("Loading example script into editor");
-                            editor.controls_enabled = false;
-                            editor.pending_player_reset = false;
-                            editor.stage_cleared = false;
-                            editor.stage_clear_popup_open = false;
+                        EditorMenuAction::DecreaseFont => {
+                            editor.font_offset = (editor.font_offset - FONT_OFFSET_STEP)
+                                .clamp(FONT_OFFSET_MIN, FONT_OFFSET_MAX);
                         }
-                        EditorMenuAction::SaveBuffer => {}
+                        EditorMenuAction::IncreaseFont => {
+                            editor.font_offset = (editor.font_offset + FONT_OFFSET_STEP)
+                                .clamp(FONT_OFFSET_MIN, FONT_OFFSET_MAX);
+                        }
                     }
                     editor.apply_action(action, was_running);
                 }
@@ -465,11 +507,14 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
 
                 let reserved_height = 200.0;
                 let text_height = (available_size.y - reserved_height).max(160.0);
+                let font_size = (BASE_EDITOR_FONT_SIZE + editor.font_offset)
+                    .clamp(MIN_EDITOR_FONT_SIZE, MAX_EDITOR_FONT_SIZE);
+
                 let text_edit_response = ui.add_sized(
                     egui::Vec2::new(available_size.x, text_height),
                     egui::TextEdit::multiline(&mut editor.buffer)
                         .font(FontSelection::FontId(FontId::new(
-                            16.0,
+                            font_size,
                             egui::FontFamily::Name("pixel_mplus".into()),
                         )))
                         .code_editor()

@@ -32,14 +32,14 @@ options-language-keystone = Keystone
 options-button-back = BACK
 
 stage-ui-back-to-title = Return to Stage Select
-stage-ui-menu-load = Load
-stage-ui-menu-save = Save
 stage-ui-menu-run = Run
 stage-ui-menu-stop = Stop
-stage-ui-status-load = Selected the "Load (F1)" menu.
-stage-ui-status-save = Selected the "Save (F2)" menu.
-stage-ui-status-run = Selected the "Run (F3)" menu.
-stage-ui-status-stop = Selected the "Stop (F3)" menu.
+stage-ui-menu-font-decrease = -
+stage-ui-menu-font-increase = +
+stage-ui-status-run = Selected the "Run (F1)" menu.
+stage-ui-status-stop = Selected the "Stop (F1)" menu.
+stage-ui-status-font-decrease = Selected the "- (F2)" menu.
+stage-ui-status-font-increase = Selected the "+ (F3)" menu.
 stage-ui-feedback-stopped = Execution stopped.
 stage-ui-feedback-no-commands = No commands were returned.
 stage-ui-feedback-commands = {$count} commands: {$summary}
@@ -49,7 +49,7 @@ stage-ui-feedback-advance = Advancing to "{$stage}".
 stage-ui-feedback-start = "{$stage}" has started.
 stage-ui-feedback-complete = All stages cleared!
 
-stage-ui-tutorial-controls-hint = F1 loads the sample, F3 runs the script, arrows move, Space jumps.
+stage-ui-tutorial-controls-hint = F1 runs the script, F2 shrinks the font, F3 enlarges it; arrows move, Space jumps.
 stage-ui-tutorial-ok = Got it!
 stage-ui-tutorial-next-hint = Press Enter to continue
 stage-ui-clear-window-title = Stage Clear!
@@ -74,14 +74,14 @@ stage-ui-error-unsupported-language = Script language "{$language}" is not suppo
 stage-ui-tutorial-stage1-title = Player Log: Floor I
 stage-ui-tutorial-stage1-text =
     This must be the entrance. Walk to the glowing pillar and scout the room.
-    Write commands on the left tablet and press F3 to run them. Press F1 anytime to load the sample.
+    Write commands on the left tablet and press F1 to run them. Use F2/F3 anytime to shrink or grow the text while you plan.
     Move with the arrow keys and jump with Space. Stop the script if the plan looks risky.
 
 stage-ui-tutorial-stage2-title = Player Log: Floor II
 stage-ui-tutorial-stage2-text =
     These aqueduct stones are slick. I need the keystone as a bridge over broken ground.
     Use move("left") and friends, timing sleep() to keep the stone steady.
-    Run with F3, stop, adjust, and retry until every step feels safe.
+    Run with F1, stop, adjust, and retry until every step feels safe.
 
 stage-ui-tutorial-stage3-title = Player Log: Floor III
 stage-ui-tutorial-stage3-text =
