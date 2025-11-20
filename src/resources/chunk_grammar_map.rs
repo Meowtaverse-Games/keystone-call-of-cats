@@ -150,50 +150,30 @@ impl ChunkTemplate {
 }
 
 #[derive(Debug, Deserialize)]
-struct StageConfig {
+pub struct ChunkGrammarConfig {
     map_size: (isize, isize),
+    start_chunks: Vec<ChunkTemplate>,
+    middle_chunks: Vec<ChunkTemplate>,
+    goal_chunks: Vec<ChunkTemplate>,
 }
-
-#[derive(Debug, Deserialize)]
-struct StartChunks {
-    templates: Vec<ChunkTemplate>,
-}
-
-#[derive(Debug, Deserialize)]
-struct MiddleChunks {
-    templates: Vec<ChunkTemplate>,
-}
-
-#[derive(Debug, Deserialize)]
-struct GoalChunks {
-    templates: Vec<ChunkTemplate>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct ChunkGrammarConfig(StageConfig, StartChunks, MiddleChunks, GoalChunks);
 
 impl ChunkGrammarConfig {
     fn starts(&self) -> Vec<InnerChunkTemplate> {
-        println!("{:?}", self.0.map_size);
-
-        self.1
-            .templates
+        self.start_chunks
             .iter()
             .map(|t| t.to_inner_template(false))
             .collect()
     }
 
     fn middles(&self) -> Vec<InnerChunkTemplate> {
-        self.2
-            .templates
+        self.middle_chunks
             .iter()
             .map(|t| t.to_inner_template(true))
             .collect()
     }
 
     fn goals(&self) -> Vec<InnerChunkTemplate> {
-        self.3
-            .templates
+        self.goal_chunks
             .iter()
             .map(|t| t.to_inner_template(true))
             .collect()
@@ -229,7 +209,7 @@ pub fn generate_random_layout(config: &ChunkGrammarConfig) -> PlacedChunkLayout 
     let starts = config.starts();
     let middles = config.middles();
     let goals = config.goals();
-    try_build_random_path(config.0.map_size, &starts, &middles, &goals)
+    try_build_random_path(config.map_size, &starts, &middles, &goals)
 }
 
 pub fn generate_random_layout_from_file(
