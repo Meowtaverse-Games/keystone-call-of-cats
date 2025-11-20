@@ -2,6 +2,7 @@ use bevy::prelude::*;
 
 pub mod assets;
 pub mod audio;
+pub mod options;
 
 mod boot;
 use boot::BootPlugin;

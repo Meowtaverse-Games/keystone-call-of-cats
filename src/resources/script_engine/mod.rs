@@ -1,6 +1,7 @@
 mod rhai_executor;
 
 use bevy::prelude::Resource;
+use serde::{Deserialize, Serialize};
 
 pub use rhai_executor::RhaiScriptExecutor;
 
@@ -8,6 +9,7 @@ use crate::util::script_types::{
     ScriptCommand, ScriptExecutionError, ScriptProgram, ScriptRunner, ScriptStepper,
 };
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Language {
     Rhai,
     #[allow(dead_code)]

@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use bevy_fluent::prelude::Localization;
 
 use crate::{
-    resources::{design_resolution::ScaledViewport, tiled::*},
+    resources::{design_resolution::ScaledViewport, settings::GameSettings, tiled::*},
     scenes::stage::components::{Goal, Player, PlayerGoalDescent, PlayerMotion},
     util::localization::tr,
 };
@@ -61,6 +61,7 @@ pub fn check_goal_completion(
     localization: Res<Localization>,
     audio_handles: Res<StageAudioHandles>,
     mut audio_state: ResMut<StageAudioState>,
+    settings: Res<GameSettings>,
 ) {
     if !editor_state.controls_enabled || editor_state.stage_cleared {
         return;
@@ -102,7 +103,11 @@ pub fn check_goal_completion(
             editor_state.pending_player_reset = false;
             editor_state.last_run_feedback = Some(tr(&localization, "stage-ui-feedback-goal"));
             editor_state.stage_clear_popup_open = true;
-            audio_state.play_clear_once(&mut commands, &audio_handles);
+            audio_state.play_clear_once(
+                &mut commands,
+                &audio_handles,
+                settings.sfx_volume_linear(),
+            );
 
             let target_y = goal_pos.y - goal.half_extents.y;
             let align_x = player_transform.translation().x;

@@ -3,7 +3,13 @@ use bevy::{
     prelude::*,
 };
 
-use crate::{resources::asset_store::AssetStore, scenes::assets::AudioKey};
+use crate::{
+    resources::{asset_store::AssetStore, settings::GameSettings},
+    scenes::assets::AudioKey,
+};
+
+#[derive(Component)]
+pub struct BackgroundMusic;
 
 #[derive(Resource, Clone, Default)]
 pub struct AudioHandles {
@@ -47,7 +53,7 @@ fn init_audio_handles(
     });
 }
 
-pub fn play_bgm(commands: &mut Commands, handles: &mut AudioHandles) {
+pub fn play_bgm(commands: &mut Commands, handles: &mut AudioHandles, settings: &GameSettings) {
     if handles.played_bgm {
         return;
     }
@@ -56,14 +62,15 @@ pub fn play_bgm(commands: &mut Commands, handles: &mut AudioHandles) {
     info!("Playing BGM");
 
     commands.spawn((
+        BackgroundMusic,
         AudioPlayer::new(handles.bgm.clone()),
-        PlaybackSettings::LOOP.with_volume(Volume::Linear(0.1)),
+        PlaybackSettings::LOOP.with_volume(Volume::Linear(settings.music_volume_linear())),
     ));
 }
 
-pub fn play_ui_click(commands: &mut Commands, handles: &AudioHandles) {
+pub fn play_ui_click(commands: &mut Commands, handles: &AudioHandles, settings: &GameSettings) {
     commands.spawn((
         AudioPlayer::new(handles.click.clone()),
-        PlaybackSettings::DESPAWN.with_volume(Volume::Linear(0.1)),
+        PlaybackSettings::DESPAWN.with_volume(Volume::Linear(settings.sfx_volume_linear())),
     ));
 }

@@ -5,6 +5,7 @@ pub mod file_storage;
 pub mod game_state;
 pub mod launch_profile;
 pub mod script_engine;
+pub mod settings;
 pub mod stage_catalog;
 pub mod stage_progress;
 pub mod steam_client;

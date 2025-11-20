@@ -8,12 +8,14 @@ use crate::{
         asset_store::AssetStore,
         design_resolution::{LetterboxOffsets, LetterboxVisibility},
         game_state::GameState,
+        settings::GameSettings,
         stage_catalog::*,
         stage_progress::*,
     },
     scenes::{
         assets::FontKey,
         audio::{AudioHandles, play_bgm, play_ui_click},
+        options::OptionsOverlayState,
         stage::StageProgressionState,
     },
     util::localization::{localized_stage_name, tr, tr_with_args},
@@ -104,10 +106,15 @@ impl StageSummary {
     }
 }
 
-pub fn setup_bgm(mut commands: Commands, mut audio: ResMut<AudioHandles>) {
-    play_bgm(&mut commands, &mut audio);
+pub fn setup_bgm(
+    mut commands: Commands,
+    mut audio: ResMut<AudioHandles>,
+    settings: Res<GameSettings>,
+) {
+    play_bgm(&mut commands, &mut audio, &settings);
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn setup(
     mut commands: Commands,
     mut clear_color: ResMut<ClearColor>,
@@ -117,11 +124,13 @@ pub fn setup(
     catalog: Res<StageCatalog>,
     progress: Res<StageProgress>,
     localization: Res<Localization>,
+    mut options_overlay: ResMut<OptionsOverlayState>,
 ) {
     clear_color.0 = background_color();
     letterbox_offsets.left = 0.0;
     letterbox_offsets.right = 0.0;
     letterbox_visibility.0 = false; // Hide letterbox only in SelectStage
+    options_overlay.open = false;
 
     let font = if let Some(handle) = asset_store.font(FontKey::Default) {
         handle
@@ -191,12 +200,17 @@ pub fn cleanup(
 pub fn handle_back_button(
     mut commands: Commands,
     audio: Res<AudioHandles>,
+    settings: Res<GameSettings>,
     mut interactions: Query<(&StageBackButton, &Interaction), Changed<Interaction>>,
     mut exit_events: MessageWriter<AppExit>,
+    options: Res<OptionsOverlayState>,
 ) {
+    if options.open {
+        return;
+    }
     for (_, interaction) in &mut interactions {
         if *interaction == Interaction::Pressed {
-            play_ui_click(&mut commands, &audio);
+            play_ui_click(&mut commands, &audio, &settings);
             exit_events.write(AppExit::Success);
         }
     }
@@ -205,13 +219,33 @@ pub fn handle_back_button(
 pub fn handle_nav_buttons(
     mut commands: Commands,
     audio: Res<AudioHandles>,
+    settings: Res<GameSettings>,
     mut interactions: Query<(&StagePageButton, &Interaction), Changed<Interaction>>,
     mut state: ResMut<StageSelectState>,
+    options: Res<OptionsOverlayState>,
 ) {
+    if options.open {
+        return;
+    }
     for (button, interaction) in &mut interactions {
         if *interaction == Interaction::Pressed {
-            play_ui_click(&mut commands, &audio);
+            play_ui_click(&mut commands, &audio, &settings);
             state.move_page(button.delta);
+        }
+    }
+}
+
+pub fn handle_options_button(
+    mut commands: Commands,
+    audio: Res<AudioHandles>,
+    settings: Res<GameSettings>,
+    mut interactions: Query<(&StageOptionsButton, &Interaction), Changed<Interaction>>,
+    mut overlay: ResMut<OptionsOverlayState>,
+) {
+    for (_, interaction) in &mut interactions {
+        if *interaction == Interaction::Pressed {
+            play_ui_click(&mut commands, &audio, &settings);
+            overlay.open = true;
         }
     }
 }
@@ -219,18 +253,23 @@ pub fn handle_nav_buttons(
 pub fn handle_play_buttons(
     mut commands: Commands,
     audio: Res<AudioHandles>,
+    settings: Res<GameSettings>,
     mut interactions: Query<(&StagePlayButton, &Interaction), Changed<Interaction>>,
     mut progression: ResMut<StageProgressionState>,
     catalog: Res<StageCatalog>,
     mut next_state: ResMut<NextState<GameState>>,
+    options: Res<OptionsOverlayState>,
 ) {
+    if options.open {
+        return;
+    }
     for (button, interaction) in &mut interactions {
         if !button.enabled {
             continue;
         }
 
         if *interaction == Interaction::Pressed {
-            play_ui_click(&mut commands, &audio);
+            play_ui_click(&mut commands, &audio, &settings);
             if let Some(stage) = catalog.stage_by_index(button.stage_index) {
                 progression.select_stage(stage);
                 next_state.set(GameState::Stage);
@@ -245,7 +284,11 @@ pub fn handle_keyboard_navigation(
     keys: Res<ButtonInput<KeyCode>>,
     mut state: ResMut<StageSelectState>,
     mut exit_events: MessageWriter<AppExit>,
+    options: Res<OptionsOverlayState>,
 ) {
+    if options.open {
+        return;
+    }
     if keys.just_pressed(KeyCode::ArrowRight) {
         state.move_page(1);
     }
@@ -354,7 +397,16 @@ fn spawn_hero_section(
             .with_children(|row| {
                 let badge_label = tr(localization, "stage-select-badge-experimental");
                 spawn_status_badge(row, font, &badge_label);
-                spawn_back_button(row, font, localization);
+
+                row.spawn(Node {
+                    flex_direction: FlexDirection::Row,
+                    column_gap: Val::Px(16.0),
+                    ..default()
+                })
+                .with_children(|buttons| {
+                    spawn_options_button(buttons, font, localization);
+                    spawn_back_button(buttons, font, localization);
+                });
             });
 
             hero.spawn(Node {
@@ -544,6 +596,44 @@ fn spawn_back_button(
                 .insert(TextFont {
                     font: font.clone(),
                     font_size: 28.0,
+                    ..default()
+                })
+                .insert(TextColor(primary_text_color()));
+        });
+}
+
+fn spawn_options_button(
+    parent: &mut ChildSpawnerCommands,
+    font: &Handle<Font>,
+    localization: &Localization,
+) {
+    let visual = ButtonVisual::new(
+        subtle_button_color(0.25),
+        subtle_button_color(0.4),
+        subtle_button_color(0.55),
+        subtle_button_color(0.1),
+        true,
+    );
+    let initial = button_initial_color(&visual);
+
+    parent
+        .spawn((
+            StageOptionsButton,
+            Button,
+            visual,
+            Node {
+                padding: UiRect::axes(Val::Px(20.0), Val::Px(10.0)),
+                ..default()
+            },
+            BorderRadius::all(Val::Px(999.0)),
+            BackgroundColor(initial),
+        ))
+        .with_children(|btn| {
+            let label = tr(localization, "stage-select-options");
+            btn.spawn(Text::new(label))
+                .insert(TextFont {
+                    font: font.clone(),
+                    font_size: 22.0,
                     ..default()
                 })
                 .insert(TextColor(primary_text_color()));

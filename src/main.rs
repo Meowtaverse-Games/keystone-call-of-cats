@@ -59,6 +59,7 @@ fn main() {
     app.add_plugins((
         SteamPlugin::new(steam_app_id),
         StagePlugin,
+        SettingsPlugin,
         DefaultPlugins
             .set(AssetPlugin {
                 file_path: "assets".to_string(),

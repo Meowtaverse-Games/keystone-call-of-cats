@@ -1,5 +1,5 @@
 use bevy::{
-    audio::{AudioPlayer, PlaybackSettings},
+    audio::{AudioPlayer, PlaybackSettings, Volume},
     prelude::*,
 };
 
@@ -30,14 +30,19 @@ impl StageAudioState {
         self.stop_push_loop(commands);
     }
 
-    pub fn ensure_push_loop(&mut self, commands: &mut Commands, handles: &StageAudioHandles) {
+    pub fn ensure_push_loop(
+        &mut self,
+        commands: &mut Commands,
+        handles: &StageAudioHandles,
+        volume: f32,
+    ) {
         if self.push_loop_entity.is_some() {
             return;
         }
         let entity = commands
             .spawn((
                 AudioPlayer::new(handles.stone_move.clone()),
-                PlaybackSettings::LOOP,
+                PlaybackSettings::LOOP.with_volume(Volume::Linear(volume)),
             ))
             .id();
         self.push_loop_entity = Some(entity);
@@ -51,13 +56,18 @@ impl StageAudioState {
         }
     }
 
-    pub fn play_clear_once(&mut self, commands: &mut Commands, handles: &StageAudioHandles) {
+    pub fn play_clear_once(
+        &mut self,
+        commands: &mut Commands,
+        handles: &StageAudioHandles,
+        volume: f32,
+    ) {
         if self.clear_played {
             return;
         }
         commands.spawn((
             AudioPlayer::new(handles.stage_clear.clone()),
-            PlaybackSettings::DESPAWN,
+            PlaybackSettings::DESPAWN.with_volume(Volume::Linear(volume)),
         ));
         self.clear_played = true;
     }

@@ -8,11 +8,8 @@ use bevy_fluent::prelude::Localization;
 
 use crate::{
     resources::{
-        asset_store::AssetStore,
-        design_resolution::LetterboxOffsets,
-        game_state::GameState,
-        script_engine::{Language, ScriptExecutor},
-        stage_catalog::StageId,
+        asset_store::AssetStore, design_resolution::LetterboxOffsets, game_state::GameState,
+        script_engine::ScriptExecutor, settings::GameSettings, stage_catalog::StageId,
     },
     scenes::{
         assets::FontKey,
@@ -231,6 +228,7 @@ pub struct StageUIParams<'w, 's> {
     stone_writer: MessageWriter<'w, StoneCommandMessage>,
     next_state: ResMut<'w, NextState<GameState>>,
     audio: Res<'w, AudioHandles>,
+    settings: Res<'w, GameSettings>,
     tutorial_overlays: Query<'w, 's, Entity, With<StageTutorialOverlay>>,
 }
 
@@ -245,6 +243,7 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
         mut stone_writer,
         mut next_state,
         audio,
+        settings,
         tutorial_overlays,
     } = params;
     let Ok(ctx) = contexts.ctx_mut() else {
@@ -341,7 +340,7 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
             ui.vertical(|ui| {
                 let back_label = tr(&localization, "stage-ui-back-to-title");
                 if ui.button(back_label.as_str()).clicked() {
-                    play_ui_click(&mut commands, &audio);
+                    play_ui_click(&mut commands, &audio, &settings);
 
                     editor.controls_enabled = false;
                     editor.pending_player_reset = false;
@@ -362,7 +361,7 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                             tr(&localization, action.label_key(editor.controls_enabled));
                         let label = format!("{} ({})", button_label, action.key_text());
                         if ui.button(label).clicked() {
-                            play_ui_click(&mut commands, &audio);
+                            play_ui_click(&mut commands, &audio, &settings);
                             pending_action = Some((action, true));
                         }
                     }
@@ -370,7 +369,7 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
 
                 if let Some((action, triggered_via_ui)) = pending_action {
                     if !triggered_via_ui {
-                        play_ui_click(&mut commands, &audio);
+                        play_ui_click(&mut commands, &audio, &settings);
                     }
                     let was_running = editor.controls_enabled;
                     match action {
@@ -385,7 +384,8 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                                 editor.stage_clear_popup_open = false;
                             } else {
                                 hide_tutorial_overlays(&mut commands, &tutorial_overlays);
-                                match script_executor.compile_step(Language::Rhai, &editor.buffer) {
+                                let language = settings.script_language;
+                                match script_executor.compile_step(language, &editor.buffer) {
                                     Ok(program) => {
                                         // Clear any existing queue on the Stone
                                         stone_writer
@@ -493,7 +493,7 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                         open_label
                     };
                     if ui.button(button_label.as_str()).clicked() {
-                        play_ui_click(&mut commands, &audio);
+                        play_ui_click(&mut commands, &audio, &settings);
                         help.is_open = !help.is_open;
                     }
 
@@ -542,7 +542,7 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                 ui.add_space(12.0);
                 let ok = tr(&localization, "stage-ui-clear-ok");
                 if ui.button(ok.as_str()).clicked() {
-                    play_ui_click(&mut commands, &audio);
+                    play_ui_click(&mut commands, &audio, &settings);
                     request_close = true;
                 }
             });

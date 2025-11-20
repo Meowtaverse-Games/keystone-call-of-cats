@@ -5,6 +5,7 @@ use bevy::prelude::*;
 
 use super::{StageAudioHandles, StageAudioState};
 use crate::{
+    resources::settings::GameSettings,
     scenes::stage::components::{Player, StoneRune},
     util::script_types::{MoveDirection, ScriptCommand},
 };
@@ -125,6 +126,7 @@ pub fn update_stone_behavior(
     time: Res<Time>,
     audio_handles: Res<StageAudioHandles>,
     mut audio_state: ResMut<StageAudioState>,
+    settings: Res<GameSettings>,
     mut query: Query<(&mut StoneCommandState, &mut Transform, &mut StoneMotion), With<StoneRune>>,
 ) {
     let Ok((mut state, mut transform, mut motion)) = query.single_mut() else {
@@ -177,7 +179,7 @@ pub fn update_stone_behavior(
 
     let is_stone_moving = matches!(state.current, Some(StoneAction::Move(_)));
     if is_stone_moving {
-        audio_state.ensure_push_loop(&mut commands, &audio_handles);
+        audio_state.ensure_push_loop(&mut commands, &audio_handles, settings.sfx_volume_linear());
     } else {
         audio_state.stop_push_loop(&mut commands);
     }

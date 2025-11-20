@@ -25,6 +25,9 @@ pub struct StagePageIndicator;
 #[derive(Component)]
 pub struct StageBackButton;
 
+#[derive(Component)]
+pub struct StageOptionsButton;
+
 #[derive(Component, Clone, Copy)]
 pub struct ButtonVisual {
     pub normal: Color,
