@@ -13,8 +13,12 @@ use crate::{
         design_resolution::ScaledViewport,
         game_state::GameState,
         launch_profile::LaunchProfile,
+        stage_catalog::StageCatalog,
     },
-    scenes::assets::{DEFAULT_GROUP, FontKey},
+    scenes::{
+        assets::{DEFAULT_GROUP, FontKey},
+        stage::StageProgressionState,
+    },
 };
 
 use super::components::BootRoot;
@@ -119,6 +123,9 @@ pub fn update(
     localization_builder: LocalizationBuilder,
     localization_folder: Option<Res<LocaleFolder>>,
     localization: Option<Res<Localization>>,
+    launch_profile: Res<LaunchProfile>,
+    stage_catalog: Res<StageCatalog>,
+    mut progression: ResMut<StageProgressionState>,
 ) {
     if let Ok((_, mut transform)) = boot_ui.single_mut() {
         transform.scale = Vec3::splat(scaled_viewport.scale);
@@ -146,7 +153,23 @@ pub fn update(
     boot_timer.timer.tick(time.delta());
     if boot_timer.timer.is_finished() && loaded.0 && localization_ready {
         info!("Boot timer finished");
-        next_state.set(GameState::SelectStage);
+        let mut target_state = GameState::SelectStage;
+        if let Some(stage_id) = launch_profile.stage_id {
+            match stage_catalog.stage_by_id(stage_id) {
+                Some(stage) => {
+                    info!("Launch profile selecting stage {:?}", stage.id);
+                    progression.select_stage(stage);
+                    target_state = GameState::Stage;
+                }
+                None => {
+                    warn!(
+                        "Stage with id {} not found, falling back to select screen",
+                        stage_id.0
+                    );
+                }
+            }
+        }
+        next_state.set(target_state);
     }
 }
 

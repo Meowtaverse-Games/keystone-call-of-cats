@@ -41,6 +41,10 @@ impl StageCatalog {
         self.stages.get(index)
     }
 
+    pub fn stage_by_id(&self, stage_id: StageId) -> Option<&StageMeta> {
+        self.stages.iter().find(|stage| stage.id == stage_id)
+    }
+
     pub fn next_stage(&self, stage_id: StageId) -> Option<&StageMeta> {
         let next_stage_id = StageId(stage_id.0 + 1);
         self.stages.iter().find(|stage| stage.id == next_stage_id)
