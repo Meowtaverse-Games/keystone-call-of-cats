@@ -362,6 +362,25 @@ impl PlacedChunkLayout {
         panic!("tile_position: no tile found for kind {:?}", kind);
     }
 
+    pub fn tile_by_position(&self, position: (isize, isize)) -> Option<TileKind> {
+        let (x, y) = (position.0, self.map_size.1 - position.1 - 1); // y反転
+
+        for chunk in &self.placed_chunks {
+            for tile in &chunk.tiles_world {
+                println!("checking tile at ({}, {}) kind: {:?} against position ({}, {})", tile.x, tile.y, tile.kind, x, y);
+                if (tile.x, tile.y) == (x, y) {
+                    return Some(tile.kind);
+                }
+            }
+        }
+        for tile in &self.margin_tiles {
+            if (tile.x, tile.y) == (x, y) {
+                return Some(tile.kind);
+            }
+        }
+        None
+    }
+
     pub fn map_iter(&self) -> impl Iterator<Item = ((isize, isize), TileKind)> + '_ {
         self.margin_tiles
             .iter()

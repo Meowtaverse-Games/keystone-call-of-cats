@@ -42,12 +42,18 @@ pub fn spawn_tiles(
     commands.entity(stage_root).with_children(
         |parent: &mut bevy_ecs::relationship::RelatedSpawnerCommands<'_, ChildOf>| {
             for x in 0..map_size_x {
-                if x< placed_chunks.boundary_margin.0 - 1 || x > map_size_x - placed_chunks.boundary_margin.0 { // skip wall columns
+                if x < placed_chunks.boundary_margin.0 - 1
+                    || x > map_size_x - placed_chunks.boundary_margin.0
+                {
+                    // skip wall columns
                     continue;
                 }
 
                 for y in 0..map_size_y {
-                    if y < placed_chunks.boundary_margin.1 - 1 || y > map_size_y - placed_chunks.boundary_margin.1 { // skip wall rows
+                    if y < placed_chunks.boundary_margin.1 - 1
+                        || y > map_size_y - placed_chunks.boundary_margin.1
+                    {
+                        // skip wall rows
                         continue;
                     }
 
@@ -73,7 +79,9 @@ pub fn spawn_tiles(
                     let mut transform = Transform::from_xyz(tile_x, tile_y, -20.0)
                         .with_scale(Vec3::new(scale, scale, 1.0));
 
-                    let tile_id = if is_boundary && (is_edge_left || is_edge_right || is_edge_top || is_edge_bottom) {
+                    let tile_id = if is_boundary
+                        && (is_edge_left || is_edge_right || is_edge_top || is_edge_bottom)
+                    {
                         if is_edge_left && is_edge_top {
                             info!("spawning top-left corner boundary tile at ({}, {})", x, y);
                             112
@@ -106,7 +114,9 @@ pub fn spawn_tiles(
                     let image = image_from_tileset(&tileset, tile_id as usize).unwrap();
                     spawn_boundary_tile(parent, image, transform, tile_size, is_boundary);
 
-                    if x == placed_chunks.boundary_margin.0 && y <= placed_chunks.boundary_margin.1 + 2 {
+                    if x == placed_chunks.boundary_margin.0
+                        && y <= placed_chunks.boundary_margin.1 + 2
+                    {
                         let ladder_image = image_from_tileset(&tileset, 178).unwrap();
                         spawn_boundary_tile(
                             parent,
@@ -116,6 +126,17 @@ pub fn spawn_tiles(
                             tile_size,
                             false,
                         );
+                    }
+
+                    // Glass
+                    if is_edge_bottom && placed_chunks.tile_by_position((x, y - 1)).is_none() && rng.random_bool(0.2) {
+                        let glass_image = image_from_tileset(&tileset, 226).unwrap();
+                        let transform = Transform::from_xyz(
+                            tile_x,
+                            -(((y - 1) as f32 + 0.5) * real_tile_size.y - viewport_size.y / 2.0), 
+                            20.0)
+                            .with_scale(Vec3::new(scale, scale, 1.0));
+                        spawn_boundary_tile(parent, glass_image, transform, tile_size, false);
                     }
                 }
             }
@@ -132,8 +153,6 @@ pub fn spawn_tiles(
                 let tile_y = (y as f32 + 0.5) * real_tile_size.y - viewport_size.y / 2.0;
                 let transform = Transform::from_xyz(tile_x, tile_y, -5.0)
                     .with_scale(Vec3::new(scale, scale, 1.0));
-
-                // spawn_boundary_tile(parent, image, transform, tile_size, true);
 
                 let Some(tile) = tiled_map_assets.tile(tile_id) else {
                     continue;
