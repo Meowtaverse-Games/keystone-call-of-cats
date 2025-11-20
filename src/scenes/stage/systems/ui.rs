@@ -3,7 +3,8 @@ use bevy_ecs::system::SystemParam;
 use bevy_egui::{
     EguiContexts,
     egui::{
-        self, Align2, Event, FontFamily::Proportional, FontId, FontSelection, RichText, TextStyle,
+        self, Align2, Event, FontFamily::Proportional, FontId, FontSelection, Layout, RichText,
+        TextStyle,
     },
 };
 use bevy_fluent::prelude::Localization;
@@ -133,7 +134,7 @@ fn scaled_panel_font_size(base: f32, offset: f32) -> f32 {
 pub struct ScriptEditorState {
     pub buffer: String,
     pub last_action: Option<EditorMenuAction>,
-    pub last_action_was_running: bool,
+    pub last_action_context: bool,
     pub last_run_feedback: Option<String>,
     pub last_commands: Vec<ScriptCommand>,
     pub active_program: Option<Box<dyn ScriptProgram>>,
@@ -151,7 +152,7 @@ impl Default for ScriptEditorState {
         Self {
             buffer: String::new(),
             last_action: None,
-            last_action_was_running: false,
+            last_action_context: false,
             last_run_feedback: None,
             last_commands: Vec::new(),
             active_program: None,
@@ -167,9 +168,9 @@ impl Default for ScriptEditorState {
 }
 
 impl ScriptEditorState {
-    fn apply_action(&mut self, action: EditorMenuAction, was_running: bool) {
+    fn apply_action(&mut self, action: EditorMenuAction, context: bool) {
         self.last_action = Some(action);
-        self.last_action_was_running = was_running;
+        self.last_action_context = context;
     }
 
     pub fn set_tutorial_for_stage(&mut self, stage_id: StageId) {
@@ -186,10 +187,16 @@ pub enum EditorMenuAction {
     RunScript,
     DecreaseFont,
     IncreaseFont,
+    ToggleCommandHelp,
 }
 
 impl EditorMenuAction {
-    const ALL: [Self; 3] = [Self::RunScript, Self::DecreaseFont, Self::IncreaseFont];
+    const ALL: [Self; 4] = [
+        Self::RunScript,
+        Self::DecreaseFont,
+        Self::IncreaseFont,
+        Self::ToggleCommandHelp,
+    ];
 
     fn label_key(self, is_running: bool) -> &'static str {
         match self {
@@ -197,31 +204,36 @@ impl EditorMenuAction {
             Self::RunScript => "stage-ui-menu-run",
             Self::DecreaseFont => "stage-ui-menu-font-decrease",
             Self::IncreaseFont => "stage-ui-menu-font-increase",
+            Self::ToggleCommandHelp => "stage-ui-command-help-button",
         }
     }
 
-    fn key_text(self) -> &'static str {
+    fn key_text(self) -> Option<&'static str> {
         match self {
-            Self::RunScript => "F1",
-            Self::DecreaseFont => "F2",
-            Self::IncreaseFont => "F3",
+            Self::RunScript => Some("F1"),
+            Self::DecreaseFont => Some("F2"),
+            Self::IncreaseFont => Some("F3"),
+            Self::ToggleCommandHelp => Some("F4"),
         }
     }
 
-    fn key(self) -> egui::Key {
+    fn key(self) -> Option<egui::Key> {
         match self {
-            Self::RunScript => egui::Key::F1,
-            Self::DecreaseFont => egui::Key::F2,
-            Self::IncreaseFont => egui::Key::F3,
+            Self::RunScript => Some(egui::Key::F1),
+            Self::DecreaseFont => Some(egui::Key::F2),
+            Self::IncreaseFont => Some(egui::Key::F3),
+            Self::ToggleCommandHelp => Some(egui::Key::F4),
         }
     }
 
-    fn status_key(self, was_running: bool) -> &'static str {
+    fn status_key(self, context: bool) -> &'static str {
         match self {
-            Self::RunScript if was_running => "stage-ui-status-stop",
+            Self::RunScript if context => "stage-ui-status-stop",
             Self::RunScript => "stage-ui-status-run",
             Self::DecreaseFont => "stage-ui-status-font-decrease",
             Self::IncreaseFont => "stage-ui-status-font-increase",
+            Self::ToggleCommandHelp if context => "stage-ui-status-command-help-open",
+            Self::ToggleCommandHelp => "stage-ui-status-command-help-close",
         }
     }
 }
@@ -307,7 +319,9 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
             });
         } else {
             for action in EditorMenuAction::ALL {
-                if input.key_pressed(action.key()) {
+                if let Some(key) = action.key()
+                    && input.key_pressed(key)
+                {
                     action_from_keys = Some(action);
                     break;
                 }
@@ -401,7 +415,11 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                     for action in EditorMenuAction::ALL {
                         let button_label =
                             tr(&localization, action.label_key(editor.controls_enabled));
-                        let label = format!("{} ({})", button_label, action.key_text());
+                        let label = if let Some(key_text) = action.key_text() {
+                            format!("{button_label} ({key_text})")
+                        } else {
+                            button_label
+                        };
                         if ui.button(label).clicked() {
                             play_ui_click(&mut commands, &audio, &settings);
                             pending_action = Some((action, true));
@@ -414,6 +432,7 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                         play_ui_click(&mut commands, &audio, &settings);
                     }
                     let was_running = editor.controls_enabled;
+                    let mut action_context_flag = false;
                     match action {
                         EditorMenuAction::RunScript => {
                             if was_running {
@@ -458,6 +477,7 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                                     }
                                 }
                             }
+                            action_context_flag = was_running;
                         }
                         EditorMenuAction::DecreaseFont => {
                             editor.font_offset = (editor.font_offset - FONT_OFFSET_STEP)
@@ -467,16 +487,19 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                             editor.font_offset = (editor.font_offset + FONT_OFFSET_STEP)
                                 .clamp(FONT_OFFSET_MIN, FONT_OFFSET_MAX);
                         }
+                        EditorMenuAction::ToggleCommandHelp => {
+                            if let Some(help) = editor.command_help.as_mut() {
+                                help.is_open = !help.is_open;
+                                action_context_flag = help.is_open;
+                            }
+                        }
                     }
-                    editor.apply_action(action, was_running);
+                    editor.apply_action(action, action_context_flag);
                 }
 
                 if let Some(action) = editor.last_action {
                     info!("Editor action: {:?}", action);
-                    let status = tr(
-                        &localization,
-                        action.status_key(editor.last_action_was_running),
-                    );
+                    let status = tr(&localization, action.status_key(editor.last_action_context));
                     ui.label(status);
                     editor.last_action = None;
                 }
@@ -528,39 +551,43 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                     editor.stage_clear_popup_open = false;
                 }
 
-                ui.add_space(8.0);
-                if let Some(help) = editor.command_help.as_mut() {
-                    let open_label = tr(&localization, "stage-ui-command-help-button");
-                    let close_label = tr(&localization, "stage-ui-command-help-close");
-                    let button_label = if help.is_open {
-                        close_label
-                    } else {
-                        open_label
-                    };
-                    if ui.button(button_label.as_str()).clicked() {
-                        play_ui_click(&mut commands, &audio, &settings);
-                        help.is_open = !help.is_open;
+                if let Some(help) = editor.command_help.as_ref().filter(|help| help.is_open) {
+                    let mut remaining = ui.available_size();
+                    if !remaining.x.is_finite() {
+                        remaining.x = ui.max_rect().width();
+                    }
+                    if !remaining.y.is_finite() {
+                        remaining.y = 0.0;
                     }
 
-                    if help.is_open {
-                        ui.add_space(6.0);
-                        ui.group(|ui| {
-                            ui.vertical(|ui| {
-                                let title = tr(&localization, help.title_key);
-                                ui.label(RichText::new(title).strong());
-                                let intro = tr(&localization, help.intro_key);
-                                ui.label(intro);
-                                ui.add_space(6.0);
-                                for entry in help.entries {
-                                    let entry_title = tr(&localization, entry.title_key);
-                                    ui.label(RichText::new(entry_title).strong());
-                                    let entry_body = tr(&localization, entry.body_key);
-                                    ui.label(entry_body);
-                                    ui.add_space(4.0);
-                                }
+                    let font_id = FontId::new(
+                        scaled_panel_font_size(14.0, editor.font_offset),
+                        Proportional,
+                    );
+
+                    ui.allocate_ui_with_layout(
+                        egui::Vec2::new(remaining.x, remaining.y),
+                        Layout::bottom_up(egui::Align::LEFT),
+                        |ui| {
+                            ui.add_space(8.0);
+                            ui.group(|ui| {
+                                ui.vertical(|ui| {
+                                    let title = tr(&localization, help.title_key);
+                                    ui.label(RichText::new(title).strong().font(font_id.clone()));
+                                    let intro = tr(&localization, help.intro_key);
+                                    ui.label(RichText::new(intro).font(font_id.clone()));
+                                    ui.add_space(6.0);
+                                    for entry in help.entries {
+                                        let entry_title = tr(&localization, entry.title_key);
+                                        ui.label(RichText::new(entry_title).strong().font(font_id.clone()));
+                                        let entry_body = tr(&localization, entry.body_key);
+                                        ui.label(RichText::new(entry_body).font(font_id.clone()));
+                                        ui.add_space(4.0);
+                                    }
+                                });
                             });
-                        });
-                    }
+                        },
+                    );
                 }
             });
         })
