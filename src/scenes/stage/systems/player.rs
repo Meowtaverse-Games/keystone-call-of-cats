@@ -68,7 +68,7 @@ pub fn spawn_player(
                 speed: 90.0,
                 direction: 1.0,
                 is_moving: matches!(initial_state, PlayerAnimationState::Run),
-                jump_speed: 280.0,
+                jump_speed: 180.0,
                 ground_y: y,
                 ..default()
             },
