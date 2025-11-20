@@ -223,6 +223,10 @@ pub fn show_ascii_map() {
     let placed_chunks = generate_random_layout_from_file("assets/stages/stage-1.ron")
         .expect("failed to generate layout from config");
     println!("== Placed Chunks ==");
+    println!(
+        "map size: {:?}, boundary margin: {:?}",
+        placed_chunks.map_size, placed_chunks.boundary_margin
+    );
     for chunk in &placed_chunks {
         println!("- {}", chunk.id);
     }
@@ -304,7 +308,7 @@ fn place_chunk(t: &InnerChunkTemplate, (origin_x, origin_y): (isize, isize)) -> 
 pub struct PlacedChunkLayout {
     pub placed_chunks: Vec<PlacedChunk>,
     pub map_size: (isize, isize),
-    // boundary_margin: (isize, isize),
+    pub boundary_margin: (isize, isize),
     margin_tiles: Vec<Tile>,
 }
 
@@ -342,6 +346,7 @@ impl PlacedChunkLayout {
         PlacedChunkLayout {
             placed_chunks,
             map_size: (MAP_SIZE.0, MAP_SIZE.1),
+            boundary_margin,
             margin_tiles: build_margin_tiles(boundary_margin),
         }
     }

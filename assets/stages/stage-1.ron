@@ -1,5 +1,5 @@
 (
-    map_size: (28, 10),
+    map_size: (26, 10),
     start_chunks: [
         ChunkTemplate(
             id: "start_flat",
