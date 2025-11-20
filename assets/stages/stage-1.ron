@@ -1,4 +1,7 @@
 (
+    StageConfig(
+        map_size: (28, 10),
+    ),
     StartChunks(
         templates: [
             ChunkTemplate(
