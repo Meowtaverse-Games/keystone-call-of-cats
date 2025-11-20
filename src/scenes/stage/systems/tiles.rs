@@ -4,11 +4,7 @@ use bevy::prelude::*;
 use rand::Rng;
 
 use crate::{
-    resources::{
-        chunk_grammar_map::{self, MAP_SIZE, TileKind},
-        design_resolution::ScaledViewport,
-        tiled::*,
-    },
+    resources::{chunk_grammar_map::*, design_resolution::ScaledViewport, tiled::*},
     scenes::stage::components::StageTile,
 };
 
@@ -25,33 +21,35 @@ pub fn spawn_tiles(
     commands: &mut Commands,
     stage_root: Entity,
     tiled_map_assets: &TiledMapAssets,
-    placed_chunks: &chunk_grammar_map::PlacedChunkLayout,
+    placed_chunks: &PlacedChunkLayout,
     viewport: &ScaledViewport,
 ) {
     let tileset = tiled_map_assets.tileset.clone();
 
     let mut rng = rand::rng();
 
+    let (map_size_x, map_size_y) = placed_chunks.map_size;
+
     let viewport_size = viewport.size;
     let tile_size = tileset.tile_size();
     let map_pixel_size = Vec2::new(
-        MAP_SIZE.0 as f32 * tile_size.x,
-        MAP_SIZE.1 as f32 * tile_size.y,
+        map_size_x as f32 * tile_size.x,
+        map_size_y as f32 * tile_size.y,
     );
     let scale = (viewport_size / map_pixel_size).min_element();
     let real_tile_size = tile_size * scale;
 
     commands.entity(stage_root).with_children(
         |parent: &mut bevy_ecs::relationship::RelatedSpawnerCommands<'_, ChildOf>| {
-            for x in 0..MAP_SIZE.0 {
-                for y in 0..MAP_SIZE.1 {
+            for x in 0..map_size_x {
+                for y in 0..map_size_y {
                     let tile_x = (x as f32 + 0.5) * real_tile_size.x - viewport_size.x / 2.0;
                     let tile_y = -((y as f32 + 0.5) * real_tile_size.y - viewport_size.y / 2.0);
 
                     let mut transform = Transform::from_xyz(tile_x, tile_y, -20.0)
                         .with_scale(Vec3::new(scale, scale, 1.0));
                     let is_boundary =
-                        x == 0 || y == 0 || x == MAP_SIZE.0 - 1 || y == MAP_SIZE.1 - 1;
+                        x == 0 || y == 0 || x == map_size_x - 1 || y == map_size_y - 1;
 
                     let tile_id = if is_boundary {
                         if x == 0 && y == 0 {
@@ -61,19 +59,19 @@ pub fn spawn_tiles(
                         } else if x == 2 && y == 0 {
                             transform.rotate_z((90.0f32).to_radians());
                             114
-                        } else if x == MAP_SIZE.0 - 1 && y == 0 {
+                        } else if x == map_size_x - 1 && y == 0 {
                             130
-                        } else if x == 0 && y == MAP_SIZE.1 - 1 {
+                        } else if x == 0 && y == map_size_y - 1 {
                             115
-                        } else if x == MAP_SIZE.0 - 1 && y == MAP_SIZE.1 - 1 {
+                        } else if x == map_size_x - 1 && y == map_size_y - 1 {
                             168
                         } else if y == 0 {
                             95
-                        } else if y == MAP_SIZE.1 - 1 {
+                        } else if y == map_size_y - 1 {
                             133
                         } else if x == 0 {
                             112
-                        } else if x == MAP_SIZE.0 - 1 {
+                        } else if x == map_size_x - 1 {
                             132
                         } else {
                             0 // Fallback, should not happen
@@ -100,15 +98,15 @@ pub fn spawn_tiles(
             }
 
             for ((x, y), kind) in placed_chunks.map_iter() {
-                let Some(tile_id) = tile_id_for_kind(kind) else {
+                let Some(tile_id) = tile_id_for_kind(placed_chunks, kind) else {
                     continue;
                 };
                 let Some(image) = image_from_tileset(&tileset, tile_id as usize) else {
                     continue;
                 };
 
-                let tile_x = (x as f32 + 1.5) * real_tile_size.x - viewport_size.x / 2.0;
-                let tile_y = (y as f32 + 4.0) * real_tile_size.y - viewport_size.y / 2.0;
+                let tile_x = (x as f32 + 0.5) * real_tile_size.x - viewport_size.x / 2.0;
+                let tile_y = (y as f32 + 0.5) * real_tile_size.y - viewport_size.y / 2.0;
                 let transform = Transform::from_xyz(tile_x, tile_y, -5.0)
                     .with_scale(Vec3::new(scale, scale, 1.0));
 
@@ -161,11 +159,12 @@ fn image_from_tileset(tileset: &Tileset, id: usize) -> Option<Sprite> {
     Some(image)
 }
 
-fn tile_id_for_kind(kind: TileKind) -> Option<u32> {
+fn tile_id_for_kind(_placed_chunks: &PlacedChunkLayout, kind: TileKind) -> Option<u32> {
     match kind {
         TileKind::Solid => Some(235),
         TileKind::Goal => Some(194),
-        _ => None,
+        TileKind::Wall => Some(152),
+        TileKind::PlayerSpawn | TileKind::Stone => None,
     }
 }
 

@@ -86,7 +86,7 @@ fn main() {
         .add_plugins(VisibilityPlugin)
         .add_systems(Startup, setup_camera)
         .add_plugins(DesignResolutionPlugin::new(
-            1600.0,
+            1800.0,
             1200.0,
             Color::linear_rgb(0.0, 0.0, 0.0),
         ))

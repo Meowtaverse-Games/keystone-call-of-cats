@@ -72,12 +72,12 @@ pub fn update_letterbox(
     mut first_run: Local<bool>,
     mut resize_events: MessageReader<WindowResized>,
     windows: Query<&Window, With<PrimaryWindow>>,
-    offsets: Res<LetterboxOffsets>,
+    letterbox_offsets: Res<LetterboxOffsets>,
     visible: Res<LetterboxVisibility>,
     mut viewport: ResMut<ScaledViewport>,
     mut mask_sides: Query<(&MaskSide, &mut Node, &mut Visibility), With<MaskSide>>,
 ) {
-    let mut should_update = *first_run || offsets.is_changed();
+    let mut should_update = *first_run || letterbox_offsets.is_changed();
     for _ in resize_events.read() {
         should_update = true;
     }
@@ -94,8 +94,8 @@ pub fn update_letterbox(
 
     let window_size = Vec2::new(window.resolution.width(), window.resolution.height());
 
-    let left_offset = offsets.left.max(0.0);
-    let right_offset = offsets.right.max(0.0);
+    let left_offset = letterbox_offsets.left.max(0.0);
+    let right_offset = letterbox_offsets.right.max(0.0);
 
     let available_width = (window_size.x - left_offset - right_offset).max(0.0);
     let available_height = window_size.y;
@@ -169,7 +169,10 @@ pub fn update_letterbox(
         size: viewport.size,
         scale: scale_min,
     };
-    if viewport.center != new_viewport.center || viewport.scale != new_viewport.scale {
+    if viewport.center != new_viewport.center
+        || viewport.size != new_viewport.size
+        || viewport.scale != new_viewport.scale
+    {
         *viewport = new_viewport;
     }
 }
