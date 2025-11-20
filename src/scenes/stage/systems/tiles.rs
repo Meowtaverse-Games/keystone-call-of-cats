@@ -4,11 +4,7 @@ use bevy::prelude::*;
 use rand::Rng;
 
 use crate::{
-    resources::{
-        chunk_grammar_map::*,
-        design_resolution::ScaledViewport,
-        tiled::*,
-    },
+    resources::{chunk_grammar_map::*, design_resolution::ScaledViewport, tiled::*},
     scenes::stage::components::StageTile,
 };
 
@@ -32,7 +28,7 @@ pub fn spawn_tiles(
 
     let mut rng = rand::rng();
 
-    let (map_size_x, map_size_y) = placed_chunks.map_size();
+    let (map_size_x, map_size_y) = placed_chunks.map_size;
 
     let viewport_size = viewport.size;
     let tile_size = tileset.tile_size();
@@ -167,9 +163,7 @@ fn tile_id_for_kind(_placed_chunks: &PlacedChunkLayout, kind: TileKind) -> Optio
     match kind {
         TileKind::Solid => Some(235),
         TileKind::Goal => Some(194),
-        TileKind::Wall => {
-            Some(152)
-        }
+        TileKind::Wall => Some(152),
         TileKind::PlayerSpawn | TileKind::Stone => None,
     }
 }

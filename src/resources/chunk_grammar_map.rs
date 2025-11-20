@@ -9,11 +9,11 @@ use std::path::Path;
 use serde::Deserialize;
 
 pub const MAP_SIZE: (isize, isize) = (30, 20);
-const BOUNDARY_MARGIN: isize = 1;
-const INNER_MAP_SIZE: (isize, isize) = (
-    MAP_SIZE.0 - 2 * BOUNDARY_MARGIN,
-    MAP_SIZE.1 - 2 * BOUNDARY_MARGIN,
-);
+// const BOUNDARY_MARGIN: (isize, isize) = (1, 5);
+// const INNER_MAP_SIZE: (isize, isize) = (
+//     MAP_SIZE.0 - 2 * BOUNDARY_MARGIN.0,
+//     MAP_SIZE.1 - 2 * BOUNDARY_MARGIN.1,
+// );
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 enum Dir {
@@ -23,6 +23,7 @@ enum Dir {
     Up,
     Down,
 }
+
 impl Dir {
     fn opposite(self) -> Self {
         match self {
@@ -47,6 +48,7 @@ pub enum TileKind {
     PlayerSpawn,
     Stone,
     Goal,
+    Wall,
 }
 
 type ExitPoint = ((isize, isize), Dir);
@@ -148,6 +150,11 @@ impl ChunkTemplate {
 }
 
 #[derive(Debug, Deserialize)]
+struct StageConfig {
+    map_size: (isize, isize),
+}
+
+#[derive(Debug, Deserialize)]
 struct StartChunks {
     templates: Vec<ChunkTemplate>,
 }
@@ -163,11 +170,13 @@ struct GoalChunks {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct ChunkGrammarConfig(StartChunks, MiddleChunks, GoalChunks);
+pub struct ChunkGrammarConfig(StageConfig, StartChunks, MiddleChunks, GoalChunks);
 
 impl ChunkGrammarConfig {
     fn starts(&self) -> Vec<InnerChunkTemplate> {
-        self.0
+        println!("{:?}", self.0.map_size);
+
+        self.1
             .templates
             .iter()
             .map(|t| t.to_inner_template(false))
@@ -175,7 +184,7 @@ impl ChunkGrammarConfig {
     }
 
     fn middles(&self) -> Vec<InnerChunkTemplate> {
-        self.1
+        self.2
             .templates
             .iter()
             .map(|t| t.to_inner_template(true))
@@ -183,7 +192,7 @@ impl ChunkGrammarConfig {
     }
 
     fn goals(&self) -> Vec<InnerChunkTemplate> {
-        self.2
+        self.3
             .templates
             .iter()
             .map(|t| t.to_inner_template(true))
@@ -220,7 +229,7 @@ pub fn generate_random_layout(config: &ChunkGrammarConfig) -> PlacedChunkLayout 
     let starts = config.starts();
     let middles = config.middles();
     let goals = config.goals();
-    try_build_random_path(&starts, &middles, &goals)
+    try_build_random_path(config.0.map_size, &starts, &middles, &goals)
 }
 
 pub fn generate_random_layout_from_file(
@@ -246,16 +255,15 @@ pub fn show_ascii_map() {
 fn build_tile_char_map(placed_chunks: &PlacedChunkLayout) -> HashMap<(isize, isize), char> {
     let mut map = HashMap::<(isize, isize), char>::new();
 
-    for chunk in placed_chunks {
-        for tile in &chunk.tiles_world {
-            let ch = match tile.kind {
-                TileKind::Solid => '#',
-                TileKind::PlayerSpawn => '@',
-                TileKind::Stone => 'S',
-                TileKind::Goal => 'G',
-            };
-            map.insert((tile.x, tile.y), ch);
-        }
+    for ((x, y), kind) in placed_chunks.map_iter() {
+        let ch = match kind {
+            TileKind::Solid => '*',
+            TileKind::PlayerSpawn => '@',
+            TileKind::Stone => 'S',
+            TileKind::Goal => 'G',
+            TileKind::Wall => '#',
+        };
+        map.insert((x, y), ch);
     }
 
     map
@@ -315,6 +323,9 @@ fn place_chunk(t: &InnerChunkTemplate, (origin_x, origin_y): (isize, isize)) -> 
 
 pub struct PlacedChunkLayout {
     pub placed_chunks: Vec<PlacedChunk>,
+    pub map_size: (isize, isize),
+    // boundary_margin: (isize, isize),
+    margin_tiles: Vec<Tile>,
 }
 
 impl IntoIterator for PlacedChunkLayout {
@@ -336,6 +347,25 @@ impl<'a> IntoIterator for &'a PlacedChunkLayout {
 }
 
 impl PlacedChunkLayout {
+    fn new(mut placed_chunks: Vec<PlacedChunk>, boundary_margin: (isize, isize)) -> Self {
+        for chunk in &mut placed_chunks {
+            for exit in &mut chunk.exits_world {
+                exit.0.0 += boundary_margin.0;
+                exit.0.1 += boundary_margin.1;
+            }
+            for tile in &mut chunk.tiles_world {
+                tile.x += boundary_margin.0;
+                tile.y += boundary_margin.1;
+            }
+        }
+
+        PlacedChunkLayout {
+            placed_chunks,
+            map_size: (MAP_SIZE.0, MAP_SIZE.1),
+            margin_tiles: build_margin_tiles(boundary_margin),
+        }
+    }
+
     pub fn tile_position(&self, kind: TileKind) -> (isize, isize) {
         for chunk in &self.placed_chunks {
             for tile in &chunk.tiles_world {
@@ -348,16 +378,40 @@ impl PlacedChunkLayout {
     }
 
     pub fn map_iter(&self) -> impl Iterator<Item = ((isize, isize), TileKind)> + '_ {
-        self.placed_chunks.iter().flat_map(|chunk| {
-            chunk
-                .tiles_world
-                .iter()
-                .map(|tile| ((tile.x, tile.y), tile.kind))
-        })
+        self.margin_tiles
+            .iter()
+            .map(|tile| ((tile.x, tile.y), tile.kind))
+            .chain(self.placed_chunks.iter().flat_map(|chunk| {
+                chunk
+                    .tiles_world
+                    .iter()
+                    .map(|tile| ((tile.x, tile.y), tile.kind))
+            }))
     }
 }
 
+fn build_margin_tiles(margin: (isize, isize)) -> Vec<Tile> {
+    let mut tiles = Vec::new();
+    for x in 0..MAP_SIZE.0 {
+        for y in 0..MAP_SIZE.1 {
+            let is_margin = x < margin.0
+                || x >= MAP_SIZE.0 - margin.0
+                || y < margin.1
+                || y >= MAP_SIZE.1 - margin.1;
+            if is_margin {
+                tiles.push(Tile {
+                    x,
+                    y,
+                    kind: TileKind::Wall,
+                });
+            }
+        }
+    }
+    tiles
+}
+
 fn try_build_random_path(
+    map_size: (isize, isize),
     start_chunks: &[InnerChunkTemplate],
     mid_chunks: &[InnerChunkTemplate],
     goal_chunks: &[InnerChunkTemplate],
@@ -393,7 +447,8 @@ fn try_build_random_path(
                 mandatory_failed = true;
                 break;
             }
-            let Some((placed, next_exit)) = place_middle_chunk(template, path_start_exit) else {
+            let Some((placed, next_exit)) = place_middle_chunk(template, path_start_exit, map_size)
+            else {
                 mandatory_failed = true;
                 break;
             };
@@ -405,13 +460,19 @@ fn try_build_random_path(
         }
 
         let goal_template = &goal_chunks[rng.random_range(0..goal_chunks.len())];
-        let Some(goal_target) = random_goal_target(&mut rng, path_start_exit, goal_template) else {
+        let Some(goal_target) =
+            random_goal_target(&mut rng, map_size, path_start_exit, goal_template)
+        else {
             continue;
         };
 
-        if let Some(mut mid_path) =
-            find_path_to_goal(&mut rng, mid_chunks, path_start_exit, goal_target.entry)
-        {
+        if let Some(mut mid_path) = find_path_to_goal(
+            &mut rng,
+            map_size,
+            mid_chunks,
+            path_start_exit,
+            goal_target.entry,
+        ) {
             let (final_exit_pos, _) = mid_path
                 .last()
                 .and_then(|chunk| pick_exit_dir(chunk, Dir::Right))
@@ -425,9 +486,9 @@ fn try_build_random_path(
             layout.extend(mandatory_chunks);
             layout.append(&mut mid_path);
             layout.push(place_chunk(goal_template, goal_target.origin));
-            return PlacedChunkLayout {
-                placed_chunks: layout,
-            };
+
+            let boundary_margin = ((MAP_SIZE.0 - map_size.0) / 2, (MAP_SIZE.1 - map_size.1) / 2);
+            return PlacedChunkLayout::new(layout, boundary_margin);
         }
     }
 }
@@ -439,12 +500,13 @@ struct GoalTarget {
 
 fn random_goal_target(
     rng: &mut impl Rng,
+    map_size: (isize, isize),
     start_exit: ((isize, isize), Dir),
     goal_template: &InnerChunkTemplate,
 ) -> Option<GoalTarget> {
     let (start_pos, _) = start_exit;
-    let max_origin_x = INNER_MAP_SIZE.0.checked_sub(goal_template.size.0)?;
-    let max_origin_y = INNER_MAP_SIZE.1.checked_sub(goal_template.size.1)?;
+    let max_origin_x = map_size.0.checked_sub(goal_template.size.0)?;
+    let max_origin_y = map_size.1.checked_sub(goal_template.size.1)?;
     let min_origin_x = start_pos.0.checked_sub(goal_template.entry.x)?;
     if min_origin_x > max_origin_x {
         return None;
@@ -474,16 +536,19 @@ fn random_goal_target(
 fn place_middle_chunk(
     template: &InnerChunkTemplate,
     current_exit: ExitPoint,
+    map_size: (isize, isize),
 ) -> Option<PlacedChunkExit> {
     let placed = place_next(template, Dir::Left, current_exit);
-    if placed.tiles_world.iter().any(|tile| {
-        tile.x < 0 || tile.x >= INNER_MAP_SIZE.0 || tile.y < 0 || tile.y >= INNER_MAP_SIZE.1
-    }) {
+    if placed
+        .tiles_world
+        .iter()
+        .any(|tile| tile.x < 0 || tile.x >= map_size.0 || tile.y < 0 || tile.y >= map_size.1)
+    {
         return None;
     }
     let next_exit = pick_exit_dir(&placed, Dir::Right)?;
     let ((_, next_pos_y), _) = next_exit;
-    if next_pos_y >= INNER_MAP_SIZE.1 {
+    if next_pos_y >= map_size.1 {
         return None;
     }
     Some((placed, next_exit))
@@ -491,6 +556,7 @@ fn place_middle_chunk(
 
 fn find_path_to_goal(
     rng: &mut impl Rng,
+    map_size: (isize, isize),
     mid_chunks: &[InnerChunkTemplate],
     start_exit: ((isize, isize), Dir),
     goal_entry: (isize, isize),
@@ -500,6 +566,7 @@ fn find_path_to_goal(
     visited.insert(start_exit.0);
     search_path_to_goal(
         rng,
+        map_size,
         mid_chunks,
         start_exit,
         goal_entry,
@@ -510,6 +577,7 @@ fn find_path_to_goal(
 
 fn search_path_to_goal(
     rng: &mut impl Rng,
+    map_size: (isize, isize),
     candidates: &[InnerChunkTemplate],
     current_exit: ((isize, isize), Dir),
     goal_entry: (isize, isize),
@@ -531,7 +599,7 @@ fn search_path_to_goal(
         if current_pos.0 < template.entry.x || current_pos.1 < template.entry.y {
             continue;
         }
-        let Some((placed, next_exit)) = place_middle_chunk(template, current_exit) else {
+        let Some((placed, next_exit)) = place_middle_chunk(template, current_exit, map_size) else {
             continue;
         };
         let (next_pos, _) = next_exit;
@@ -542,9 +610,9 @@ fn search_path_to_goal(
             continue;
         }
         path.push(placed);
-        if let Some(result) =
-            search_path_to_goal(rng, candidates, next_exit, goal_entry, path, visited)
-        {
+        if let Some(result) = search_path_to_goal(
+            rng, map_size, candidates, next_exit, goal_entry, path, visited,
+        ) {
             return Some(result);
         }
         path.pop();
@@ -556,7 +624,7 @@ fn search_path_to_goal(
 
 pub fn print_ascii_map(placed_chunks: &PlacedChunkLayout) {
     let map = build_tile_char_map(placed_chunks);
-    let (map_width, map_height) = INNER_MAP_SIZE;
+    let (map_width, map_height) = MAP_SIZE;
     for y in (0..map_height).rev() {
         for x in 0..map_width {
             let ch = map.get(&(x, y)).copied().unwrap_or('.');
