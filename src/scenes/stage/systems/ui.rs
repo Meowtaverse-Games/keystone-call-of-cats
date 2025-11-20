@@ -124,7 +124,7 @@ const MIN_EDITOR_FONT_SIZE: f32 = 12.0;
 const MAX_EDITOR_FONT_SIZE: f32 = 36.0;
 const FONT_OFFSET_STEP: f32 = 1.0;
 const FONT_OFFSET_MIN: f32 = -6.0;
-const FONT_OFFSET_MAX: f32 = 12.0;
+const FONT_OFFSET_MAX: f32 = 0.0;
 
 fn scaled_panel_font_size(base: f32, offset: f32) -> f32 {
     ((base + offset).max(4.0)) * 2.0
@@ -192,36 +192,36 @@ pub enum EditorMenuAction {
 
 impl EditorMenuAction {
     const ALL: [Self; 4] = [
-        Self::RunScript,
         Self::DecreaseFont,
         Self::IncreaseFont,
+        Self::RunScript,
         Self::ToggleCommandHelp,
     ];
 
     fn label_key(self, is_running: bool) -> &'static str {
         match self {
-            Self::RunScript if is_running => "stage-ui-menu-stop",
-            Self::RunScript => "stage-ui-menu-run",
             Self::DecreaseFont => "stage-ui-menu-font-decrease",
             Self::IncreaseFont => "stage-ui-menu-font-increase",
+            Self::RunScript if is_running => "stage-ui-menu-stop",
+            Self::RunScript => "stage-ui-menu-run",
             Self::ToggleCommandHelp => "stage-ui-command-help-button",
         }
     }
 
     fn key_text(self) -> Option<&'static str> {
         match self {
-            Self::RunScript => Some("F1"),
-            Self::DecreaseFont => Some("F2"),
-            Self::IncreaseFont => Some("F3"),
+            Self::DecreaseFont => Some("F1"),
+            Self::IncreaseFont => Some("F2"),
+            Self::RunScript => Some("F3"),
             Self::ToggleCommandHelp => Some("F4"),
         }
     }
 
     fn key(self) -> Option<egui::Key> {
         match self {
-            Self::RunScript => Some(egui::Key::F1),
-            Self::DecreaseFont => Some(egui::Key::F2),
-            Self::IncreaseFont => Some(egui::Key::F3),
+            Self::DecreaseFont => Some(egui::Key::F1),
+            Self::IncreaseFont => Some(egui::Key::F2),
+            Self::RunScript => Some(egui::Key::F3),
             Self::ToggleCommandHelp => Some(egui::Key::F4),
         }
     }
