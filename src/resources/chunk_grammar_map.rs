@@ -3,7 +3,6 @@ use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::fs::File;
 use std::io::BufReader;
-use std::iter;
 use std::path::Path;
 
 use serde::Deserialize;
@@ -430,10 +429,17 @@ fn try_build_random_path(
     );
     let start_exit = pick_exit_dir(&placed_start, Dir::Right).unwrap();
 
-    let required_templates: Vec<&InnerChunkTemplate> = mid_chunks
-        .iter()
-        .flat_map(|template| iter::repeat_n(template, template.required_count))
-        .collect();
+    let mut required_templates = Vec::new();
+    let mut optional_templates = Vec::new();
+    for template in mid_chunks {
+        if template.required_count > 0 {
+            for _ in 0..template.required_count {
+                required_templates.push(template);
+            }
+        } else {
+            optional_templates.push(template);
+        }
+    }
 
     print!("required_templates: ");
     for t in &required_templates {
@@ -476,7 +482,7 @@ fn try_build_random_path(
         if let Some(mut mid_path) = find_path_to_goal(
             &mut rng,
             map_size,
-            mid_chunks,
+            &optional_templates,
             path_start_exit,
             goal_target.entry,
         ) {
@@ -564,7 +570,7 @@ fn place_middle_chunk(
 fn find_path_to_goal(
     rng: &mut impl Rng,
     map_size: (isize, isize),
-    mid_chunks: &[InnerChunkTemplate],
+    mid_chunks: &[&InnerChunkTemplate],
     start_exit: ((isize, isize), Dir),
     goal_entry: (isize, isize),
 ) -> Option<Vec<PlacedChunk>> {
@@ -585,7 +591,7 @@ fn find_path_to_goal(
 fn search_path_to_goal(
     rng: &mut impl Rng,
     map_size: (isize, isize),
-    candidates: &[InnerChunkTemplate],
+    candidates: &[&InnerChunkTemplate],
     current_exit: ((isize, isize), Dir),
     goal_entry: (isize, isize),
     path: &mut Vec<PlacedChunk>,
@@ -602,7 +608,7 @@ fn search_path_to_goal(
     let mut shuffled_candidates = candidates.to_vec();
     shuffled_candidates.shuffle(rng);
 
-    for template in &shuffled_candidates {
+    for template in shuffled_candidates {
         if current_pos.0 < template.entry.x || current_pos.1 < template.entry.y {
             continue;
         }

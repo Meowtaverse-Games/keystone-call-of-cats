@@ -579,7 +579,11 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                                     ui.add_space(6.0);
                                     for entry in help.entries {
                                         let entry_title = tr(&localization, entry.title_key);
-                                        ui.label(RichText::new(entry_title).strong().font(font_id.clone()));
+                                        ui.label(
+                                            RichText::new(entry_title)
+                                                .strong()
+                                                .font(font_id.clone()),
+                                        );
                                         let entry_body = tr(&localization, entry.body_key);
                                         ui.label(RichText::new(entry_body).font(font_id.clone()));
                                         ui.add_space(4.0);
