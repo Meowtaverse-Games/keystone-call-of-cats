@@ -119,9 +119,9 @@ const DEFAULT_COMMAND_HELP_ENTRIES: &[CommandHelpEntry] = &[
     },
 ];
 
-const BASE_EDITOR_FONT_SIZE: f32 = 16.0;
-const MIN_EDITOR_FONT_SIZE: f32 = 12.0;
-const MAX_EDITOR_FONT_SIZE: f32 = 36.0;
+const BASE_EDITOR_FONT_SIZE: f32 = 10.0;
+const MIN_EDITOR_FONT_SIZE: f32 = 8.0;
+const MAX_EDITOR_FONT_SIZE: f32 = 20.0;
 const FONT_OFFSET_STEP: f32 = 1.0;
 const FONT_OFFSET_MIN: f32 = -6.0;
 const FONT_OFFSET_MAX: f32 = 0.0;
@@ -346,23 +346,23 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
     style.text_styles = [
         (
             TextStyle::Heading,
-            FontId::new(scaled_panel_font_size(30.0, font_offset), Proportional),
+            FontId::new(scaled_panel_font_size(16.0, font_offset), Proportional),
         ),
         (
             TextStyle::Body,
-            FontId::new(scaled_panel_font_size(18.0, font_offset), Proportional),
+            FontId::new(scaled_panel_font_size(10.0, font_offset), Proportional),
         ),
         (
             TextStyle::Monospace,
-            FontId::new(scaled_panel_font_size(14.0, font_offset), Proportional),
+            FontId::new(scaled_panel_font_size(10.0, font_offset), Proportional),
         ),
         (
             TextStyle::Button,
-            FontId::new(scaled_panel_font_size(14.0, font_offset), Proportional),
+            FontId::new(scaled_panel_font_size(10.0, font_offset), Proportional),
         ),
         (
             TextStyle::Small,
-            FontId::new(scaled_panel_font_size(10.0, font_offset), Proportional),
+            FontId::new(scaled_panel_font_size(8.0, font_offset), Proportional),
         ),
     ]
     .into();
