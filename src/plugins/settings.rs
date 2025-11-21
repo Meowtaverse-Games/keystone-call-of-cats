@@ -1,5 +1,5 @@
 use bevy::{
-    audio::{PlaybackSettings, Volume},
+    audio::{AudioSink, Volume},
     prelude::*,
     window::{MonitorSelection, PrimaryWindow, WindowMode},
 };
@@ -17,7 +17,11 @@ impl Plugin for SettingsPlugin {
             .add_systems(PostStartup, load_settings)
             .add_systems(
                 Update,
-                (persist_settings, apply_window_settings, update_bgm_volume),
+                (
+                    persist_settings,
+                    apply_window_settings,
+                    update_bgm_sink_volume.after(persist_settings),
+                ),
             );
     }
 }
@@ -67,16 +71,17 @@ fn apply_window_settings(
     }
 }
 
-fn update_bgm_volume(
+fn update_bgm_sink_volume(
     settings: Res<GameSettings>,
-    mut players: Query<&mut PlaybackSettings, With<BackgroundMusic>>,
+    mut sinks: Query<&mut AudioSink, With<BackgroundMusic>>,
 ) {
     if !settings.is_changed() {
         return;
     }
 
-    let volume = Volume::Linear(settings.music_volume_linear());
-    for mut playback in &mut players {
-        playback.volume = volume;
+    let target = settings.music_volume_linear();
+    for mut sink in &mut sinks {
+        // AudioSink reflects changes immediately during playback.
+        sink.set_volume(Volume::Linear(target));
     }
 }
