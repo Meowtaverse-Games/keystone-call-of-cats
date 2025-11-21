@@ -3,6 +3,8 @@ use bevy::{
     prelude::*,
 };
 
+use crate::scenes::audio::{SfxAudio, LoopingAudio};
+
 #[derive(Resource, Clone)]
 pub struct StageAudioHandles {
     pub stone_move: Handle<AudioSource>,
@@ -41,6 +43,7 @@ impl StageAudioState {
         }
         let entity = commands
             .spawn((
+                LoopingAudio,
                 AudioPlayer::new(handles.stone_move.clone()),
                 PlaybackSettings::LOOP.with_volume(Volume::Linear(volume)),
             ))
@@ -66,6 +69,7 @@ impl StageAudioState {
             return;
         }
         commands.spawn((
+            SfxAudio,
             AudioPlayer::new(handles.stage_clear.clone()),
             PlaybackSettings::DESPAWN.with_volume(Volume::Linear(volume)),
         ));

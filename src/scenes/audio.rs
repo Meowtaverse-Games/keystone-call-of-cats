@@ -11,6 +11,12 @@ use crate::{
 #[derive(Component)]
 pub struct BackgroundMusic;
 
+#[derive(Component)]
+pub struct SfxAudio;
+
+#[derive(Component)]
+pub struct LoopingAudio;
+
 #[derive(Resource, Clone, Default)]
 pub struct AudioHandles {
     pub click: Handle<AudioSource>,
@@ -70,6 +76,7 @@ pub fn play_bgm(commands: &mut Commands, handles: &mut AudioHandles, settings: &
 
 pub fn play_ui_click(commands: &mut Commands, handles: &AudioHandles, settings: &GameSettings) {
     commands.spawn((
+        SfxAudio,
         AudioPlayer::new(handles.click.clone()),
         PlaybackSettings::DESPAWN.with_volume(Volume::Linear(settings.sfx_volume_linear())),
     ));

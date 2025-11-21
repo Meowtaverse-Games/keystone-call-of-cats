@@ -92,7 +92,7 @@ pub fn options_overlay_ui(
 fn draw_contents(
     ui: &mut egui::Ui,
     commands: &mut Commands,
-    settings: &mut GameSettings,
+    settings: &mut ResMut<GameSettings>,
     localization: &Localization,
     audio: &AudioHandles,
     overlay: &mut OptionsOverlayState,
@@ -111,14 +111,26 @@ fn draw_contents(
         let mut sfx = settings.sfx_volume_percent();
         let mut music = settings.music_volume_percent();
 
+        let mut master_changed = false;
+        let mut sfx_changed = false;
+        let mut music_changed = false;
+
         if volume_slider(ui, tr(localization, "options-volume-master"), &mut master) {
             settings.set_master_volume_percent(master);
+            master_changed = true;
         }
         if volume_slider(ui, tr(localization, "options-volume-sfx"), &mut sfx) {
             settings.set_sfx_volume_percent(sfx);
+            sfx_changed = true;
         }
         if volume_slider(ui, tr(localization, "options-volume-music"), &mut music) {
             settings.set_music_volume_percent(music);
+            music_changed = true;
+        }
+
+        // Force settings change detection for immediate volume updates
+        if master_changed || sfx_changed || music_changed {
+            settings.set_changed();
         }
 
         ui.add_space(8.0);
