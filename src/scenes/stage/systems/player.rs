@@ -95,7 +95,11 @@ pub fn spawn_player(
     commands.spawn((
         PlayerGroundProbe,
         RigidBody::Kinematic,
-        Collider::capsule(scale * 0.4, scale * 0.5),
+        Collider::compound(vec![(
+            Position::from_xy(0.0, -scale * 0.7),
+            Rotation::degrees(90.),
+            Collider::capsule(scale * 0.3, scale * 0.1),
+        )]),
         CollidingEntities::default(),
         DebugRender::all().with_collider_color(Color::srgb(0.2, 0.0, 0.8)),
         Transform::from_xyz(x, y - scale * 3.0, 1.0).with_scale(Vec3::splat(scale)),
@@ -140,6 +144,7 @@ pub fn animate_player(
 }
 
 type MovePlayerComponents<'w> = (
+    Entity,
     &'w mut LinearVelocity,
     &'w mut PlayerMotion,
     &'w mut Sprite,
@@ -152,7 +157,7 @@ pub fn move_player(
     mut query: Query<MovePlayerComponents<'_>, With<Player>>,
     probe_query: Query<&CollidingEntities, With<PlayerGroundProbe>>,
 ) {
-    let Ok((mut velocity, mut motion, mut sprite, _)) = query.single_mut() else {
+    let Ok((player_entity, mut velocity, mut motion, mut sprite, _)) = query.single_mut() else {
         return;
     };
 
@@ -186,11 +191,19 @@ pub fn move_player(
     motion.is_moving = desired_vx.abs() > f32::EPSILON;
     motion.direction = facing;
 
+    if let Some(probe_colliding) = probe_query.iter().next() {
+        let grounded_entities: Vec<_> = probe_colliding.iter().collect();
+        let collides_player = grounded_entities.iter().any(|e| *e == &player_entity);
+        info!("(ground probe) colliding_with_player={} total_contacts={}", collides_player, grounded_entities.len());
+    }
+
     let grounded = probe_query
         .iter()
         .next()
-        .map(|c| !c.is_empty())
+        .map(|c| !c.is_empty() && c.iter().all(|e| *e != player_entity))
         .unwrap_or(false);
+
+    info!("Player grounded={}", grounded);
 
     if keyboard_input.any_just_pressed(vec![KeyCode::Space, KeyCode::KeyW, KeyCode::ArrowUp])
         && grounded
@@ -213,7 +226,7 @@ pub fn sync_player_ground_probe(
     let scale = spawn_state.scale;
     for mut probe_transform in &mut probe_query {
         probe_transform.translation.x = player_pos.x;
-        probe_transform.translation.y = player_pos.y - scale * 9.0;
+        probe_transform.translation.y = player_pos.y - scale * 6.0;
     }
 }
 
