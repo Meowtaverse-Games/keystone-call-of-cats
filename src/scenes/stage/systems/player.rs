@@ -79,7 +79,7 @@ pub fn spawn_player(
             RigidBody::Dynamic,
             GravityScale(40.0),
             LockedAxes::ROTATION_LOCKED,
-            Collider::circle(scale * 2.5),
+            Collider::capsule(scale * 1.5, scale * 2.0),
             CollidingEntities::default(),
             DebugRender::default().with_collider_color(Color::srgb(1.0, 0.0, 0.0)),
             Transform::from_xyz(x, y, 1.0).with_scale(Vec3::splat(scale)),
@@ -137,8 +137,7 @@ pub fn move_player(
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut query: Query<MovePlayerComponents<'_>, With<Player>>,
 ) {
-    let Ok((transform, mut velocity, mut motion, mut sprite, colliding)) = query.single_mut()
-    else {
+    let Ok((transform, mut velocity, mut motion, mut sprite, colliding)) = query.single_mut() else {
         return;
     };
 
@@ -172,12 +171,14 @@ pub fn move_player(
     motion.is_moving = desired_velocity_x.abs() > f32::EPSILON;
     motion.direction = facing_direction;
 
-    let grounded = colliding
+    let has_contacts = colliding
         .map(|contacts| !contacts.is_empty())
-        .unwrap_or(false)
-        || transform.translation.y <= motion.ground_y + 1.0;
+        .unwrap_or(false);
+    
+    let stopped_vertically = velocity.y.abs() < 1.0;
+    let grounded = has_contacts && stopped_vertically;
 
-    if grounded && velocity.y.abs() < 1.0 {
+    if grounded && velocity.y.abs() < 0.1 {
         motion.is_jumping = false;
     } else if !grounded {
         motion.is_jumping = true;

@@ -15,6 +15,11 @@ impl Plugin for StageScenePlugin {
             .add_message::<systems::StoneCommandMessage>()
             .add_message::<systems::StoneAppendCommandMessage>()
             .add_systems(OnEnter(GameState::Stage), systems::setup)
+            .add_systems(
+                OnEnter(GameState::Stage),
+                crate::systems::engine::friction::apply_zero_friction_to_rigid_bodies
+                    .after(systems::setup),
+            )
             .add_systems(OnExit(GameState::Stage), systems::cleanup)
             .add_systems(
                 Update,
