@@ -366,10 +366,6 @@ impl PlacedChunkLayout {
 
         for chunk in &self.placed_chunks {
             for tile in &chunk.tiles_world {
-                println!(
-                    "checking tile at ({}, {}) kind: {:?} against position ({}, {})",
-                    tile.x, tile.y, tile.kind, x, y
-                );
                 if (tile.x, tile.y) == (x, y) {
                     return Some(tile.kind);
                 }
