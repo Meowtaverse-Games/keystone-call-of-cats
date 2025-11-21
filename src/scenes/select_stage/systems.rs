@@ -595,7 +595,7 @@ fn spawn_back_button(
             btn.spawn(Text::new(label))
                 .insert(TextFont {
                     font: font.clone(),
-                    font_size: 28.0,
+                    font_size: 24.0,
                     ..default()
                 })
                 .insert(TextColor(primary_text_color()));
@@ -622,7 +622,7 @@ fn spawn_options_button(
             Button,
             visual,
             Node {
-                padding: UiRect::axes(Val::Px(20.0), Val::Px(10.0)),
+                padding: UiRect::axes(Val::Px(24.0), Val::Px(12.0)),
                 ..default()
             },
             BorderRadius::all(Val::Px(999.0)),
@@ -633,7 +633,7 @@ fn spawn_options_button(
             btn.spawn(Text::new(label))
                 .insert(TextFont {
                     font: font.clone(),
-                    font_size: 22.0,
+                    font_size: 24.0,
                     ..default()
                 })
                 .insert(TextColor(primary_text_color()));
