@@ -225,17 +225,6 @@ impl EditorMenuAction {
             Self::ToggleCommandHelp => Some(egui::Key::F4),
         }
     }
-
-    fn status_key(self, context: bool) -> &'static str {
-        match self {
-            Self::RunScript if context => "stage-ui-status-stop",
-            Self::RunScript => "stage-ui-status-run",
-            Self::DecreaseFont => "stage-ui-status-font-decrease",
-            Self::IncreaseFont => "stage-ui-status-font-increase",
-            Self::ToggleCommandHelp if context => "stage-ui-status-command-help-open",
-            Self::ToggleCommandHelp => "stage-ui-status-command-help-close",
-        }
-    }
 }
 
 fn describe_command(command: &ScriptCommand) -> String {
@@ -499,8 +488,8 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
 
                 if let Some(action) = editor.last_action {
                     info!("Editor action: {:?}", action);
-                    let status = tr(&localization, action.status_key(editor.last_action_context));
-                    ui.label(status);
+                    // let status = tr(&localization, action.status_key(editor.last_action_context));
+                    // ui.label(status);
                     editor.last_action = None;
                 }
 
