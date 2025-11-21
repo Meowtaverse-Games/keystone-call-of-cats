@@ -24,6 +24,9 @@ pub struct Goal {
     pub half_extents: Vec2,
 }
 
+#[derive(Component)]
+pub struct PlayerGroundProbe;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PlayerAnimationState {
     Idle,

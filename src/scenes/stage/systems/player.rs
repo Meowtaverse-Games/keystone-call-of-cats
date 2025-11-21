@@ -54,8 +54,8 @@ pub fn spawn_player(
         return;
     };
 
-    commands.entity(stage_root).with_children(|parent| {
-        parent.spawn((
+    let player_entity = commands
+        .spawn((
             Sprite::from_image(initial_frame),
             Player,
             PlayerAnimation {
@@ -87,8 +87,19 @@ pub fn spawn_player(
             CollidingEntities::default(),
             DebugRender::default().with_collider_color(Color::srgb(1.0, 0.0, 0.0)),
             Transform::from_xyz(x, y, 1.0).with_scale(Vec3::splat(scale)),
-        ));
-    });
+        ))
+        .id();
+    commands.entity(stage_root).add_child(player_entity);
+
+    // Ground probe as an independent kinematic sensor (not part of player collider)
+    commands.spawn((
+        PlayerGroundProbe,
+        RigidBody::Kinematic,
+        Collider::capsule(scale * 0.4, scale * 0.5),
+        CollidingEntities::default(),
+        DebugRender::all().with_collider_color(Color::srgb(0.2, 0.0, 0.8)),
+        Transform::from_xyz(x, y - scale * 3.0, 1.0).with_scale(Vec3::splat(scale)),
+    ));
 }
 
 pub fn animate_player(
@@ -139,8 +150,9 @@ pub fn move_player(
     editor_state: Res<ScriptEditorState>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut query: Query<MovePlayerComponents<'_>, With<Player>>,
+    probe_query: Query<&CollidingEntities, With<PlayerGroundProbe>>,
 ) {
-    let Ok((mut velocity, mut motion, mut sprite, colliding)) = query.single_mut() else {
+    let Ok((mut velocity, mut motion, mut sprite, _)) = query.single_mut() else {
         return;
     };
 
@@ -151,51 +163,53 @@ pub fn move_player(
         return;
     }
 
-    let mut input_direction: f32 = 0.0;
+    let mut input_dir: f32 = 0.0;
 
     if keyboard_input.any_pressed(vec![KeyCode::ArrowRight, KeyCode::KeyD]) {
-        input_direction += 1.0;
+        input_dir += 1.0;
     }
 
     if keyboard_input.any_pressed(vec![KeyCode::ArrowLeft, KeyCode::KeyA]) {
-        input_direction -= 1.0;
+        input_dir -= 1.0;
     }
 
-    let mut desired_velocity_x = 0.0;
-    let mut facing_direction = motion.direction;
+    let mut desired_vx = 0.0;
+    let mut facing = motion.direction;
 
-    if input_direction.abs() > f32::EPSILON {
-        let direction = input_direction.signum();
-        desired_velocity_x = direction * motion.speed;
-        facing_direction = direction;
+    if input_dir.abs() > f32::EPSILON {
+        let d = input_dir.signum();
+        desired_vx = d * motion.speed;
+        facing = d;
     }
 
-    velocity.x = desired_velocity_x;
-    motion.is_moving = desired_velocity_x.abs() > f32::EPSILON;
-    motion.direction = facing_direction;
+    velocity.x = desired_vx;
+    motion.is_moving = desired_vx.abs() > f32::EPSILON;
+    motion.direction = facing;
 
-    let has_contacts = colliding
-        .map(|contacts| !contacts.is_empty())
-        .unwrap_or(false);
+    let grounded = probe_query.iter().next().map(|c| !c.is_empty()).unwrap_or(false);
 
-    let stopped_vertically = velocity.y.abs() < 1.0;
-    let grounded = has_contacts && stopped_vertically;
-
-    if grounded && velocity.y.abs() < 0.1 {
-        motion.is_jumping = false;
-    } else if !grounded {
-        motion.is_jumping = true;
+    if keyboard_input.any_just_pressed(vec![KeyCode::Space, KeyCode::KeyW, KeyCode::ArrowUp]) {
+        if grounded {
+            velocity.y = motion.jump_speed;
+            motion.is_jumping = true;
+        }
     }
-
-    if keyboard_input.any_just_pressed(vec![KeyCode::Space, KeyCode::KeyW, KeyCode::ArrowUp])
-        && !motion.is_jumping
-        && grounded
-    {
-        velocity.y = motion.jump_speed;
-        motion.is_jumping = true;
-    }
-
     sprite.flip_x = motion.direction < 0.0;
+}
+
+pub fn sync_player_ground_probe(
+    player_query: Query<(&GlobalTransform, &PlayerSpawnState), With<Player>>,
+    mut probe_query: Query<&mut Transform, (With<PlayerGroundProbe>, Without<Player>)>,
+) {
+    let Ok((player_transform, spawn_state)) = player_query.single() else {
+        return;
+    };
+    let player_pos = player_transform.translation();
+    let scale = spawn_state.scale;
+    for mut probe_transform in &mut probe_query {
+        probe_transform.translation.x = player_pos.x;
+        probe_transform.translation.y = player_pos.y - scale * 9.0;
+    }
 }
 
 type ResetPlayerComponents<'w> = (
