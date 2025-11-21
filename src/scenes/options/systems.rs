@@ -65,16 +65,6 @@ pub fn options_overlay_ui(
         Color32::from_rgba_unmultiplied(8, 12, 28, 180),
     );
 
-    ctx.input(|i| {
-        if i.pointer.any_click() {
-            if let Some(pos) = i.pointer.interact_pos() {
-                if !panel_rect.contains(pos) {
-                    // overlay.open = false;
-                }
-            }
-        }
-    });
-
     egui::Area::new(Id::new("stage-select-options-overlay"))
         .order(Order::Foreground)
         .fixed_pos(panel_rect.min)
