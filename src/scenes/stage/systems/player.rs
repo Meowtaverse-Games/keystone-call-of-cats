@@ -125,7 +125,6 @@ pub fn animate_player(
 }
 
 type MovePlayerComponents<'w> = (
-    &'w Transform,
     &'w mut LinearVelocity,
     &'w mut PlayerMotion,
     &'w mut Sprite,
@@ -137,7 +136,7 @@ pub fn move_player(
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut query: Query<MovePlayerComponents<'_>, With<Player>>,
 ) {
-    let Ok((transform, mut velocity, mut motion, mut sprite, colliding)) = query.single_mut() else {
+    let Ok((mut velocity, mut motion, mut sprite, colliding)) = query.single_mut() else {
         return;
     };
 
@@ -174,7 +173,7 @@ pub fn move_player(
     let has_contacts = colliding
         .map(|contacts| !contacts.is_empty())
         .unwrap_or(false);
-    
+
     let stopped_vertically = velocity.y.abs() < 1.0;
     let grounded = has_contacts && stopped_vertically;
 
