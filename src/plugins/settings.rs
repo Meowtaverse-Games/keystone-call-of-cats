@@ -1,13 +1,12 @@
 use bevy::{
     audio::{PlaybackSettings, Volume},
-    ecs::system::ParamSet,
     prelude::*,
     window::{MonitorSelection, PrimaryWindow, WindowMode},
 };
 
 use crate::{
     resources::{file_storage::FileStorageResource, settings::GameSettings},
-    scenes::audio::*,
+    scenes::audio::BackgroundMusic,
 };
 
 pub struct SettingsPlugin;
@@ -18,11 +17,7 @@ impl Plugin for SettingsPlugin {
             .add_systems(PostStartup, load_settings)
             .add_systems(
                 Update,
-                (
-                    persist_settings,
-                    apply_window_settings,
-                    update_audio_volumes,
-                ),
+                (persist_settings, apply_window_settings, update_bgm_volume),
             );
     }
 }
@@ -72,39 +67,16 @@ fn apply_window_settings(
     }
 }
 
-fn update_audio_volumes(
+fn update_bgm_volume(
     settings: Res<GameSettings>,
-    mut audio_queries: ParamSet<(
-        Query<&mut PlaybackSettings, With<BackgroundMusic>>,
-        Query<&mut PlaybackSettings, With<SfxAudio>>,
-        Query<&mut PlaybackSettings, With<LoopingAudio>>,
-    )>,
+    mut players: Query<&mut PlaybackSettings, With<BackgroundMusic>>,
 ) {
     if !settings.is_changed() {
         return;
     }
-    info!("Updating audio volumes due to settings change");
 
-    // Update background music volume
-    let music_volume = Volume::Linear(settings.music_volume_linear());
-    for mut playback in &mut audio_queries.p0() {
-        if playback.volume != music_volume {
-            playback.volume = music_volume;
-        }
-    }
-
-    // Update SFX volume
-    let sfx_volume = Volume::Linear(settings.sfx_volume_linear());
-    for mut playback in &mut audio_queries.p1() {
-        if playback.volume != sfx_volume {
-            playback.volume = sfx_volume;
-        }
-    }
-
-    // Update looping audio volume (stage effects, etc.)
-    for mut playback in &mut audio_queries.p2() {
-        if playback.volume != sfx_volume {
-            playback.volume = sfx_volume;
-        }
+    let volume = Volume::Linear(settings.music_volume_linear());
+    for mut playback in &mut players {
+        playback.volume = volume;
     }
 }
