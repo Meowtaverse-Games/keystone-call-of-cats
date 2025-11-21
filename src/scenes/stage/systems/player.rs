@@ -186,14 +186,19 @@ pub fn move_player(
     motion.is_moving = desired_vx.abs() > f32::EPSILON;
     motion.direction = facing;
 
-    let grounded = probe_query.iter().next().map(|c| !c.is_empty()).unwrap_or(false);
+    let grounded = probe_query
+        .iter()
+        .next()
+        .map(|c| !c.is_empty())
+        .unwrap_or(false);
 
-    if keyboard_input.any_just_pressed(vec![KeyCode::Space, KeyCode::KeyW, KeyCode::ArrowUp]) {
-        if grounded {
-            velocity.y = motion.jump_speed;
-            motion.is_jumping = true;
-        }
+    if keyboard_input.any_just_pressed(vec![KeyCode::Space, KeyCode::KeyW, KeyCode::ArrowUp])
+        && grounded
+    {
+        velocity.y = motion.jump_speed;
+        motion.is_jumping = true;
     }
+
     sprite.flip_x = motion.direction < 0.0;
 }
 
