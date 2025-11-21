@@ -79,7 +79,11 @@ pub fn spawn_player(
             RigidBody::Dynamic,
             GravityScale(40.0),
             LockedAxes::ROTATION_LOCKED,
-            Collider::capsule(scale * 1.5, scale * 2.0),
+            Collider::compound(vec![(
+                Position::from_xy(0.0, -scale * 0.7),
+                Rotation::degrees(0.0),
+                Collider::capsule(scale * 1.5, scale * 1.5),
+            )]),
             CollidingEntities::default(),
             DebugRender::default().with_collider_color(Color::srgb(1.0, 0.0, 0.0)),
             Transform::from_xyz(x, y, 1.0).with_scale(Vec3::splat(scale)),
