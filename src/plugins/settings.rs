@@ -18,7 +18,11 @@ impl Plugin for SettingsPlugin {
             .add_systems(PostStartup, load_settings)
             .add_systems(
                 Update,
-                (persist_settings, apply_window_settings, update_audio_volumes),
+                (
+                    persist_settings,
+                    apply_window_settings,
+                    update_audio_volumes,
+                ),
             );
     }
 }
@@ -76,11 +80,10 @@ fn update_audio_volumes(
         Query<&mut PlaybackSettings, With<LoopingAudio>>,
     )>,
 ) {
-    info!("Updating audio volumes due to settings change");
-
     if !settings.is_changed() {
         return;
     }
+    info!("Updating audio volumes due to settings change");
 
     // Update background music volume
     let music_volume = Volume::Linear(settings.music_volume_linear());

@@ -3,7 +3,7 @@ use bevy::{
     prelude::*,
 };
 
-use crate::scenes::audio::{SfxAudio, LoopingAudio};
+use crate::scenes::audio::{LoopingAudio, SfxAudio};
 
 #[derive(Resource, Clone)]
 pub struct StageAudioHandles {
