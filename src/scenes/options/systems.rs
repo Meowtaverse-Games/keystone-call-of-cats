@@ -1,7 +1,7 @@
 use bevy::{input::ButtonInput, prelude::*};
 use bevy_egui::{
     EguiContexts,
-    egui::{self, Color32, Frame, Id, Margin, Order, RichText, Sense, Vec2},
+    egui::{self, Color32, Frame, Id, LayerId, Margin, Order, RichText, Sense, Vec2},
 };
 use bevy_fluent::prelude::Localization;
 
@@ -51,23 +51,29 @@ pub fn options_overlay_ui(
         return;
     };
 
-    let screen_rect = ctx.available_rect();
-    egui::Area::new(Id::new("options-overlay-dim"))
-        .order(Order::Foreground)
-        .fixed_pos(screen_rect.min)
-        .show(ctx, |ui| {
-            ui.set_width(screen_rect.width());
-            ui.set_height(screen_rect.height());
-            let (rect, _resp) = ui.allocate_exact_size(screen_rect.size(), Sense::click());
-            ui.painter().rect_filled(
-                rect,
-                0.0,
-                Color32::from_rgba_unmultiplied(8, 12, 28, 180),
-            );
-        });
-
+    let screen_rect = ctx.content_rect();
     let margin = Vec2::new(screen_rect.width() * 0.15, screen_rect.height() * 0.12);
     let panel_rect = screen_rect.shrink2(margin);
+
+    ctx.layer_painter(LayerId::new(
+        Order::Background,
+        Id::new("options-overlay-dim"),
+    ))
+    .rect_filled(
+        screen_rect,
+        0.0,
+        Color32::from_rgba_unmultiplied(8, 12, 28, 180),
+    );
+
+    ctx.input(|i| {
+        if i.pointer.any_click() {
+            if let Some(pos) = i.pointer.interact_pos() {
+                if !panel_rect.contains(pos) {
+                    // overlay.open = false;
+                }
+            }
+        }
+    });
 
     egui::Area::new(Id::new("stage-select-options-overlay"))
         .order(Order::Foreground)
