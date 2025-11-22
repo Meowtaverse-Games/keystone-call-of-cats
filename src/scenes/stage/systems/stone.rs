@@ -84,10 +84,11 @@ pub fn spawn_stone(
             StoneCommandState::default(),
             StoneMotion::default(),
             RigidBody::Kinematic,
-            Collider::rectangle(
-                (STONE_TILE_SIZE.x as f32) * 0.5,
-                (STONE_TILE_SIZE.y as f32) * 0.5,
-            ),
+            Collider::compound(vec![(
+                Position::from_xy(0.0, STONE_SCALE * -0.4),
+                Rotation::degrees(0.0),
+                Collider::circle(STONE_SCALE * 12.0),
+            )]),
             LockedAxes::ROTATION_LOCKED,
         ));
     });
