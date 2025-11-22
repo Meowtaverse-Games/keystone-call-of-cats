@@ -98,7 +98,7 @@ pub fn spawn_player(
         Collider::compound(vec![(
             Position::from_xy(0.0, -scale * 0.6),
             Rotation::degrees(90.),
-            Collider::capsule(scale * 0.002, scale * 0.8),
+            Collider::capsule(scale * 0.2, scale * 0.8),
         )]),
         CollidingEntities::default(),
         DebugRender::all().with_collider_color(Color::srgb(0.2, 0.0, 0.8)),
@@ -134,7 +134,11 @@ pub fn animate_player(
             continue;
         }
 
-        if animation.timer.tick(time.delta() * speed_multiplier as u32).just_finished() {
+        if animation
+            .timer
+            .tick(time.delta() * speed_multiplier as u32)
+            .just_finished()
+        {
             animation.frame_index = (animation.frame_index + 1) % frame_count;
             if let Some(handle) = animation.current_frames().get(animation.frame_index) {
                 sprite.image = handle.clone();
@@ -218,7 +222,7 @@ pub fn sync_player_ground_probe(
     let scale = spawn_state.scale;
     for mut probe_transform in &mut probe_query {
         probe_transform.translation.x = player_pos.x;
-        probe_transform.translation.y = player_pos.y - scale * 7.0;
+        probe_transform.translation.y = player_pos.y - scale * 5.9;
     }
 }
 
