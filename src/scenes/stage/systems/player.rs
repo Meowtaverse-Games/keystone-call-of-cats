@@ -80,9 +80,9 @@ pub fn spawn_player(
             GravityScale(40.0),
             LockedAxes::ROTATION_LOCKED,
             Collider::compound(vec![(
-                Position::from_xy(0.0, -scale * 0.7),
+                Position::from_xy(0.0, scale * -0.6),
                 Rotation::degrees(0.0),
-                Collider::capsule(scale * 1.5, scale * 1.5),
+                Collider::capsule(scale * 1.4, scale * 1.2),
             )]),
             CollidingEntities::default(),
             DebugRender::default().with_collider_color(Color::srgb(1.0, 0.0, 0.0)),
@@ -96,9 +96,9 @@ pub fn spawn_player(
         PlayerGroundProbe,
         RigidBody::Kinematic,
         Collider::compound(vec![(
-            Position::from_xy(0.0, -scale * 0.7),
+            Position::from_xy(0.0, -scale * 0.6),
             Rotation::degrees(90.),
-            Collider::capsule(scale * 0.01, scale * 0.8),
+            Collider::capsule(scale * 0.002, scale * 0.8),
         )]),
         CollidingEntities::default(),
         DebugRender::all().with_collider_color(Color::srgb(0.2, 0.0, 0.8)),
