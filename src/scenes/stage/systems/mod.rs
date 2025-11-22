@@ -231,25 +231,26 @@ fn cleanup_stage_entities(
 ) {
     for entity in stage_roots.iter() {
         if let Ok(mut entity_cmd) = commands.get_entity(entity) {
-            entity_cmd.try_despawn();
+            // Remove the entire stage subtree to avoid leaving behind child sensors/colliders.
+            entity_cmd.despawn();
         }
     }
 
     for entity in query.iter() {
         if let Ok(mut entity_cmd) = commands.get_entity(entity) {
-            entity_cmd.try_despawn();
+            entity_cmd.despawn();
         }
     }
 
     for entity in tiles.iter() {
         if let Ok(mut entity_cmd) = commands.get_entity(entity) {
-            entity_cmd.try_despawn();
+            entity_cmd.despawn();
         }
     }
 
     for entity in stones.iter() {
         if let Ok(mut entity_cmd) = commands.get_entity(entity) {
-            entity_cmd.try_despawn();
+            entity_cmd.despawn();
         }
     }
 

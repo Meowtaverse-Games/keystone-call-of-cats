@@ -218,7 +218,7 @@ pub fn sync_player_ground_probe(
     let scale = spawn_state.scale;
     for mut probe_transform in &mut probe_query {
         probe_transform.translation.x = player_pos.x;
-        probe_transform.translation.y = player_pos.y - scale * 5.0;
+        probe_transform.translation.y = player_pos.y - scale * 7.0;
     }
 }
 
