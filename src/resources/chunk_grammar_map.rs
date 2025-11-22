@@ -350,8 +350,11 @@ impl PlacedChunkLayout {
         }
     }
 
-    pub fn tile_position(&self, kind: TileKind) -> (isize, isize){
-        *self.tile_positions(kind).first().expect("No tile found for kind")
+    pub fn tile_position(&self, kind: TileKind) -> (isize, isize) {
+        *self
+            .tile_positions(kind)
+            .first()
+            .expect("No tile found for kind")
     }
 
     pub fn tile_positions(&self, kind: TileKind) -> Vec<(isize, isize)> {

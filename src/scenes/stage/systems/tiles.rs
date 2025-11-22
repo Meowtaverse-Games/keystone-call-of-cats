@@ -93,10 +93,14 @@ pub fn spawn_tiles(
                             130
                         } else if is_edge_left && is_edge_bottom {
                             115
-                        } else if (map_size_x - placed_chunks.boundary_margin.0 - 2) == x && is_edge_bottom {
+                        } else if (map_size_x - placed_chunks.boundary_margin.0 - 2) == x
+                            && is_edge_bottom
+                        {
                             transform.rotate_z((270.0f32).to_radians());
                             114
-                        } else if (map_size_x - placed_chunks.boundary_margin.0 - 1) == x && is_edge_bottom {
+                        } else if (map_size_x - placed_chunks.boundary_margin.0 - 1) == x
+                            && is_edge_bottom
+                        {
                             270
                         } else if is_edge_right && is_edge_bottom {
                             132
