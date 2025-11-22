@@ -48,6 +48,11 @@ impl StageProgressionState {
         let placed_chunks = generate_random_layout_from_file(current_stage.map_path())
             .expect("failed to generate layout from config");
 
+        for chunk in &placed_chunks {
+            println!("- {}", chunk.id);
+        }
+        println!();
+
         chunk_grammar_map::print_ascii_map(&placed_chunks);
 
         placed_chunks
