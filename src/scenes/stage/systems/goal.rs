@@ -37,7 +37,7 @@ pub fn spawn_goal(
                 Position::from_xy(0.0, scale * -0.9),
                 Rotation::degrees(0.0),
                 Collider::rectangle(scale * 0.3, scale * 0.3),
-        )]),
+            )]),
             Sensor,
             CollidingEntities::default(),
         ));
