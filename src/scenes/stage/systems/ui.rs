@@ -3,7 +3,7 @@ use bevy_ecs::system::SystemParam;
 use bevy_egui::{
     EguiContexts,
     egui::{
-        self, Align2, Event, FontFamily::Proportional, FontId, FontSelection, Layout, RichText,
+        self, Align2, Event, FontFamily::Proportional, FontId, FontSelection, Id, Layout, RichText,
         TextStyle,
     },
 };
@@ -517,8 +517,18 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                     available_size.y = ui.max_rect().height();
                 }
 
-                let reserved_height = 200.0;
-                let text_height = (available_size.y - reserved_height).max(160.0);
+                // Animate the help drawer so it grows from the bottom when opened.
+                let help_is_open = editor
+                    .command_help
+                    .as_ref()
+                    .is_some_and(|help| help.is_open);
+                let help_anim = ui
+                    .ctx()
+                    .animate_bool(Id::new("command-help-open"), help_is_open);
+                let help_target_height = 220.0;
+                let help_height = help_anim * help_target_height;
+
+                let text_height = (available_size.y - help_height).max(160.0);
                 let font_size = (BASE_EDITOR_FONT_SIZE + editor.font_offset)
                     .clamp(MIN_EDITOR_FONT_SIZE, MAX_EDITOR_FONT_SIZE);
 
@@ -540,47 +550,55 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                     editor.stage_clear_popup_open = false;
                 }
 
-                if let Some(help) = editor.command_help.as_ref().filter(|help| help.is_open) {
+                if help_is_open || help_height > 1.0 {
                     let mut remaining = ui.available_size();
                     if !remaining.x.is_finite() {
                         remaining.x = ui.max_rect().width();
                     }
-                    if !remaining.y.is_finite() {
-                        remaining.y = 0.0;
-                    }
+                    // Reserve animated height so the help rises from the bottom.
+                    remaining.y = help_height;
 
-                    let font_id = FontId::new(
-                        scaled_panel_font_size(14.0, editor.font_offset),
-                        Proportional,
-                    );
+                    if let Some(help) = editor.command_help.as_ref().filter(|h| h.is_open) {
+                        let font_id = FontId::new(
+                            scaled_panel_font_size(14.0, editor.font_offset),
+                            Proportional,
+                        );
 
-                    ui.allocate_ui_with_layout(
-                        egui::Vec2::new(remaining.x, remaining.y),
-                        Layout::bottom_up(egui::Align::LEFT),
-                        |ui| {
-                            ui.add_space(8.0);
-                            ui.group(|ui| {
-                                ui.vertical(|ui| {
-                                    let title = tr(&localization, help.title_key);
-                                    ui.label(RichText::new(title).strong().font(font_id.clone()));
-                                    let intro = tr(&localization, help.intro_key);
-                                    ui.label(RichText::new(intro).font(font_id.clone()));
-                                    ui.add_space(6.0);
-                                    for entry in help.entries {
-                                        let entry_title = tr(&localization, entry.title_key);
+                        ui.allocate_ui_with_layout(
+                            egui::Vec2::new(remaining.x, remaining.y),
+                            Layout::bottom_up(egui::Align::LEFT),
+                            |ui| {
+                                ui.add_space(8.0);
+                                ui.group(|ui| {
+                                    ui.vertical(|ui| {
+                                        let title = tr(&localization, help.title_key);
                                         ui.label(
-                                            RichText::new(entry_title)
-                                                .strong()
-                                                .font(font_id.clone()),
+                                            RichText::new(title).strong().font(font_id.clone()),
                                         );
-                                        let entry_body = tr(&localization, entry.body_key);
-                                        ui.label(RichText::new(entry_body).font(font_id.clone()));
-                                        ui.add_space(4.0);
-                                    }
+                                        let intro = tr(&localization, help.intro_key);
+                                        ui.label(RichText::new(intro).font(font_id.clone()));
+                                        ui.add_space(6.0);
+                                        for entry in help.entries {
+                                            let entry_title = tr(&localization, entry.title_key);
+                                            ui.label(
+                                                RichText::new(entry_title)
+                                                    .strong()
+                                                    .font(font_id.clone()),
+                                            );
+                                            let entry_body = tr(&localization, entry.body_key);
+                                            ui.label(
+                                                RichText::new(entry_body).font(font_id.clone()),
+                                            );
+                                            ui.add_space(4.0);
+                                        }
+                                    });
                                 });
-                            });
-                        },
-                    );
+                            },
+                        );
+                    } else {
+                        // Keep layout space during the closing animation.
+                        ui.allocate_space(egui::Vec2::new(remaining.x, remaining.y));
+                    }
                 }
             });
         })
