@@ -65,38 +65,49 @@ pub fn options_overlay_ui(
         Color32::from_rgba_unmultiplied(8, 12, 28, 180),
     );
 
-    egui::Area::new(Id::new("stage-select-options-overlay"))
-        .order(Order::Foreground)
-        .fixed_pos(panel_rect.min)
-        .show(ctx, |ui| {
-            ui.set_width(panel_rect.width());
-            ui.set_height(panel_rect.height());
-            Frame::new()
-                .fill(Color32::from_rgb(0x10, 0x18, 0x2a))
-                .inner_margin(Margin::symmetric(36, 28))
-                .show(ui, |ui| {
-                    ui.set_width(panel_rect.width() - 72.0);
-                    ui.set_height(panel_rect.height() - 56.0);
-                    draw_contents(
-                        ui,
-                        &mut commands,
-                        &mut settings,
-                        &localization,
-                        &audio,
-                        &mut overlay,
-                    );
-                });
-        });
+    let mut settings_changed = false;
+    {
+        let settings = settings.bypass_change_detection();
+        egui::Area::new(Id::new("stage-select-options-overlay"))
+            .order(Order::Foreground)
+            .fixed_pos(panel_rect.min)
+            .show(ctx, |ui| {
+                ui.set_width(panel_rect.width());
+                ui.set_height(panel_rect.height());
+                let response = Frame::new()
+                    .fill(Color32::from_rgb(0x10, 0x18, 0x2a))
+                    .inner_margin(Margin::symmetric(36, 28))
+                    .show(ui, |ui| {
+                        ui.set_width(panel_rect.width() - 72.0);
+                        ui.set_height(panel_rect.height() - 56.0);
+                        draw_contents(
+                            ui,
+                            &mut commands,
+                            settings,
+                            &localization,
+                            &audio,
+                            &mut overlay,
+                        )
+                    });
+                settings_changed = response.inner;
+            });
+    }
+
+    if settings_changed {
+        settings.set_changed();
+    }
 }
 
 fn draw_contents(
     ui: &mut egui::Ui,
     commands: &mut Commands,
-    settings: &mut ResMut<GameSettings>,
+    settings: &mut GameSettings,
     localization: &Localization,
     audio: &AudioHandles,
     overlay: &mut OptionsOverlayState,
-) {
+) -> bool {
+    let mut settings_changed = false;
+
     ui.vertical_centered(|ui| {
         ui.add_space(8.0);
         ui.label(
@@ -128,15 +139,18 @@ fn draw_contents(
             music_changed = true;
         }
 
-        // Force settings change detection for immediate volume updates
         if master_changed || sfx_changed || music_changed {
-            settings.set_changed();
+            settings_changed = true;
         }
 
         ui.add_space(8.0);
-        fullscreen_toggle(ui, settings, localization);
+        if fullscreen_toggle(ui, settings, localization) {
+            settings_changed = true;
+        }
         ui.add_space(12.0);
-        language_selector(ui, settings, localization);
+        if language_selector(ui, settings, localization) {
+            settings_changed = true;
+        }
 
         ui.add_space(32.0);
         let button = egui::Button::new(
@@ -152,6 +166,8 @@ fn draw_contents(
             overlay.open = false;
         }
     });
+
+    settings_changed
 }
 
 fn volume_slider(ui: &mut egui::Ui, label: String, value: &mut f32) -> bool {
@@ -207,7 +223,13 @@ fn volume_slider(ui: &mut egui::Ui, label: String, value: &mut f32) -> bool {
     changed
 }
 
-fn fullscreen_toggle(ui: &mut egui::Ui, settings: &mut GameSettings, localization: &Localization) {
+fn fullscreen_toggle(
+    ui: &mut egui::Ui,
+    settings: &mut GameSettings,
+    localization: &Localization,
+) -> bool {
+    let mut changed = false;
+
     ui.horizontal_wrapped(|ui| {
         ui.label(
             RichText::new(tr(localization, "options-fullscreen-label"))
@@ -231,11 +253,20 @@ fn fullscreen_toggle(ui: &mut egui::Ui, settings: &mut GameSettings, localizatio
         );
         if response.clicked() {
             settings.fullscreen = !settings.fullscreen;
+            changed = true;
         }
     });
+
+    changed
 }
 
-fn language_selector(ui: &mut egui::Ui, settings: &mut GameSettings, localization: &Localization) {
+fn language_selector(
+    ui: &mut egui::Ui,
+    settings: &mut GameSettings,
+    localization: &Localization,
+) -> bool {
+    let mut changed = false;
+
     ui.vertical(|ui| {
         ui.label(
             RichText::new(tr(localization, "options-language-label"))
@@ -266,9 +297,12 @@ fn language_selector(ui: &mut egui::Ui, settings: &mut GameSettings, localizatio
 
                 if ui.add(button).clicked() {
                     settings.script_language = language;
+                    changed = true;
                 }
                 ui.add_space(12.0);
             }
         });
     });
+
+    changed
 }
