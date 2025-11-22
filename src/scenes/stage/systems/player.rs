@@ -214,15 +214,26 @@ pub fn move_player(
 pub fn sync_player_ground_probe(
     player_query: Query<(&GlobalTransform, &PlayerSpawnState), With<Player>>,
     mut probe_query: Query<&mut Transform, (With<PlayerGroundProbe>, Without<Player>)>,
+    viewport: Res<crate::resources::design_resolution::ScaledViewport>,
 ) {
     let Ok((player_transform, spawn_state)) = player_query.single() else {
         return;
     };
+
+    // Player global position already includes stage root translation & scale.
     let player_pos = player_transform.translation();
-    let scale = spawn_state.scale;
+
+    // Effective scale = spawn (tile) scale * viewport (design resolution) scale.
+    // Previous logic ignored viewport scale, causing window-size dependent grounding.
+    let effective_scale = spawn_state.scale * viewport.scale;
+
+    // Retain existing offset constant but apply global scaling so physical gap is stable across window sizes.
+    // (Consider reducing 5.9 later; large value may produce inconsistent collisions.)
+    let vertical_offset = effective_scale * 12.9;
+
     for mut probe_transform in &mut probe_query {
         probe_transform.translation.x = player_pos.x;
-        probe_transform.translation.y = player_pos.y - scale * 5.9;
+        probe_transform.translation.y = player_pos.y - vertical_offset;
     }
 }
 

@@ -4,7 +4,7 @@ use bevy_fluent::prelude::Localization;
 
 use crate::{
     resources::{design_resolution::ScaledViewport, settings::GameSettings, tiled::*},
-    scenes::stage::components::{Goal, Player, PlayerGoalDescent, PlayerMotion},
+    scenes::stage::components::*,
     util::localization::tr,
 };
 
@@ -66,6 +66,7 @@ pub fn check_goal_completion(
     mut editor_state: ResMut<ScriptEditorState>,
     mut player_query: Query<GoalCheckPlayer<'_>, With<Player>>,
     goals: Query<(&GlobalTransform, &Goal)>,
+    tiles: Query<&GlobalTransform, With<StageTile>>,
     localization: Res<Localization>,
     audio_handles: Res<StageAudioHandles>,
     mut audio_state: ResMut<StageAudioState>,
@@ -113,7 +114,14 @@ pub fn check_goal_completion(
         audio_state.play_clear_once(&mut commands, &audio_handles, settings.sfx_volume_linear());
 
         let goal_pos = goal_transform.translation().truncate();
-        let target_y = goal_pos.y - goal.half_extents.y;
+        // Descend until the top of the bottom-most tile in view, if available; otherwise
+        // fall back to the bottom of the goal collider as before.
+        let target_y = tiles
+            .iter()
+            .map(|tf| tf.translation().y)
+            .min_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+            .map(|min_tile_center_y| min_tile_center_y + goal.half_extents.y)
+            .unwrap_or(goal_pos.y - goal.half_extents.y);
         let align_x = player_transform_local.translation.x;
         let original_memberships = layers.memberships;
         let original_filters = layers.filters;
