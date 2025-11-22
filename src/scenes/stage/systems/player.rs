@@ -111,15 +111,15 @@ pub fn animate_player(
     mut query: Query<(&mut Sprite, &mut PlayerAnimation, &PlayerMotion), With<Player>>,
 ) {
     for (mut sprite, mut animation, motion) in &mut query {
-        let desired_state = if motion.is_moving {
-            PlayerAnimationState::Run
+        let (desired_state, speed_multiplier) = if motion.is_moving {
+            (PlayerAnimationState::Run, 2.8)
         } else if motion.is_climbing {
-            PlayerAnimationState::Climb
+            (PlayerAnimationState::Climb, 1.0)
         } else {
-            PlayerAnimationState::Idle
+            (PlayerAnimationState::Idle, 1.0)
         };
 
-        if animation.state != desired_state && !animation.clips.frames(desired_state).is_empty() {
+        if animation.state != desired_state {
             animation.state = desired_state;
             animation.frame_index = 0;
             animation.timer.reset();
@@ -134,7 +134,7 @@ pub fn animate_player(
             continue;
         }
 
-        if animation.timer.tick(time.delta()).just_finished() {
+        if animation.timer.tick(time.delta() * speed_multiplier as u32).just_finished() {
             animation.frame_index = (animation.frame_index + 1) % frame_count;
             if let Some(handle) = animation.current_frames().get(animation.frame_index) {
                 sprite.image = handle.clone();
