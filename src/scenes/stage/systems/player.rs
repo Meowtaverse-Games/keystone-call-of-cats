@@ -80,9 +80,9 @@ pub fn spawn_player(
             GravityScale(40.0),
             LockedAxes::ROTATION_LOCKED,
             Collider::compound(vec![(
-                Position::from_xy(0.0, -scale * 0.7),
+                Position::from_xy(0.0, scale * -0.6),
                 Rotation::degrees(0.0),
-                Collider::capsule(scale * 1.5, scale * 1.5),
+                Collider::capsule(scale * 1.4, scale * 1.2),
             )]),
             CollidingEntities::default(),
             DebugRender::default().with_collider_color(Color::srgb(1.0, 0.0, 0.0)),
@@ -96,9 +96,9 @@ pub fn spawn_player(
         PlayerGroundProbe,
         RigidBody::Kinematic,
         Collider::compound(vec![(
-            Position::from_xy(0.0, -scale * 0.7),
+            Position::from_xy(0.0, -scale * 0.6),
             Rotation::degrees(90.),
-            Collider::capsule(scale * 0.01, scale * 0.8),
+            Collider::capsule(scale * 0.2, scale * 0.8),
         )]),
         CollidingEntities::default(),
         DebugRender::all().with_collider_color(Color::srgb(0.2, 0.0, 0.8)),
@@ -111,15 +111,15 @@ pub fn animate_player(
     mut query: Query<(&mut Sprite, &mut PlayerAnimation, &PlayerMotion), With<Player>>,
 ) {
     for (mut sprite, mut animation, motion) in &mut query {
-        let desired_state = if motion.is_moving {
-            PlayerAnimationState::Run
+        let (desired_state, speed_multiplier) = if motion.is_moving {
+            (PlayerAnimationState::Run, 2.8)
         } else if motion.is_climbing {
-            PlayerAnimationState::Climb
+            (PlayerAnimationState::Climb, 1.0)
         } else {
-            PlayerAnimationState::Idle
+            (PlayerAnimationState::Idle, 1.0)
         };
 
-        if animation.state != desired_state && !animation.clips.frames(desired_state).is_empty() {
+        if animation.state != desired_state {
             animation.state = desired_state;
             animation.frame_index = 0;
             animation.timer.reset();
@@ -134,7 +134,11 @@ pub fn animate_player(
             continue;
         }
 
-        if animation.timer.tick(time.delta()).just_finished() {
+        if animation
+            .timer
+            .tick(time.delta() * speed_multiplier as u32)
+            .just_finished()
+        {
             animation.frame_index = (animation.frame_index + 1) % frame_count;
             if let Some(handle) = animation.current_frames().get(animation.frame_index) {
                 sprite.image = handle.clone();
@@ -210,15 +214,26 @@ pub fn move_player(
 pub fn sync_player_ground_probe(
     player_query: Query<(&GlobalTransform, &PlayerSpawnState), With<Player>>,
     mut probe_query: Query<&mut Transform, (With<PlayerGroundProbe>, Without<Player>)>,
+    viewport: Res<crate::resources::design_resolution::ScaledViewport>,
 ) {
     let Ok((player_transform, spawn_state)) = player_query.single() else {
         return;
     };
+
+    // Player global position already includes stage root translation & scale.
     let player_pos = player_transform.translation();
-    let scale = spawn_state.scale;
+
+    // Effective scale = spawn (tile) scale * viewport (design resolution) scale.
+    // Previous logic ignored viewport scale, causing window-size dependent grounding.
+    let effective_scale = spawn_state.scale * viewport.scale;
+
+    // Retain existing offset constant but apply global scaling so physical gap is stable across window sizes.
+    // (Consider reducing 5.9 later; large value may produce inconsistent collisions.)
+    let vertical_offset = effective_scale * 12.9;
+
     for mut probe_transform in &mut probe_query {
         probe_transform.translation.x = player_pos.x;
-        probe_transform.translation.y = player_pos.y - scale * 5.0;
+        probe_transform.translation.y = player_pos.y - vertical_offset;
     }
 }
 
