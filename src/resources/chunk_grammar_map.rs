@@ -350,15 +350,20 @@ impl PlacedChunkLayout {
         }
     }
 
-    pub fn tile_position(&self, kind: TileKind) -> (isize, isize) {
+    pub fn tile_position(&self, kind: TileKind) -> (isize, isize){
+        *self.tile_positions(kind).first().expect("No tile found for kind")
+    }
+
+    pub fn tile_positions(&self, kind: TileKind) -> Vec<(isize, isize)> {
+        let mut positions = Vec::new();
         for chunk in &self.placed_chunks {
             for tile in &chunk.tiles_world {
                 if tile.kind == kind {
-                    return (tile.x, tile.y);
+                    positions.push((tile.x, tile.y));
                 }
             }
         }
-        panic!("tile_position: no tile found for kind {:?}", kind);
+        positions
     }
 
     pub fn tile_by_position(&self, position: (isize, isize)) -> Option<TileKind> {

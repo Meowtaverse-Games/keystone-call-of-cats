@@ -10,7 +10,7 @@ use crate::{
 
 use super::{StageAudioHandles, StageAudioState, ui::ScriptEditorState};
 
-const GOAL_OBJECT_ID: u32 = 194;
+const GOAL_OBJECT_ID: u32 = 178;
 const GOAL_DESCENT_SPEED: f32 = 32.0;
 
 pub fn spawn_goal(

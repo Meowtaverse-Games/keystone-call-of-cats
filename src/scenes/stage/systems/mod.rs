@@ -187,14 +187,15 @@ fn populate_stage_contents(
         tile_position_to_world(stone_position, real_tile_size, viewport_size, scale, 0.0),
     );
 
-    let goal_position = placed_chunks.tile_position(TileKind::Goal);
-    goal::spawn_goal(
-        commands,
-        stage_root,
-        tiled_map_assets,
-        viewport,
-        tile_position_to_world(goal_position, real_tile_size, viewport_size, scale, 2.0),
-    );
+    placed_chunks.tile_positions(TileKind::Goal).iter().for_each(|&goal_position| {
+        goal::spawn_goal(
+            commands,
+            stage_root,
+            tiled_map_assets,
+            viewport,
+            tile_position_to_world(goal_position, real_tile_size, viewport_size, scale, 2.0),
+        );
+    });
 }
 
 fn tile_position_to_world(
