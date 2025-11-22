@@ -106,6 +106,7 @@ impl StageProgressionState {
 type StageCleanupFilter = Or<(
     With<StageBackground>,
     With<Player>,
+    With<PlayerGroundProbe>,
     With<StageDebugMarker>,
     With<Goal>,
 )>;
@@ -280,6 +281,12 @@ pub fn setup(mut commands: Commands, mut params: StageSetupParams) {
         Some(editor) => {
             editor.set_tutorial_for_stage(current_stage_id);
             editor.set_command_help_for_stage(current_stage_id);
+            editor.controls_enabled = false;
+            editor.pending_player_reset = false;
+            editor.stage_cleared = false;
+            editor.stage_clear_popup_open = false;
+            editor.active_program = None;
+            editor.last_commands.clear();
         }
         None => ui::init_editor_state(&mut commands, current_stage_id),
     }
