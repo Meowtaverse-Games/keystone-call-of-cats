@@ -292,6 +292,7 @@ pub fn drive_player_goal_descent(
     time: Res<Time>,
     mut commands: Commands,
     mut query: Query<PlayerGoalDescentComponents<'_>, With<Player>>,
+    mut count: Local<u32>,
 ) {
     let Ok((
         entity,
@@ -317,9 +318,14 @@ pub fn drive_player_goal_descent(
 
     transform.translation.x = descent.align_x;
 
+    *count += 1;
     let descend_step = descent.speed * time.delta_secs();
-    if transform.translation.y - descend_step > descent.target_y {
-        transform.translation.y -= descend_step;
+    //if transform.translation.y - descend_step > descent.target_y {
+    transform.translation.y -= descend_step;
+    //    return;
+    //}
+
+    if *count < 280 {
         return;
     }
 
