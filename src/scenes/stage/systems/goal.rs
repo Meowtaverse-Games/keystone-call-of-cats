@@ -110,7 +110,7 @@ pub fn check_goal_completion(
         editor_state.stage_cleared = true;
         editor_state.pending_player_reset = false;
         editor_state.last_run_feedback = Some(tr(&localization, "stage-ui-feedback-goal"));
-        editor_state.stage_clear_popup_open = true;
+        editor_state.stage_clear_popup_open = false;
         audio_state.play_clear_once(&mut commands, &audio_handles, settings.sfx_volume_linear());
 
         let goal_pos = goal_transform.translation().truncate();
@@ -136,6 +136,7 @@ pub fn check_goal_completion(
             original_filters,
             original_gravity: gravity.0,
         });
+
         break;
     }
 }

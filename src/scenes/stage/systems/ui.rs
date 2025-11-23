@@ -3,7 +3,7 @@ use bevy_ecs::system::SystemParam;
 use bevy_egui::{
     EguiContexts,
     egui::{
-        self, Align2, Event, FontFamily::Proportional, FontId, FontSelection, Id, Layout, RichText,
+        self, Align2, FontFamily::Proportional, FontId, FontSelection, Id, Layout, RichText,
         TextStyle,
     },
 };
@@ -285,42 +285,17 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
         return;
     };
 
-    let popup_open_now = editor.stage_clear_popup_open;
-    let mut close_popup_via_input = false;
     let mut action_from_keys = None;
     ctx.input(|input| {
-        if popup_open_now {
-            close_popup_via_input = input.events.iter().any(|event| {
-                matches!(
-                    event,
-                    Event::Key {
-                        key,
-                        pressed: true,
-                        ..
-                    } if !matches!(
-                        key,
-                        egui::Key::ArrowUp
-                            | egui::Key::ArrowDown
-                            | egui::Key::ArrowLeft
-                            | egui::Key::ArrowRight
-                    )
-                )
-            });
-        } else {
-            for action in EditorMenuAction::ALL {
-                if let Some(key) = action.key()
-                    && input.key_pressed(key)
-                {
-                    action_from_keys = Some(action);
-                    break;
-                }
+        for action in EditorMenuAction::ALL {
+            if let Some(key) = action.key()
+                && input.key_pressed(key)
+            {
+                action_from_keys = Some(action);
+                break;
             }
         }
     });
-
-    if close_popup_via_input {
-        editor.stage_clear_popup_open = false;
-    }
 
     let screen_width = ctx.input(|input| input.content_rect().width());
 
@@ -632,6 +607,25 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
 
         editor.stage_clear_popup_open = popup_open && !request_close;
     }
+
+    // // Draw in-stage (non-popup) clear banner while stage_cleared is true.
+    // if editor.stage_cleared {
+    //     let banner = tr(&localization, "stage-ui-feedback-goal");
+    //     let font_id = FontId::new(48.0, Proportional);
+    //     let painter = ctx.layer_painter(egui::LayerId::new(
+    //         egui::Order::Foreground,
+    //         egui::Id::new("stage_clear_banner"),
+    //     ));
+    //     // Use content_rect per updated egui API.
+    //     let center = ctx.content_rect().center();
+    //     painter.text(
+    //         center,
+    //         Align2::CENTER_CENTER,
+    //         banner,
+    //         font_id,
+    //         egui::Color32::from_rgb(255, 255, 200),
+    //     );
+    // }
 
     if (letterbox_offsets.left - left).abs() > f32::EPSILON {
         info!(
