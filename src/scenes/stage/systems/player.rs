@@ -329,6 +329,8 @@ pub fn drive_player_goal_descent(
         return;
     }
 
+    *count = 0;
+
     transform.translation.y = descent.target_y;
     motion.is_climbing = false;
     layers.memberships = descent.original_memberships;
