@@ -89,10 +89,12 @@ pub fn spawn_player(
             Transform::from_xyz(x, y, 1.0).with_scale(Vec3::splat(scale)),
         ))
         .id();
-    commands.entity(stage_root).add_child(player_entity);
+    commands
+        .entity(stage_root)
+        .add_child(player_entity);
 
     // Ground probe as an independent kinematic sensor (not part of player collider)
-    commands.spawn((
+    let player_ground_probe_entity = commands.spawn((
         PlayerGroundProbe,
         RigidBody::Kinematic,
         Collider::compound(vec![(
@@ -103,7 +105,10 @@ pub fn spawn_player(
         CollidingEntities::default(),
         DebugRender::all().with_collider_color(Color::srgb(0.2, 0.0, 0.8)),
         Transform::default().with_scale(Vec3::splat(scale)),
-    ));
+    )).id();
+    commands
+        .entity(stage_root)
+        .add_child(player_ground_probe_entity);
 }
 
 pub fn animate_player(
@@ -212,28 +217,19 @@ pub fn move_player(
 }
 
 pub fn sync_player_ground_probe(
-    player_query: Query<(&GlobalTransform, &PlayerSpawnState), With<Player>>,
+    player_query: Query<(&Transform, &PlayerSpawnState), With<Player>>,
     mut probe_query: Query<&mut Transform, (With<PlayerGroundProbe>, Without<Player>)>,
-    viewport: Res<crate::resources::design_resolution::ScaledViewport>,
 ) {
     let Ok((player_transform, spawn_state)) = player_query.single() else {
         return;
     };
 
     // Player global position already includes stage root translation & scale.
-    let player_pos = player_transform.translation();
-
-    // Effective scale = spawn (tile) scale * viewport (design resolution) scale.
-    // Previous logic ignored viewport scale, causing window-size dependent grounding.
-    let effective_scale = spawn_state.scale * viewport.scale;
-
-    // Retain existing offset constant but apply global scaling so physical gap is stable across window sizes.
-    // (Consider reducing 5.9 later; large value may produce inconsistent collisions.)
-    let vertical_offset = effective_scale * 12.9;
+    let player_pos = player_transform.translation;
 
     for mut probe_transform in &mut probe_query {
         probe_transform.translation.x = player_pos.x;
-        probe_transform.translation.y = player_pos.y - vertical_offset;
+        probe_transform.translation.y = player_pos.y - player_transform.scale.y * 12.0;
     }
 }
 
