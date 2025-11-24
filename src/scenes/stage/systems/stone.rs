@@ -51,7 +51,7 @@ const STONE_SHEET_ROWS: u32 = 7;
 const STONE_TILE_COORD: UVec2 = UVec2::new(2, 4);
 const STONE_SCALE: f32 = 1.6;
 const STONE_STEP_DISTANCE: f32 = 64.0;
-const STONE_MOVE_DURATION: f32 = 0.7;
+const STONE_MOVE_DURATION: f32 = 1.3;
 const CARRY_VERTICAL_EPS: f32 = 3.0; // 乗っているとみなす高さ誤差
 const CARRY_X_MARGIN: f32 = 2.0; // 横方向の許容マージン
 
@@ -164,7 +164,7 @@ pub fn update_stone_behavior(
                 let offset = Vec3::new(dir.x, dir.y, 0.0) * STONE_STEP_DISTANCE;
                 let start = transform.translation;
                 let end = start + offset;
-                let velocity = offset.truncate() / STONE_MOVE_DURATION;
+                let velocity = offset.truncate() / STONE_MOVE_DURATION / 2.0;
                 StoneAction::Move(MoveCommandProgress {
                     start,
                     end,
