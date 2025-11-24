@@ -89,23 +89,23 @@ pub fn spawn_player(
             Transform::from_xyz(x, y, 1.0).with_scale(Vec3::splat(scale)),
         ))
         .id();
-    commands
-        .entity(stage_root)
-        .add_child(player_entity);
+    commands.entity(stage_root).add_child(player_entity);
 
     // Ground probe as an independent kinematic sensor (not part of player collider)
-    let player_ground_probe_entity = commands.spawn((
-        PlayerGroundProbe,
-        RigidBody::Kinematic,
-        Collider::compound(vec![(
-            Position::from_xy(0.0, -scale * 0.6),
-            Rotation::degrees(90.),
-            Collider::capsule(scale * 0.2, scale * 0.8),
-        )]),
-        CollidingEntities::default(),
-        DebugRender::all().with_collider_color(Color::srgb(0.2, 0.0, 0.8)),
-        Transform::default().with_scale(Vec3::splat(scale)),
-    )).id();
+    let player_ground_probe_entity = commands
+        .spawn((
+            PlayerGroundProbe,
+            RigidBody::Kinematic,
+            Collider::compound(vec![(
+                Position::from_xy(0.0, -scale * 0.6),
+                Rotation::degrees(90.),
+                Collider::capsule(scale * 0.2, scale * 0.8),
+            )]),
+            CollidingEntities::default(),
+            DebugRender::all().with_collider_color(Color::srgb(0.2, 0.0, 0.8)),
+            Transform::default().with_scale(Vec3::splat(scale)),
+        ))
+        .id();
     commands
         .entity(stage_root)
         .add_child(player_ground_probe_entity);
@@ -217,10 +217,10 @@ pub fn move_player(
 }
 
 pub fn sync_player_ground_probe(
-    player_query: Query<(&Transform, &PlayerSpawnState), With<Player>>,
+    player_query: Query<&Transform, With<Player>>,
     mut probe_query: Query<&mut Transform, (With<PlayerGroundProbe>, Without<Player>)>,
 ) {
-    let Ok((player_transform, spawn_state)) = player_query.single() else {
+    let Ok(player_transform) = player_query.single() else {
         return;
     };
 

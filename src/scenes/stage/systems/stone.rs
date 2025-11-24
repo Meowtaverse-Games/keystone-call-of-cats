@@ -33,8 +33,6 @@ pub struct StoneMotion {
 }
 
 struct MoveCommandProgress {
-    start: Vec3,
-    end: Vec3,
     velocity: Vec2,
     timer: Timer,
 }
@@ -148,7 +146,7 @@ pub fn update_stone_behavior(
         With<StoneRune>,
     >,
 ) {
-    let Ok((mut state, mut transform, mut velocity, mut motion)) = query.single_mut() else {
+    let Ok((mut state, transform, mut velocity, mut motion)) = query.single_mut() else {
         audio_state.stop_push_loop(&mut commands);
         return;
     };
@@ -162,12 +160,8 @@ pub fn update_stone_behavior(
             ScriptCommand::Move(direction) => {
                 let dir = direction_to_vec(direction);
                 let offset = Vec3::new(dir.x, dir.y, 0.0) * STONE_STEP_DISTANCE;
-                let start = transform.translation;
-                let end = start + offset;
                 let velocity = offset.truncate() / STONE_MOVE_DURATION / 2.0;
                 StoneAction::Move(MoveCommandProgress {
-                    start,
-                    end,
                     velocity,
                     timer: Timer::from_seconds(STONE_MOVE_DURATION, TimerMode::Once),
                 })
@@ -181,7 +175,6 @@ pub fn update_stone_behavior(
     if let Some(action) = state.current.as_mut() {
         match action {
             StoneAction::Move(progress) => {
-                let duration = progress.timer.duration().as_secs_f32().max(f32::EPSILON);
                 progress.timer.tick(time.delta());
                 velocity.0 = progress.velocity;
                 if progress.timer.is_finished() {
