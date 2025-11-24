@@ -91,7 +91,7 @@ pub fn spawn_stone(
                 last: Vec3::new(object_x, object_y, 1.0),
                 delta: Vec2::ZERO,
             },
-            RigidBody::Dynamic,
+            RigidBody::Kinematic,
             GravityScale(0.0),
             LinearVelocity(Vec2::ZERO),
             Collider::compound(vec![(
