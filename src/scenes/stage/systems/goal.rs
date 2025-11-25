@@ -4,13 +4,13 @@ use bevy_fluent::prelude::Localization;
 
 use crate::{
     resources::{design_resolution::ScaledViewport, settings::GameSettings, tiled::*},
-    scenes::stage::components::{Goal, Player, PlayerGoalDescent, PlayerMotion},
+    scenes::stage::components::*,
     util::localization::tr,
 };
 
 use super::{StageAudioHandles, StageAudioState, ui::ScriptEditorState};
 
-const GOAL_OBJECT_ID: u32 = 194;
+const GOAL_OBJECT_ID: u32 = 178;
 const GOAL_DESCENT_SPEED: f32 = 32.0;
 
 pub fn spawn_goal(
@@ -33,6 +33,13 @@ pub fn spawn_goal(
             image_from_tileset(&tiled_map_assets.tileset, GOAL_OBJECT_ID).unwrap(),
             Transform::from_xyz(object_x, object_y, 0.0).with_scale(Vec3::splat(scale)),
             RigidBody::Static,
+            Collider::compound(vec![(
+                Position::from_xy(0.0, scale * -0.9),
+                Rotation::degrees(0.0),
+                Collider::rectangle(scale * 0.3, scale * 0.3),
+            )]),
+            Sensor,
+            CollidingEntities::default(),
         ));
     });
 }
@@ -45,19 +52,20 @@ fn image_from_tileset(tileset: &Tileset, id: u32) -> Option<Sprite> {
 
 type GoalCheckPlayer<'w> = (
     Entity,
-    &'w GlobalTransform,
     &'w mut LinearVelocity,
     &'w mut PlayerMotion,
     Option<&'w PlayerGoalDescent>,
     &'w mut CollisionLayers,
     &'w GravityScale,
+    &'w CollidingEntities,
 );
 
 pub fn check_goal_completion(
     mut commands: Commands,
     mut editor_state: ResMut<ScriptEditorState>,
     mut player_query: Query<GoalCheckPlayer<'_>, With<Player>>,
-    goals: Query<(&GlobalTransform, &Goal)>,
+    goals: Query<(&Transform, &Goal)>,
+    tiles: Query<&GlobalTransform, With<StageTile>>,
     localization: Res<Localization>,
     audio_handles: Res<StageAudioHandles>,
     mut audio_state: ResMut<StageAudioState>,
@@ -69,12 +77,12 @@ pub fn check_goal_completion(
 
     let Ok((
         player_entity,
-        player_transform,
         mut velocity,
         mut motion,
         active_descent,
         mut layers,
         gravity,
+        collisions,
     )) = player_query.single_mut()
     else {
         return;
@@ -84,47 +92,49 @@ pub fn check_goal_completion(
         return;
     }
 
-    let player_pos = player_transform.translation().truncate();
+    for &collider in collisions.iter() {
+        let Ok((goal_transform, goal)) = goals.get(collider) else {
+            continue;
+        };
 
-    for (goal_transform, goal) in &goals {
-        let goal_pos = goal_transform.translation().truncate();
-        let delta = player_pos - goal_pos;
+        velocity.x = 0.0;
+        velocity.y = 0.0;
+        motion.is_moving = false;
+        motion.is_jumping = false;
+        motion.is_climbing = true;
 
-        if delta.x.abs() <= goal.half_extents.x && delta.y.abs() <= goal.half_extents.y {
-            velocity.x = 0.0;
-            velocity.y = 0.0;
-            motion.is_moving = false;
-            motion.is_jumping = false;
-            motion.is_climbing = true;
+        info!("Goal reached!");
+        editor_state.controls_enabled = false;
+        editor_state.stage_cleared = true;
+        editor_state.pending_player_reset = false;
+        editor_state.last_run_feedback = Some(tr(&localization, "stage-ui-feedback-goal"));
+        editor_state.stage_clear_popup_open = false;
+        audio_state.play_clear_once(&mut commands, &audio_handles, settings.sfx_volume_linear());
 
-            info!("Goal reached!");
-            editor_state.controls_enabled = false;
-            editor_state.stage_cleared = true;
-            editor_state.pending_player_reset = false;
-            editor_state.last_run_feedback = Some(tr(&localization, "stage-ui-feedback-goal"));
-            editor_state.stage_clear_popup_open = true;
-            audio_state.play_clear_once(
-                &mut commands,
-                &audio_handles,
-                settings.sfx_volume_linear(),
-            );
+        let goal_pos = goal_transform;
+        // Descend until the top of the bottom-most tile in view, if available; otherwise
+        // fall back to the bottom of the goal collider as before.
+        let target_y = tiles
+            .iter()
+            .map(|tf| tf.translation().y)
+            .min_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+            .map(|min_tile_center_y| min_tile_center_y + goal.half_extents.y)
+            .unwrap();
+        let align_x = goal_pos.translation.x;
+        let original_memberships = layers.memberships;
+        let original_filters = layers.filters;
+        layers.memberships = LayerMask::NONE;
+        layers.filters = LayerMask::NONE;
 
-            let target_y = goal_pos.y - goal.half_extents.y;
-            let align_x = player_transform.translation().x;
-            let original_memberships = layers.memberships;
-            let original_filters = layers.filters;
-            layers.memberships = LayerMask::NONE;
-            layers.filters = LayerMask::NONE;
+        commands.entity(player_entity).insert(PlayerGoalDescent {
+            target_y,
+            align_x,
+            speed: GOAL_DESCENT_SPEED,
+            original_memberships,
+            original_filters,
+            original_gravity: gravity.0,
+        });
 
-            commands.entity(player_entity).insert(PlayerGoalDescent {
-                target_y,
-                align_x,
-                speed: GOAL_DESCENT_SPEED,
-                original_memberships,
-                original_filters,
-                original_gravity: gravity.0,
-            });
-            break;
-        }
+        break;
     }
 }

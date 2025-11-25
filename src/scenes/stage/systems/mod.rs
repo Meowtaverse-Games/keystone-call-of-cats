@@ -31,7 +31,8 @@ pub use goal::check_goal_completion;
 pub use player::*;
 pub use stone::{
     StoneAppendCommandMessage, StoneCommandMessage, carry_riders_with_stone,
-    handle_stone_append_messages, handle_stone_messages, update_stone_behavior,
+    handle_stone_append_messages, handle_stone_messages, reset_stone_position,
+    update_stone_behavior,
 };
 use ui::{ScriptEditorState, StageTutorialOverlay};
 pub use ui::{handle_tutorial_overlay_input, tick_script_program, ui};
@@ -47,6 +48,11 @@ impl StageProgressionState {
         let current_stage = self.current_stage.as_ref().expect("no current stage");
         let placed_chunks = generate_random_layout_from_file(current_stage.map_path())
             .expect("failed to generate layout from config");
+
+        for chunk in &placed_chunks {
+            println!("- {}", chunk.id);
+        }
+        println!();
 
         chunk_grammar_map::print_ascii_map(&placed_chunks);
 
@@ -101,6 +107,7 @@ impl StageProgressionState {
 type StageCleanupFilter = Or<(
     With<StageBackground>,
     With<Player>,
+    With<PlayerGroundProbe>,
     With<StageDebugMarker>,
     With<Goal>,
 )>;
@@ -187,14 +194,18 @@ fn populate_stage_contents(
         tile_position_to_world(stone_position, real_tile_size, viewport_size, scale, 0.0),
     );
 
-    let goal_position = placed_chunks.tile_position(TileKind::Goal);
-    goal::spawn_goal(
-        commands,
-        stage_root,
-        tiled_map_assets,
-        viewport,
-        tile_position_to_world(goal_position, real_tile_size, viewport_size, scale, 2.0),
-    );
+    placed_chunks
+        .tile_positions(TileKind::Goal)
+        .iter()
+        .for_each(|&goal_position| {
+            goal::spawn_goal(
+                commands,
+                stage_root,
+                tiled_map_assets,
+                viewport,
+                tile_position_to_world(goal_position, real_tile_size, viewport_size, scale, 2.0),
+            );
+        });
 }
 
 fn tile_position_to_world(
@@ -221,25 +232,26 @@ fn cleanup_stage_entities(
 ) {
     for entity in stage_roots.iter() {
         if let Ok(mut entity_cmd) = commands.get_entity(entity) {
-            entity_cmd.try_despawn();
+            // Remove the entire stage subtree to avoid leaving behind child sensors/colliders.
+            entity_cmd.despawn();
         }
     }
 
     for entity in query.iter() {
         if let Ok(mut entity_cmd) = commands.get_entity(entity) {
-            entity_cmd.try_despawn();
+            entity_cmd.despawn();
         }
     }
 
     for entity in tiles.iter() {
         if let Ok(mut entity_cmd) = commands.get_entity(entity) {
-            entity_cmd.try_despawn();
+            entity_cmd.despawn();
         }
     }
 
     for entity in stones.iter() {
         if let Ok(mut entity_cmd) = commands.get_entity(entity) {
-            entity_cmd.try_despawn();
+            entity_cmd.despawn();
         }
     }
 
@@ -271,6 +283,12 @@ pub fn setup(mut commands: Commands, mut params: StageSetupParams) {
         Some(editor) => {
             editor.set_tutorial_for_stage(current_stage_id);
             editor.set_command_help_for_stage(current_stage_id);
+            editor.controls_enabled = false;
+            editor.pending_player_reset = false;
+            editor.stage_cleared = false;
+            editor.stage_clear_popup_open = false;
+            editor.active_program = None;
+            editor.last_commands.clear();
         }
         None => ui::init_editor_state(&mut commands, current_stage_id),
     }

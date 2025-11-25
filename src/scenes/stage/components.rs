@@ -17,6 +17,12 @@ pub struct StageTile;
 pub struct StoneRune;
 
 #[derive(Component)]
+pub struct StoneSpawnState {
+    pub translation: Vec3,
+    pub scale: f32,
+}
+
+#[derive(Component)]
 pub struct Player;
 
 #[derive(Component)]

@@ -3,10 +3,10 @@ use std::collections::VecDeque;
 use avian2d::prelude::*;
 use bevy::prelude::*;
 
-use super::{StageAudioHandles, StageAudioState};
+use super::{StageAudioHandles, StageAudioState, ui::ScriptEditorState};
 use crate::{
     resources::settings::GameSettings,
-    scenes::stage::components::{Player, StoneRune},
+    scenes::stage::components::{Player, StoneRune, StoneSpawnState},
     util::script_types::{MoveDirection, ScriptCommand},
 };
 
@@ -33,8 +33,7 @@ pub struct StoneMotion {
 }
 
 struct MoveCommandProgress {
-    start: Vec3,
-    end: Vec3,
+    velocity: Vec2,
     timer: Timer,
 }
 
@@ -50,7 +49,7 @@ const STONE_SHEET_ROWS: u32 = 7;
 const STONE_TILE_COORD: UVec2 = UVec2::new(2, 4);
 const STONE_SCALE: f32 = 1.6;
 const STONE_STEP_DISTANCE: f32 = 64.0;
-const STONE_MOVE_DURATION: f32 = 0.7;
+const STONE_MOVE_DURATION: f32 = 1.3;
 const CARRY_VERTICAL_EPS: f32 = 3.0; // 乗っているとみなす高さ誤差
 const CARRY_X_MARGIN: f32 = 2.0; // 横方向の許容マージン
 
@@ -81,13 +80,23 @@ pub fn spawn_stone(
             StoneRune,
             Sprite::from_atlas_image(texture, atlas),
             Transform::from_xyz(object_x, object_y, 1.0).with_scale(Vec3::splat(STONE_SCALE)),
+            StoneSpawnState {
+                translation: Vec3::new(object_x, object_y, 1.0),
+                scale: STONE_SCALE,
+            },
             StoneCommandState::default(),
-            StoneMotion::default(),
+            StoneMotion {
+                last: Vec3::new(object_x, object_y, 1.0),
+                delta: Vec2::ZERO,
+            },
             RigidBody::Kinematic,
-            Collider::rectangle(
-                (STONE_TILE_SIZE.x as f32) * 0.5,
-                (STONE_TILE_SIZE.y as f32) * 0.5,
-            ),
+            GravityScale(0.0),
+            LinearVelocity(Vec2::ZERO),
+            Collider::compound(vec![(
+                Position::from_xy(0.0, STONE_SCALE * -0.4),
+                Rotation::degrees(0.0),
+                Collider::circle(STONE_SCALE * 12.0),
+            )]),
             LockedAxes::ROTATION_LOCKED,
         ));
     });
@@ -127,14 +136,22 @@ pub fn update_stone_behavior(
     audio_handles: Res<StageAudioHandles>,
     mut audio_state: ResMut<StageAudioState>,
     settings: Res<GameSettings>,
-    mut query: Query<(&mut StoneCommandState, &mut Transform, &mut StoneMotion), With<StoneRune>>,
+    mut query: Query<
+        (
+            &mut StoneCommandState,
+            &mut Transform,
+            &mut LinearVelocity,
+            &mut StoneMotion,
+        ),
+        With<StoneRune>,
+    >,
 ) {
-    let Ok((mut state, mut transform, mut motion)) = query.single_mut() else {
+    let Ok((mut state, transform, mut velocity, mut motion)) = query.single_mut() else {
         audio_state.stop_push_loop(&mut commands);
         return;
     };
     // 前フレーム位置（ローカル空間）
-    let prev = transform.translation;
+    let prev = motion.last;
 
     if state.current.is_none()
         && let Some(command) = state.queue.pop_front()
@@ -143,11 +160,9 @@ pub fn update_stone_behavior(
             ScriptCommand::Move(direction) => {
                 let dir = direction_to_vec(direction);
                 let offset = Vec3::new(dir.x, dir.y, 0.0) * STONE_STEP_DISTANCE;
-                let start = transform.translation;
-                let end = start + offset;
+                let velocity = offset.truncate() / STONE_MOVE_DURATION / 2.0;
                 StoneAction::Move(MoveCommandProgress {
-                    start,
-                    end,
+                    velocity,
                     timer: Timer::from_seconds(STONE_MOVE_DURATION, TimerMode::Once),
                 })
             }
@@ -160,17 +175,16 @@ pub fn update_stone_behavior(
     if let Some(action) = state.current.as_mut() {
         match action {
             StoneAction::Move(progress) => {
-                let duration = progress.timer.duration().as_secs_f32().max(f32::EPSILON);
                 progress.timer.tick(time.delta());
-                let t = (progress.timer.elapsed_secs() / duration).clamp(0.0, 1.0);
-                transform.translation = progress.start.lerp(progress.end, t);
+                velocity.0 = progress.velocity;
                 if progress.timer.is_finished() {
-                    transform.translation = progress.end;
+                    velocity.0 = Vec2::ZERO;
                     state.current = None;
                 }
             }
             StoneAction::Sleep(timer) => {
                 if timer.tick(time.delta()).is_finished() {
+                    velocity.0 = Vec2::ZERO;
                     state.current = None;
                 }
             }
@@ -201,6 +215,40 @@ fn direction_to_vec(direction: MoveDirection) -> Vec2 {
         MoveDirection::Right => Vec2::X,
         MoveDirection::Top => Vec2::Y,
         MoveDirection::Down => Vec2::NEG_Y,
+    }
+}
+
+pub fn reset_stone_position(
+    mut commands: Commands,
+    editor_state: Res<ScriptEditorState>,
+    mut audio_state: ResMut<StageAudioState>,
+    mut query: Query<
+        (
+            &mut Transform,
+            &mut StoneCommandState,
+            &mut StoneMotion,
+            &mut LinearVelocity,
+            &StoneSpawnState,
+        ),
+        With<StoneRune>,
+    >,
+) {
+    if !editor_state.pending_player_reset {
+        return;
+    }
+
+    if let Ok((mut transform, mut state, mut motion, mut velocity, spawn)) = query.single_mut() {
+        transform.translation = spawn.translation;
+        transform.scale = Vec3::splat(spawn.scale);
+
+        state.queue.clear();
+        state.current = None;
+
+        motion.delta = Vec2::ZERO;
+        motion.last = spawn.translation;
+        velocity.0 = Vec2::ZERO;
+
+        audio_state.stop_push_loop(&mut commands);
     }
 }
 
