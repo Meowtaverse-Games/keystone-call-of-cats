@@ -64,7 +64,7 @@ pub fn check_goal_completion(
     mut commands: Commands,
     mut editor_state: ResMut<ScriptEditorState>,
     mut player_query: Query<GoalCheckPlayer<'_>, With<Player>>,
-    goals: Query<(&GlobalTransform, &Goal)>,
+    goals: Query<(&Transform, &Goal)>,
     tiles: Query<&GlobalTransform, With<StageTile>>,
     localization: Res<Localization>,
     audio_handles: Res<StageAudioHandles>,
@@ -111,7 +111,7 @@ pub fn check_goal_completion(
         editor_state.stage_clear_popup_open = false;
         audio_state.play_clear_once(&mut commands, &audio_handles, settings.sfx_volume_linear());
 
-        let goal_pos = goal_transform.translation().truncate();
+        let goal_pos = goal_transform;
         // Descend until the top of the bottom-most tile in view, if available; otherwise
         // fall back to the bottom of the goal collider as before.
         let target_y = tiles
@@ -119,8 +119,8 @@ pub fn check_goal_completion(
             .map(|tf| tf.translation().y)
             .min_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
             .map(|min_tile_center_y| min_tile_center_y + goal.half_extents.y)
-            .unwrap_or(goal_pos.y - goal.half_extents.y);
-        let align_x = goal_pos.x;
+            .unwrap();
+        let align_x = goal_pos.translation.x;
         let original_memberships = layers.memberships;
         let original_filters = layers.filters;
         layers.memberships = LayerMask::NONE;

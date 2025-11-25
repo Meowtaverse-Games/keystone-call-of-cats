@@ -196,7 +196,10 @@ pub fn move_player(
     let foot_origin =
         player_transform.translation + Vec3::new(0.0, -player_transform.scale.y * 12.3, 0.0);
     let cast_origin = foot_origin.truncate();
-    let cast_shape = Collider::rectangle(player_transform.scale.x * 8.0, player_transform.scale.y * 0.4);
+    let cast_shape = Collider::rectangle(
+        player_transform.scale.x * 8.0,
+        player_transform.scale.y * 0.4,
+    );
     let mut cast_config = ShapeCastConfig::from_max_distance(player_transform.scale.y * 3.0);
     cast_config.ignore_origin_penetration = false;
 
