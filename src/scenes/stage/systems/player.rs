@@ -90,25 +90,6 @@ pub fn spawn_player(
         ))
         .id();
     commands.entity(stage_root).add_child(player_entity);
-
-    // Ground probe as an independent kinematic sensor (not part of player collider)
-    let player_ground_probe_entity = commands
-        .spawn((
-            PlayerGroundProbe,
-            RigidBody::Kinematic,
-            Collider::compound(vec![(
-                Position::from_xy(0.0, -scale * 0.6),
-                Rotation::degrees(90.),
-                Collider::capsule(scale * 0.2, scale * 0.8),
-            )]),
-            CollidingEntities::default(),
-            DebugRender::all().with_collider_color(Color::srgb(0.2, 0.0, 0.8)),
-            Transform::default().with_scale(Vec3::splat(scale)),
-        ))
-        .id();
-    commands
-        .entity(stage_root)
-        .add_child(player_ground_probe_entity);
 }
 
 pub fn animate_player(
@@ -154,19 +135,29 @@ pub fn animate_player(
 
 type MovePlayerComponents<'w> = (
     Entity,
+    &'w GlobalTransform,
     &'w mut LinearVelocity,
     &'w mut PlayerMotion,
     &'w mut Sprite,
-    Option<&'w CollidingEntities>,
+    Option<&'w CollisionLayers>,
 );
 
 pub fn move_player(
     editor_state: Res<ScriptEditorState>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut query: Query<MovePlayerComponents<'_>, With<Player>>,
-    probe_query: Query<&CollidingEntities, With<PlayerGroundProbe>>,
+    mut spatial_query: SpatialQuery,
+    mut gizmos: Gizmos,
 ) {
-    let Ok((player_entity, mut velocity, mut motion, mut sprite, _)) = query.single_mut() else {
+    let Ok((
+        player_entity,
+        player_transform,
+        mut velocity,
+        mut motion,
+        mut sprite,
+        collision_layers,
+    )) = query.single_mut()
+    else {
         return;
     };
 
@@ -200,11 +191,43 @@ pub fn move_player(
     motion.is_moving = desired_vx.abs() > f32::EPSILON;
     motion.direction = facing;
 
-    let grounded = probe_query
-        .iter()
-        .next()
-        .map(|c| !c.is_empty() && c.iter().all(|e| *e != player_entity))
-        .unwrap_or(false);
+    // Check ground contact directly via a downward shapecast from the player's feet.
+    let player_transform = player_transform.compute_transform();
+    let foot_origin =
+        player_transform.translation + Vec3::new(0.0, -player_transform.scale.y * 12.3, 0.0);
+    let cast_origin = foot_origin.truncate();
+    let cast_shape = Collider::rectangle(player_transform.scale.x, player_transform.scale.y * 0.4);
+    let mut cast_config = ShapeCastConfig::from_max_distance(player_transform.scale.y * 3.0);
+    cast_config.ignore_origin_penetration = false;
+
+    let filter_mask = collision_layers
+        .map(|layers| layers.filters)
+        .unwrap_or(LayerMask::ALL);
+    let query_filter =
+        SpatialQueryFilter::from_mask(filter_mask).with_excluded_entities([player_entity]);
+
+    spatial_query.update_pipeline();
+    let grounded = spatial_query
+        .cast_shape_predicate(
+            &cast_shape,
+            cast_origin,
+            0.0,
+            Dir2::NEG_Y,
+            &cast_config,
+            &query_filter,
+            &|entity| entity != player_entity,
+        )
+        .is_some();
+
+    if cfg!(debug_assertions) {
+        let cast_end = cast_origin + Vec2::new(0.0, -cast_config.max_distance);
+        gizmos.line_2d(cast_origin, cast_end, Color::srgb(0.9, 0.5, 0.2));
+        gizmos.rect_2d(
+            Isometry2d::new(cast_origin, Rot2::default()),
+            Vec2::new(player_transform.scale.x, player_transform.scale.y * 0.1),
+            Color::srgb(0.2, 0.9, 0.3),
+        );
+    }
 
     if keyboard_input.any_just_pressed(vec![KeyCode::Space, KeyCode::KeyW, KeyCode::ArrowUp])
         && grounded
@@ -214,23 +237,6 @@ pub fn move_player(
     }
 
     sprite.flip_x = motion.direction < 0.0;
-}
-
-pub fn sync_player_ground_probe(
-    player_query: Query<&Transform, With<Player>>,
-    mut probe_query: Query<&mut Transform, (With<PlayerGroundProbe>, Without<Player>)>,
-) {
-    let Ok(player_transform) = player_query.single() else {
-        return;
-    };
-
-    // Player global position already includes stage root translation & scale.
-    let player_pos = player_transform.translation;
-
-    for mut probe_transform in &mut probe_query {
-        probe_transform.translation.x = player_pos.x;
-        probe_transform.translation.y = player_pos.y - player_transform.scale.y * 12.0;
-    }
 }
 
 type ResetPlayerComponents<'w> = (
