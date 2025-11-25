@@ -31,7 +31,6 @@ impl Plugin for StageScenePlugin {
                     systems::reset_player_position,
                     systems::animate_player,
                     systems::move_player,
-                    systems::sync_player_ground_probe,
                     systems::handle_stone_messages,
                     systems::handle_stone_append_messages,
                     systems::update_stone_behavior,
