@@ -52,7 +52,6 @@ fn image_from_tileset(tileset: &Tileset, id: u32) -> Option<Sprite> {
 
 type GoalCheckPlayer<'w> = (
     Entity,
-    &'w Transform,
     &'w mut LinearVelocity,
     &'w mut PlayerMotion,
     Option<&'w PlayerGoalDescent>,
@@ -78,7 +77,6 @@ pub fn check_goal_completion(
 
     let Ok((
         player_entity,
-        player_transform_local,
         mut velocity,
         mut motion,
         active_descent,
@@ -122,7 +120,7 @@ pub fn check_goal_completion(
             .min_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
             .map(|min_tile_center_y| min_tile_center_y + goal.half_extents.y)
             .unwrap_or(goal_pos.y - goal.half_extents.y);
-        let align_x = player_transform_local.translation.x;
+        let align_x = goal_pos.x;
         let original_memberships = layers.memberships;
         let original_filters = layers.filters;
         layers.memberships = LayerMask::NONE;
