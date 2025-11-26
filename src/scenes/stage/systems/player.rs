@@ -2,9 +2,9 @@ use avian2d::prelude::*;
 use bevy::{input::ButtonInput, prelude::*};
 
 use crate::{
+    LaunchProfile,
     resources::asset_store::AssetStore,
     scenes::{assets::*, stage::components::*},
-    LaunchProfile,
 };
 
 use super::ui::ScriptEditorState;
