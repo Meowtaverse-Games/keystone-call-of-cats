@@ -4,6 +4,7 @@ use bevy::{input::ButtonInput, prelude::*};
 use crate::{
     resources::asset_store::AssetStore,
     scenes::{assets::*, stage::components::*},
+    LaunchProfile,
 };
 
 use super::ui::ScriptEditorState;
@@ -148,6 +149,7 @@ pub fn move_player(
     mut query: Query<MovePlayerComponents<'_>, With<Player>>,
     mut spatial_query: SpatialQuery,
     mut gizmos: Gizmos,
+    launch_profile: Res<LaunchProfile>,
 ) {
     let Ok((
         player_entity,
@@ -222,7 +224,7 @@ pub fn move_player(
         )
         .is_some();
 
-    if cfg!(debug_assertions) {
+    if launch_profile.render_physics {
         let cast_end = cast_origin + Vec2::new(0.0, -cast_config.max_distance);
         gizmos.line_2d(cast_origin, cast_end, Color::srgb(0.9, 0.5, 0.2));
         gizmos.rect_2d(

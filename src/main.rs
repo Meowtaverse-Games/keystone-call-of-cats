@@ -54,7 +54,9 @@ fn main() {
 
     let mut app = App::new();
 
-    app.insert_resource(Locale::new(langid!("ja-JP")).with_default(langid!("en-US")));
+    app
+        .insert_resource(Locale::new(langid!("ja-JP")).with_default(langid!("en-US")))
+        .insert_resource(launch_profile.clone());
 
     app.add_plugins((
         SteamPlugin::new(steam_app_id),
