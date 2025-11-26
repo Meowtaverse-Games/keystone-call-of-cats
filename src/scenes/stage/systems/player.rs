@@ -3,17 +3,20 @@ use bevy::{input::ButtonInput, prelude::*};
 
 use crate::{
     LaunchProfile,
-    resources::asset_store::AssetStore,
+    resources::{asset_store::AssetStore, design_resolution::ScaledViewport},
     scenes::{assets::*, stage::components::*},
 };
 
 use super::ui::ScriptEditorState;
+
+const PLAYER_BASE_GRAVITY_SCALE: f32 = 80.0;
 
 pub fn spawn_player(
     commands: &mut Commands,
     stage_root: Entity,
     asset_store: &AssetStore,
     (x, y, scale): (f32, f32, f32),
+    viewport_scale: f32,
 ) {
     let idle_frames: Vec<Handle<Image>> = PLAYER_IDLE_KEYS
         .iter()
@@ -66,10 +69,10 @@ pub fn spawn_player(
                 frame_index: 0,
             },
             PlayerMotion {
-                speed: 90.0,
+                speed: 120.0,
                 direction: 1.0,
                 is_moving: matches!(initial_state, PlayerAnimationState::Run),
-                jump_speed: 180.0,
+                jump_speed: 380.0,
                 ground_y: y,
                 ..default()
             },
@@ -78,7 +81,7 @@ pub fn spawn_player(
                 scale,
             },
             RigidBody::Dynamic,
-            GravityScale(40.0),
+            GravityScale(PLAYER_BASE_GRAVITY_SCALE * viewport_scale),
             LockedAxes::ROTATION_LOCKED,
             Collider::compound(vec![(
                 Position::from_xy(0.0, scale * -0.6),
@@ -140,12 +143,14 @@ type MovePlayerComponents<'w> = (
     &'w mut LinearVelocity,
     &'w mut PlayerMotion,
     &'w mut Sprite,
+    &'w mut GravityScale,
     Option<&'w CollisionLayers>,
 );
 
 pub fn move_player(
     editor_state: Res<ScriptEditorState>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
+    viewport: Res<ScaledViewport>,
     mut query: Query<MovePlayerComponents<'_>, With<Player>>,
     mut spatial_query: SpatialQuery,
     mut gizmos: Gizmos,
@@ -157,6 +162,7 @@ pub fn move_player(
         mut velocity,
         mut motion,
         mut sprite,
+        mut gravity_scale,
         collision_layers,
     )) = query.single_mut()
     else {
@@ -171,6 +177,11 @@ pub fn move_player(
     }
 
     let mut input_dir: f32 = 0.0;
+    let scale_factor = viewport.scale;
+    let target_gravity = PLAYER_BASE_GRAVITY_SCALE * scale_factor;
+    if (gravity_scale.0 - target_gravity).abs() > f32::EPSILON {
+        gravity_scale.0 = target_gravity;
+    }
 
     if keyboard_input.any_pressed(vec![KeyCode::ArrowRight, KeyCode::KeyD]) {
         input_dir += 1.0;
@@ -185,7 +196,7 @@ pub fn move_player(
 
     if input_dir.abs() > f32::EPSILON {
         let d = input_dir.signum();
-        desired_vx = d * motion.speed;
+        desired_vx = d * motion.speed * scale_factor;
         facing = d;
     }
 
@@ -237,7 +248,7 @@ pub fn move_player(
     if keyboard_input.any_just_pressed(vec![KeyCode::Space, KeyCode::KeyW, KeyCode::ArrowUp])
         && grounded
     {
-        velocity.y = motion.jump_speed;
+        velocity.y = motion.jump_speed * scale_factor;
         motion.is_jumping = true;
     }
 

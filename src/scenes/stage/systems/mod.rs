@@ -183,6 +183,7 @@ fn populate_stage_contents(
         stage_root,
         asset_store,
         tile_position_to_world(player_position, real_tile_size, viewport_size, scale, 2.2),
+        viewport.scale,
     );
 
     let stone_position = placed_chunks.tile_position(TileKind::Stone);
