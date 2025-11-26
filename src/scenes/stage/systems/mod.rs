@@ -289,7 +289,6 @@ pub fn setup(mut commands: Commands, mut params: StageSetupParams) {
             editor.stage_cleared = false;
             editor.stage_clear_popup_open = false;
             editor.active_program = None;
-            editor.last_commands.clear();
         }
         None => ui::init_editor_state(&mut commands, current_stage_id),
     }
