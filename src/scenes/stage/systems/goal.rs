@@ -120,7 +120,7 @@ pub fn check_goal_completion(
             .min_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
             .map(|min_tile_center_y| min_tile_center_y + goal.half_extents.y)
             .unwrap();
-        let align_x = goal_pos.translation.x;
+        let align_x = goal_pos.translation.x + 4.0;
         let original_memberships = layers.memberships;
         let original_filters = layers.filters;
         layers.memberships = LayerMask::NONE;
