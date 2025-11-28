@@ -6,7 +6,7 @@ use bevy::prelude::*;
 use super::{StageAudioHandles, StageAudioState, ui::ScriptEditorState};
 use crate::{
     resources::settings::GameSettings,
-    scenes::stage::components::{Player, StoneRune, StoneSpawnState},
+    scenes::stage::components::{Player, StageTile, StoneRune, StoneSpawnState},
     util::script_types::{MoveDirection, ScriptCommand},
 };
 
@@ -98,6 +98,7 @@ pub fn spawn_stone(
                 Collider::circle(STONE_SCALE * 12.0),
             )]),
             LockedAxes::ROTATION_LOCKED,
+            CollidingEntities::default(),
         ));
     });
 }
@@ -136,17 +137,22 @@ pub fn update_stone_behavior(
     audio_handles: Res<StageAudioHandles>,
     mut audio_state: ResMut<StageAudioState>,
     settings: Res<GameSettings>,
+    tiles: Query<(), With<StageTile>>,
     mut query: Query<
         (
+            Entity,
             &mut StoneCommandState,
             &mut Transform,
             &mut LinearVelocity,
             &mut StoneMotion,
+            &CollidingEntities,
         ),
         With<StoneRune>,
     >,
 ) {
-    let Ok((mut state, transform, mut velocity, mut motion)) = query.single_mut() else {
+    let Ok((_entity, mut state, transform, mut velocity, mut motion, collisions)) =
+        query.single_mut()
+    else {
         audio_state.stop_push_loop(&mut commands);
         return;
     };
@@ -172,23 +178,33 @@ pub fn update_stone_behavior(
         });
     }
 
+    let mut stop_current = false;
+
     if let Some(action) = state.current.as_mut() {
         match action {
             StoneAction::Move(progress) => {
                 progress.timer.tick(time.delta());
                 velocity.0 = progress.velocity;
+                if collides_with_tile(collisions, &tiles) {
+                    velocity.0 = Vec2::ZERO;
+                    stop_current = true;
+                }
                 if progress.timer.is_finished() {
                     velocity.0 = Vec2::ZERO;
-                    state.current = None;
+                    stop_current = true;
                 }
             }
             StoneAction::Sleep(timer) => {
                 if timer.tick(time.delta()).is_finished() {
                     velocity.0 = Vec2::ZERO;
-                    state.current = None;
+                    stop_current = true;
                 }
             }
         }
+    }
+
+    if stop_current {
+        state.current = None;
     }
 
     let is_stone_moving = matches!(state.current, Some(StoneAction::Move(_)));
@@ -216,6 +232,10 @@ fn direction_to_vec(direction: MoveDirection) -> Vec2 {
         MoveDirection::Top => Vec2::Y,
         MoveDirection::Down => Vec2::NEG_Y,
     }
+}
+
+fn collides_with_tile(collisions: &CollidingEntities, tiles: &Query<(), With<StageTile>>) -> bool {
+    collisions.iter().any(|&entity| tiles.get(entity).is_ok())
 }
 
 pub fn reset_stone_position(
