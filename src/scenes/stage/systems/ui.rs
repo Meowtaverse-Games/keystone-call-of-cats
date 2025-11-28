@@ -20,8 +20,8 @@ use crate::{
         stage::systems::{StoneAppendCommandMessage, StoneCommandMessage},
     },
     util::{
-        localization::{script_error_message, tr, tr_with_args},
-        script_types::{ScriptCommand, ScriptProgram},
+        localization::{script_error_message, tr},
+        script_types::ScriptProgram,
     },
 };
 
@@ -136,7 +136,6 @@ pub struct ScriptEditorState {
     pub last_action: Option<EditorMenuAction>,
     pub last_action_context: bool,
     pub last_run_feedback: Option<String>,
-    pub last_commands: Vec<ScriptCommand>,
     pub active_program: Option<Box<dyn ScriptProgram>>,
     pub controls_enabled: bool,
     pub pending_player_reset: bool,
@@ -154,7 +153,6 @@ impl Default for ScriptEditorState {
             last_action: None,
             last_action_context: false,
             last_run_feedback: None,
-            last_commands: Vec::new(),
             active_program: None,
             controls_enabled: false,
             pending_player_reset: false,
@@ -225,21 +223,6 @@ impl EditorMenuAction {
             Self::ToggleCommandHelp => Some(egui::Key::F4),
         }
     }
-}
-
-fn describe_command(command: &ScriptCommand) -> String {
-    match command {
-        ScriptCommand::Move(direction) => format!("move({direction})"),
-        ScriptCommand::Sleep(seconds) => format!("sleep({:.2}s)", seconds),
-    }
-}
-
-fn summarize_commands(commands: &[ScriptCommand]) -> String {
-    commands
-        .iter()
-        .map(describe_command)
-        .collect::<Vec<_>>()
-        .join(", ")
 }
 
 pub fn init_editor_state(commands: &mut Commands, stage_id: StageId) {
@@ -417,7 +400,6 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                                             .write(StoneCommandMessage { commands: vec![] });
 
                                         editor.active_program = Some(program);
-                                        editor.last_commands.clear();
                                         editor.last_run_feedback = Some(tr(
                                             &localization,
                                             "stage-ui-feedback-step-started",
@@ -429,7 +411,6 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                                     }
                                     Err(err) => {
                                         editor.active_program = None;
-                                        editor.last_commands.clear();
                                         editor.last_run_feedback =
                                             Some(script_error_message(&localization, &err));
                                         info!("Script compilation error: {}", err);
@@ -472,16 +453,6 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                     ui.label(feedback);
                 }
 
-                if !editor.last_commands.is_empty() {
-                    let summary = summarize_commands(&editor.last_commands);
-                    let label = tr_with_args(
-                        &localization,
-                        "stage-ui-commands-list",
-                        &[("summary", summary.as_str())],
-                    );
-                    ui.label(label);
-                }
-
                 ui.separator();
 
                 let mut available_size = ui.available_size();
@@ -506,6 +477,7 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                 let text_height = (available_size.y - help_height).max(160.0);
                 let font_size = (BASE_EDITOR_FONT_SIZE + editor.font_offset)
                     .clamp(MIN_EDITOR_FONT_SIZE, MAX_EDITOR_FONT_SIZE);
+                let editing_locked = editor.controls_enabled;
 
                 let text_edit_response = ui.add_sized(
                     egui::Vec2::new(available_size.x, text_height),
@@ -515,6 +487,7 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                             egui::FontFamily::Name("pixel_mplus".into()),
                         )))
                         .code_editor()
+                        .interactive(!editing_locked)
                         .desired_width(f32::INFINITY),
                 );
 
@@ -654,8 +627,6 @@ pub fn tick_script_program(
         append_writer.write(StoneAppendCommandMessage {
             command: command.clone(),
         });
-        // Remember last commands for UI purposes (summary).
-        editor.last_commands.push(command);
     } else {
         // // Program exhausted: stop execution.
         // info!("Script program completed");
