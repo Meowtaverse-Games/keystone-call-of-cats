@@ -477,6 +477,7 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                 let text_height = (available_size.y - help_height).max(160.0);
                 let font_size = (BASE_EDITOR_FONT_SIZE + editor.font_offset)
                     .clamp(MIN_EDITOR_FONT_SIZE, MAX_EDITOR_FONT_SIZE);
+                let editing_locked = editor.controls_enabled;
 
                 let text_edit_response = ui.add_sized(
                     egui::Vec2::new(available_size.x, text_height),
@@ -486,6 +487,7 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                             egui::FontFamily::Name("pixel_mplus".into()),
                         )))
                         .code_editor()
+                        .interactive(!editing_locked)
                         .desired_width(f32::INFINITY),
                 );
 
