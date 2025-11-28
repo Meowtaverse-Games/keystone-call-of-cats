@@ -132,6 +132,7 @@ pub fn handle_stone_append_messages(
     }
 }
 
+#[allow(clippy::type_complexity)]
 pub fn update_stone_behavior(
     mut commands: Commands,
     time: Res<Time>,
