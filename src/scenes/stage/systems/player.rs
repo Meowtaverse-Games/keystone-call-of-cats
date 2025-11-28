@@ -98,8 +98,13 @@ pub fn spawn_player(
 
 pub fn animate_player(
     time: Res<Time>,
+    editor_state: Res<ScriptEditorState>,
     mut query: Query<(&mut Sprite, &mut PlayerAnimation, &PlayerMotion), With<Player>>,
 ) {
+    if !editor_state.controls_enabled {
+        return;
+    }
+
     for (mut sprite, mut animation, motion) in &mut query {
         let (desired_state, speed_multiplier) = if motion.is_moving {
             (PlayerAnimationState::Run, 2.8)
