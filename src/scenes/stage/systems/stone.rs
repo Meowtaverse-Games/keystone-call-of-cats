@@ -112,6 +112,7 @@ pub fn handle_stone_messages(
     };
 
     for msg in reader.read() {
+        info!("Stone received command message");
         state.queue.clear();
         state.queue.extend(msg.commands.iter().cloned());
         state.current = None;
@@ -162,6 +163,8 @@ pub fn update_stone_behavior(
     if state.current.is_none()
         && let Some(command) = state.queue.pop_front()
     {
+        info!("Stone received command: {:?}", command);
+
         state.current = Some(match command {
             ScriptCommand::Move(direction) => {
                 let dir = direction_to_vec(direction);

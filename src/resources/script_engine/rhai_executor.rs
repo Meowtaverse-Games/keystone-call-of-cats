@@ -104,9 +104,17 @@ impl CommandEmitter {
         }
     }
 
-    fn stream(sender: SyncSender<ScriptCommand>, stop_flag: Arc<AtomicBool>) -> Self {
+    fn stream(
+        sender: SyncSender<ScriptCommand>,
+        stop_flag: Arc<AtomicBool>,
+        permit: Receiver<()>,
+    ) -> Self {
         Self {
-            target: CommandEmitterTarget::Stream(CommandStream { sender, stop_flag }),
+            target: CommandEmitterTarget::Stream(CommandStream {
+                sender,
+                stop_flag,
+                permit: Arc::new(Mutex::new(permit)),
+            }),
         }
     }
 
@@ -171,10 +179,38 @@ impl CommandRecorder {
 struct CommandStream {
     sender: SyncSender<ScriptCommand>,
     stop_flag: Arc<AtomicBool>,
+    permit: Arc<Mutex<Receiver<()>>>,
 }
 
 impl CommandStream {
     fn send(&self, command: ScriptCommand) -> Result<(), Box<EvalAltResult>> {
+        // Wait for an explicit permit from the host, but allow cancellation.
+        loop {
+            if self.stop_flag.load(Ordering::Relaxed) {
+                return Err(
+                    EvalAltResult::ErrorRuntime(STOP_REQUEST_TOKEN.into(), Position::NONE).into(),
+                );
+            }
+
+            let permit = self.permit.lock().map_err(|_| {
+                EvalAltResult::ErrorRuntime(STOP_REQUEST_TOKEN.into(), Position::NONE)
+            })?;
+            match permit.try_recv() {
+                Ok(_) => break,
+                Err(TryRecvError::Empty) => {
+                    std::thread::yield_now();
+                    continue;
+                }
+                Err(TryRecvError::Disconnected) => {
+                    return Err(EvalAltResult::ErrorRuntime(
+                        STOP_REQUEST_TOKEN.into(),
+                        Position::NONE,
+                    )
+                    .into());
+                }
+            }
+        }
+
         if self.stop_flag.load(Ordering::Relaxed) {
             return Err(
                 EvalAltResult::ErrorRuntime(STOP_REQUEST_TOKEN.into(), Position::NONE).into(),
@@ -329,15 +365,17 @@ struct RhaiScriptProgram {
     receiver: Mutex<Receiver<ScriptCommand>>,
     stop_flag: Arc<AtomicBool>,
     handle: Option<JoinHandle<()>>,
+    permit_tx: SyncSender<()>,
 }
 
 impl RhaiScriptProgram {
     fn spawn(source: String) -> Result<Self, ScriptExecutionError> {
         let (sender, receiver) = mpsc::sync_channel::<ScriptCommand>(STREAM_CHANNEL_SIZE);
         let stop_flag = Arc::new(AtomicBool::new(false));
+        let (permit_tx, permit_rx) = mpsc::sync_channel::<()>(1);
 
         let mut engine = streaming_engine(&stop_flag);
-        let emitter = CommandEmitter::stream(sender, stop_flag.clone());
+        let emitter = CommandEmitter::stream(sender, stop_flag.clone(), permit_rx);
         register_commands(&mut engine, emitter);
 
         let ast = engine
@@ -355,6 +393,7 @@ impl RhaiScriptProgram {
             receiver: Mutex::new(receiver),
             stop_flag,
             handle: Some(handle),
+            permit_tx,
         })
     }
 
@@ -378,7 +417,26 @@ impl ScriptProgram for RhaiScriptProgram {
 
         match result {
             Ok(command) => Some(command),
-            Err(TryRecvError::Empty) => None,
+            Err(TryRecvError::Empty) => {
+                let _ = self.permit_tx.try_send(());
+
+                let result = {
+                    let receiver = match self.receiver.lock() {
+                        Ok(receiver) => receiver,
+                        Err(poisoned) => poisoned.into_inner(),
+                    };
+                    receiver.try_recv()
+                };
+
+                match result {
+                    Ok(command) => Some(command),
+                    Err(TryRecvError::Empty) => None,
+                    Err(TryRecvError::Disconnected) => {
+                        self.stop_and_join();
+                        None
+                    }
+                }
+            }
             Err(TryRecvError::Disconnected) => {
                 self.stop_and_join();
                 None
