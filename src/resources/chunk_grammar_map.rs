@@ -8,11 +8,6 @@ use std::path::Path;
 use serde::Deserialize;
 
 pub const MAP_SIZE: (isize, isize) = (30, 20);
-// const BOUNDARY_MARGIN: (isize, isize) = (1, 5);
-// const INNER_MAP_SIZE: (isize, isize) = (
-//     MAP_SIZE.0 - 2 * BOUNDARY_MARGIN.0,
-//     MAP_SIZE.1 - 2 * BOUNDARY_MARGIN.1,
-// );
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 enum Dir {
