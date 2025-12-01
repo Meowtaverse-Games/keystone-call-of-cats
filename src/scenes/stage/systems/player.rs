@@ -101,11 +101,11 @@ pub fn animate_player(
     editor_state: Res<ScriptEditorState>,
     mut query: Query<(&mut Sprite, &mut PlayerAnimation, &PlayerMotion), With<Player>>,
 ) {
-    if !editor_state.controls_enabled {
-        return;
-    }
-
     for (mut sprite, mut animation, motion) in &mut query {
+        if !editor_state.controls_enabled && !motion.is_climbing {
+            continue;
+        }
+
         let (desired_state, speed_multiplier) = if motion.is_moving {
             (PlayerAnimationState::Run, 2.8)
         } else if motion.is_climbing {
