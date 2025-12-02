@@ -199,18 +199,19 @@ fn populate_stage_contents(
         .tile_positions(TileKind::Goal)
         .iter()
         .for_each(|&goal_position| {
+            let (x, y) = goal_position;
             goal::spawn_goal(
                 commands,
                 stage_root,
                 tiled_map_assets,
                 viewport,
-                tile_position_to_world(goal_position, real_tile_size, viewport_size, scale, 2.0),
+                tile_position_to_world((x as f32, y as f32), real_tile_size, viewport_size, scale, 2.0),
             );
         });
 }
 
 fn tile_position_to_world(
-    tile_pos: (isize, isize),
+    tile_pos: (f32, f32),
     tile_size: Vec2,
     viewport_size: Vec2,
     scale: f32,

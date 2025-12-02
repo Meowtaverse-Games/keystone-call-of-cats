@@ -143,9 +143,15 @@ impl ChunkTemplate {
     }
 }
 
+#[derive(Debug, Deserialize, Clone)]
+pub struct Adjustments {
+    pub stones: Vec<(f32, f32)>,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct ChunkGrammarConfig {
     map_size: (isize, isize),
+    pub adjustments: Option<Adjustments>,
     start_chunks: Vec<ChunkTemplate>,
     middle_chunks: Vec<ChunkTemplate>,
     goal_chunks: Vec<ChunkTemplate>,
@@ -203,7 +209,7 @@ pub fn generate_random_layout(config: &ChunkGrammarConfig) -> PlacedChunkLayout 
     let starts = config.starts();
     let middles = config.middles();
     let goals = config.goals();
-    try_build_random_path(config.map_size, &starts, &middles, &goals)
+    try_build_random_path(config.map_size, config.adjustments.clone(), &starts, &middles, &goals)
 }
 
 pub fn generate_random_layout_from_file(
@@ -301,6 +307,7 @@ fn place_chunk(t: &InnerChunkTemplate, (origin_x, origin_y): (isize, isize)) -> 
 
 pub struct PlacedChunkLayout {
     pub placed_chunks: Vec<PlacedChunk>,
+    pub adjustment: Option<Adjustments>,
     pub map_size: (isize, isize),
     pub boundary_margin: (isize, isize),
     margin_tiles: Vec<Tile>,
@@ -325,7 +332,7 @@ impl<'a> IntoIterator for &'a PlacedChunkLayout {
 }
 
 impl PlacedChunkLayout {
-    fn new(mut placed_chunks: Vec<PlacedChunk>, boundary_margin: (isize, isize)) -> Self {
+    fn new(mut placed_chunks: Vec<PlacedChunk>, adjustment: Option<Adjustments>, boundary_margin: (isize, isize)) -> Self {
         for chunk in &mut placed_chunks {
             for exit in &mut chunk.exits_world {
                 exit.0.0 += boundary_margin.0;
@@ -339,17 +346,30 @@ impl PlacedChunkLayout {
 
         PlacedChunkLayout {
             placed_chunks,
+            adjustment,
             map_size: (MAP_SIZE.0, MAP_SIZE.1),
             boundary_margin,
             margin_tiles: build_margin_tiles(boundary_margin),
         }
     }
 
-    pub fn tile_position(&self, kind: TileKind) -> (isize, isize) {
-        *self
+    pub fn tile_position(&self, kind: TileKind) -> (f32, f32) {
+        let position = *self
             .tile_positions(kind)
             .first()
-            .expect("No tile found for kind")
+            .expect("No tile found for kind");
+        let (x, y) = (position.0 as f32, position.1 as f32);
+
+        if kind == TileKind::Stone 
+          && let Some(adjustment) = &self.adjustment
+          && let stone_adjustments = &adjustment.stones
+          && !stone_adjustments.is_empty()
+          {
+            println!("Adjusting stone position from ({}, {}) by ({}, {})", x, y, stone_adjustments[0].0, stone_adjustments[0].1);
+            return (x + stone_adjustments[0].0 as f32, y + stone_adjustments[0].1 as f32);
+        }
+
+        (x, y)
     }
 
     pub fn tile_positions(&self, kind: TileKind) -> Vec<(isize, isize)> {
@@ -417,6 +437,7 @@ fn build_margin_tiles(margin: (isize, isize)) -> Vec<Tile> {
 
 fn try_build_random_path(
     map_size: (isize, isize),
+    adjustment: Option<Adjustments>,
     start_chunks: &[InnerChunkTemplate],
     mid_chunks: &[InnerChunkTemplate],
     goal_chunks: &[InnerChunkTemplate],
@@ -500,7 +521,7 @@ fn try_build_random_path(
             layout.push(place_chunk(goal_template, goal_target.origin));
 
             let boundary_margin = ((MAP_SIZE.0 - map_size.0) / 2, (MAP_SIZE.1 - map_size.1) / 2);
-            return PlacedChunkLayout::new(layout, boundary_margin);
+            return PlacedChunkLayout::new(layout, adjustment, boundary_margin);
         }
     }
 }
