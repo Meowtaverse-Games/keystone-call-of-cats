@@ -209,7 +209,13 @@ pub fn generate_random_layout(config: &ChunkGrammarConfig) -> PlacedChunkLayout 
     let starts = config.starts();
     let middles = config.middles();
     let goals = config.goals();
-    try_build_random_path(config.map_size, config.adjustments.clone(), &starts, &middles, &goals)
+    try_build_random_path(
+        config.map_size,
+        config.adjustments.clone(),
+        &starts,
+        &middles,
+        &goals,
+    )
 }
 
 pub fn generate_random_layout_from_file(
@@ -220,8 +226,9 @@ pub fn generate_random_layout_from_file(
 }
 
 pub fn show_ascii_map(stage_id: usize) {
-    let placed_chunks = generate_random_layout_from_file( format!("assets/stages/stage-{}.ron", stage_id))
-        .expect("failed to generate layout from config");
+    let placed_chunks =
+        generate_random_layout_from_file(format!("assets/stages/stage-{}.ron", stage_id))
+            .expect("failed to generate layout from config");
     println!("== Placed Chunks ==");
     println!(
         "map size: {:?}, boundary margin: {:?}",
@@ -332,7 +339,11 @@ impl<'a> IntoIterator for &'a PlacedChunkLayout {
 }
 
 impl PlacedChunkLayout {
-    fn new(mut placed_chunks: Vec<PlacedChunk>, adjustment: Option<Adjustments>, boundary_margin: (isize, isize)) -> Self {
+    fn new(
+        mut placed_chunks: Vec<PlacedChunk>,
+        adjustment: Option<Adjustments>,
+        boundary_margin: (isize, isize),
+    ) -> Self {
         for chunk in &mut placed_chunks {
             for exit in &mut chunk.exits_world {
                 exit.0.0 += boundary_margin.0;
@@ -360,13 +371,16 @@ impl PlacedChunkLayout {
             .expect("No tile found for kind");
         let (x, y) = (position.0 as f32, position.1 as f32);
 
-        if kind == TileKind::Stone 
-          && let Some(adjustment) = &self.adjustment
-          && let stone_adjustments = &adjustment.stones
-          && !stone_adjustments.is_empty()
-          {
-            println!("Adjusting stone position from ({}, {}) by ({}, {})", x, y, stone_adjustments[0].0, stone_adjustments[0].1);
-            return (x + stone_adjustments[0].0 as f32, y + stone_adjustments[0].1 as f32);
+        if kind == TileKind::Stone
+            && let Some(adjustment) = &self.adjustment
+            && let stone_adjustments = &adjustment.stones
+            && !stone_adjustments.is_empty()
+        {
+            println!(
+                "Adjusting stone position from ({}, {}) by ({}, {})",
+                x, y, stone_adjustments[0].0, stone_adjustments[0].1
+            );
+            return (x + stone_adjustments[0].0, y + stone_adjustments[0].1);
         }
 
         (x, y)
