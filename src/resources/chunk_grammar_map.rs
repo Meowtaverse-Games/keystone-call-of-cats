@@ -213,8 +213,8 @@ pub fn generate_random_layout_from_file(
     Ok(generate_random_layout(&config))
 }
 
-pub fn show_ascii_map() {
-    let placed_chunks = generate_random_layout_from_file("assets/stages/stage-1.ron")
+pub fn show_ascii_map(stage_id: usize) {
+    let placed_chunks = generate_random_layout_from_file( format!("assets/stages/stage-{}.ron", stage_id))
         .expect("failed to generate layout from config");
     println!("== Placed Chunks ==");
     println!(
