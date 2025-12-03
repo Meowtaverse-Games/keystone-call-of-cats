@@ -11,8 +11,12 @@ use bevy_fluent::prelude::Localization;
 
 use crate::{
     resources::{
-        asset_store::AssetStore, design_resolution::LetterboxOffsets, game_state::GameState,
-        script_engine::{Language, ScriptExecutor}, settings::GameSettings, stage_catalog::StageId,
+        asset_store::AssetStore,
+        design_resolution::LetterboxOffsets,
+        game_state::GameState,
+        script_engine::{Language, ScriptExecutor},
+        settings::GameSettings,
+        stage_catalog::StageId,
     },
     scenes::{
         assets::FontKey,
@@ -504,9 +508,9 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                                         ui.set_min_height(content_height);
                                         ui.set_max_height(content_height);
 
-                                        egui::ScrollArea::vertical()
-                                            .auto_shrink([false; 2])
-                                            .show(ui, |ui| {
+                                        egui::ScrollArea::vertical().auto_shrink([false; 2]).show(
+                                            ui,
+                                            |ui| {
                                                 let command_help_args =
                                                     command_help_args(settings.script_language);
                                                 ui.vertical(|ui| {
@@ -529,7 +533,8 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                                                     );
                                                     ui.add_space(4.0);
                                                 });
-                                            });
+                                            },
+                                        );
                                     });
                             },
                         );
