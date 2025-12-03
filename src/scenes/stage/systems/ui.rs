@@ -485,7 +485,7 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
 
                     if let Some(help) = editor.command_help.as_ref().filter(|h| h.is_open) {
                         let font_id = FontId::new(
-                            scaled_panel_font_size(14.0, editor.font_offset),
+                            scaled_panel_font_size(10.0, editor.font_offset),
                             Proportional,
                         );
 
@@ -494,20 +494,37 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                             Layout::bottom_up(egui::Align::LEFT),
                             |ui| {
                                 ui.add_space(8.0);
-                                ui.group(|ui| {
-                                    ui.vertical(|ui| {
-                                        let title = tr(&localization, help.title_key);
-                                        ui.label(
-                                            RichText::new(title).strong().font(font_id.clone()),
-                                        );
-                                        ui.add_space(6.0);
-                                        let entry = tr(&localization, &help.entry);
-                                        ui.label(
-                                            RichText::new(entry).strong().font(font_id.clone()),
-                                        );
-                                        ui.add_space(4.0);
+                                let content_height = (remaining.y - 8.0).max(0.0);
+
+                                egui::Frame::group(ui.style())
+                                    .fill(egui::Color32::from_black_alpha(200))
+                                    .stroke(egui::Stroke::new(1.0, egui::Color32::from_gray(80)))
+                                    .inner_margin(egui::Margin::symmetric(12, 10))
+                                    .show(ui, |ui| {
+                                        ui.set_min_height(content_height);
+                                        ui.set_max_height(content_height);
+
+                                        egui::ScrollArea::vertical()
+                                            .auto_shrink([false; 2])
+                                            .show(ui, |ui| {
+                                                ui.vertical(|ui| {
+                                                    let title = tr(&localization, help.title_key);
+                                                    ui.label(
+                                                        RichText::new(title)
+                                                            .strong()
+                                                            .font(font_id.clone()),
+                                                    );
+                                                    ui.add_space(6.0);
+                                                    let entry = tr(&localization, &help.entry);
+                                                    ui.label(
+                                                        RichText::new(entry)
+                                                            .strong()
+                                                            .font(font_id.clone()),
+                                                    );
+                                                    ui.add_space(4.0);
+                                                });
+                                            });
                                     });
-                                });
                             },
                         );
                     } else {
