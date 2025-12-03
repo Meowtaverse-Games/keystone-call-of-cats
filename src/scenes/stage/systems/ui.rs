@@ -4,7 +4,8 @@ use bevy_egui::{
     EguiContexts,
     egui::{
         self, Align2, FontFamily::Proportional, FontId, FontSelection, Id, Layout, RichText,
-        TextStyle,
+        TextFormat, TextStyle,
+        text::LayoutJob,
     },
 };
 use bevy_fluent::prelude::Localization;
@@ -526,11 +527,9 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                                                         &help.entry,
                                                         command_help_args,
                                                     );
-                                                    ui.label(
-                                                        RichText::new(entry)
-                                                            .strong()
-                                                            .font(font_id.clone()),
-                                                    );
+                                                    let entry_job =
+                                                        highlight_backtick_segments(&entry, &font_id, ui);
+                                                    ui.label(entry_job);
                                                     ui.add_space(4.0);
                                                 });
                                             },
@@ -662,8 +661,35 @@ fn command_help_args(language: Language) -> &'static [(&'static str, &'static st
             ("move-down", "move down"),
             ("move-right", "move right"),
             ("move-left", "move left"),
-        ],      
+        ],
     }
+}
+
+fn highlight_backtick_segments(text: &str, font_id: &FontId, ui: &egui::Ui) -> LayoutJob {
+    let mut job = LayoutJob::default();
+    let normal_format = TextFormat {
+        font_id: font_id.clone(),
+        color: ui.visuals().strong_text_color(),
+        ..Default::default()
+    };
+    let highlight_format = TextFormat {
+        font_id: FontId::new(font_id.size, egui::FontFamily::Monospace),
+        color: egui::Color32::from_rgb(240, 220, 140),
+        ..Default::default()
+    };
+
+    let mut in_highlight = false;
+    for segment in text.split('`') {
+        let format = if in_highlight {
+            highlight_format.clone()
+        } else {
+            normal_format.clone()
+        };
+        job.append(segment, 0.0, format);
+        in_highlight = !in_highlight;
+    }
+
+    job
 }
 
 fn chunk_tutorial_text(input: &str) -> Vec<String> {
