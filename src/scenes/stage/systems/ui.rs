@@ -79,45 +79,25 @@ impl TutorialOverlayPanel {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
-pub struct CommandHelpEntry {
-    title_key: &'static str,
-    body_key: &'static str,
-}
-
 #[derive(Clone, Debug)]
 pub struct CommandHelpDialog {
     title_key: &'static str,
-    intro_key: &'static str,
-    entries: &'static [CommandHelpEntry],
+    entry: String,
     is_open: bool,
 }
 
 impl CommandHelpDialog {
     fn new(
         title_key: &'static str,
-        intro_key: &'static str,
-        entries: &'static [CommandHelpEntry],
+        entry: String,
     ) -> Self {
         Self {
             title_key,
-            intro_key,
-            entries,
+            entry,
             is_open: false,
         }
     }
 }
-
-const DEFAULT_COMMAND_HELP_ENTRIES: &[CommandHelpEntry] = &[
-    CommandHelpEntry {
-        title_key: "stage-ui-command-help-move-title",
-        body_key: "stage-ui-command-help-move-body",
-    },
-    CommandHelpEntry {
-        title_key: "stage-ui-command-help-sleep-title",
-        body_key: "stage-ui-command-help-sleep-body",
-    },
-];
 
 const BASE_EDITOR_FONT_SIZE: f32 = 10.0;
 const MIN_EDITOR_FONT_SIZE: f32 = 8.0;
@@ -523,22 +503,14 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                                         ui.label(
                                             RichText::new(title).strong().font(font_id.clone()),
                                         );
-                                        let intro = tr(&localization, help.intro_key);
-                                        ui.label(RichText::new(intro).font(font_id.clone()));
                                         ui.add_space(6.0);
-                                        for entry in help.entries {
-                                            let entry_title = tr(&localization, entry.title_key);
-                                            ui.label(
-                                                RichText::new(entry_title)
-                                                    .strong()
-                                                    .font(font_id.clone()),
+                                        let entry = tr(&localization, &help.entry);
+                                        ui.label(
+                                            RichText::new(entry)
+                                                .strong()
+                                                .font(font_id.clone()),
                                             );
-                                            let entry_body = tr(&localization, entry.body_key);
-                                            ui.label(
-                                                RichText::new(entry_body).font(font_id.clone()),
-                                            );
-                                            ui.add_space(4.0);
-                                        }
+                                        ui.add_space(4.0);
                                     });
                                 });
                             },
@@ -647,11 +619,10 @@ pub fn tutorial_dialog_for_stage(stage_id: StageId) -> Option<TutorialDialog> {
     }
 }
 
-fn command_help_for_stage(_stage_id: StageId) -> Option<CommandHelpDialog> {
+fn command_help_for_stage(stage_id: StageId) -> Option<CommandHelpDialog> {
     Some(CommandHelpDialog::new(
         "stage-ui-command-help-title",
-        "stage-ui-command-help-intro",
-        DEFAULT_COMMAND_HELP_ENTRIES,
+        format!("stage{}-description", stage_id.0),
     ))
 }
 
