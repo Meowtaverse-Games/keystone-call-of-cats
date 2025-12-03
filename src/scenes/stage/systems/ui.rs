@@ -12,7 +12,7 @@ use bevy_fluent::prelude::Localization;
 use crate::{
     resources::{
         asset_store::AssetStore, design_resolution::LetterboxOffsets, game_state::GameState,
-        script_engine::ScriptExecutor, settings::GameSettings, stage_catalog::StageId,
+        script_engine::{Language, ScriptExecutor}, settings::GameSettings, stage_catalog::StageId,
     },
     scenes::{
         assets::FontKey,
@@ -20,7 +20,7 @@ use crate::{
         stage::systems::{StoneAppendCommandMessage, StoneCommandMessage},
     },
     util::{
-        localization::{script_error_message, tr},
+        localization::{script_error_message, tr, tr_with_args},
         script_types::ScriptProgram,
     },
 };
@@ -507,6 +507,8 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                                         egui::ScrollArea::vertical()
                                             .auto_shrink([false; 2])
                                             .show(ui, |ui| {
+                                                let command_help_args =
+                                                    command_help_args(settings.script_language);
                                                 ui.vertical(|ui| {
                                                     let title = tr(&localization, help.title_key);
                                                     ui.label(
@@ -515,7 +517,11 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                                                             .font(font_id.clone()),
                                                     );
                                                     ui.add_space(6.0);
-                                                    let entry = tr(&localization, &help.entry);
+                                                    let entry = tr_with_args(
+                                                        &localization,
+                                                        &help.entry,
+                                                        command_help_args,
+                                                    );
                                                     ui.label(
                                                         RichText::new(entry)
                                                             .strong()
@@ -636,6 +642,13 @@ fn command_help_for_stage(stage_id: StageId) -> Option<CommandHelpDialog> {
         "stage-ui-command-help-title",
         format!("stage{}-description", stage_id.0),
     ))
+}
+
+fn command_help_args(language: Language) -> &'static [(&'static str, &'static str)] {
+    match language {
+        Language::Rhai => &[("move-up", r#"move("up");"#)],
+        Language::Keystone => &[("move-up", "move up")],
+    }
 }
 
 fn chunk_tutorial_text(input: &str) -> Vec<String> {
