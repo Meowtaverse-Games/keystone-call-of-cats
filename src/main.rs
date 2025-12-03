@@ -18,6 +18,7 @@ mod scenes;
 mod systems;
 mod util;
 
+use crate::resources::stage_catalog::StageId;
 use crate::{
     config::*,
     plugins::*,
@@ -42,7 +43,7 @@ fn main() {
     }
     match launch_profile.launch_type {
         LaunchType::ShowChunkGrammarAsciiMap => {
-            chunk_grammar_map::show_ascii_map();
+            chunk_grammar_map::show_ascii_map(launch_profile.stage_id.unwrap_or(StageId(1)).0);
             return;
         }
         LaunchType::SteamAppInfo => {

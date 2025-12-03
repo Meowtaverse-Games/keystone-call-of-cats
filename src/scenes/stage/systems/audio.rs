@@ -3,6 +3,8 @@ use bevy::{
     prelude::*,
 };
 
+const STAGE_CLEAR_VOLUME_SCALE: f32 = 0.6;
+
 #[derive(Resource, Clone)]
 pub struct StageAudioHandles {
     pub stone_move: Handle<AudioSource>,
@@ -65,9 +67,10 @@ impl StageAudioState {
         if self.clear_played {
             return;
         }
+        let adjusted_volume = (volume * STAGE_CLEAR_VOLUME_SCALE).clamp(0.0, 1.0);
         commands.spawn((
             AudioPlayer::new(handles.stage_clear.clone()),
-            PlaybackSettings::DESPAWN.with_volume(Volume::Linear(volume)),
+            PlaybackSettings::DESPAWN.with_volume(Volume::Linear(adjusted_volume)),
         ));
         self.clear_played = true;
     }

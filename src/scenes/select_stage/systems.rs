@@ -649,8 +649,6 @@ fn spawn_stage_cards(
     let ready_label = tr(localization, "stage-select-state-ready");
     let locked_label = tr(localization, "stage-select-state-locked");
     let play_label = tr(localization, "stage-select-play");
-    let playable_desc = tr(localization, "stage-select-stage-description-ready");
-    let locked_desc = tr(localization, "stage-select-stage-description-locked");
     parent
         .spawn(Node {
             width: Val::Percent(100.0),
@@ -726,19 +724,6 @@ fn spawn_stage_cards(
                             ..default()
                         })
                         .insert(TextColor(primary_text_color()));
-
-                    let description = if entry.playable {
-                        playable_desc.clone()
-                    } else {
-                        locked_desc.clone()
-                    };
-                    card.spawn(Text::new(description))
-                        .insert(TextFont {
-                            font: font.clone(),
-                            font_size: 18.0,
-                            ..default()
-                        })
-                        .insert(TextColor(secondary_text_color()));
 
                     card.spawn((
                         Node {

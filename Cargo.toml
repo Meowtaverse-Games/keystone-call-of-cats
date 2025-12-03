@@ -4,12 +4,12 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-bevy = { version = "0.17.2", features = ["wav"]}
-bevy_ecs = "0.17.2"
+bevy = { version = "0.17.3", features = ["wav"]}
+bevy_ecs = "0.17.3"
 bevy_asset_loader = "0.23.0"
 bevy_egui = "0.38.0"
-bevy_render = "0.17.2"
-bevy_camera = "0.17.2"
+bevy_render = "0.17.3"
+bevy_camera = "0.17.3"
 bevy_fluent = "0.13.0"
 tiled = "0.15.0"
 avian2d = "0.4.1"

@@ -39,7 +39,7 @@ pub fn localized_stage_name(
     stage_id: StageId,
     fallback: &str,
 ) -> String {
-    let key = format!("stage-name-{}", stage_id.0);
+    let key = format!("stage{}-name", stage_id.0);
     tr_or(localization, &key, fallback)
 }
 

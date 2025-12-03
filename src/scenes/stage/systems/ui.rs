@@ -11,8 +11,12 @@ use bevy_fluent::prelude::Localization;
 
 use crate::{
     resources::{
-        asset_store::AssetStore, design_resolution::LetterboxOffsets, game_state::GameState,
-        script_engine::ScriptExecutor, settings::GameSettings, stage_catalog::StageId,
+        asset_store::AssetStore,
+        design_resolution::LetterboxOffsets,
+        game_state::GameState,
+        script_engine::{Language, ScriptExecutor},
+        settings::GameSettings,
+        stage_catalog::StageId,
     },
     scenes::{
         assets::FontKey,
@@ -20,7 +24,7 @@ use crate::{
         stage::systems::{StoneAppendCommandMessage, StoneCommandMessage},
     },
     util::{
-        localization::{script_error_message, tr},
+        localization::{script_error_message, tr, tr_with_args},
         script_types::ScriptProgram,
     },
 };
@@ -79,45 +83,22 @@ impl TutorialOverlayPanel {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
-pub struct CommandHelpEntry {
-    title_key: &'static str,
-    body_key: &'static str,
-}
-
 #[derive(Clone, Debug)]
 pub struct CommandHelpDialog {
     title_key: &'static str,
-    intro_key: &'static str,
-    entries: &'static [CommandHelpEntry],
+    entry: String,
     is_open: bool,
 }
 
 impl CommandHelpDialog {
-    fn new(
-        title_key: &'static str,
-        intro_key: &'static str,
-        entries: &'static [CommandHelpEntry],
-    ) -> Self {
+    fn new(title_key: &'static str, entry: String) -> Self {
         Self {
             title_key,
-            intro_key,
-            entries,
+            entry,
             is_open: false,
         }
     }
 }
-
-const DEFAULT_COMMAND_HELP_ENTRIES: &[CommandHelpEntry] = &[
-    CommandHelpEntry {
-        title_key: "stage-ui-command-help-move-title",
-        body_key: "stage-ui-command-help-move-body",
-    },
-    CommandHelpEntry {
-        title_key: "stage-ui-command-help-sleep-title",
-        body_key: "stage-ui-command-help-sleep-body",
-    },
-];
 
 const BASE_EDITOR_FONT_SIZE: f32 = 10.0;
 const MIN_EDITOR_FONT_SIZE: f32 = 8.0;
@@ -508,7 +489,7 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
 
                     if let Some(help) = editor.command_help.as_ref().filter(|h| h.is_open) {
                         let font_id = FontId::new(
-                            scaled_panel_font_size(14.0, editor.font_offset),
+                            scaled_panel_font_size(10.0, editor.font_offset),
                             Proportional,
                         );
 
@@ -517,30 +498,44 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                             Layout::bottom_up(egui::Align::LEFT),
                             |ui| {
                                 ui.add_space(8.0);
-                                ui.group(|ui| {
-                                    ui.vertical(|ui| {
-                                        let title = tr(&localization, help.title_key);
-                                        ui.label(
-                                            RichText::new(title).strong().font(font_id.clone()),
+                                let content_height = (remaining.y - 8.0).max(0.0);
+
+                                egui::Frame::group(ui.style())
+                                    .fill(egui::Color32::from_black_alpha(200))
+                                    .stroke(egui::Stroke::new(1.0, egui::Color32::from_gray(80)))
+                                    .inner_margin(egui::Margin::symmetric(12, 10))
+                                    .show(ui, |ui| {
+                                        ui.set_min_height(content_height);
+                                        ui.set_max_height(content_height);
+
+                                        egui::ScrollArea::vertical().auto_shrink([false; 2]).show(
+                                            ui,
+                                            |ui| {
+                                                let command_help_args =
+                                                    command_help_args(settings.script_language);
+                                                ui.vertical(|ui| {
+                                                    let title = tr(&localization, help.title_key);
+                                                    ui.label(
+                                                        RichText::new(title)
+                                                            .strong()
+                                                            .font(font_id.clone()),
+                                                    );
+                                                    ui.add_space(6.0);
+                                                    let entry = tr_with_args(
+                                                        &localization,
+                                                        &help.entry,
+                                                        command_help_args,
+                                                    );
+                                                    ui.label(
+                                                        RichText::new(entry)
+                                                            .strong()
+                                                            .font(font_id.clone()),
+                                                    );
+                                                    ui.add_space(4.0);
+                                                });
+                                            },
                                         );
-                                        let intro = tr(&localization, help.intro_key);
-                                        ui.label(RichText::new(intro).font(font_id.clone()));
-                                        ui.add_space(6.0);
-                                        for entry in help.entries {
-                                            let entry_title = tr(&localization, entry.title_key);
-                                            ui.label(
-                                                RichText::new(entry_title)
-                                                    .strong()
-                                                    .font(font_id.clone()),
-                                            );
-                                            let entry_body = tr(&localization, entry.body_key);
-                                            ui.label(
-                                                RichText::new(entry_body).font(font_id.clone()),
-                                            );
-                                            ui.add_space(4.0);
-                                        }
                                     });
-                                });
                             },
                         );
                     } else {
@@ -639,20 +634,26 @@ pub fn tutorial_dialog_for_stage(stage_id: StageId) -> Option<TutorialDialog> {
     if stage_id.0 <= 3 {
         let id = stage_id.0;
         Some(TutorialDialog::new(
-            format!("stage-ui-tutorial-stage{}-title", id),
-            format!("stage-ui-tutorial-stage{}-text", id),
+            format!("stage{}-name", id),
+            format!("stage{}-text", id),
         ))
     } else {
         None
     }
 }
 
-fn command_help_for_stage(_stage_id: StageId) -> Option<CommandHelpDialog> {
+fn command_help_for_stage(stage_id: StageId) -> Option<CommandHelpDialog> {
     Some(CommandHelpDialog::new(
         "stage-ui-command-help-title",
-        "stage-ui-command-help-intro",
-        DEFAULT_COMMAND_HELP_ENTRIES,
+        format!("stage{}-description", stage_id.0),
     ))
+}
+
+fn command_help_args(language: Language) -> &'static [(&'static str, &'static str)] {
+    match language {
+        Language::Rhai => &[("move-up", r#"move("up");"#)],
+        Language::Keystone => &[("move-up", "move up")],
+    }
 }
 
 fn chunk_tutorial_text(input: &str) -> Vec<String> {
