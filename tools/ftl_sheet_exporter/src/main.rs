@@ -2,6 +2,7 @@ use std::{env, fs, path::{Path, PathBuf}};
 
 use anyhow::{anyhow, Context, Result};
 use clap::Parser;
+use dotenvy::dotenv;
 use reqwest::Client;
 use serde::Deserialize;
 use yup_oauth2::{
@@ -12,7 +13,7 @@ use yup_oauth2::{
 #[command(name = "ftl_sheet_exporter", about = "Export Google Sheets rows into a Fluent FTL file")]
 struct Args {
     /// Spreadsheet ID portion of the Google Sheets URL
-    #[arg(long, env = "GOOGLE_SHEETS_SPREADSHEET_ID")]
+    #[arg(long, env = "TOOLS_FTL_SHEET_ID")]
     spreadsheet_id: String,
 
     /// A1 notation range to read, e.g. "main!A:C"
@@ -20,15 +21,15 @@ struct Args {
     range: String,
 
     /// Output path for the generated FTL file
-    #[arg(long, env = "OUTPUT_FTL_PATH", default_value = "assets/locales/ja-JP/main.ftl")]
+    #[arg(long, env = "OUTPUT_FTL_PATH", default_value = "assets/locales/ja-JP/tutorials.ftl")]
     output_path: PathBuf,
 
     /// Path to the OAuth clientsecret.json (falls back to GOOGLE_CLIENT_SECRET_JSON or GOOGLE_APPLICATION_CREDENTIALS)
-    #[arg(long, env = "GOOGLE_CLIENT_SECRET_JSON")]
+    #[arg(long, env = "TOOLS_FTL_CLIENT_SECRET_JSON")]
     client_secret: Option<PathBuf>,
 
     /// Where to cache OAuth tokens (reuse to avoid re-auth prompts)
-    #[arg(long, env = "GOOGLE_OAUTH_TOKEN_STORE", default_value = "tools/ftl_sheet_exporter/.oauth_tokens.json")]
+    #[arg(long, env = "GOOGLE_OAUTH_TOKEN_STORE", default_value = ".oauth_tokens.json")]
     token_store: PathBuf,
 
     /// Skip the first row when it contains column headers
@@ -50,6 +51,9 @@ struct FluentEntry {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    // Load .env (searched up the directory tree) so clap env defaults can pick them up.
+    let _ = dotenv();
+
     let args = Args::parse();
 
     let client_secret_path = resolve_client_secret_path(args.client_secret)?;

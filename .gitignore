@@ -1,5 +1,6 @@
+.env
+.oauth_tokens.json
 .lsp
 .clj-kondo
 /target
 tools/**/target
-tools/ftl_sheet_exporter/.oauth_tokens.json
