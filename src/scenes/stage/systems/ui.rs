@@ -87,10 +87,7 @@ pub struct CommandHelpDialog {
 }
 
 impl CommandHelpDialog {
-    fn new(
-        title_key: &'static str,
-        entry: String,
-    ) -> Self {
+    fn new(title_key: &'static str, entry: String) -> Self {
         Self {
             title_key,
             entry,
@@ -506,10 +503,8 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                                         ui.add_space(6.0);
                                         let entry = tr(&localization, &help.entry);
                                         ui.label(
-                                            RichText::new(entry)
-                                                .strong()
-                                                .font(font_id.clone()),
-                                            );
+                                            RichText::new(entry).strong().font(font_id.clone()),
+                                        );
                                         ui.add_space(4.0);
                                     });
                                 });
