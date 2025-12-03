@@ -639,8 +639,8 @@ pub fn tutorial_dialog_for_stage(stage_id: StageId) -> Option<TutorialDialog> {
     if stage_id.0 <= 3 {
         let id = stage_id.0;
         Some(TutorialDialog::new(
-            format!("stage-ui-tutorial-stage{}-title", id),
-            format!("stage-ui-tutorial-stage{}-text", id),
+            format!("stage{}-name", id),
+            format!("stage{}-text", id),
         ))
     } else {
         None

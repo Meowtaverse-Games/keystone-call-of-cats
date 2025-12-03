@@ -12,11 +12,9 @@ stage-select-highlight-pages = ページ {$current}/{$total}
 stage-select-highlight-mode = ストーリーモード
 stage-select-back = 終了
 stage-select-options = オプション
-stage-select-stage-header = ステージ{$number}
+stage-select-stage-header = #{$number}
 stage-select-state-ready = 開始可能
 stage-select-state-locked = ロック中
-stage-select-stage-description-ready = 熟練コーダー向けのスプリントレイアウト。
-stage-select-stage-description-locked = 上層のキーストーンに到達してこのリミックスを解放しよう。
 stage-select-play = プレイ >
 
 options-title = オプション
@@ -68,63 +66,3 @@ stage-ui-error-invalid-move-direction = move命令にはleft/top/right/downの�
 stage-ui-error-invalid-sleep-duration = sleep命令の秒数は0以上である必要があります。
 stage-ui-error-engine = スクリプト実行エラー: {$message}
 stage-ui-error-unsupported-language = サポートされていないスクリプト言語です: {$language}
-
-stage-ui-tutorial-stage1-title = チュートリアル1
-stage-ui-tutorial-stage1-text =
-    ここは、ある森の中にある地下の洞窟。
-    あなたは、どこからかともなく聞こえる、かすかな猫の呼び声を追ってここへ導かれ、たどり着きました。
-
-    自分の体を動かし、下の階層へ進みましょう。
-    ____
-    左右移動ボタン … 左右に移動
-    ジャンプボタン … 段差を飛び越える
-    崩れた足場に気をつけながら、先へ進んでください。
-
-    F3(実行)キーを押すとスタートです。
-
-stage-ui-tutorial-stage2-title = チュートリアル2
-stage-ui-tutorial-stage2-text =
-    地下へ進むと、途中大きな石で道をふさがれていました。
-    このままでは、あなたは先へ進めません。
-    ____
-    けれど、この世界のあなたは、「特殊な石」に対して「どう動くか」を伝え、
-    自分の道を切り開くことができます。
-
-    左画面で、「どう動くか」の命令を書くことができます。
-    「右へ進む」命令を書いてください。
-    どうやって書けば良いか？は、F4(説明)キーを押すと分かります。
-    そのあと、F3(実行)キーを押し、石を命令の通りに、動かしてみましょう。
-
-    思うように石が動かなければ、説明をしっかり読んで何度も試してみましょう。
-stage-ui-tutorial-stage3-title = チュートリアル3
-stage-ui-tutorial-stage3-text =
-    ジャンプでは越えられない崖に行く手をさえぎられました。
-
-    ただし先ほどの命令の力を使って、この石の上に乗れば、向こう側まで運んでもらえるかもしれません。
-    石は、右へ進む命令を続けて書くことができます。
-    ____
-    反対側の足場まで届くように、ここでもF4(説明)キーを参考にして思い通りの命令を書いてみましょう。
-
-stage-name-1 = チュートリアル1
-stage-name-2 = チュートリアル2
-stage-name-3 = チュートリアル3
-stage-name-4 = ステージ1
-stage-name-5 = ステージ2
-stage-name-6 = ステージ3
-stage-name-7 = ステージ4
-stage-name-8 = ステージ5
-stage-name-9 = ステージ6
-stage-name-10 = ステージ7
-stage-name-11 = ステージ8
-stage-name-12 = ステージ9
-stage-name-13 = ステージ10
-stage-name-14 = ステージ11
-stage-name-15 = ステージ12
-stage-name-16 = ステージ13
-stage-name-17 = ステージ14
-stage-name-18 = ステージ15
-stage-name-19 = ステージ16
-stage-name-20 = ステージ17
-stage-name-21 = ステージ18
-stage-name-22 = ステージ19
-stage-name-23 = ステージ20
