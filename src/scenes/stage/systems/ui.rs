@@ -651,8 +651,18 @@ fn command_help_for_stage(stage_id: StageId) -> Option<CommandHelpDialog> {
 
 fn command_help_args(language: Language) -> &'static [(&'static str, &'static str)] {
     match language {
-        Language::Rhai => &[("move-up", r#"move("up");"#)],
-        Language::Keystone => &[("move-up", "move up")],
+        Language::Rhai => &[
+            ("move-up", "move(\"up\");"),
+            ("move-down", "move(\"down\");"),
+            ("move-right", "move(\"right\");"),
+            ("move-left", "move(\"left\");"),
+        ],
+        Language::Keystone => &[
+            ("move-up", "move up"),
+            ("move-down", "move down"),
+            ("move-right", "move right"),
+            ("move-left", "move left"),
+        ],      
     }
 }
 
