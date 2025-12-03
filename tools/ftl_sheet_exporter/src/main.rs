@@ -16,7 +16,7 @@ struct Args {
     spreadsheet_id: String,
 
     /// A1 notation range to read, e.g. "main!A:C"
-    #[arg(long, env = "GOOGLE_SHEETS_RANGE", default_value = "main!A:C")]
+    #[arg(long, env = "GOOGLE_SHEETS_RANGE", default_value = "シート1!A:C")]
     range: String,
 
     /// Output path for the generated FTL file
@@ -54,6 +54,9 @@ async fn main() -> Result<()> {
 
     let client_secret_path = resolve_client_secret_path(args.client_secret)?;
     let token = fetch_access_token(&client_secret_path, &args.token_store).await?;
+
+    println!("ACCESS TOKEN: {}", token);
+
     let client = Client::builder().build().context("failed to build HTTP client")?;
 
     let rows = fetch_sheet_rows(&client, &token, &args.spreadsheet_id, &args.range).await?;
@@ -109,7 +112,10 @@ async fn fetch_access_token(client_secret_path: &Path, token_store: &Path) -> Re
         .await
         .context("failed to fetch access token")?;
 
-    Ok(token.token().to_owned())
+    let access_token = token
+        .token()
+        .ok_or_else(|| anyhow!("missing access token in OAuth response"))?;
+    Ok(access_token.to_owned())
 }
 
 async fn fetch_sheet_rows(
@@ -123,6 +129,8 @@ async fn fetch_sheet_rows(
         spreadsheet_id,
         urlencoding::encode(range)
     );
+    println!("range: {}", range);
+    println!("Fetching sheet data from URL: {}", url);
 
     let response = client
         .get(url)
