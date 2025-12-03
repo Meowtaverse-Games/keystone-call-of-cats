@@ -55,11 +55,6 @@ stage-ui-clear-ok = OK
 
 stage-ui-command-help-button = コマンド説明
 stage-ui-command-help-title = コマンド説明
-stage-ui-command-help-intro = このシーンで使える主な命令です。石を動かす作戦を考えるときに参照してください。
-stage-ui-command-help-move-title = move(direction)
-stage-ui-command-help-move-body = 石を指定した方向へ1マス動かします。left/right/up/top/down の文字列を渡してください。
-stage-ui-command-help-sleep-title = sleep(seconds)
-stage-ui-command-help-sleep-body = 指定した秒数だけ待ってから次の命令へ進みます。小数も使えます。
 stage-ui-command-help-close = 閉じる
 
 stage-ui-error-invalid-move-direction = move命令にはleft/top/right/downのいずれかを指定してください: {$direction}
