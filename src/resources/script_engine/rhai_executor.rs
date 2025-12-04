@@ -1,7 +1,7 @@
 use crate::util::script_types::{
     MoveDirection, ScriptCommand, ScriptExecutionError, ScriptProgram, ScriptRunner, ScriptStepper,
 };
-use rhai::{Dynamic, Engine, EvalAltResult, FLOAT as RhaiFloat, Position};
+use rhai::{Dynamic, Engine, EvalAltResult, FLOAT as RhaiFloat, INT as RhaiInt, Position};
 use std::{
     sync::{
         Arc, Mutex,
@@ -283,6 +283,12 @@ fn register_commands(engine: &mut Engine, emitter: CommandEmitter) {
         let emitter = emitter.clone();
         engine.register_fn("sleep", move |duration: RhaiFloat| {
             sleep_for(duration, &emitter)
+        });
+    }
+    {
+        let emitter = emitter.clone();
+        engine.register_fn("sleep", move |duration: RhaiInt| {
+            sleep_for(duration as RhaiFloat, &emitter)
         });
     }
 }
