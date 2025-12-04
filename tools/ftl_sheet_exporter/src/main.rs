@@ -21,7 +21,7 @@ struct Args {
     range: String,
 
     /// Output path for the generated FTL file
-    #[arg(long, env = "OUTPUT_FTL_PATH", default_value = "assets/locales/ja-JP/tutorials.ftl")]
+    #[arg(long, env = "OUTPUT_FTL_PATH", default_value = "assets/locales/ja-JP/stages.ftl")]
     output_path: PathBuf,
 
     /// Path to the OAuth clientsecret.json (falls back to GOOGLE_CLIENT_SECRET_JSON or GOOGLE_APPLICATION_CREDENTIALS)

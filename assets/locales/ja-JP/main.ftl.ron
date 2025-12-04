@@ -2,6 +2,6 @@
     locale: "ja-JP",
     resources: [
         "main.ftl",
-        "tutorials.ftl",
+        "stages.ftl",
     ],
 )
