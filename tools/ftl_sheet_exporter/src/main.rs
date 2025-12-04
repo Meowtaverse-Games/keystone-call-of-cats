@@ -17,7 +17,7 @@ struct Args {
     spreadsheet_id: String,
 
     /// A1 notation range to read, e.g. "main!A:C"
-    #[arg(long, env = "TOOLS_FTL_SHEETS_RANGE", default_value = "シート1!A3:G25")]
+    #[arg(long, env = "TOOLS_FTL_SHEETS_RANGE", default_value = "ja!A3:G25")]
     range: String,
 
     /// Output path for the generated FTL file
