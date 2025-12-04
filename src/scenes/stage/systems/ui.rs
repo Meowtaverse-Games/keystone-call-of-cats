@@ -630,15 +630,11 @@ pub fn tick_script_program(
 }
 
 pub fn tutorial_dialog_for_stage(stage_id: StageId) -> Option<TutorialDialog> {
-    if stage_id.0 <= 3 {
-        let id = stage_id.0;
-        Some(TutorialDialog::new(
-            format!("stage{}-name", id),
-            format!("stage{}-text", id),
-        ))
-    } else {
-        None
-    }
+    let id = stage_id.0;
+    Some(TutorialDialog::new(
+        format!("stage{}-name", id),
+        format!("stage{}-text", id),
+    ))
 }
 
 fn command_help_for_stage(stage_id: StageId) -> Option<CommandHelpDialog> {
