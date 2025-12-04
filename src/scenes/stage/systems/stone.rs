@@ -95,7 +95,7 @@ pub fn spawn_stone(
             Collider::compound(vec![(
                 Position::from_xy(0.0, STONE_SCALE * -0.4),
                 Rotation::degrees(0.0),
-                Collider::circle(STONE_SCALE * 12.0),
+                Collider::circle(STONE_SCALE * 10.5),
             )]),
             LockedAxes::ROTATION_LOCKED,
             CollidingEntities::default(),
