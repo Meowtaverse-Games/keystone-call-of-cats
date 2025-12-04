@@ -1,77 +1,153 @@
 (
-    StartChunks(
-        templates: [
-            ChunkTemplate(
-                id: "start_flat",
-                map: [
-                    ".....E",
+    map_size: (28, 18),
+    start_chunks: [
+        ChunkTemplate(
+            id: "start_flat",
+            map: [
+                ".............",
+                ".............",
+                ".............",
+                ".....#.......",
+                ".@.###...#...",
+                "....##...#...",
+                ".........##.E",
+                ".S.......####",
+                "##.........#.",
+                "###........#.",
+            ]
+        )
+    ],
+    middle_chunks: [
+        ChunkTemplate(
+            id: "middle_0",
+            map: [
+                "IE",
+                "##",
+            ]
+        ),
+        ChunkTemplate(
+            id: "middle_1",
+            map: [
+                "I..",
+                "#.E",
+                "###",
+            ]
+        ),
+        ChunkTemplate(
+            id: "middle_1",
+            map: [
+                "I...",
+                "#..E",
+                "##.#",
+            ]
+        ),
+        ChunkTemplate(
+            id: "middle_2",
+            map: [
+                "I E",
+                "###",
+            ]
+        ),
+        ChunkTemplate(
+            id: "middle_3",
+            map: [
+                "......",
+                "I....E",
+                "...##E",
+                "######",
+            ]
+        ),
+        ChunkTemplate(
+            id: "middle_4",
+            map: [
+                "......",
+                "I....E",
+                "#....E",
+                ".#####",
+            ]
+        ),
+        ChunkTemplate(
+            id: "middle_5",
+            map: [
+                "......",
+                ".....E",
+                "I....#",
+                "#..###",
+            ]
+        ),
+        ChunkTemplate(
+            id: "middle_6",
+            map: [
+                "I.....",
+                "#....E",
+                "##...E",
+                "######",
+            ]
+        ),
+        ChunkTemplate(
+            id: "middle_7",
+            map: [
+                "I....",
+                "....E",
+                "#...E",
+                "#####",
+            ]
+        ),
+        ChunkTemplate(
+            id: "middle_8",
+            map: [
+                "I....",
+                "#...E",
+                "#...E",
+                ".####",
+            ]
+        )
+    ],
+    goal_chunks: [
+        ChunkTemplate(
+            id: "goal1",
+            map: [
                     "......",
-                    "I@##.E",
-                    "######",
-                ]
-            )
-        ]
-    ),
-    MiddleChunks(
-        templates: [
-            ChunkTemplate(
-                id: "middle_flat_1",
-                map: [
-                    "...EE.",
-                    "......",
-                    "I.##.E",
-                    "######",
-                ]
-            ),
-            ChunkTemplate(
-                id: "middle_flat_2",
-                map: [
-                    "......",
-                    ".....E",
-                    "I....E",
-                    "######",
-                ]
-            ),
-            ChunkTemplate(
-                id: "middle_flat_3",
-                map: [
-                    "......",
-                    ".....E",
-                    "I....E",
-                    "#....#",
-                ]
-            ),
-            ChunkTemplate(
-                id: "middle_flat_4",
-                map: [
-                    "I.....",
-                    "#....E",
-                    "##...E",
-                    "######",
-                ]
-            )
-        ]
-    ),
-    GoalChunks(
-        templates: [
-            ChunkTemplate(
-                id: "goal_flat",
-                map: [
                     "......",
                     "......",
-                    "I.##.G",
-                    "######",
-                ]
-            ),
-            ChunkTemplate(
-                id: "goal_flat2",
-                map: [
                     "......",
-                    "I.....",
+                    "I....G",
                     "###..G",
-                    "..####",
+                    "####.G",
+                    "#####G",
+                    "#####G",
+                    "#####G",
                 ]
-            )
-        ]
-    ),
+        ),
+        ChunkTemplate(
+            id: "goal1",
+            map: [
+                    "......",
+                    "......",
+                    "......",
+                    "......",
+                    "I....G",
+                    "###..G",
+                    ".###.G",
+                    ".####G",
+                    "...##G",
+                    "..###G",
+                ]
+        ),
+        ChunkTemplate(
+            id: "goal3",
+            map: [
+                "......",
+                "I....G",
+                "I#...G",
+                "#####G",
+                "..###G",
+                "..###G",
+                "..###G",
+                "...##G",
+                "....#G",
+                "....#G",
+            ]
+        )
+    ]
 )

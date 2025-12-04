@@ -20,7 +20,7 @@
             required_count: 1,
             map: [
                 "I......E",
-                "###S.###",
+                "###.S.##",
             ]
         ),
         ChunkTemplate(

@@ -4,8 +4,7 @@ use bevy_egui::{
     EguiContexts,
     egui::{
         self, Align2, FontFamily::Proportional, FontId, FontSelection, Id, Layout, RichText,
-        TextFormat, TextStyle,
-        text::LayoutJob,
+        TextFormat, TextStyle, text::LayoutJob,
     },
 };
 use bevy_fluent::prelude::Localization;
@@ -25,7 +24,7 @@ use crate::{
         stage::systems::{StoneAppendCommandMessage, StoneCommandMessage},
     },
     util::{
-        localization::{script_error_message, tr, tr_with_args},
+        localization::{script_error_message, tr, tr_or, tr_with_args},
         script_types::ScriptProgram,
     },
 };
@@ -527,8 +526,9 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                                                         &help.entry,
                                                         command_help_args,
                                                     );
-                                                    let entry_job =
-                                                        highlight_backtick_segments(&entry, &font_id, ui);
+                                                    let entry_job = highlight_backtick_segments(
+                                                        &entry, &font_id, ui,
+                                                    );
                                                     ui.label(entry_job);
                                                     ui.add_space(4.0);
                                                 });
@@ -742,16 +742,17 @@ pub fn spawn_tutorial_overlay(
     };
 
     let title = tr(localization, &dialog.title_key);
-    let body = tr(localization, &dialog.body_key);
+    let body = tr_or(localization, &dialog.body_key, "");
     let chunks = chunk_tutorial_text(&body);
-    if chunks.is_empty() {
-        return;
-    }
-    let hint = tr(localization, "stage-ui-tutorial-next-hint");
-    let mut body_value = chunks[0].clone();
+    let mut body_value = if chunks.is_empty() {
+        String::new()
+    } else {
+        chunks[0].clone()
+    };
     if chunks.len() > 1 {
         body_value.push_str("\n\n");
     }
+    let hint = tr(localization, "stage-ui-tutorial-next-hint");
 
     let mut body_entity = None;
     let overlay_entity = commands
