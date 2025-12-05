@@ -736,7 +736,7 @@ fn hide_tutorial_overlays(
     overlays: &Query<Entity, With<StageTutorialOverlay>>,
 ) {
     for entity in overlays.iter() {
-        commands.entity(entity).despawn();
+        commands.entity(entity).try_despawn();
     }
 }
 
@@ -898,11 +898,11 @@ pub fn handle_tutorial_overlay_input(
                 tutorial_hints
                     .iter_mut()
                     .for_each(|(entity, mut _hint_text)| {
-                        commands.entity(entity).despawn();
+                        commands.entity(entity).try_despawn();
                     });
             }
         } else {
-            commands.entity(entity).despawn();
+            commands.entity(entity).try_despawn();
         }
     }
 }

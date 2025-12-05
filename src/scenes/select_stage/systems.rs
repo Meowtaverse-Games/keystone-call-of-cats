@@ -185,7 +185,7 @@ pub fn cleanup(
     mut letterbox_visibility: ResMut<LetterboxVisibility>,
 ) {
     for entity in roots.iter() {
-        commands.entity(entity).despawn();
+        commands.entity(entity).try_despawn();
     }
 
     // for entity in bgm_entities.iter() {

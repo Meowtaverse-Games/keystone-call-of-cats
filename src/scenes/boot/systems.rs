@@ -175,6 +175,6 @@ pub fn update(
 
 pub fn cleanup(mut commands: Commands, query: Query<Entity, With<BootRoot>>) {
     for ent in query.iter() {
-        commands.entity(ent).despawn();
+        commands.entity(ent).try_despawn();
     }
 }
