@@ -23,7 +23,10 @@ impl StageProgress {
 
     /// Unlock all stages up to `stage_id` (inclusive). Returns true if state changed.
     pub fn unlock_until(&mut self, stage_id: StageId) -> bool {
-        info!("Unlocking stages until {:?} (current unlocked_until: {:?})", stage_id, self.unlocked_until);
+        info!(
+            "Unlocking stages until {:?} (current unlocked_until: {:?})",
+            stage_id, self.unlocked_until
+        );
         if stage_id.0 > self.unlocked_until.0 {
             self.unlocked_until = stage_id;
             true
