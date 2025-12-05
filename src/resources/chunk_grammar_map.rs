@@ -562,7 +562,7 @@ fn random_goal_target(
     if origin_x < min_origin_x {
         return None;
     }
-    let origin_y = if max_origin_y == 0 {
+    let origin_y = if max_origin_y <= 0 {
         0
     } else {
         rng.random_range(0..=(max_origin_y as i32)) as isize
