@@ -35,6 +35,8 @@ pub struct StoneMotion {
 struct MoveCommandProgress {
     velocity: Vec2,
     timer: Timer,
+    started_colliding: bool,
+    moved_distance: f32,
 }
 
 enum StoneAction {
@@ -50,6 +52,7 @@ const STONE_TILE_COORD: UVec2 = UVec2::new(2, 4);
 const STONE_SCALE: f32 = 1.6;
 const STONE_STEP_DISTANCE: f32 = 64.0;
 const STONE_MOVE_DURATION: f32 = 1.3;
+const STONE_COLLISION_GRACE_DISTANCE: f32 = 1.0;
 const CARRY_VERTICAL_EPS: f32 = 3.0; // 乗っているとみなす高さ誤差
 const CARRY_X_MARGIN: f32 = 2.0; // 横方向の許容マージン
 
@@ -152,7 +155,7 @@ pub fn update_stone_behavior(
         With<StoneRune>,
     >,
 ) {
-    let Ok((_entity, mut state, transform, mut velocity, mut motion, collisions)) =
+    let Ok((_entity, mut state, mut transform, mut velocity, mut motion, collisions)) =
         query.single_mut()
     else {
         audio_state.stop_push_loop(&mut commands);
@@ -166,6 +169,7 @@ pub fn update_stone_behavior(
     {
         info!("Stone received command: {:?}", command);
 
+        let started_colliding = collides_with_tile(collisions, &tiles);
         state.current = Some(match command {
             ScriptCommand::Move(direction) => {
                 let dir = direction_to_vec(direction);
@@ -174,6 +178,8 @@ pub fn update_stone_behavior(
                 StoneAction::Move(MoveCommandProgress {
                     velocity,
                     timer: Timer::from_seconds(STONE_MOVE_DURATION, TimerMode::Once),
+                    started_colliding,
+                    moved_distance: 0.0,
                 })
             }
             ScriptCommand::Sleep(seconds) => {
@@ -183,15 +189,22 @@ pub fn update_stone_behavior(
     }
 
     let mut stop_current = false;
+    let mut revert_to_prev = false;
 
     if let Some(action) = state.current.as_mut() {
         match action {
             StoneAction::Move(progress) => {
                 progress.timer.tick(time.delta());
+                progress.moved_distance += progress.velocity.length() * time.delta_secs();
                 velocity.0 = progress.velocity;
-                if collides_with_tile(collisions, &tiles) {
+                if collides_with_tile(collisions, &tiles)
+                    && (!progress.started_colliding
+                        || progress.moved_distance > STONE_COLLISION_GRACE_DISTANCE)
+                {
                     velocity.0 = Vec2::ZERO;
                     stop_current = true;
+                    // Pull back to the last safe position so the stone never stays touching a tile
+                    revert_to_prev = true;
                 }
                 if progress.timer.is_finished() {
                     velocity.0 = Vec2::ZERO;
@@ -216,6 +229,10 @@ pub fn update_stone_behavior(
         audio_state.ensure_push_loop(&mut commands, &audio_handles, settings.sfx_volume_linear());
     } else {
         audio_state.stop_push_loop(&mut commands);
+    }
+
+    if revert_to_prev {
+        transform.translation = prev;
     }
 
     // このフレームの移動デルタを保存（ローカル空間の delta）
