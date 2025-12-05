@@ -406,10 +406,10 @@ pub fn advance_stage_if_cleared(
         return;
     }
 
-    if let (Some(scripts), Some(storage)) = (stage_scripts.as_ref(), storage.as_ref()) {
-        if let Err(err) = scripts.persist(storage.backend().as_ref()) {
-            warn!("Stage clear: failed to save scripts: {err}");
-        }
+    if let (Some(scripts), Some(storage)) = (stage_scripts.as_ref(), storage.as_ref())
+        && let Err(err) = scripts.persist(storage.backend().as_ref())
+    {
+        warn!("Stage clear: failed to save scripts: {err}");
     }
 
     progress.unlock_until(StageId(progression.current_stage_id().0 + 1));
