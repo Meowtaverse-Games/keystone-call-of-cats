@@ -217,7 +217,7 @@ pub fn spawn_tiles(
                     Collider::compound(shapes.clone()),
                 ));
 
-                if kind == TileKind::Solid && rng.random_bool(0.1) {
+                if kind == TileKind::Solid && rng.random_bool(0.3) {
                     let Some(moss_image) = image_from_tileset(&tileset, rng.random_range(224..226))
                     else {
                         continue;
