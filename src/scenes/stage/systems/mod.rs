@@ -470,12 +470,10 @@ pub fn reload_stage_if_needed(mut commands: Commands, mut params: StageReloadPar
         .map(|s| s.to_string());
 
     if let (Some(scripts), Some(storage)) = (params.stage_scripts.as_ref(), params.storage.as_ref())
+        && scripts.is_changed()
+        && let Err(err) = scripts.persist(storage.backend().as_ref())
     {
-        if scripts.is_changed() {
-            if let Err(err) = scripts.persist(storage.backend().as_ref()) {
-                warn!("Stage reload: failed to save scripts: {err}");
-            }
-        }
+        warn!("Stage reload: failed to save scripts: {err}");
     }
 
     cleanup_stage_entities(
