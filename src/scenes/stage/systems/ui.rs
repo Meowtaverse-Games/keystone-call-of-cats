@@ -9,6 +9,7 @@ use bevy_egui::{
 };
 use bevy_fluent::prelude::Localization;
 
+use crate::scenes::stage::systems::StageProgressionState;
 use crate::{
     resources::{
         asset_store::AssetStore,
@@ -17,6 +18,7 @@ use crate::{
         script_engine::{Language, ScriptExecutor},
         settings::GameSettings,
         stage_catalog::StageId,
+        stage_scripts::StageScripts,
     },
     scenes::{
         assets::FontKey,
@@ -206,9 +208,9 @@ impl EditorMenuAction {
     }
 }
 
-pub fn init_editor_state(commands: &mut Commands, stage_id: StageId) {
+pub fn init_editor_state(commands: &mut Commands, stage_id: StageId, saved_code: Option<String>) {
     let mut editor_state = ScriptEditorState {
-        buffer: String::from(""),
+        buffer: saved_code.unwrap_or_default(),
         ..default()
     };
     editor_state.set_tutorial_for_stage(stage_id);
@@ -228,6 +230,8 @@ pub struct StageUIParams<'w, 's> {
     next_state: ResMut<'w, NextState<GameState>>,
     audio: Res<'w, AudioHandles>,
     settings: Res<'w, GameSettings>,
+    stage_scripts: ResMut<'w, StageScripts>,
+    progression: Res<'w, StageProgressionState>,
     tutorial_overlays: Query<'w, 's, Entity, With<StageTutorialOverlay>>,
 }
 
@@ -243,6 +247,8 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
         mut next_state,
         audio,
         settings,
+        mut stage_scripts,
+        progression,
         tutorial_overlays,
     } = params;
     let Ok(ctx) = contexts.ctx_mut() else {
@@ -477,6 +483,11 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                     editor.controls_enabled = false;
                     editor.stage_cleared = false;
                     editor.stage_clear_popup_open = false;
+                    let stage_id = progression.current_stage_id();
+                    let current = stage_scripts.stage_code(stage_id);
+                    if current.map(|c| c != editor.buffer.as_str()).unwrap_or(true) {
+                        stage_scripts.set_stage_code(stage_id, editor.buffer.clone());
+                    }
                 }
 
                 if help_is_open || help_height > 1.0 {

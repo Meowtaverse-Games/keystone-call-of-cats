@@ -18,8 +18,10 @@ use crate::{
         asset_store::AssetStore,
         chunk_grammar_map::{self, PlacedChunkLayout, TileKind, generate_random_layout_from_file},
         design_resolution::{LetterboxOffsets, ScaledViewport},
+        file_storage::FileStorageResource,
         stage_catalog::*,
         stage_progress::StageProgress,
+        stage_scripts::StageScripts,
         tiled::TiledMapAssets,
     },
     scenes::{assets::AudioKey, stage::components::StageTile},
@@ -280,6 +282,7 @@ pub struct StageSetupParams<'w, 's> {
     window_query: Query<'w, 's, &'static Window, With<PrimaryWindow>>,
     progression: ResMut<'w, StageProgressionState>,
     editor_state: Option<ResMut<'w, ScriptEditorState>>,
+    stage_scripts: Option<Res<'w, StageScripts>>,
     audio_handles: Option<Res<'w, StageAudioHandles>>,
     audio_state: Option<ResMut<'w, StageAudioState>>,
     localization: Res<'w, Localization>,
@@ -287,6 +290,11 @@ pub struct StageSetupParams<'w, 's> {
 
 pub fn setup(mut commands: Commands, mut params: StageSetupParams) {
     let current_stage_id = params.progression.current_stage_id();
+    let saved_code = params
+        .stage_scripts
+        .as_ref()
+        .and_then(|scripts| scripts.stage_code(current_stage_id))
+        .map(|s| s.to_string());
     match params.editor_state.as_deref_mut() {
         Some(editor) => {
             editor.set_tutorial_for_stage(current_stage_id);
@@ -296,8 +304,13 @@ pub fn setup(mut commands: Commands, mut params: StageSetupParams) {
             editor.stage_cleared = false;
             editor.stage_clear_popup_open = false;
             editor.active_program = None;
+            if let Some(code) = &saved_code {
+                editor.buffer = code.clone();
+            } else {
+                editor.buffer.clear();
+            }
         }
-        None => ui::init_editor_state(&mut commands, current_stage_id),
+        None => ui::init_editor_state(&mut commands, current_stage_id, saved_code),
     }
 
     if params.audio_handles.is_none() {
@@ -426,6 +439,7 @@ pub struct StageReloadParams<'w, 's> {
     tiled_map_assets: Res<'w, TiledMapAssets>,
     window_query: Query<'w, 's, &'static Window, With<PrimaryWindow>>,
     progression: ResMut<'w, StageProgressionState>,
+    storage: Option<Res<'w, FileStorageResource>>,
     stage_roots: Query<'w, 's, Entity, With<StageRoot>>,
     query: Query<'w, 's, Entity, StageCleanupFilter>,
     tiles: Query<'w, 's, Entity, With<StageTile>>,
@@ -434,6 +448,7 @@ pub struct StageReloadParams<'w, 's> {
     editor_state: Option<ResMut<'w, ScriptEditorState>>,
     localization: Res<'w, Localization>,
     audio_state: Option<ResMut<'w, StageAudioState>>,
+    stage_scripts: Option<Res<'w, StageScripts>>,
 }
 
 pub fn reload_stage_if_needed(mut commands: Commands, mut params: StageReloadParams) {
@@ -448,6 +463,20 @@ pub fn reload_stage_if_needed(mut commands: Commands, mut params: StageReloadPar
         .map(|stage| localized_stage_name(&params.localization, stage.id, &stage.title))
         .unwrap_or_else(|| format!("STAGE-{}", stage_id.0));
     let current_map = params.progression.current_map();
+    let saved_code = params
+        .stage_scripts
+        .as_ref()
+        .and_then(|scripts| scripts.stage_code(stage_id))
+        .map(|s| s.to_string());
+
+    if let (Some(scripts), Some(storage)) = (params.stage_scripts.as_ref(), params.storage.as_ref())
+    {
+        if scripts.is_changed() {
+            if let Err(err) = scripts.persist(storage.backend().as_ref()) {
+                warn!("Stage reload: failed to save scripts: {err}");
+            }
+        }
+    }
 
     cleanup_stage_entities(
         &mut commands,
@@ -490,6 +519,11 @@ pub fn reload_stage_if_needed(mut commands: Commands, mut params: StageReloadPar
         editor.stage_cleared = false;
         editor.set_tutorial_for_stage(stage_id);
         editor.set_command_help_for_stage(stage_id);
+        if let Some(code) = &saved_code {
+            editor.buffer = code.clone();
+        } else {
+            editor.buffer.clear();
+        }
         editor.last_run_feedback = Some(tr_with_args(
             &params.localization,
             "stage-ui-feedback-start",

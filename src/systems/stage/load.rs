@@ -5,6 +5,7 @@ use crate::resources::{
     file_storage::{FileStorage, FileStorageResource, LocalFileStorage, SteamCloudFileStorage},
     stage_catalog::{self, StageCatalog},
     stage_progress::StageProgress,
+    stage_scripts::StageScripts,
     steam_client::SteamClientResource,
 };
 
@@ -13,9 +14,14 @@ pub fn setup_stage_resources(
     steam_client: Option<Res<SteamClientResource>>,
     existing_storage: Option<Res<FileStorageResource>>,
     existing_catalog: Option<Res<StageCatalog>>,
+    existing_scripts: Option<Res<StageScripts>>,
     existing_progress: Option<Res<StageProgress>>,
 ) {
-    if existing_storage.is_some() && existing_catalog.is_some() && existing_progress.is_some() {
+    if existing_storage.is_some()
+        && existing_catalog.is_some()
+        && existing_progress.is_some()
+        && existing_scripts.is_some()
+    {
         return;
     }
 
@@ -37,6 +43,11 @@ pub fn setup_stage_resources(
     let stage_catalog_usecase = stage_catalog::StageCatalog::load_from_assets();
     if existing_catalog.is_none() {
         commands.insert_resource(stage_catalog_usecase.clone());
+    }
+
+    if existing_scripts.is_none() {
+        let scripts = StageScripts::load_or_default(storage_backend.as_ref());
+        commands.insert_resource(scripts);
     }
 
     if existing_progress.is_none() {

@@ -8,6 +8,7 @@ pub mod script_engine;
 pub mod settings;
 pub mod stage_catalog;
 pub mod stage_progress;
+pub mod stage_scripts;
 pub mod steam_client;
 pub mod tiled;
 pub mod visibility;
