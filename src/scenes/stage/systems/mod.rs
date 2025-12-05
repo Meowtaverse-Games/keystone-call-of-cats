@@ -396,12 +396,20 @@ pub fn advance_stage_if_cleared(
     mut progression: ResMut<StageProgressionState>,
     mut editor_state: ResMut<ScriptEditorState>,
     mut progress: ResMut<StageProgress>,
+    stage_scripts: Option<Res<StageScripts>>,
+    storage: Option<Res<FileStorageResource>>,
     stage_catalog: Res<StageCatalog>,
     localization: Res<Localization>,
     descent_query: Query<(), With<PlayerGoalDescent>>,
 ) {
     if !editor_state.stage_cleared || !descent_query.is_empty() {
         return;
+    }
+
+    if let (Some(scripts), Some(storage)) = (stage_scripts.as_ref(), storage.as_ref()) {
+        if let Err(err) = scripts.persist(storage.backend().as_ref()) {
+            warn!("Stage clear: failed to save scripts: {err}");
+        }
     }
 
     progress.unlock_until(StageId(progression.current_stage_id().0 + 1));
