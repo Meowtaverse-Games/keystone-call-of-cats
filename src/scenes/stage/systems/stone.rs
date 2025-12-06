@@ -132,6 +132,10 @@ pub fn handle_stone_append_messages(
 
     for msg in reader.read() {
         state.queue.push_back(msg.command.clone());
+        if matches!(msg.command, ScriptCommand::Move(_)) {
+            // Move コマンドの直後に Sleep を追加することで障害物を貫通する問題を解消する
+            state.queue.push_back(ScriptCommand::Sleep(0.0001));
+        }
     }
 }
 
