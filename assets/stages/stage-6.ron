@@ -1,5 +1,6 @@
 (
     map_size: (28, 18),
+    stone_type: 1,
     adjustments: Some(Adjustments(
         stones: [(-0.5, 0)],
     )),

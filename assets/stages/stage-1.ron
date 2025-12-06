@@ -1,5 +1,6 @@
 (
     map_size: (26, 10),
+    stone_type: 1,
     start_chunks: [
         ChunkTemplate(
             id: "start_flat",
