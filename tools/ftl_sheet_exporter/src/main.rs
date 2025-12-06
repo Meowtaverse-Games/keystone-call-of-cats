@@ -17,7 +17,7 @@ struct Args {
     spreadsheet_id: String,
 
     /// A1 notation range to read, e.g. "main!A:C"
-    #[arg(long, env = "TOOLS_FTL_SHEETS_RANGE", default_value = "ja!A3:G25")]
+    #[arg(long, env = "TOOLS_FTL_SHEETS_RANGE", default_value = "ja!A2:G24")]
     range: String,
 
     /// Output path for the generated FTL file
@@ -204,6 +204,7 @@ fn render_entries(entries: &[FluentEntry]) -> String {
 
         out.push_str(&format_entry(format!("stage{}-name", &entry.id).as_str(), &entry.name));
         out.push_str(&format_entry(format!("stage{}-text", &entry.id).as_str(), &entry.text));
+        out.push_str("\n\n");
         out.push_str(&format_entry(format!("stage{}-description", &entry.id).as_str(), &entry.description));
         out.push_str("\n\n");
     }
