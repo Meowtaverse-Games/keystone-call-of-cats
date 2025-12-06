@@ -17,7 +17,7 @@ struct Args {
     spreadsheet_id: String,
 
     /// A1 notation range to read, e.g. "main!A:C"
-    #[arg(long, env = "TOOLS_FTL_SHEETS_RANGE", default_value = "ja!A2:G24")]
+    #[arg(long, env = "TOOLS_FTL_SHEETS_RANGE", default_value = "ja!A2:H24")]
     range: String,
 
     /// Output path for the generated FTL file
@@ -46,6 +46,7 @@ struct ValuesResponse {
 struct FluentEntry {
     id: String,
     stage_type: Option<String>,
+    stone_type: String,
     name: String,
     text: String,
     description: String,
@@ -169,17 +170,23 @@ fn rows_to_entries(data: Vec<Vec<String>>) -> Vec<FluentEntry> {
             .map(|c| c.trim().to_owned())
             .filter(|c| !c.is_empty());
 
-        let Some(text_row) = row.get(5) else {
+        let stone_type = row
+            .get(4)
+            .map(|c| c.trim().to_owned())
+            .unwrap_or_default();
+
+        let Some(text_row) = row.get(6) else {
             eprintln!("Row {} missing translation column, skipping", index + 1);
             continue;
         };
         let text = text_row.replace("\r\n", "\n");
 
-        let description = row.get(6).map(|c| c.to_owned()).unwrap_or("・・・".to_string()).replace("\r\n", "\n");
+        let description = row.get(7).map(|c| c.to_owned()).unwrap_or("・・・".to_string()).replace("\r\n", "\n");
 
         entries.push(FluentEntry {
             id: id.to_owned(),
             stage_type,
+            stone_type,
             name: row.get(1).cloned().unwrap_or_default(),
             text,
             description,
@@ -203,6 +210,7 @@ fn render_entries(entries: &[FluentEntry]) -> String {
         }
 
         out.push_str(&format_entry(format!("stage{}-name", &entry.id).as_str(), &entry.name));
+        out.push_str(&format_entry(format!("stage{}-stone-type", &entry.id).as_str(), &entry.stone_type));
         out.push_str(&format_entry(format!("stage{}-text", &entry.id).as_str(), &entry.text));
         out.push_str("\n\n");
         out.push_str(&format_entry(format!("stage{}-description", &entry.id).as_str(), &entry.description));
