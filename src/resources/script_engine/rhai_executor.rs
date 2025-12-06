@@ -1,14 +1,16 @@
 use crate::util::script_types::{
-    MoveDirection, ScriptCommand, ScriptExecutionError, ScriptProgram, ScriptRunner, ScriptStepper,
+    MoveDirection, PLAYER_TOUCHED_STATE_KEY, ScriptCommand, ScriptExecutionError, ScriptProgram,
+    ScriptRunner, ScriptState, ScriptStateValue, ScriptStepper,
 };
 use rhai::{Dynamic, Engine, EvalAltResult, FLOAT as RhaiFloat, INT as RhaiInt, Position};
 use std::{
     sync::{
         Arc, Mutex,
         atomic::{AtomicBool, Ordering},
-        mpsc::{self, Receiver, SyncSender, TryRecvError},
+        mpsc::{self, Receiver, RecvTimeoutError, SyncSender, TrySendError},
     },
     thread::JoinHandle,
+    time::Duration,
 };
 
 /// Rhai-based implementation of the `ScriptRunner` boundary.
@@ -23,8 +25,9 @@ impl RhaiScriptExecutor {
         let script = source.trim();
 
         let emitter = CommandEmitter::recorder(MAX_COMMANDS);
+        let state = SharedScriptState::default();
         let mut engine = base_engine(Some(MAX_OPS as u64));
-        register_commands(&mut engine, emitter.clone());
+        register_commands(&mut engine, emitter.clone(), state);
 
         let _ = engine
             .eval::<Dynamic>(script)
@@ -39,8 +42,9 @@ impl RhaiScriptExecutor {
     fn preflight(&self, source: &str) -> Result<(), ScriptExecutionError> {
         let script = source.trim();
         let emitter = CommandEmitter::recorder(PREFLIGHT_MAX_COMMANDS);
+        let state = SharedScriptState::default();
         let mut engine = base_engine(Some(PREFLIGHT_MAX_OPS as u64));
-        register_commands(&mut engine, emitter.clone());
+        register_commands(&mut engine, emitter.clone(), state);
 
         match engine.eval::<Dynamic>(script) {
             Ok(_) => Ok(()),
@@ -91,6 +95,31 @@ struct CommandEmitter {
     target: CommandEmitterTarget,
 }
 
+#[derive(Clone, Default)]
+struct SharedScriptState {
+    inner: Arc<Mutex<ScriptState>>,
+}
+
+impl SharedScriptState {
+    fn write(&self, state: &ScriptState) {
+        if let Ok(mut inner) = self.inner.lock() {
+            *inner = state.clone();
+        }
+    }
+
+    fn touched(&self) -> bool {
+        self.inner
+            .lock()
+            .ok()
+            .and_then(|state| {
+                state
+                    .get(PLAYER_TOUCHED_STATE_KEY)
+                    .and_then(ScriptStateValue::as_bool)
+            })
+            .unwrap_or(false)
+    }
+}
+
 #[derive(Clone)]
 enum CommandEmitterTarget {
     Recorder(CommandRecorder),
@@ -107,13 +136,13 @@ impl CommandEmitter {
     fn stream(
         sender: SyncSender<ScriptCommand>,
         stop_flag: Arc<AtomicBool>,
-        permit: Receiver<()>,
+        resume: Arc<Mutex<Receiver<()>>>,
     ) -> Self {
         Self {
             target: CommandEmitterTarget::Stream(CommandStream {
                 sender,
                 stop_flag,
-                permit: Arc::new(Mutex::new(permit)),
+                resume,
             }),
         }
     }
@@ -179,47 +208,57 @@ impl CommandRecorder {
 struct CommandStream {
     sender: SyncSender<ScriptCommand>,
     stop_flag: Arc<AtomicBool>,
-    permit: Arc<Mutex<Receiver<()>>>,
+    resume: Arc<Mutex<Receiver<()>>>,
 }
 
 impl CommandStream {
     fn send(&self, command: ScriptCommand) -> Result<(), Box<EvalAltResult>> {
-        // Wait for an explicit permit from the host, but allow cancellation.
-        loop {
-            if self.stop_flag.load(Ordering::Relaxed) {
-                return Err(
-                    EvalAltResult::ErrorRuntime(STOP_REQUEST_TOKEN.into(), Position::NONE).into(),
-                );
-            }
-
-            let permit = self.permit.lock().map_err(|_| {
-                EvalAltResult::ErrorRuntime(STOP_REQUEST_TOKEN.into(), Position::NONE)
-            })?;
-            match permit.try_recv() {
-                Ok(_) => break,
-                Err(TryRecvError::Empty) => {
-                    std::thread::yield_now();
-                    continue;
-                }
-                Err(TryRecvError::Disconnected) => {
-                    return Err(EvalAltResult::ErrorRuntime(
-                        STOP_REQUEST_TOKEN.into(),
-                        Position::NONE,
-                    )
-                    .into());
-                }
-            }
-        }
-
         if self.stop_flag.load(Ordering::Relaxed) {
-            return Err(
-                EvalAltResult::ErrorRuntime(STOP_REQUEST_TOKEN.into(), Position::NONE).into(),
-            );
+            return Err(Box::new(EvalAltResult::ErrorRuntime(
+                STOP_REQUEST_TOKEN.into(),
+                Position::NONE,
+            )));
         }
 
         self.sender.send(command).map_err(|_| {
-            EvalAltResult::ErrorRuntime(STOP_REQUEST_TOKEN.into(), Position::NONE).into()
-        })
+            Box::new(EvalAltResult::ErrorRuntime(
+                STOP_REQUEST_TOKEN.into(),
+                Position::NONE,
+            ))
+        })?;
+
+        wait_for_resume(&self.resume, &self.stop_flag)
+    }
+}
+
+fn wait_for_resume(
+    resume: &Arc<Mutex<Receiver<()>>>,
+    stop_flag: &Arc<AtomicBool>,
+) -> Result<(), Box<EvalAltResult>> {
+    loop {
+        if stop_flag.load(Ordering::Relaxed) {
+            return Err(Box::new(EvalAltResult::ErrorRuntime(
+                STOP_REQUEST_TOKEN.into(),
+                Position::NONE,
+            )));
+        }
+
+        let receiver = resume.lock().map_err(|_| {
+            Box::new(EvalAltResult::ErrorRuntime(
+                STOP_REQUEST_TOKEN.into(),
+                Position::NONE,
+            ))
+        })?;
+        match receiver.recv_timeout(Duration::from_millis(5)) {
+            Ok(_) => return Ok(()),
+            Err(RecvTimeoutError::Timeout) => continue,
+            Err(RecvTimeoutError::Disconnected) => {
+                return Err(Box::new(EvalAltResult::ErrorRuntime(
+                    STOP_REQUEST_TOKEN.into(),
+                    Position::NONE,
+                )));
+            }
+        }
     }
 }
 
@@ -246,7 +285,7 @@ fn streaming_engine(stop_flag: &Arc<AtomicBool>) -> Engine {
     engine
 }
 
-fn register_commands(engine: &mut Engine, emitter: CommandEmitter) {
+fn register_commands(engine: &mut Engine, emitter: CommandEmitter, state: SharedScriptState) {
     engine.register_type_with_name::<CommandValue>("Command");
 
     {
@@ -290,6 +329,10 @@ fn register_commands(engine: &mut Engine, emitter: CommandEmitter) {
         engine.register_fn("sleep", move |duration: RhaiInt| {
             sleep_for(duration as RhaiFloat, &emitter)
         });
+    }
+    {
+        let state = state.clone();
+        engine.register_fn("touched", move || state.touched());
     }
 }
 
@@ -371,27 +414,38 @@ struct RhaiScriptProgram {
     receiver: Mutex<Receiver<ScriptCommand>>,
     stop_flag: Arc<AtomicBool>,
     handle: Option<JoinHandle<()>>,
-    permit_tx: SyncSender<()>,
+    resume_tx: SyncSender<()>,
+    shared_state: SharedScriptState,
 }
 
 impl RhaiScriptProgram {
     fn spawn(source: String) -> Result<Self, ScriptExecutionError> {
         let (sender, receiver) = mpsc::sync_channel::<ScriptCommand>(STREAM_CHANNEL_SIZE);
         let stop_flag = Arc::new(AtomicBool::new(false));
-        let (permit_tx, permit_rx) = mpsc::sync_channel::<()>(1);
+        let (resume_tx, resume_rx) = mpsc::sync_channel::<()>(1);
+        let resume_rx = Arc::new(Mutex::new(resume_rx));
+        let shared_state = SharedScriptState::default();
 
         let mut engine = streaming_engine(&stop_flag);
-        let emitter = CommandEmitter::stream(sender, stop_flag.clone(), permit_rx);
-        register_commands(&mut engine, emitter);
+        let emitter = CommandEmitter::stream(sender, stop_flag.clone(), resume_rx.clone());
+        register_commands(&mut engine, emitter, shared_state.clone());
 
         let ast = engine
             .compile(source.as_str())
             .map_err(|err| ScriptExecutionError::Engine(err.to_string()))?;
 
-        let handle = std::thread::spawn(move || {
-            let result = engine.eval_ast::<Dynamic>(&ast);
-            if let Err(err) = result {
-                eprintln!("Script execution stopped: {}", map_engine_error(*err));
+        let handle = std::thread::spawn({
+            let resume = resume_rx.clone();
+            let stop_flag = stop_flag.clone();
+            move || {
+                if wait_for_resume(&resume, &stop_flag).is_err() {
+                    return;
+                }
+
+                let result = engine.eval_ast::<Dynamic>(&ast);
+                if let Err(err) = result {
+                    eprintln!("Script execution stopped: {}", map_engine_error(*err));
+                }
             }
         });
 
@@ -399,7 +453,8 @@ impl RhaiScriptProgram {
             receiver: Mutex::new(receiver),
             stop_flag,
             handle: Some(handle),
-            permit_tx,
+            resume_tx,
+            shared_state,
         })
     }
 
@@ -412,38 +467,26 @@ impl RhaiScriptProgram {
 }
 
 impl ScriptProgram for RhaiScriptProgram {
-    fn next(&mut self) -> Option<ScriptCommand> {
+    fn next(&mut self, state: &ScriptState) -> Option<ScriptCommand> {
+        self.shared_state.write(state);
+
+        match self.resume_tx.try_send(()) {
+            Ok(_) | Err(TrySendError::Full(_)) => {}
+            Err(TrySendError::Disconnected(_)) => return None,
+        }
+
         let result = {
             let receiver = match self.receiver.lock() {
                 Ok(receiver) => receiver,
                 Err(poisoned) => poisoned.into_inner(),
             };
-            receiver.try_recv()
+            receiver.recv_timeout(Duration::from_millis(1))
         };
 
         match result {
             Ok(command) => Some(command),
-            Err(TryRecvError::Empty) => {
-                let _ = self.permit_tx.try_send(());
-
-                let result = {
-                    let receiver = match self.receiver.lock() {
-                        Ok(receiver) => receiver,
-                        Err(poisoned) => poisoned.into_inner(),
-                    };
-                    receiver.try_recv()
-                };
-
-                match result {
-                    Ok(command) => Some(command),
-                    Err(TryRecvError::Empty) => None,
-                    Err(TryRecvError::Disconnected) => {
-                        self.stop_and_join();
-                        None
-                    }
-                }
-            }
-            Err(TryRecvError::Disconnected) => {
+            Err(RecvTimeoutError::Timeout) => None,
+            Err(RecvTimeoutError::Disconnected) => {
                 self.stop_and_join();
                 None
             }
@@ -454,5 +497,50 @@ impl ScriptProgram for RhaiScriptProgram {
 impl Drop for RhaiScriptProgram {
     fn drop(&mut self) {
         self.stop_and_join();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::util::script_types::MoveDirection;
+    use std::thread;
+
+    #[test]
+    fn touched_reflects_latest_state_between_steps() {
+        let executor = RhaiScriptExecutor::new();
+        let mut program = executor
+            .compile_step(r#"loop { if touched() { move_down(); } }"#)
+            .expect("script should compile");
+
+        let mut touched_state = ScriptState::default();
+        touched_state.insert(
+            PLAYER_TOUCHED_STATE_KEY.to_string(),
+            ScriptStateValue::Bool(true),
+        );
+
+        // First tick should see `touched = true` and emit a move command.
+        let command = program.next(&touched_state);
+        match command {
+            Some(ScriptCommand::Move(MoveDirection::Down)) => {}
+            other => panic!("expected move down, got {other:?}"),
+        }
+
+        // Resume the script with `touched = false`; it should stop emitting commands.
+        let mut untouched_state = ScriptState::default();
+        untouched_state.insert(
+            PLAYER_TOUCHED_STATE_KEY.to_string(),
+            ScriptStateValue::Bool(false),
+        );
+
+        // Allow the worker thread to run a few frames; it must not produce more moves.
+        for _ in 0..5 {
+            thread::sleep(Duration::from_millis(2));
+            let next = program.next(&untouched_state);
+            assert!(
+                next.is_none(),
+                "touched=false should yield no commands, got {next:?}"
+            );
+        }
     }
 }

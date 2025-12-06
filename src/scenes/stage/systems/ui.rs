@@ -1,3 +1,4 @@
+use avian2d::prelude::CollidingEntities;
 use bevy::{input::ButtonInput, prelude::*};
 use bevy_ecs::system::SystemParam;
 use bevy_egui::{
@@ -9,6 +10,7 @@ use bevy_egui::{
 };
 use bevy_fluent::prelude::Localization;
 
+use super::stone::StoneCommandState;
 use crate::scenes::stage::systems::StageProgressionState;
 use crate::{
     resources::{
@@ -23,13 +25,19 @@ use crate::{
     scenes::{
         assets::FontKey,
         audio::{AudioHandles, play_ui_click},
-        stage::systems::{StoneAppendCommandMessage, StoneCommandMessage},
+        stage::{
+            components::{Player, StoneRune},
+            systems::{StoneAppendCommandMessage, StoneCommandMessage},
+        },
     },
     util::{
         localization::{script_error_message, tr, tr_or, tr_with_args},
-        script_types::ScriptProgram,
+        script_types::{
+            PLAYER_TOUCHED_STATE_KEY, RAND_STATE_KEY, ScriptProgram, ScriptState, ScriptStateValue,
+        },
     },
 };
+use rand::Rng;
 
 #[derive(Clone, Debug)]
 pub struct TutorialDialog {
@@ -624,6 +632,9 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
 pub fn tick_script_program(
     mut editor: ResMut<ScriptEditorState>,
     mut append_writer: MessageWriter<StoneAppendCommandMessage>,
+    players: Query<&CollidingEntities, With<Player>>,
+    stones: Query<Entity, With<StoneRune>>,
+    stone_states: Query<&StoneCommandState, With<StoneRune>>,
 ) {
     if !editor.controls_enabled {
         editor.active_program = None;
@@ -634,7 +645,30 @@ pub fn tick_script_program(
         return;
     };
 
-    if let Some(command) = program.next() {
+    let Some(stone_entity) = stones.iter().next() else {
+        return;
+    };
+
+    if let Ok(stone_state) = stone_states.get(stone_entity) {
+        if stone_state.is_busy() {
+            // Wait until the stone finishes its current action to avoid
+            // queueing stale commands based on old touch state.
+            return;
+        }
+    }
+
+    let mut state = ScriptState::default();
+    let player_touched = is_player_touching_stone(&players, stone_entity);
+    state.insert(
+        PLAYER_TOUCHED_STATE_KEY.to_string(),
+        ScriptStateValue::Bool(player_touched),
+    );
+    state.insert(
+        RAND_STATE_KEY.to_string(),
+        ScriptStateValue::Float(rand::rng().random_range(0.0..1.0)),
+    );
+
+    if let Some(command) = program.next(&state) {
         append_writer.write(StoneAppendCommandMessage {
             command: command.clone(),
         });
@@ -644,6 +678,19 @@ pub fn tick_script_program(
         // editor.controls_enabled = false;
         // editor.active_program = None;
     }
+}
+
+fn is_player_touching_stone(
+    players: &Query<&CollidingEntities, With<Player>>,
+    stone_entity: Entity,
+) -> bool {
+    let Some(player_collisions) = players.iter().next() else {
+        return false;
+    };
+
+    player_collisions
+        .iter()
+        .any(|&entity| entity == stone_entity)
 }
 
 pub fn tutorial_dialog_for_stage(stage_id: StageId) -> Option<TutorialDialog> {

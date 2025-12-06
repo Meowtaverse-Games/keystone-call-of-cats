@@ -26,6 +26,12 @@ pub(crate) struct StoneCommandState {
     current: Option<StoneAction>,
 }
 
+impl StoneCommandState {
+    pub(crate) fn is_busy(&self) -> bool {
+        self.current.is_some() || !self.queue.is_empty()
+    }
+}
+
 #[derive(Component, Default)]
 pub struct StoneMotion {
     pub last: Vec3,

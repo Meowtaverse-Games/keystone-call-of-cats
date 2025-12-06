@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{collections::HashMap, fmt};
 
 /// Represents a command emitted by a script.
 #[derive(Debug, Clone)]
@@ -82,10 +82,50 @@ pub trait ScriptRunner: Send + Sync + 'static {
 /// Implementations should be cheap to `next` and honor safety limits internally.
 pub trait ScriptProgram: Send + Sync + 'static {
     /// Produces the next command, or None if finished.
-    fn next(&mut self) -> Option<ScriptCommand>;
+    fn next(&mut self, state: &ScriptState) -> Option<ScriptCommand>;
 }
 
 /// Compiles a script into a step-executable program.
 pub trait ScriptStepper: Send + Sync + 'static {
     fn compile_step(&self, source: &str) -> Result<Box<dyn ScriptProgram>, ScriptExecutionError>;
 }
+
+#[derive(Debug, Clone)]
+pub enum ScriptStateValue {
+    Bool(bool),
+    Float(f32),
+}
+
+impl ScriptStateValue {
+    pub fn as_bool(&self) -> Option<bool> {
+        match self {
+            ScriptStateValue::Bool(value) => Some(*value),
+            _ => None,
+        }
+    }
+
+    #[allow(dead_code)]
+    pub fn as_float(&self) -> Option<f32> {
+        match self {
+            ScriptStateValue::Float(value) => Some(*value),
+            _ => None,
+        }
+    }
+}
+
+impl From<bool> for ScriptStateValue {
+    fn from(value: bool) -> Self {
+        ScriptStateValue::Bool(value)
+    }
+}
+
+impl From<f32> for ScriptStateValue {
+    fn from(value: f32) -> Self {
+        ScriptStateValue::Float(value)
+    }
+}
+
+pub type ScriptState = HashMap<String, ScriptStateValue>;
+
+pub const PLAYER_TOUCHED_STATE_KEY: &str = "player-touched";
+pub const RAND_STATE_KEY: &str = "rand";
