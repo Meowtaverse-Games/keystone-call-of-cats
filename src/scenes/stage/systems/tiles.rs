@@ -21,7 +21,7 @@ pub fn spawn_tiles(
     commands: &mut Commands,
     stage_root: Entity,
     tiled_map_assets: &TiledMapAssets,
-    placed_chunks: &PlacedChunkLayout,
+    placed_chunks: &Map,
     viewport: &ScaledViewport,
 ) {
     let tileset = tiled_map_assets.tileset.clone();

@@ -151,6 +151,7 @@ pub struct Adjustments {
 #[derive(Debug, Deserialize)]
 pub struct ChunkGrammarConfig {
     map_size: (isize, isize),
+    pub stone_type: usize,
     pub adjustments: Option<Adjustments>,
     start_chunks: Vec<ChunkTemplate>,
     middle_chunks: Vec<ChunkTemplate>,
@@ -205,12 +206,13 @@ pub fn load_config_from_file(
     ron::de::from_reader(reader).map_err(ChunkGrammarError::Parse)
 }
 
-pub fn generate_random_layout(config: &ChunkGrammarConfig) -> PlacedChunkLayout {
+fn generate_random_layout(config: &ChunkGrammarConfig) -> PlacedChunkLayout {
     let starts = config.starts();
     let middles = config.middles();
     let goals = config.goals();
     try_build_random_path(
         config.map_size,
+        config.stone_type,
         config.adjustments.clone(),
         &starts,
         &middles,
@@ -218,35 +220,40 @@ pub fn generate_random_layout(config: &ChunkGrammarConfig) -> PlacedChunkLayout 
     )
 }
 
-pub fn generate_random_layout_from_file(
-    path: impl AsRef<Path>,
-) -> Result<PlacedChunkLayout, ChunkGrammarError> {
+pub fn generate_random_layout_from_file(path: impl AsRef<Path>) -> Result<Map, ChunkGrammarError> {
     let config = load_config_from_file(path)?;
-    Ok(generate_random_layout(&config))
+    let placed_chunk_layout = generate_random_layout(&config);
+    Ok(Map {
+        placed_chunks: placed_chunk_layout.placed_chunks,
+        adjustment: placed_chunk_layout.adjustment,
+        map_size: placed_chunk_layout.map_size,
+        stone_type: config.stone_type,
+        boundary_margin: placed_chunk_layout.boundary_margin,
+        margin_tiles: placed_chunk_layout.margin_tiles,
+    })
 }
 
 pub fn show_ascii_map(stage_id: usize) {
-    let placed_chunks =
-        generate_random_layout_from_file(format!("assets/stages/stage-{}.ron", stage_id))
-            .expect("failed to generate layout from config");
+    let map = generate_random_layout_from_file(format!("assets/stages/stage-{}.ron", stage_id))
+        .expect("failed to generate layout from config");
     println!("== Placed Chunks ==");
     println!(
         "map size: {:?}, boundary margin: {:?}",
-        placed_chunks.map_size, placed_chunks.boundary_margin
+        map.map_size, map.boundary_margin
     );
-    for chunk in &placed_chunks {
+    for chunk in &map.placed_chunks {
         println!("- {}", chunk.id);
     }
     println!();
 
     println!("== ASCII Map ==");
-    print_ascii_map(&placed_chunks);
+    print_ascii_map(&map);
 }
 
-fn build_tile_char_map(placed_chunks: &PlacedChunkLayout) -> HashMap<(isize, isize), char> {
-    let mut map = HashMap::<(isize, isize), char>::new();
+fn build_tile_char_map(map: &Map) -> HashMap<(isize, isize), char> {
+    let mut char_map = HashMap::<(isize, isize), char>::new();
 
-    for ((x, y), kind) in placed_chunks.map_iter() {
+    for ((x, y), kind) in map.map_iter() {
         let ch = match kind {
             TileKind::Solid => '*',
             TileKind::PlayerSpawn => '@',
@@ -254,10 +261,10 @@ fn build_tile_char_map(placed_chunks: &PlacedChunkLayout) -> HashMap<(isize, isi
             TileKind::Goal => 'G',
             TileKind::Wall => '#',
         };
-        map.insert((x, y), ch);
+        char_map.insert((x, y), ch);
     }
 
-    map
+    char_map
 }
 
 /// 指定方向の出口を1つ拾う（最小実装：最初の一致を返す）
@@ -320,24 +327,6 @@ pub struct PlacedChunkLayout {
     margin_tiles: Vec<Tile>,
 }
 
-impl IntoIterator for PlacedChunkLayout {
-    type Item = PlacedChunk;
-    type IntoIter = std::vec::IntoIter<PlacedChunk>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.placed_chunks.into_iter()
-    }
-}
-
-impl<'a> IntoIterator for &'a PlacedChunkLayout {
-    type Item = &'a PlacedChunk;
-    type IntoIter = std::slice::Iter<'a, PlacedChunk>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.placed_chunks.iter()
-    }
-}
-
 impl PlacedChunkLayout {
     fn new(
         mut placed_chunks: Vec<PlacedChunk>,
@@ -359,6 +348,64 @@ impl PlacedChunkLayout {
             placed_chunks,
             adjustment,
             map_size: (MAP_SIZE.0, MAP_SIZE.1),
+            boundary_margin,
+            margin_tiles: build_margin_tiles(boundary_margin),
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct Map {
+    pub placed_chunks: Vec<PlacedChunk>,
+    pub adjustment: Option<Adjustments>,
+    pub map_size: (isize, isize),
+    pub stone_type: usize,
+    pub boundary_margin: (isize, isize),
+    margin_tiles: Vec<Tile>,
+}
+
+impl IntoIterator for Map {
+    type Item = PlacedChunk;
+    type IntoIter = std::vec::IntoIter<PlacedChunk>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.placed_chunks.into_iter()
+    }
+}
+
+impl<'a> IntoIterator for &'a Map {
+    type Item = &'a PlacedChunk;
+    type IntoIter = std::slice::Iter<'a, PlacedChunk>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.placed_chunks.iter()
+    }
+}
+
+impl Map {
+    #[allow(dead_code)]
+    fn new(
+        mut placed_chunks: Vec<PlacedChunk>,
+        stone_type: usize,
+        adjustment: Option<Adjustments>,
+        boundary_margin: (isize, isize),
+    ) -> Self {
+        for chunk in &mut placed_chunks {
+            for exit in &mut chunk.exits_world {
+                exit.0.0 += boundary_margin.0;
+                exit.0.1 += boundary_margin.1;
+            }
+            for tile in &mut chunk.tiles_world {
+                tile.x += boundary_margin.0;
+                tile.y += boundary_margin.1;
+            }
+        }
+
+        Map {
+            placed_chunks,
+            adjustment,
+            map_size: (MAP_SIZE.0, MAP_SIZE.1),
+            stone_type,
             boundary_margin,
             margin_tiles: build_margin_tiles(boundary_margin),
         }
@@ -451,6 +498,7 @@ fn build_margin_tiles(margin: (isize, isize)) -> Vec<Tile> {
 
 fn try_build_random_path(
     map_size: (isize, isize),
+    _stone_type: usize,
     adjustment: Option<Adjustments>,
     start_chunks: &[InnerChunkTemplate],
     mid_chunks: &[InnerChunkTemplate],
@@ -669,12 +717,12 @@ fn search_path_to_goal(
     None
 }
 
-pub fn print_ascii_map(placed_chunks: &PlacedChunkLayout) {
-    let map = build_tile_char_map(placed_chunks);
-    let (map_width, map_height) = MAP_SIZE;
+pub fn print_ascii_map(map: &Map) {
+    let tile_map = build_tile_char_map(map);
+    let (map_width, map_height) = map.map_size;
     for y in (0..map_height).rev() {
         for x in 0..map_width {
-            let ch = map.get(&(x, y)).copied().unwrap_or('.');
+            let ch = tile_map.get(&(x, y)).copied().unwrap_or('.');
             print!("{ch}");
         }
         println!();

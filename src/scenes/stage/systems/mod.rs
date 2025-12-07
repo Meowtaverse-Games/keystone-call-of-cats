@@ -16,7 +16,7 @@ use crate::{
     MainCamera,
     resources::{
         asset_store::AssetStore,
-        chunk_grammar_map::{self, PlacedChunkLayout, TileKind, generate_random_layout_from_file},
+        chunk_grammar_map::{self, Map, TileKind, generate_random_layout_from_file},
         design_resolution::{LetterboxOffsets, ScaledViewport},
         file_storage::FileStorageResource,
         stage_catalog::*,
@@ -46,19 +46,19 @@ pub struct StageProgressionState {
 }
 
 impl StageProgressionState {
-    pub fn current_map(&self) -> PlacedChunkLayout {
+    pub fn current_map(&self) -> Map {
         let current_stage = self.current_stage.as_ref().expect("no current stage");
-        let placed_chunks = generate_random_layout_from_file(current_stage.map_path())
+        let map = generate_random_layout_from_file(current_stage.map_path())
             .expect("failed to generate layout from config");
 
-        for chunk in &placed_chunks {
+        for chunk in &map {
             println!("- {}", chunk.id);
         }
         println!();
 
-        chunk_grammar_map::print_ascii_map(&placed_chunks);
+        chunk_grammar_map::print_ascii_map(&map);
 
-        placed_chunks
+        map
     }
 
     pub fn current_stage_id(&self) -> StageId {
@@ -126,7 +126,7 @@ fn spawn_stage(
     commands: &mut Commands,
     transform: Transform,
     map_assets: &TiledMapAssets,
-    placed_chunks: &PlacedChunkLayout,
+    placed_chunks: &Map,
     viewport: &ScaledViewport,
     asset_store: &AssetStore,
     asset_server: &AssetServer,
@@ -159,7 +159,7 @@ fn populate_stage_contents(
     commands: &mut Commands,
     stage_root: Entity,
     tiled_map_assets: &TiledMapAssets,
-    placed_chunks: &PlacedChunkLayout,
+    placed_chunks: &Map,
     viewport: &ScaledViewport,
     asset_store: &AssetStore,
     asset_server: &AssetServer,
