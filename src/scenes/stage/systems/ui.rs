@@ -649,12 +649,12 @@ pub fn tick_script_program(
         return;
     };
 
-    if let Ok(stone_state) = stone_states.get(stone_entity) {
-        if stone_state.is_busy() {
-            // Wait until the stone finishes its current action to avoid
-            // queueing stale commands based on old touch state.
-            return;
-        }
+    if let Ok(stone_state) = stone_states.get(stone_entity)
+        && stone_state.is_busy()
+    {
+        // Wait until the stone finishes its current action to avoid
+        // queueing stale commands based on old touch state.
+        return;
     }
 
     // Optimization: check player touch first.

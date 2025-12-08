@@ -410,26 +410,26 @@ pub fn carry_riders_with_stone(
                 let max_toi = delta.length();
                 let mut correction = Vec2::ZERO;
 
-                if max_toi > f32::EPSILON {
-                    if let Some(hit) = spatial_query.cast_shape(
+                if max_toi > f32::EPSILON
+                    && let Some(hit) = spatial_query.cast_shape(
                         &shape,
                         origin,
                         0.0,
                         Dir2::new(direction).unwrap_or(Dir2::X),
                         &ShapeCastConfig::from_max_distance(max_toi),
                         &query_filter,
-                    ) {
-                        // If we hit something, limit the movement to the impact point
-                        let allowed_dist = (hit.distance - 0.01).max(0.0);
-                        let allowed_vec = direction * allowed_dist;
+                    )
+                {
+                    // If we hit something, limit the movement to the impact point
+                    let allowed_dist = (hit.distance - 0.01).max(0.0);
+                    let allowed_vec = direction * allowed_dist;
 
-                        // Calculate correction: How much we STOPPED the player from moving.
-                        // We want to apply this negative move to the stone.
-                        // correction = allowed_vec - delta
-                        correction = allowed_vec - delta;
+                    // Calculate correction: How much we STOPPED the player from moving.
+                    // We want to apply this negative move to the stone.
+                    // correction = allowed_vec - delta
+                    correction = allowed_vec - delta;
 
-                        delta = allowed_vec;
-                    }
+                    delta = allowed_vec;
                 }
 
                 p_tf.translation.x += delta.x;
