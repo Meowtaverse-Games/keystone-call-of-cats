@@ -151,10 +151,11 @@ pub fn setup(
     let mut state = StageSelectState::new(entries.len(), CARDS_PER_PAGE);
 
     // Restore last played page
-    if let Some(last_id) = progress.last_played_stage_id {
-        if let Some(index) = catalog.iter().position(|m| m.id == last_id) {
-            state.current_page = index / CARDS_PER_PAGE;
-        }
+    if let Some(index) = progress
+        .last_played_stage_id
+        .and_then(|last_id| catalog.iter().position(|m| m.id == last_id))
+    {
+        state.current_page = index / CARDS_PER_PAGE;
     }
 
     let current_page_number = state.current_page + 1;
@@ -259,6 +260,7 @@ pub fn handle_options_button(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn handle_play_buttons(
     mut commands: Commands,
     audio: Res<AudioHandles>,
