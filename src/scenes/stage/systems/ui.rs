@@ -661,12 +661,8 @@ pub fn tick_script_program(
     // User requested "only move when touching".
     let player_touched = is_player_touching_stone(&players, stone_entity);
 
-    if !player_touched {
-        // If not touching, we pause script execution effectively for this frame
-        // to avoid "double move" (queueing commands while player is stepping off)
-        // and reduce empty state creation overhead.
-        return;
-    }
+    // Reverted optimization: The strict check prevented non-touch scripts from running.
+    // Instead we will handle "double move" via a cooldown in stone.rs.
 
     let mut state = ScriptState::default();
     state.insert(

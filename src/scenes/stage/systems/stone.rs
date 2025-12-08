@@ -1,4 +1,4 @@
-use std::collections::VecDeque;
+use std::{collections::VecDeque, time::Duration};
 
 use avian2d::prelude::*;
 use bevy::prelude::*;
@@ -20,15 +20,26 @@ pub struct StoneAppendCommandMessage {
     pub command: ScriptCommand,
 }
 
-#[derive(Component, Default)]
+#[derive(Component)]
 pub(crate) struct StoneCommandState {
     queue: VecDeque<ScriptCommand>,
     current: Option<StoneAction>,
+    cooldown: Timer,
+}
+
+impl Default for StoneCommandState {
+    fn default() -> Self {
+        Self {
+            queue: VecDeque::new(),
+            current: None,
+            cooldown: Timer::from_seconds(0.0, TimerMode::Once),
+        }
+    }
 }
 
 impl StoneCommandState {
     pub(crate) fn is_busy(&self) -> bool {
-        self.current.is_some() || !self.queue.is_empty()
+        self.current.is_some() || !self.queue.is_empty() || !self.cooldown.is_finished()
     }
 }
 
@@ -61,6 +72,7 @@ const STONE_MOVE_DURATION: f32 = 1.3;
 const STONE_COLLISION_GRACE_DISTANCE: f32 = 1.0;
 const CARRY_VERTICAL_EPS: f32 = 3.0; // 乗っているとみなす高さ誤差
 const CARRY_X_MARGIN: f32 = 2.0; // 横方向の許容マージン
+const STONE_ACTION_COOLDOWN: f32 = 0.2;
 
 pub fn spawn_stone(
     commands: &mut Commands,
@@ -123,8 +135,14 @@ pub fn handle_stone_messages(
     for msg in reader.read() {
         info!("Stone received command message");
         state.queue.clear();
-        state.queue.extend(msg.commands.iter().cloned());
         state.current = None;
+        state.cooldown.reset(); // Stop cooldown immediately if we force a new program?
+        // Actually, let's keep it ticking normally, or finish it?
+        // If we force new commands, we probably want to run them.
+        state.cooldown.set_duration(Duration::ZERO);
+        state.cooldown.set_elapsed(Duration::ZERO);
+
+        state.queue.extend(msg.commands.iter().cloned());
     }
 }
 
@@ -171,10 +189,15 @@ pub fn update_stone_behavior(
         audio_state.stop_push_loop(&mut commands);
         return;
     };
+
+    // Tick cooldown
+    state.cooldown.tick(time.delta());
+
     // 前フレーム位置（ローカル空間）
     let prev = motion.last;
 
     if state.current.is_none()
+        && state.cooldown.is_finished() // Only pop if cooldown is done
         && let Some(command) = state.queue.pop_front()
     {
         info!("Stone received command: {:?}", command);
@@ -232,6 +255,8 @@ pub fn update_stone_behavior(
 
     if stop_current {
         state.current = None;
+        // Start cooldown
+        state.cooldown = Timer::from_seconds(STONE_ACTION_COOLDOWN, TimerMode::Once);
     }
 
     let is_stone_moving = matches!(state.current, Some(StoneAction::Move(_)));
