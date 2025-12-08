@@ -7,6 +7,7 @@ use crate::{
     resources::{
         asset_store::AssetStore,
         design_resolution::{LetterboxOffsets, LetterboxVisibility},
+        file_storage::FileStorageResource,
         game_state::GameState,
         settings::GameSettings,
         stage_catalog::*,
@@ -147,7 +148,15 @@ pub fn setup(
         .map(|m| StageEntry::from(&progress, m))
         .collect();
     let summary = StageSummary::from_entries(&entries);
-    let state = StageSelectState::new(entries.len(), CARDS_PER_PAGE);
+    let mut state = StageSelectState::new(entries.len(), CARDS_PER_PAGE);
+
+    // Restore last played page
+    if let Some(last_id) = progress.last_played_stage_id {
+        if let Some(index) = catalog.iter().position(|m| m.id == last_id) {
+            state.current_page = index / CARDS_PER_PAGE;
+        }
+    }
+
     let current_page_number = state.current_page + 1;
     let total_pages = state.total_pages();
     let page_text = format!("{}/{}", current_page_number, total_pages);
@@ -259,6 +268,8 @@ pub fn handle_play_buttons(
     catalog: Res<StageCatalog>,
     mut next_state: ResMut<NextState<GameState>>,
     options: Res<OptionsOverlayState>,
+    mut stage_progress: ResMut<StageProgress>,
+    file_storage: Res<FileStorageResource>,
 ) {
     if options.open {
         return;
@@ -271,6 +282,7 @@ pub fn handle_play_buttons(
         if *interaction == Interaction::Pressed {
             play_ui_click(&mut commands, &audio, &settings);
             if let Some(stage) = catalog.stage_by_index(button.stage_index) {
+                stage_progress.set_last_played(stage.id, &**file_storage);
                 progression.select_stage(stage);
                 next_state.set(GameState::Stage);
             } else {

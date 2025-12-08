@@ -13,6 +13,8 @@ pub const STAGE_PROGRESS_FILE: &str = "stage_progress.ron";
 #[derive(Resource, Debug, Clone, Serialize, Deserialize, Default)]
 pub struct StageProgress {
     unlocked_until: StageId,
+    #[serde(default)]
+    pub last_played_stage_id: Option<StageId>,
 }
 
 impl StageProgress {
@@ -32,6 +34,15 @@ impl StageProgress {
             true
         } else {
             false
+        }
+    }
+
+    pub fn set_last_played(&mut self, stage_id: StageId, storage: &dyn FileStorage) {
+        if self.last_played_stage_id != Some(stage_id) {
+            self.last_played_stage_id = Some(stage_id);
+            if let Err(e) = self.persist(storage) {
+                warn!("Failed to persist last played stage: {}", e);
+            }
         }
     }
 
