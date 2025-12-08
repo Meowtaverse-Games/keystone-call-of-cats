@@ -487,6 +487,9 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                 );
 
                 if text_edit_response.changed() {
+                    // Prevent non-ASCII input (e.g. Japanese) as requested.
+                    editor.buffer.retain(|c| c.is_ascii());
+
                     info!("Script editor buffer changed");
                     editor.controls_enabled = false;
                     editor.stage_cleared = false;
