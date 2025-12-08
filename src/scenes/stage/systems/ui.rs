@@ -21,6 +21,7 @@ use crate::{
         settings::GameSettings,
         stage_catalog::StageId,
         stage_scripts::StageScripts,
+        stone_type::{StoneCapabilities, StoneType},
     },
     scenes::{
         assets::FontKey,
@@ -241,6 +242,9 @@ pub struct StageUIParams<'w, 's> {
     stage_scripts: ResMut<'w, StageScripts>,
     progression: Res<'w, StageProgressionState>,
     tutorial_overlays: Query<'w, 's, Entity, With<StageTutorialOverlay>>,
+    stone_capabilities: Res<'w, StoneCapabilities>,
+    stone_query:
+        Query<'w, 's, (Entity, &'static GlobalTransform, &'static StoneType), With<StoneRune>>,
 }
 
 pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
@@ -258,6 +262,8 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
         mut stage_scripts,
         progression,
         tutorial_overlays,
+        stone_capabilities,
+        stone_query,
     } = params;
     let Ok(ctx) = contexts.ctx_mut() else {
         return;
@@ -388,7 +394,20 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                             } else {
                                 hide_tutorial_overlays(&mut commands, &tutorial_overlays);
                                 let language = settings.script_language;
-                                match script_executor.compile_step(language, &editor.buffer) {
+                                let stone_type = stone_query
+                                    .iter()
+                                    .next()
+                                    .map(|(_, _, type_)| *type_)
+                                    .unwrap_or(StoneType::Type1); // Correctly query StoneType
+
+                                let allowed_commands =
+                                    stone_capabilities.get_capabilities(stone_type);
+
+                                match script_executor.compile_step(
+                                    language,
+                                    &editor.buffer,
+                                    allowed_commands,
+                                ) {
                                     Ok(program) => {
                                         // Clear any existing queue on the Stone
                                         stone_writer
@@ -636,7 +655,7 @@ pub fn tick_script_program(
     mut editor: ResMut<ScriptEditorState>,
     mut append_writer: MessageWriter<StoneAppendCommandMessage>,
     players: Query<&CollidingEntities, With<Player>>,
-    stones: Query<Entity, With<StoneRune>>,
+    stone_query: Query<(Entity, &GlobalTransform, &StoneType), With<StoneRune>>,
     stone_states: Query<&StoneCommandState, With<StoneRune>>,
 ) {
     if !editor.controls_enabled {
@@ -648,7 +667,7 @@ pub fn tick_script_program(
         return;
     };
 
-    let Some(stone_entity) = stones.iter().next() else {
+    let Some((stone_entity, _, _)) = stone_query.iter().next() else {
         return;
     };
 

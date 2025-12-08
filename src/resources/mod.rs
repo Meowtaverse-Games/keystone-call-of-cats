@@ -10,5 +10,6 @@ pub mod stage_catalog;
 pub mod stage_progress;
 pub mod stage_scripts;
 pub mod steam_client;
+pub mod stone_type;
 pub mod tiled;
 pub mod visibility;

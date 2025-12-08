@@ -98,6 +98,7 @@ fn main() {
         .add_plugins(EguiPlugin::default())
         .add_plugins(ScenesPlugin)
         .insert_resource(launch_profile)
+        .init_resource::<resources::stone_type::StoneCapabilities>()
         .init_state::<GameState>()
         .run();
 }

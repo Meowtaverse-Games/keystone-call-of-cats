@@ -65,7 +65,6 @@ const STONE_ATLAS_PATH: &str = "images/spr_allrunes_spritesheet_xx.png";
 const STONE_TILE_SIZE: UVec2 = UVec2::new(64, 64);
 const STONE_SHEET_COLUMNS: u32 = 10;
 const STONE_SHEET_ROWS: u32 = 7;
-const STONE_TILE_COORD: UVec2 = UVec2::new(2, 4);
 const STONE_SCALE: f32 = 1.6;
 const STONE_STEP_DISTANCE: f32 = 64.0;
 const STONE_MOVE_DURATION: f32 = 1.3;
@@ -74,12 +73,15 @@ const CARRY_VERTICAL_EPS: f32 = 3.0; // 乗っているとみなす高さ誤差
 const CARRY_X_MARGIN: f32 = 2.0; // 横方向の許容マージン
 const STONE_ACTION_COOLDOWN: f32 = 0.2;
 
+use crate::resources::stone_type::StoneType;
+
 pub fn spawn_stone(
     commands: &mut Commands,
     stage_root: Entity,
     asset_server: &AssetServer,
     layouts: &mut Assets<TextureAtlasLayout>,
     (object_x, object_y, _scale): (f32, f32, f32),
+    stone_type: StoneType,
 ) {
     let texture = asset_server.load(STONE_ATLAS_PATH);
     let layout = layouts.add(TextureAtlasLayout::from_grid(
@@ -90,7 +92,16 @@ pub fn spawn_stone(
         None,
     ));
 
-    let tile_index = atlas_index(STONE_TILE_COORD);
+    let coord = match stone_type {
+        StoneType::Type1 => UVec2::new(2, 4),
+        StoneType::Type2 => UVec2::new(4, 4),
+        StoneType::Type3 => UVec2::new(2, 6),
+        StoneType::Type4 => UVec2::new(2, 3),
+    };
+
+    info!("stone_type: {:?}", stone_type);
+
+    let tile_index = atlas_index(coord);
     let atlas = TextureAtlas {
         layout: layout.clone(),
         index: tile_index,
@@ -105,6 +116,7 @@ pub fn spawn_stone(
                 translation: Vec3::new(object_x, object_y, 1.0),
                 scale: STONE_SCALE,
             },
+            stone_type,
             StoneCommandState::default(),
             StoneMotion {
                 last: Vec3::new(object_x, object_y, 1.0),

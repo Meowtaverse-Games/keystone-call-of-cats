@@ -42,9 +42,10 @@ impl ScriptExecutor {
         &self,
         language: Language,
         source: &str,
+        allowed_commands: Option<&std::collections::HashSet<String>>,
     ) -> Result<Vec<ScriptCommand>, ScriptExecutionError> {
         match language {
-            Language::Rhai => self.runner.run(source),
+            Language::Rhai => self.runner.run(source, allowed_commands),
             Language::Keystone => Err(ScriptExecutionError::UnsupportedLanguage(
                 "Keystone scripting is not yet implemented".to_string(),
             )),
@@ -55,9 +56,10 @@ impl ScriptExecutor {
         &self,
         language: Language,
         source: &str,
+        allowed_commands: Option<&std::collections::HashSet<String>>,
     ) -> Result<Box<dyn ScriptProgram>, ScriptExecutionError> {
         match language {
-            Language::Rhai => self.stepper.compile_step(source),
+            Language::Rhai => self.stepper.compile_step(source, allowed_commands),
             Language::Keystone => Err(ScriptExecutionError::UnsupportedLanguage(
                 "Keystone scripting is not yet implemented".to_string(),
             )),

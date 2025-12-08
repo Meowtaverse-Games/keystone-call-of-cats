@@ -4,6 +4,7 @@ use crate::util::script_types::{
 };
 use rhai::{Dynamic, Engine, EvalAltResult, FLOAT as RhaiFloat, INT as RhaiInt, Position};
 use std::{
+    collections::HashSet,
     sync::{
         Arc, Mutex,
         atomic::{AtomicBool, Ordering},
@@ -21,13 +22,17 @@ impl RhaiScriptExecutor {
         Self
     }
 
-    fn parse_commands(&self, source: &str) -> Result<Vec<ScriptCommand>, ScriptExecutionError> {
+    fn parse_commands(
+        &self,
+        source: &str,
+        allowed_commands: Option<&HashSet<String>>,
+    ) -> Result<Vec<ScriptCommand>, ScriptExecutionError> {
         let script = source.trim();
 
         let emitter = CommandEmitter::recorder(MAX_COMMANDS);
         let state = SharedScriptState::default();
         let mut engine = base_engine(Some(MAX_OPS as u64));
-        register_commands(&mut engine, emitter.clone(), state);
+        register_commands(&mut engine, emitter.clone(), state, allowed_commands);
 
         let _ = engine
             .eval::<Dynamic>(script)
@@ -39,12 +44,16 @@ impl RhaiScriptExecutor {
             .ok_or_else(|| ScriptExecutionError::Engine("Failed to collect commands".to_string()))
     }
 
-    fn preflight(&self, source: &str) -> Result<(), ScriptExecutionError> {
+    fn preflight(
+        &self,
+        source: &str,
+        allowed_commands: Option<&HashSet<String>>,
+    ) -> Result<(), ScriptExecutionError> {
         let script = source.trim();
         let emitter = CommandEmitter::recorder(PREFLIGHT_MAX_COMMANDS);
         let state = SharedScriptState::default();
         let mut engine = base_engine(Some(PREFLIGHT_MAX_OPS as u64));
-        register_commands(&mut engine, emitter.clone(), state);
+        register_commands(&mut engine, emitter.clone(), state, allowed_commands);
 
         match engine.eval::<Dynamic>(script) {
             Ok(_) => Ok(()),
@@ -68,16 +77,25 @@ impl Default for RhaiScriptExecutor {
 }
 
 impl ScriptRunner for RhaiScriptExecutor {
-    fn run(&self, source: &str) -> Result<Vec<ScriptCommand>, ScriptExecutionError> {
-        self.parse_commands(source)
+    fn run(
+        &self,
+        source: &str,
+        allowed_commands: Option<&HashSet<String>>,
+    ) -> Result<Vec<ScriptCommand>, ScriptExecutionError> {
+        self.parse_commands(source, allowed_commands)
     }
 }
 
 impl ScriptStepper for RhaiScriptExecutor {
-    fn compile_step(&self, source: &str) -> Result<Box<dyn ScriptProgram>, ScriptExecutionError> {
-        self.preflight(source)?;
+    fn compile_step(
+        &self,
+        source: &str,
+        allowed_commands: Option<&HashSet<String>>,
+    ) -> Result<Box<dyn ScriptProgram>, ScriptExecutionError> {
+        self.preflight(source, allowed_commands)?;
         Ok(Box::new(RhaiScriptProgram::spawn(
             source.trim().to_string(),
+            allowed_commands.cloned(),
         )?))
     }
 }
@@ -285,54 +303,127 @@ fn streaming_engine(stop_flag: &Arc<AtomicBool>) -> Engine {
     engine
 }
 
-fn register_commands(engine: &mut Engine, emitter: CommandEmitter, state: SharedScriptState) {
+fn register_commands(
+    engine: &mut Engine,
+    emitter: CommandEmitter,
+    state: SharedScriptState,
+    allowed_commands: Option<&HashSet<String>>,
+) {
     engine.register_type_with_name::<CommandValue>("Command");
 
     {
         let emitter = emitter.clone();
-        engine.register_fn("move_left", move || {
-            record_move(&emitter, MoveDirection::Left)
-        });
+        if allowed_commands.map_or(true, |s| s.contains("move")) {
+            engine.register_fn("move_left", move || {
+                record_move(&emitter, MoveDirection::Left)
+            });
+        } else {
+            engine.register_fn(
+                "move_left",
+                || -> Result<CommandValue, Box<EvalAltResult>> { Ok(CommandValue()) },
+            );
+        }
     }
     {
         let emitter = emitter.clone();
-        engine.register_fn("move_right", move || {
-            record_move(&emitter, MoveDirection::Right)
-        });
+        if allowed_commands.map_or(true, |s| s.contains("move")) {
+            engine.register_fn("move_right", move || {
+                record_move(&emitter, MoveDirection::Right)
+            });
+        } else {
+            engine.register_fn(
+                "move_right",
+                || -> Result<CommandValue, Box<EvalAltResult>> { Ok(CommandValue()) },
+            );
+        }
     }
     {
         let emitter = emitter.clone();
-        engine.register_fn("move_top", move || {
-            record_move(&emitter, MoveDirection::Top)
-        });
+        if allowed_commands.map_or(true, |s| s.contains("move")) {
+            engine.register_fn("move_top", move || {
+                record_move(&emitter, MoveDirection::Top)
+            });
+        } else {
+            engine.register_fn(
+                "move_top",
+                || -> Result<CommandValue, Box<EvalAltResult>> { Ok(CommandValue()) },
+            );
+        }
     }
     {
         let emitter = emitter.clone();
-        engine.register_fn("move_down", move || {
-            record_move(&emitter, MoveDirection::Down)
-        });
+        if allowed_commands.map_or(true, |s| s.contains("move")) {
+            engine.register_fn("move_down", move || {
+                record_move(&emitter, MoveDirection::Down)
+            });
+        } else {
+            engine.register_fn(
+                "move_down",
+                || -> Result<CommandValue, Box<EvalAltResult>> { Ok(CommandValue()) },
+            );
+        }
     }
     {
         let emitter = emitter.clone();
-        engine.register_fn("move", move |direction: &str| {
-            move_named(direction, &emitter)
-        });
+        if allowed_commands.map_or(true, |s| s.contains("move")) {
+            engine.register_fn("move", move |direction: &str| {
+                move_named(direction, &emitter)
+            });
+        } else {
+            engine.register_fn(
+                "move",
+                move |_: &str| -> Result<CommandValue, Box<EvalAltResult>> { Ok(CommandValue()) },
+            );
+        }
     }
     {
         let emitter = emitter.clone();
-        engine.register_fn("sleep", move |duration: RhaiFloat| {
-            sleep_for(duration, &emitter)
-        });
+        if allowed_commands.map_or(true, |s| s.contains("sleep")) {
+            engine.register_fn("sleep", move |duration: RhaiFloat| {
+                sleep_for(duration, &emitter)
+            });
+        } else {
+            engine.register_fn(
+                "sleep",
+                move |_: RhaiFloat| -> Result<CommandValue, Box<EvalAltResult>> {
+                    Ok(CommandValue())
+                },
+            );
+        }
     }
     {
         let emitter = emitter.clone();
-        engine.register_fn("sleep", move |duration: RhaiInt| {
-            sleep_for(duration as RhaiFloat, &emitter)
-        });
+        if allowed_commands.map_or(true, |s| s.contains("sleep")) {
+            engine.register_fn("sleep", move |duration: RhaiInt| {
+                sleep_for(duration as RhaiFloat, &emitter)
+            });
+        } else {
+            engine.register_fn(
+                "sleep",
+                move |_: RhaiInt| -> Result<CommandValue, Box<EvalAltResult>> {
+                    Ok(CommandValue())
+                },
+            );
+        }
     }
     {
         let state = state.clone();
-        engine.register_fn("touched", move || state.touched());
+        if allowed_commands.map_or(true, |s| s.contains("touched")) {
+            engine.register_fn("touched", move || state.touched());
+        } else {
+            // For touched, which returns bool, maybe we should return false?
+            // Or allow it but it doesn't do anything?
+            // Actually, returning error in a boolean context might panic the script if not handled.
+            // But valid commands generally assume valid capabilities.
+            // If I return false, the script might behave weirdly.
+            // If I return error, it stops.
+            // Let's return error to be consistent. Rhai allows functions to return Result.
+            // But wait, `touched` returns `bool`.
+            // I need to change signature to return Result<bool, ...> or just fail.
+            // If the function signature in Rhai expects bool, returning Result might need dynamic?
+            // No, Rhai handles Result.
+            engine.register_fn("touched", move || -> bool { false });
+        }
     }
 }
 
@@ -419,7 +510,10 @@ struct RhaiScriptProgram {
 }
 
 impl RhaiScriptProgram {
-    fn spawn(source: String) -> Result<Self, ScriptExecutionError> {
+    fn spawn(
+        source: String,
+        allowed_commands: Option<HashSet<String>>,
+    ) -> Result<Self, ScriptExecutionError> {
         let (sender, receiver) = mpsc::sync_channel::<ScriptCommand>(STREAM_CHANNEL_SIZE);
         let stop_flag = Arc::new(AtomicBool::new(false));
         let (resume_tx, resume_rx) = mpsc::sync_channel::<()>(1);
@@ -428,7 +522,12 @@ impl RhaiScriptProgram {
 
         let mut engine = streaming_engine(&stop_flag);
         let emitter = CommandEmitter::stream(sender, stop_flag.clone(), resume_rx.clone());
-        register_commands(&mut engine, emitter, shared_state.clone());
+        register_commands(
+            &mut engine,
+            emitter,
+            shared_state.clone(),
+            allowed_commands.as_ref(),
+        );
 
         let ast = engine
             .compile(source.as_str())
@@ -510,7 +609,7 @@ mod tests {
     fn touched_reflects_latest_state_between_steps() {
         let executor = RhaiScriptExecutor::new();
         let mut program = executor
-            .compile_step(r#"loop { if touched() { move_down(); } }"#)
+            .compile_step(r#"loop { if touched() { move_down(); } }"#, None)
             .expect("script should compile");
 
         let mut touched_state = ScriptState::default();

@@ -126,7 +126,7 @@ fn spawn_stage(
     commands: &mut Commands,
     transform: Transform,
     map_assets: &TiledMapAssets,
-    placed_chunks: &Map,
+    map: &Map,
     viewport: &ScaledViewport,
     asset_store: &AssetStore,
     asset_server: &AssetServer,
@@ -145,7 +145,7 @@ fn spawn_stage(
         commands,
         stage_root,
         map_assets,
-        placed_chunks,
+        map,
         viewport,
         asset_store,
         asset_server,
@@ -159,26 +159,20 @@ fn populate_stage_contents(
     commands: &mut Commands,
     stage_root: Entity,
     tiled_map_assets: &TiledMapAssets,
-    placed_chunks: &Map,
+    map: &Map,
     viewport: &ScaledViewport,
     asset_store: &AssetStore,
     asset_server: &AssetServer,
     atlas_layouts: &mut Assets<TextureAtlasLayout>,
 ) {
-    tiles::spawn_tiles(
-        commands,
-        stage_root,
-        tiled_map_assets,
-        placed_chunks,
-        viewport,
-    );
+    tiles::spawn_tiles(commands, stage_root, tiled_map_assets, map, viewport);
 
     let tile_size = Vec2::new(16.0, 16.0);
     let viewport_size = viewport.size;
     let (real_tile_size, scale) =
         tiled_map_assets.scaled_tile_size_and_scale(viewport_size, tile_size);
 
-    let player_position = placed_chunks.tile_position(TileKind::PlayerSpawn);
+    let player_position = map.tile_position(TileKind::PlayerSpawn);
     info!("Spawning player at tile position {:?}", player_position);
     player::spawn_player(
         commands,
@@ -188,17 +182,17 @@ fn populate_stage_contents(
         viewport.scale,
     );
 
-    let stone_position = placed_chunks.tile_position(TileKind::Stone);
+    let stone_position = map.tile_position(TileKind::Stone);
     stone::spawn_stone(
         commands,
         stage_root,
         asset_server,
         atlas_layouts,
         tile_position_to_world(stone_position, real_tile_size, viewport_size, scale, 0.0),
+        map.stone_type,
     );
 
-    placed_chunks
-        .tile_positions(TileKind::Goal)
+    map.tile_positions(TileKind::Goal)
         .iter()
         .for_each(|&goal_position| {
             let (x, y) = goal_position;

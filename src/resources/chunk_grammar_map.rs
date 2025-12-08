@@ -7,6 +7,8 @@ use std::path::Path;
 
 use serde::Deserialize;
 
+use crate::resources::stone_type::StoneType;
+
 pub const MAP_SIZE: (isize, isize) = (30, 20);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
@@ -151,7 +153,8 @@ pub struct Adjustments {
 #[derive(Debug, Deserialize)]
 pub struct ChunkGrammarConfig {
     map_size: (isize, isize),
-    pub stone_type: usize,
+    #[serde(default)]
+    pub stone_type: StoneType,
     pub adjustments: Option<Adjustments>,
     start_chunks: Vec<ChunkTemplate>,
     middle_chunks: Vec<ChunkTemplate>,
@@ -212,7 +215,6 @@ fn generate_random_layout(config: &ChunkGrammarConfig) -> PlacedChunkLayout {
     let goals = config.goals();
     try_build_random_path(
         config.map_size,
-        config.stone_type,
         config.adjustments.clone(),
         &starts,
         &middles,
@@ -359,7 +361,7 @@ pub struct Map {
     pub placed_chunks: Vec<PlacedChunk>,
     pub adjustment: Option<Adjustments>,
     pub map_size: (isize, isize),
-    pub stone_type: usize,
+    pub stone_type: StoneType,
     pub boundary_margin: (isize, isize),
     margin_tiles: Vec<Tile>,
 }
@@ -386,7 +388,7 @@ impl Map {
     #[allow(dead_code)]
     fn new(
         mut placed_chunks: Vec<PlacedChunk>,
-        stone_type: usize,
+        stone_type: StoneType,
         adjustment: Option<Adjustments>,
         boundary_margin: (isize, isize),
     ) -> Self {
@@ -498,7 +500,6 @@ fn build_margin_tiles(margin: (isize, isize)) -> Vec<Tile> {
 
 fn try_build_random_path(
     map_size: (isize, isize),
-    _stone_type: usize,
     adjustment: Option<Adjustments>,
     start_chunks: &[InnerChunkTemplate],
     mid_chunks: &[InnerChunkTemplate],

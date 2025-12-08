@@ -1,4 +1,7 @@
-use std::{collections::HashMap, fmt};
+use std::{
+    collections::{HashMap, HashSet},
+    fmt,
+};
 
 /// Represents a command emitted by a script.
 #[derive(Debug, Clone)]
@@ -75,7 +78,11 @@ impl fmt::Display for ScriptExecutionError {
 /// Abstraction for executing player-authored scripts.
 #[allow(dead_code)]
 pub trait ScriptRunner: Send + Sync + 'static {
-    fn run(&self, source: &str) -> Result<Vec<ScriptCommand>, ScriptExecutionError>;
+    fn run(
+        &self,
+        source: &str,
+        allowed_commands: Option<&HashSet<String>>,
+    ) -> Result<Vec<ScriptCommand>, ScriptExecutionError>;
 }
 
 /// Iterator-like interface for step-by-step command generation.
@@ -87,7 +94,11 @@ pub trait ScriptProgram: Send + Sync + 'static {
 
 /// Compiles a script into a step-executable program.
 pub trait ScriptStepper: Send + Sync + 'static {
-    fn compile_step(&self, source: &str) -> Result<Box<dyn ScriptProgram>, ScriptExecutionError>;
+    fn compile_step(
+        &self,
+        source: &str,
+        allowed_commands: Option<&HashSet<String>>,
+    ) -> Result<Box<dyn ScriptProgram>, ScriptExecutionError>;
 }
 
 #[derive(Debug, Clone)]
