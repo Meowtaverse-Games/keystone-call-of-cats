@@ -306,22 +306,30 @@ pub fn reset_stone_position(
 #[allow(clippy::type_complexity)]
 pub fn carry_riders_with_stone(
     mut param_set: ParamSet<(
-        Query<&mut Transform, With<Player>>,
-        Query<(&Transform, &StoneMotion), With<StoneRune>>,
+        Query<(Entity, &mut Transform, &CollisionLayers, &ColliderAabb), With<Player>>,
+        Query<
+            (
+                Entity,
+                &mut Transform,
+                &mut StoneMotion,
+                &mut LinearVelocity,
+                &mut StoneCommandState,
+            ),
+            With<StoneRune>,
+        >,
     )>,
+    spatial_query: SpatialQuery,
 ) {
-    // 石の見た目サイズ（ローカル空間）から半径を計算
-    let stone_half_w = STONE_TILE_SIZE.x as f32 * 0.5 * STONE_SCALE;
-    let stone_half_h = STONE_TILE_SIZE.y as f32 * 0.5 * STONE_SCALE;
-
-    let moving_stones: Vec<(Vec3, Vec2)> = param_set
+    // Collect moving stones first to avoid borrow conflicts (we need to mutate them later if blocked)
+    // We store the data needed for the check, plus the Entity ID to look it up again for mutation.
+    let moving_stones: Vec<(Entity, Vec3, Vec2)> = param_set
         .p1()
         .iter()
-        .filter_map(|(stone_tf, motion)| {
+        .filter_map(|(entity, stone_tf, motion, _, _)| {
             if motion.delta.length_squared() <= f32::EPSILON {
                 None
             } else {
-                Some((stone_tf.translation, motion.delta))
+                Some((entity, stone_tf.translation, motion.delta))
             }
         })
         .collect();
@@ -330,24 +338,103 @@ pub fn carry_riders_with_stone(
         return;
     }
 
-    for mut p_tf in param_set.p0().iter_mut() {
+    //石の見た目サイズ（ローカル空間）から半径を計算
+    let stone_half_w = STONE_TILE_SIZE.x as f32 * 0.5 * STONE_SCALE;
+    let stone_half_h = STONE_TILE_SIZE.y as f32 * 0.5 * STONE_SCALE;
+
+    // Use a separate list to track corrections relative to stone entities
+    let mut stone_corrections: Vec<(Entity, Vec2)> = Vec::new();
+
+    // Iterate players
+    for (p_entity, mut p_tf, layers, aabb) in param_set.p0().iter_mut() {
         let p = p_tf.translation;
 
-        for (stone_pos, delta) in moving_stones.iter() {
+        for (stone_entity, stone_pos, delta) in moving_stones.iter() {
+            let stone_entity = *stone_entity;
             let stone_pos = *stone_pos;
-            let delta = *delta;
+            let mut delta = *delta;
 
             // X 方向: 石の左右範囲内にいるか（マージン付き）
             let on_x = (p.x - stone_pos.x).abs() <= stone_half_w + CARRY_X_MARGIN;
 
             // Y 方向: プレイヤーの足元が石の天面付近にあるか
-            // プレイヤーの大きさが不明なため、プレイヤー中心が天面より少し上にある近傍判定に
             let top_y = stone_pos.y + stone_half_h;
             let on_y = p.y >= top_y - CARRY_VERTICAL_EPS && p.y <= top_y + stone_half_h;
 
             if on_x && on_y {
+                // Before moving, check if we would hit a wall.
+                let filter_mask = layers.filters;
+                let query_filter =
+                    SpatialQueryFilter::from_mask(filter_mask).with_excluded_entities([p_entity]);
+
+                // Use AABB to determine shape size.
+                // AABB is in world space, but we want the shape dimensions.
+                // ShapeCast shapes are local to the origin we provide? No, Collider IS the shape.
+                // Collider::cuboid takes half-extents.
+                let half_extents = (aabb.max - aabb.min) * 0.5;
+                // We use a slightly smaller shape for the cast to avoid hitting walls we are currently touching (skin width)
+                let shape =
+                    Collider::rectangle(half_extents.x * 2.0 * 0.95, half_extents.y * 2.0 * 0.95);
+
+                // Use the center of the AABB as the cast origin.
+                // Note: p_tf.translation might be different from AABB center if origin is not center.
+                // But AABB is updated by physics.
+                let origin = aabb.center();
+
+                let direction = delta.normalize_or_zero();
+                let max_toi = delta.length();
+                let mut correction = Vec2::ZERO;
+
+                if max_toi > f32::EPSILON {
+                    if let Some(hit) = spatial_query.cast_shape(
+                        &shape,
+                        origin,
+                        0.0,
+                        Dir2::new(direction).unwrap_or(Dir2::X),
+                        &ShapeCastConfig::from_max_distance(max_toi),
+                        &query_filter,
+                    ) {
+                        // If we hit something, limit the movement to the impact point
+                        let allowed_dist = (hit.distance - 0.01).max(0.0);
+                        let allowed_vec = direction * allowed_dist;
+
+                        // Calculate correction: How much we STOPPED the player from moving.
+                        // We want to apply this negative move to the stone.
+                        // correction = allowed_vec - delta
+                        correction = allowed_vec - delta;
+
+                        delta = allowed_vec;
+                    }
+                }
+
                 p_tf.translation.x += delta.x;
                 p_tf.translation.y += delta.y.max(0.0);
+
+                if correction.length_squared() > f32::EPSILON {
+                    stone_corrections.push((stone_entity, correction));
+                }
+            }
+        }
+    }
+
+    // Apply corrections to stones
+    if !stone_corrections.is_empty() {
+        let mut stones_query = param_set.p1();
+        for (entity, correction) in stone_corrections {
+            if let Ok((_, mut transform, mut motion, mut velocity, mut command_state)) =
+                stones_query.get_mut(entity)
+            {
+                // Move stone back
+                transform.translation.x += correction.x;
+                transform.translation.y += correction.y;
+
+                // Update motion.last to reflect the corrected position so next frame's delta is correct
+                motion.last = transform.translation;
+
+                // Stop the stone
+                velocity.0 = Vec2::ZERO;
+                command_state.current = None;
+                command_state.queue.clear();
             }
         }
     }

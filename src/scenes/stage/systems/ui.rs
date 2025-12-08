@@ -657,8 +657,18 @@ pub fn tick_script_program(
         }
     }
 
-    let mut state = ScriptState::default();
+    // Optimization: check player touch first.
+    // User requested "only move when touching".
     let player_touched = is_player_touching_stone(&players, stone_entity);
+
+    if !player_touched {
+        // If not touching, we pause script execution effectively for this frame
+        // to avoid "double move" (queueing commands while player is stepping off)
+        // and reduce empty state creation overhead.
+        return;
+    }
+
+    let mut state = ScriptState::default();
     state.insert(
         PLAYER_TOUCHED_STATE_KEY.to_string(),
         ScriptStateValue::Bool(player_touched),
