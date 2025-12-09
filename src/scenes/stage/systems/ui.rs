@@ -745,6 +745,11 @@ fn command_help_args(language: Language) -> &'static [(&'static str, &'static st
             ("move-left", "move(\"left\");"),
             ("sleep-1", "sleep(1);"),
             ("sleep-2x5", "sleep(2<<dot>>5);"), // https://github.com/kgv/fluent_content/issues/3
+            ("loop-example", "loop {\n    move(\"up\");\n}"),
+            (
+                "loop-example2",
+                "loop {\n    move(\"up\");\n    sleep(1);\n}",
+            ),
         ],
         Language::Keystone => &[
             ("move-up", "move up"),
@@ -752,7 +757,7 @@ fn command_help_args(language: Language) -> &'static [(&'static str, &'static st
             ("move-right", "move right"),
             ("move-left", "move left"),
             ("sleep-1", "sleep 1"),
-            ("sleep-2x5", "sleep 2.5"),
+            ("sleep-2x5", "sleep 2<<dot>>5"),
         ],
     }
 }
