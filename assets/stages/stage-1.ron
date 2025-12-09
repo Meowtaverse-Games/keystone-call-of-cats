@@ -3,7 +3,7 @@
     stone_type: Type1,
     start_chunks: [
         ChunkTemplate(
-            id: "start_flat",
+            id: "start-1",
             map: [
                 "......",
                 "@.....",
@@ -17,7 +17,7 @@
     ],
     middle_chunks: [
         ChunkTemplate(
-            id: "middle_stone",
+            id: "middle-1",
             required_count: 1,
             map: [
                 "I......E",
@@ -25,14 +25,14 @@
             ]
         ),
         ChunkTemplate(
-            id: "middle_0",
+            id: "middle-2",
             map: [
                 "IE",
                 "##",
             ]
         ),
         ChunkTemplate(
-            id: "middle_1",
+            id: "middle-3",
             map: [
                 "I..",
                 "#.E",
@@ -40,7 +40,7 @@
             ]
         ),
         ChunkTemplate(
-            id: "middle_1",
+            id: "middle-4",
             map: [
                 "I...",
                 "#..E",
@@ -48,14 +48,14 @@
             ]
         ),
         ChunkTemplate(
-            id: "middle_2",
+            id: "middle-5",
             map: [
                 "I E",
                 "###",
             ]
         ),
         ChunkTemplate(
-            id: "middle_3",
+            id: "middle-6",
             map: [
                 "......",
                 "I.....E",
@@ -64,7 +64,7 @@
             ]
         ),
         ChunkTemplate(
-            id: "middle_4",
+            id: "middle-7",
             map: [
                 ".....E",
                 "I....#",
@@ -73,7 +73,7 @@
             ]
         ),
         ChunkTemplate(
-            id: "middle_5",
+            id: "middle-8",
             map: [
                 "......",
                 ".....E",
@@ -82,7 +82,7 @@
             ]
         ),
         ChunkTemplate(
-            id: "middle_6",
+            id: "middle-9",
             map: [
                 "I.....",
                 "#....E",
@@ -91,7 +91,7 @@
             ]
         ),
         ChunkTemplate(
-            id: "middle_7",
+            id: "middle-10",
             map: [
                 "I....",
                 "....E",
@@ -100,7 +100,7 @@
             ]
         ),
         ChunkTemplate(
-            id: "middle_8",
+            id: "middle-11",
             map: [
                 "I.....",
                 "#....E",
