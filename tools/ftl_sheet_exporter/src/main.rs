@@ -1,16 +1,20 @@
-use std::{env, fs, path::{Path, PathBuf}};
+use std::{
+    env, fs,
+    path::{Path, PathBuf},
+};
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use clap::Parser;
 use dotenvy::dotenv;
 use reqwest::Client;
 use serde::Deserialize;
-use yup_oauth2::{
-    read_application_secret, InstalledFlowAuthenticator, InstalledFlowReturnMethod,
-};
+use yup_oauth2::{InstalledFlowAuthenticator, InstalledFlowReturnMethod, read_application_secret};
 
 #[derive(Parser, Debug)]
-#[command(name = "ftl_sheet_exporter", about = "Export Google Sheets rows into a Fluent FTL file")]
+#[command(
+    name = "ftl_sheet_exporter",
+    about = "Export Google Sheets rows into a Fluent FTL file"
+)]
 struct Args {
     /// Spreadsheet ID portion of the Google Sheets URL
     #[arg(long, env = "TOOLS_FTL_SHEET_ID")]
@@ -21,7 +25,11 @@ struct Args {
     range: String,
 
     /// Output path for the generated FTL file
-    #[arg(long, env = "OUTPUT_FTL_PATH", default_value = "assets/locales/ja-JP/stages.ftl")]
+    #[arg(
+        long,
+        env = "OUTPUT_FTL_PATH",
+        default_value = "assets/locales/ja-JP/stages.ftl"
+    )]
     output_path: PathBuf,
 
     /// Path to the OAuth clientsecret.json (falls back to GOOGLE_CLIENT_SECRET_JSON or GOOGLE_APPLICATION_CREDENTIALS)
@@ -29,7 +37,11 @@ struct Args {
     client_secret: Option<PathBuf>,
 
     /// Where to cache OAuth tokens (reuse to avoid re-auth prompts)
-    #[arg(long, env = "GOOGLE_OAUTH_TOKEN_STORE", default_value = ".oauth_tokens.json")]
+    #[arg(
+        long,
+        env = "GOOGLE_OAUTH_TOKEN_STORE",
+        default_value = ".oauth_tokens.json"
+    )]
     token_store: PathBuf,
 
     /// Skip the first row when it contains column headers
@@ -62,15 +74,21 @@ async fn main() -> Result<()> {
     let client_secret_path = resolve_client_secret_path(args.client_secret)?;
     let token = fetch_access_token(&client_secret_path, &args.token_store).await?;
 
-    let client = Client::builder().build().context("failed to build HTTP client")?;
+    let client = Client::builder()
+        .build()
+        .context("failed to build HTTP client")?;
 
     let rows = fetch_sheet_rows(&client, &token, &args.spreadsheet_id, &args.range).await?;
     let entries = rows_to_entries(rows);
     let rendered = render_entries(&entries);
 
     if let Some(parent) = args.output_path.parent() {
-        fs::create_dir_all(parent)
-            .with_context(|| format!("failed to create parent directory for {:?}", args.output_path))?;
+        fs::create_dir_all(parent).with_context(|| {
+            format!(
+                "failed to create parent directory for {:?}",
+                args.output_path
+            )
+        })?;
     }
 
     fs::write(&args.output_path, rendered)
@@ -84,7 +102,10 @@ fn resolve_client_secret_path(cli_value: Option<PathBuf>) -> Result<PathBuf> {
         return Ok(path);
     }
 
-    for var in ["GOOGLE_CLIENT_SECRET_JSON", "GOOGLE_APPLICATION_CREDENTIALS"] {
+    for var in [
+        "GOOGLE_CLIENT_SECRET_JSON",
+        "GOOGLE_APPLICATION_CREDENTIALS",
+    ] {
         if let Ok(path) = env::var(var) {
             return Ok(PathBuf::from(path));
         }
@@ -103,7 +124,12 @@ async fn fetch_access_token(client_secret_path: &Path, token_store: &Path) -> Re
 
     let secret = read_application_secret(client_secret_path)
         .await
-        .with_context(|| format!("failed to read client secret file at {:?}", client_secret_path))?;
+        .with_context(|| {
+            format!(
+                "failed to read client secret file at {:?}",
+                client_secret_path
+            )
+        })?;
 
     let auth = InstalledFlowAuthenticator::builder(secret, InstalledFlowReturnMethod::HTTPRedirect)
         .persist_tokens_to_disk(token_store)
@@ -133,7 +159,7 @@ async fn fetch_sheet_rows(
         spreadsheet_id,
         urlencoding::encode(range)
     );
-    
+
     let response = client
         .get(url)
         .bearer_auth(token)
@@ -170,10 +196,7 @@ fn rows_to_entries(data: Vec<Vec<String>>) -> Vec<FluentEntry> {
             .map(|c| c.trim().to_owned())
             .filter(|c| !c.is_empty());
 
-        let stone_type = row
-            .get(4)
-            .map(|c| c.trim().to_owned())
-            .unwrap_or_default();
+        let stone_type = row.get(4).map(|c| c.trim().to_owned()).unwrap_or_default();
 
         let Some(text_row) = row.get(6) else {
             eprintln!("Row {} missing translation column, skipping", index + 1);
@@ -181,7 +204,11 @@ fn rows_to_entries(data: Vec<Vec<String>>) -> Vec<FluentEntry> {
         };
         let text = text_row.replace("\r\n", "\n");
 
-        let description = row.get(7).map(|c| c.to_owned()).unwrap_or("・・・".to_string()).replace("\r\n", "\n");
+        let description = row
+            .get(7)
+            .map(|c| c.to_owned())
+            .unwrap_or("・・・".to_string())
+            .replace("\r\n", "\n");
 
         entries.push(FluentEntry {
             id: id.to_owned(),
@@ -209,11 +236,19 @@ fn render_entries(entries: &[FluentEntry]) -> String {
             }
         }
 
-        out.push_str(&format_entry(format!("stage{}-name", &entry.id).as_str(), &entry.name));
-        out.push_str(&format_entry(format!("stage{}-stone-type", &entry.id).as_str(), &entry.stone_type));
-        out.push_str(&format_entry(format!("stage{}-text", &entry.id).as_str(), &entry.text));
+        out.push_str(&format_entry(
+            format!("stage{}-name", &entry.id).as_str(),
+            &entry.name,
+        ));
+        out.push_str(&format_entry(
+            format!("stage{}-text", &entry.id).as_str(),
+            &entry.text,
+        ));
         out.push_str("\n\n");
-        out.push_str(&format_entry(format!("stage{}-description", &entry.id).as_str(), &entry.description));
+        out.push_str(&format_entry(
+            format!("stage{}-description", &entry.id).as_str(),
+            &entry.description,
+        ));
         out.push_str("\n\n");
     }
 
