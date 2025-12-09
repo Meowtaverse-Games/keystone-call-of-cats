@@ -752,7 +752,7 @@ fn command_help_args(language: Language) -> &'static [(&'static str, &'static st
             ),
             (
                 "touched-example",
-                "loop {\n    if touched() {\n        move(\"up\");\n    }\n}",
+                "loop {\n    if touched() {\n        <<dot>><<dot>><<dot>>\n    }\n}",
             ),
         ],
         Language::Keystone => &[
