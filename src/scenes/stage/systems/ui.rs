@@ -750,6 +750,10 @@ fn command_help_args(language: Language) -> &'static [(&'static str, &'static st
                 "loop-example2",
                 "loop {\n    move(\"up\");\n    sleep(1);\n}",
             ),
+            (
+                "touched-example",
+                "loop {\n    if touched() {\n        move(\"up\");\n    }\n}",
+            ),
         ],
         Language::Keystone => &[
             ("move-up", "move up"),

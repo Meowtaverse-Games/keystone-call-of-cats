@@ -19,23 +19,30 @@ pub struct StoneCapabilities {
 impl Default for StoneCapabilities {
     fn default() -> Self {
         let mut map = HashMap::new();
-        // Definition of capabilities for each type
-        // Type 1: Basic (Move, Sleep)
+
+        // Type 1: Move + Sleep
         let mut type1 = HashSet::new();
         type1.insert("move".to_string());
         type1.insert("sleep".to_string());
         map.insert(StoneType::Type1, type1);
 
-        // Type 2: + Touched ? (Example, to be refined based on specific requirements)
+        // Type 2: Move + Touched
         let mut type2 = HashSet::new();
         type2.insert("move".to_string());
-        type2.insert("sleep".to_string());
         type2.insert("touched".to_string());
         map.insert(StoneType::Type2, type2.clone());
 
-        // Placeholder for Type 3 and 4, defaulting to same as Type 2 for now
-        map.insert(StoneType::Type3, type2.clone());
-        map.insert(StoneType::Type4, type2);
+        // // Type 3: Move + Touched
+        // let mut type3 = HashSet::new();
+        // type3.insert("move".to_string());
+        // type3.insert("touched".to_string());
+        // map.insert(StoneType::Type3, type3.clone());
+
+        // // Type 4: Move + Touched
+        // let mut type4 = HashSet::new();
+        // type4.insert("move".to_string());
+        // type4.insert("touched".to_string());
+        // map.insert(StoneType::Type4, type4);
 
         Self { map }
     }
