@@ -58,7 +58,6 @@ struct ValuesResponse {
 struct FluentEntry {
     id: String,
     stage_type: Option<String>,
-    stone_type: String,
     name: String,
     text: String,
     description: String,
@@ -181,7 +180,7 @@ fn rows_to_entries(data: Vec<Vec<String>>) -> Vec<FluentEntry> {
     let mut entries = Vec::new();
 
     for (index, row) in data.into_iter().enumerate() {
-        let Some(id_raw) = row.get(0) else {
+        let Some(id_raw) = row.first() else {
             eprintln!("Row {} missing key column, skipping", index + 1);
             continue;
         };
@@ -195,8 +194,6 @@ fn rows_to_entries(data: Vec<Vec<String>>) -> Vec<FluentEntry> {
             .get(2)
             .map(|c| c.trim().to_owned())
             .filter(|c| !c.is_empty());
-
-        let stone_type = row.get(4).map(|c| c.trim().to_owned()).unwrap_or_default();
 
         let Some(text_row) = row.get(6) else {
             eprintln!("Row {} missing translation column, skipping", index + 1);
@@ -213,7 +210,7 @@ fn rows_to_entries(data: Vec<Vec<String>>) -> Vec<FluentEntry> {
         entries.push(FluentEntry {
             id: id.to_owned(),
             stage_type,
-            stone_type,
+
             name: row.get(1).cloned().unwrap_or_default(),
             text,
             description,

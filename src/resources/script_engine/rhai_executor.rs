@@ -313,7 +313,7 @@ fn register_commands(
 
     {
         let emitter = emitter.clone();
-        if allowed_commands.map_or(true, |s| s.contains("move")) {
+        if allowed_commands.is_none_or(|s| s.contains("move")) {
             engine.register_fn("move_left", move || {
                 record_move(&emitter, MoveDirection::Left)
             });
@@ -326,7 +326,7 @@ fn register_commands(
     }
     {
         let emitter = emitter.clone();
-        if allowed_commands.map_or(true, |s| s.contains("move")) {
+        if allowed_commands.is_none_or(|s| s.contains("move")) {
             engine.register_fn("move_right", move || {
                 record_move(&emitter, MoveDirection::Right)
             });
@@ -339,7 +339,7 @@ fn register_commands(
     }
     {
         let emitter = emitter.clone();
-        if allowed_commands.map_or(true, |s| s.contains("move")) {
+        if allowed_commands.is_none_or(|s| s.contains("move")) {
             engine.register_fn("move_top", move || {
                 record_move(&emitter, MoveDirection::Top)
             });
@@ -352,7 +352,7 @@ fn register_commands(
     }
     {
         let emitter = emitter.clone();
-        if allowed_commands.map_or(true, |s| s.contains("move")) {
+        if allowed_commands.is_none_or(|s| s.contains("move")) {
             engine.register_fn("move_down", move || {
                 record_move(&emitter, MoveDirection::Down)
             });
@@ -365,7 +365,7 @@ fn register_commands(
     }
     {
         let emitter = emitter.clone();
-        if allowed_commands.map_or(true, |s| s.contains("move")) {
+        if allowed_commands.is_none_or(|s| s.contains("move")) {
             engine.register_fn("move", move |direction: &str| {
                 move_named(direction, &emitter)
             });
@@ -378,7 +378,7 @@ fn register_commands(
     }
     {
         let emitter = emitter.clone();
-        if allowed_commands.map_or(true, |s| s.contains("sleep")) {
+        if allowed_commands.is_none_or(|s| s.contains("sleep")) {
             engine.register_fn("sleep", move |duration: RhaiFloat| {
                 sleep_for(duration, &emitter)
             });
@@ -393,7 +393,7 @@ fn register_commands(
     }
     {
         let emitter = emitter.clone();
-        if allowed_commands.map_or(true, |s| s.contains("sleep")) {
+        if allowed_commands.is_none_or(|s| s.contains("sleep")) {
             engine.register_fn("sleep", move |duration: RhaiInt| {
                 sleep_for(duration as RhaiFloat, &emitter)
             });
@@ -408,7 +408,7 @@ fn register_commands(
     }
     {
         let state = state.clone();
-        if allowed_commands.map_or(true, |s| s.contains("touched")) {
+        if allowed_commands.is_none_or(|s| s.contains("touched")) {
             engine.register_fn("touched", move || state.touched());
         } else {
             // For touched, which returns bool, maybe we should return false?
