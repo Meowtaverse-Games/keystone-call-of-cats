@@ -401,8 +401,8 @@ pub fn carry_riders_with_stone(
             if on_x && on_y {
                 // Before moving, check if we would hit a wall.
                 let filter_mask = layers.filters;
-                let query_filter =
-                    SpatialQueryFilter::from_mask(filter_mask).with_excluded_entities([p_entity]);
+                let query_filter = SpatialQueryFilter::from_mask(filter_mask)
+                    .with_excluded_entities([p_entity, stone_entity]);
 
                 // Use AABB to determine shape size.
                 // AABB is in world space, but we want the shape dimensions.
