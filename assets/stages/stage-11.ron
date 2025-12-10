@@ -5,19 +5,32 @@
         ChunkTemplate(
             id: "start",
             map: [
-                "..........",
-                "@....S...E",
-                "##########",
+                ".........",
+                ".........",
+                "@....S..E",
+                ".........",
             ]
         )
     ],
     middle_chunks: [
         ChunkTemplate(
-            id: "spike_path",
-            required_count: 3,
+            id: "path_up",
+            required_count: 1,
             map: [
-                "I...E",
-                "#####",
+                ".....E",
+                ".....#",
+                "I....#",
+                "......",
+            ]
+        ),
+        ChunkTemplate(
+            id: "path_down",
+            required_count: 1,
+            map: [
+                "......",
+                ".....#",
+                "I....#",
+                ".....E",
             ]
         )
     ],
@@ -26,7 +39,8 @@
             id: "goal",
             map: [
                 "..........",
-                "I...G.....",
+                "I....G....",
+                "..........",
                 "..........",
             ]
         )
