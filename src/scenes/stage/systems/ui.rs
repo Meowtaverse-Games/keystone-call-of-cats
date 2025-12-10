@@ -1,4 +1,4 @@
-use avian2d::prelude::CollidingEntities;
+use avian2d::prelude::*; // Import all avian2d prelude items including SpatialQuery, LayerMask, CollidingEntities
 use bevy::{input::ButtonInput, prelude::*};
 use bevy_ecs::system::SystemParam;
 use bevy_egui::{
@@ -26,10 +26,7 @@ use crate::{
     scenes::{
         assets::FontKey,
         audio::{AudioHandles, play_ui_click},
-        stage::{
-            components::{Player, StoneRune},
-            systems::{StoneAppendCommandMessage, StoneCommandMessage},
-        },
+        stage::{components::*, systems::*},
     },
     util::{
         localization::{script_error_message, tr, tr_or, tr_with_args},
@@ -657,6 +654,8 @@ pub fn tick_script_program(
     players: Query<&CollidingEntities, With<Player>>,
     stone_query: Query<(Entity, &GlobalTransform, &StoneType), With<StoneRune>>,
     stone_states: Query<&StoneCommandState, With<StoneRune>>,
+    tiles: Query<(), With<StageTile>>,
+    spatial: SpatialQuery,
 ) {
     if !editor.controls_enabled {
         editor.active_program = None;
@@ -695,6 +694,37 @@ pub fn tick_script_program(
         RAND_STATE_KEY.to_string(),
         ScriptStateValue::Float(rand::rng().random_range(0.0..1.0)),
     );
+
+    // Calculate surrounding state
+    let directions = [
+        ("up", Vec2::Y),
+        ("down", Vec2::NEG_Y),
+        ("left", Vec2::NEG_X),
+        ("right", Vec2::X),
+    ];
+    let stone_tr = stone_query
+        .iter()
+        .next()
+        .unwrap()
+        .1
+        .translation()
+        .truncate();
+
+    for (name, dir) in directions {
+        let ray_dir = Dir2::new(dir).unwrap_or(Dir2::X);
+        let hit = spatial.cast_ray(
+            stone_tr,
+            ray_dir,
+            64.0, // STONE_STEP_DISTANCE
+            true,
+            &SpatialQueryFilter::from_mask(LayerMask::ALL),
+        );
+        let is_blocked = hit.is_some_and(|h| tiles.get(h.entity).is_ok());
+        state.insert(
+            format!("is-empty-{}", name),
+            ScriptStateValue::Bool(!is_blocked),
+        );
+    }
 
     if let Some(command) = program.next(&state) {
         append_writer.write(StoneAppendCommandMessage {

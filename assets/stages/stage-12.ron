@@ -1,0 +1,35 @@
+(
+    map_size: (28, 18),
+    stone_type: Type3,
+    start_chunks: [
+        ChunkTemplate(
+            id: "tunnel_start",
+            map: [
+                "##########",
+                "@....S...E",
+                "##########",
+            ]
+        )
+    ],
+    middle_chunks: [
+        ChunkTemplate(
+            id: "tunnel",
+            required_count: 3,
+            map: [
+                "##########",
+                "I...E",
+                "##########",
+            ]
+        )
+    ],
+    goal_chunks: [
+        ChunkTemplate(
+            id: "tunnel_end",
+            map: [
+                "##########",
+                "I.......G.",
+                "##########",
+            ]
+        )
+    ]
+)

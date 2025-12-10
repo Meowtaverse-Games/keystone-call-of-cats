@@ -59,6 +59,7 @@ struct MoveCommandProgress {
 enum StoneAction {
     Move(MoveCommandProgress),
     Sleep(Timer),
+    Mine(Timer, Entity),
 }
 
 const STONE_ATLAS_PATH: &str = "images/spr_allrunes_spritesheet_xx.png";
@@ -66,7 +67,7 @@ const STONE_TILE_SIZE: UVec2 = UVec2::new(64, 64);
 const STONE_SHEET_COLUMNS: u32 = 10;
 const STONE_SHEET_ROWS: u32 = 7;
 const STONE_SCALE: f32 = 1.6;
-const STONE_STEP_DISTANCE: f32 = 64.0;
+const STONE_STEP_DISTANCE: f32 = 32.0;
 const STONE_MOVE_DURATION: f32 = 1.3;
 const STONE_COLLISION_GRACE_DISTANCE: f32 = 1.0;
 const CARRY_VERTICAL_EPS: f32 = 3.0; // 乗っているとみなす高さ誤差
@@ -188,15 +189,24 @@ pub fn update_stone_behavior(
             Entity,
             &mut StoneCommandState,
             &mut Transform,
+            &GlobalTransform,
             &mut LinearVelocity,
             &mut StoneMotion,
-            &CollidingEntities,
+            Option<&CollidingEntities>,
         ),
         With<StoneRune>,
     >,
+    spatial: SpatialQuery,
 ) {
-    let Ok((_entity, mut state, mut transform, mut velocity, mut motion, collisions)) =
-        query.single_mut()
+    let Ok((
+        entity,
+        mut state,
+        mut transform,
+        global_transform,
+        mut velocity,
+        mut motion,
+        collisions,
+    )) = query.single_mut()
     else {
         audio_state.stop_push_loop(&mut commands);
         return;
@@ -214,12 +224,16 @@ pub fn update_stone_behavior(
     {
         info!("Stone received command: {:?}", command);
 
-        let started_colliding = collides_with_tile(collisions, &tiles);
+        let started_colliding = if let Some(collisions) = collisions {
+            collides_with_tile(collisions, &tiles)
+        } else {
+            false
+        };
         state.current = Some(match command {
             ScriptCommand::Move(direction) => {
                 let dir = direction_to_vec(direction);
                 let offset = Vec3::new(dir.x, dir.y, 0.0) * STONE_STEP_DISTANCE;
-                let velocity = offset.truncate() / STONE_MOVE_DURATION / 2.0;
+                let velocity = offset.truncate() / STONE_MOVE_DURATION;
                 StoneAction::Move(MoveCommandProgress {
                     velocity,
                     timer: Timer::from_seconds(STONE_MOVE_DURATION, TimerMode::Once),
@@ -229,6 +243,37 @@ pub fn update_stone_behavior(
             }
             ScriptCommand::Sleep(seconds) => {
                 StoneAction::Sleep(Timer::from_seconds(seconds.max(0.0), TimerMode::Once))
+            }
+            ScriptCommand::Mine(direction) => {
+                // Determine target position
+                let dir = direction_to_vec(direction);
+                let origin = global_transform.translation().truncate();
+                let ray_dir = Dir2::new(dir).unwrap_or(Dir2::X);
+                // Cast a ray to find a tile
+                // Distance: half stone size + small margin + tile size?
+                // Or just immediate neighbor.
+                let max_dist = STONE_STEP_DISTANCE * 1.5 * global_transform.scale().x;
+
+                let filter =
+                    SpatialQueryFilter::from_mask(LayerMask::ALL).with_excluded_entities([entity]);
+
+                info!(
+                    "MineRay: global_origin={:?}, dir={:?}, dist={}",
+                    origin, ray_dir, max_dist
+                );
+                let hit = spatial.cast_ray(origin, ray_dir, max_dist, true, &filter);
+
+                info!("hit: {:?}", hit);
+                if let Some(hit) = hit {
+                    if tiles.get(hit.entity).is_ok() {
+                        StoneAction::Mine(Timer::from_seconds(0.5, TimerMode::Once), hit.entity)
+                    } else {
+                        // Hit something else or nothing relevant, just wait a bit
+                        StoneAction::Sleep(Timer::from_seconds(0.2, TimerMode::Once))
+                    }
+                } else {
+                    StoneAction::Sleep(Timer::from_seconds(0.2, TimerMode::Once))
+                }
             }
         });
     }
@@ -242,7 +287,13 @@ pub fn update_stone_behavior(
                 progress.timer.tick(time.delta());
                 progress.moved_distance += progress.velocity.length() * time.delta_secs();
                 velocity.0 = progress.velocity;
-                if collides_with_tile(collisions, &tiles)
+                let is_colliding = if let Some(collisions) = collisions {
+                    collides_with_tile(collisions, &tiles)
+                } else {
+                    false
+                };
+
+                if is_colliding
                     && (!progress.started_colliding
                         || progress.moved_distance > STONE_COLLISION_GRACE_DISTANCE)
                 {
@@ -258,6 +309,14 @@ pub fn update_stone_behavior(
             }
             StoneAction::Sleep(timer) => {
                 if timer.tick(time.delta()).is_finished() {
+                    velocity.0 = Vec2::ZERO;
+                    stop_current = true;
+                }
+            }
+            StoneAction::Mine(timer, entity) => {
+                if timer.tick(time.delta()).is_finished() {
+                    commands.entity(*entity).despawn();
+                    // Play mining sound?
                     velocity.0 = Vec2::ZERO;
                     stop_current = true;
                 }
@@ -355,7 +414,7 @@ pub fn carry_riders_with_stone(
             With<StoneRune>,
         >,
     )>,
-    spatial_query: SpatialQuery,
+    spatial: SpatialQuery,
 ) {
     // Collect moving stones first to avoid borrow conflicts (we need to mutate them later if blocked)
     // We store the data needed for the check, plus the Entity ID to look it up again for mutation.
@@ -423,7 +482,7 @@ pub fn carry_riders_with_stone(
                 let mut correction = Vec2::ZERO;
 
                 if max_toi > f32::EPSILON
-                    && let Some(hit) = spatial_query.cast_shape(
+                    && let Some(hit) = spatial.cast_shape(
                         &shape,
                         origin,
                         0.0,

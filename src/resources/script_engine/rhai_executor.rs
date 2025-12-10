@@ -104,6 +104,7 @@ impl ScriptStepper for RhaiScriptExecutor {
 struct CommandValue();
 
 const INVALID_MOVE_PREFIX: &str = "__invalid_move__:";
+const INVALID_MINE_PREFIX: &str = "__invalid_mine__:";
 const INVALID_SLEEP_PREFIX: &str = "__invalid_sleep__:";
 const COMMAND_LIMIT_PREFIX: &str = "__command_limit__:";
 const STOP_REQUEST_TOKEN: &str = "__stop_requested__";
@@ -411,19 +412,60 @@ fn register_commands(
         if allowed_commands.is_none_or(|s| s.contains("touched")) {
             engine.register_fn("touched", move || state.touched());
         } else {
-            // For touched, which returns bool, maybe we should return false?
-            // Or allow it but it doesn't do anything?
-            // Actually, returning error in a boolean context might panic the script if not handled.
-            // But valid commands generally assume valid capabilities.
-            // If I return false, the script might behave weirdly.
-            // If I return error, it stops.
-            // Let's return error to be consistent. Rhai allows functions to return Result.
-            // But wait, `touched` returns `bool`.
-            // I need to change signature to return Result<bool, ...> or just fail.
-            // If the function signature in Rhai expects bool, returning Result might need dynamic?
-            // No, Rhai handles Result.
             engine.register_fn("touched", move || -> bool { false });
         }
+    }
+    {
+        let emitter = emitter.clone();
+        if allowed_commands.is_none_or(|s| s.contains("mine")) {
+            engine.register_fn("mine", move |direction: &str| {
+                mine_named(direction, &emitter)
+            });
+        } else {
+            engine.register_fn(
+                "mine",
+                move |_: &str| -> Result<CommandValue, Box<EvalAltResult>> { Ok(CommandValue()) },
+            );
+        }
+    }
+    {
+        let state = state.clone();
+        if allowed_commands.is_none_or(|s| s.contains("is_empty")) {
+            engine.register_fn("is_empty", move |direction: &str| {
+                let key = format!("is-empty-{}", direction.to_ascii_lowercase());
+                state
+                    .inner
+                    .lock()
+                    .ok()
+                    .and_then(|s| s.get(&key).and_then(|v| v.as_bool()))
+                    .unwrap_or(false)
+            });
+        } else {
+            engine.register_fn("is_empty", move |_: &str| -> bool { false });
+        }
+    }
+}
+
+fn record_mine(
+    emitter: &CommandEmitter,
+    direction: MoveDirection,
+) -> Result<CommandValue, Box<EvalAltResult>> {
+    let command = ScriptCommand::Mine(direction);
+    emitter.emit(command)?;
+    Ok(CommandValue())
+}
+
+fn mine_named(
+    direction: &str,
+    emitter: &CommandEmitter,
+) -> Result<CommandValue, Box<EvalAltResult>> {
+    match MoveDirection::from_str(direction) {
+        Some(dir) => record_mine(emitter, dir),
+        None => Err(EvalAltResult::ErrorRuntime(
+            format!("{INVALID_MINE_PREFIX}{direction}").into(),
+            Position::NONE,
+        )
+        .into()),
     }
 }
 
@@ -473,6 +515,11 @@ fn map_engine_error(error: EvalAltResult) -> ScriptExecutionError {
             let message = value.to_string();
             if let Some(direction) = message.strip_prefix(INVALID_MOVE_PREFIX) {
                 ScriptExecutionError::InvalidMoveDirection {
+                    direction: direction.to_string(),
+                }
+            } else if let Some(direction) = message.strip_prefix(INVALID_MINE_PREFIX) {
+                ScriptExecutionError::InvalidMoveDirection {
+                    // Recycle error or add new one? Reusing for now as it's just invalid direction string
                     direction: direction.to_string(),
                 }
             } else if message.starts_with(INVALID_SLEEP_PREFIX) {
