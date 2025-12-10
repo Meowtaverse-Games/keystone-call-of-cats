@@ -59,7 +59,7 @@ struct MoveCommandProgress {
 enum StoneAction {
     Move(MoveCommandProgress),
     Sleep(Timer),
-    Mine(Timer, Entity),
+    Dig(Timer, Entity),
 }
 
 const STONE_ATLAS_PATH: &str = "images/spr_allrunes_spritesheet_xx.png";
@@ -244,35 +244,33 @@ pub fn update_stone_behavior(
             ScriptCommand::Sleep(seconds) => {
                 StoneAction::Sleep(Timer::from_seconds(seconds.max(0.0), TimerMode::Once))
             }
-            ScriptCommand::Mine(direction) => {
-                // Determine target position
-                let dir = direction_to_vec(direction);
+            ScriptCommand::Dig(direction) => {
+                let dir_vec = direction_to_vec(direction);
+                let ray_dir = Dir2::new(dir_vec).unwrap_or(Dir2::X);
                 let origin = global_transform.translation().truncate();
-                let ray_dir = Dir2::new(dir).unwrap_or(Dir2::X);
-                // Cast a ray to find a tile
-                // Distance: half stone size + small margin + tile size?
-                // Or just immediate neighbor.
                 let max_dist = STONE_STEP_DISTANCE * 1.5 * global_transform.scale().x;
 
                 let filter =
                     SpatialQueryFilter::from_mask(LayerMask::ALL).with_excluded_entities([entity]);
 
-                info!(
-                    "MineRay: global_origin={:?}, dir={:?}, dist={}",
-                    origin, ray_dir, max_dist
-                );
                 let hit = spatial.cast_ray(origin, ray_dir, max_dist, true, &filter);
 
-                info!("hit: {:?}", hit);
                 if let Some(hit) = hit {
                     if tiles.get(hit.entity).is_ok() {
-                        StoneAction::Mine(Timer::from_seconds(0.5, TimerMode::Once), hit.entity)
+                        StoneAction::Dig(Timer::from_seconds(0.5, TimerMode::Once), hit.entity)
                     } else {
-                        // Hit something else or nothing relevant, just wait a bit
-                        StoneAction::Sleep(Timer::from_seconds(0.2, TimerMode::Once))
+                        // Hit something else (player? wall?)
+                        StoneAction::Dig(
+                            Timer::from_seconds(0.5, TimerMode::Once),
+                            Entity::PLACEHOLDER,
+                        )
                     }
                 } else {
-                    StoneAction::Sleep(Timer::from_seconds(0.2, TimerMode::Once))
+                    // Nothing hit
+                    StoneAction::Dig(
+                        Timer::from_seconds(0.5, TimerMode::Once),
+                        Entity::PLACEHOLDER,
+                    )
                 }
             }
         });
@@ -313,7 +311,7 @@ pub fn update_stone_behavior(
                     stop_current = true;
                 }
             }
-            StoneAction::Mine(timer, entity) => {
+            StoneAction::Dig(timer, entity) => {
                 if timer.tick(time.delta()).is_finished() {
                     commands.entity(*entity).despawn();
                     // Play mining sound?

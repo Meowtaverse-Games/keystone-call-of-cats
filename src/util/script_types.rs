@@ -8,7 +8,7 @@ use std::{
 pub enum ScriptCommand {
     Move(MoveDirection),
     Sleep(f32),
-    Mine(MoveDirection),
+    Dig(MoveDirection),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
