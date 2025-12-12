@@ -289,8 +289,10 @@ pub fn update_stone_behavior(
         match action {
             StoneAction::Move(progress) => {
                 progress.timer.tick(time.delta());
-                progress.moved_distance += progress.velocity.length() * time.delta_secs();
-                velocity.0 = progress.velocity;
+                let world_scale = global_transform.scale().x;
+                progress.moved_distance +=
+                    progress.velocity.length() * time.delta_secs() * world_scale;
+                velocity.0 = progress.velocity * world_scale;
                 let is_colliding = if let Some(collisions) = collisions {
                     collides_with_tile(collisions, &tiles)
                 } else {

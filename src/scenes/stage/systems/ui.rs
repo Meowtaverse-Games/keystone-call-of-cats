@@ -666,7 +666,7 @@ pub fn tick_script_program(
         return;
     };
 
-    let Some((stone_entity, _, _)) = stone_query.iter().next() else {
+    let Some((stone_entity, stone_transform, _)) = stone_query.iter().next() else {
         return;
     };
 
@@ -702,23 +702,15 @@ pub fn tick_script_program(
         ("left", Vec2::NEG_X),
         ("right", Vec2::X),
     ];
-    let stone_tr = stone_query
-        .iter()
-        .next()
-        .unwrap()
-        .1
-        .translation()
-        .truncate();
+    let stone_scale = stone_transform.scale().x;
+    let dist = 32.0 * 1.5 * stone_scale; // STONE_STEP_DISTANCE * 1.5
+    let origin = stone_transform.translation().truncate();
+    let filter =
+        SpatialQueryFilter::from_mask(LayerMask::ALL).with_excluded_entities([stone_entity]);
 
     for (name, dir) in directions {
         let ray_dir = Dir2::new(dir).unwrap_or(Dir2::X);
-        let hit = spatial.cast_ray(
-            stone_tr,
-            ray_dir,
-            64.0, // STONE_STEP_DISTANCE
-            true,
-            &SpatialQueryFilter::from_mask(LayerMask::ALL),
-        );
+        let hit = spatial.cast_ray(origin, ray_dir, dist, true, &filter);
         let is_blocked = hit.is_some_and(|h| tiles.get(h.entity).is_ok());
         state.insert(
             format!("is-empty-{}", name),
