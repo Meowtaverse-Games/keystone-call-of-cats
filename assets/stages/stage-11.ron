@@ -1,0 +1,48 @@
+(
+    map_size: (28, 18),
+    stone_type: Type3,
+    start_chunks: [
+        ChunkTemplate(
+            id: "start",
+            map: [
+                ".........",
+                ".........",
+                "@....S..E",
+                ".........",
+            ]
+        )
+    ],
+    middle_chunks: [
+        ChunkTemplate(
+            id: "path_up",
+            required_count: 1,
+            map: [
+                ".....E",
+                ".....#",
+                "I....#",
+                "......",
+            ]
+        ),
+        ChunkTemplate(
+            id: "path_down",
+            required_count: 1,
+            map: [
+                "......",
+                ".....#",
+                "I....#",
+                ".....E",
+            ]
+        )
+    ],
+    goal_chunks: [
+        ChunkTemplate(
+            id: "goal",
+            map: [
+                "..........",
+                "I....G....",
+                "..........",
+                "..........",
+            ]
+        )
+    ]
+)

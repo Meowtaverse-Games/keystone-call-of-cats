@@ -104,6 +104,7 @@ impl ScriptStepper for RhaiScriptExecutor {
 struct CommandValue();
 
 const INVALID_MOVE_PREFIX: &str = "__invalid_move__:";
+const INVALID_DIG_PREFIX: &str = "__invalid_dig__:";
 const INVALID_SLEEP_PREFIX: &str = "__invalid_sleep__:";
 const COMMAND_LIMIT_PREFIX: &str = "__command_limit__:";
 const STOP_REQUEST_TOKEN: &str = "__stop_requested__";
@@ -408,22 +409,61 @@ fn register_commands(
     }
     {
         let state = state.clone();
-        if allowed_commands.is_none_or(|s| s.contains("touched")) {
-            engine.register_fn("touched", move || state.touched());
+        if allowed_commands.is_none_or(|s| s.contains("is_touched")) {
+            engine.register_fn("is_touched", move || state.touched());
         } else {
-            // For touched, which returns bool, maybe we should return false?
-            // Or allow it but it doesn't do anything?
-            // Actually, returning error in a boolean context might panic the script if not handled.
-            // But valid commands generally assume valid capabilities.
-            // If I return false, the script might behave weirdly.
-            // If I return error, it stops.
-            // Let's return error to be consistent. Rhai allows functions to return Result.
-            // But wait, `touched` returns `bool`.
-            // I need to change signature to return Result<bool, ...> or just fail.
-            // If the function signature in Rhai expects bool, returning Result might need dynamic?
-            // No, Rhai handles Result.
-            engine.register_fn("touched", move || -> bool { false });
+            engine.register_fn("is_touched", move || -> bool { false });
         }
+    }
+    {
+        let emitter = emitter.clone();
+        if allowed_commands.is_none_or(|s| s.contains("dig")) {
+            engine.register_fn("dig", move |direction: &str| dig_named(direction, &emitter));
+        } else {
+            engine.register_fn(
+                "dig",
+                move |_: &str| -> Result<CommandValue, Box<EvalAltResult>> { Ok(CommandValue()) },
+            );
+        }
+    }
+    {
+        let state = state.clone();
+        if allowed_commands.is_none_or(|s| s.contains("is_empty")) {
+            engine.register_fn("is_empty", move |direction: &str| {
+                let key = format!("is-empty-{}", direction.to_ascii_lowercase());
+                state
+                    .inner
+                    .lock()
+                    .ok()
+                    .and_then(|s| s.get(&key).and_then(|v| v.as_bool()))
+                    .unwrap_or(false)
+            });
+        } else {
+            engine.register_fn("is_empty", move |_: &str| -> bool { false });
+        }
+    }
+}
+
+fn record_dig(
+    emitter: &CommandEmitter,
+    direction: MoveDirection,
+) -> Result<CommandValue, Box<EvalAltResult>> {
+    let command = ScriptCommand::Dig(direction);
+    emitter.emit(command)?;
+    Ok(CommandValue())
+}
+
+fn dig_named(
+    direction: &str,
+    emitter: &CommandEmitter,
+) -> Result<CommandValue, Box<EvalAltResult>> {
+    match MoveDirection::from_str(direction) {
+        Some(dir) => record_dig(emitter, dir),
+        None => Err(EvalAltResult::ErrorRuntime(
+            format!("{INVALID_DIG_PREFIX}{direction}").into(),
+            Position::NONE,
+        )
+        .into()),
     }
 }
 
@@ -473,6 +513,11 @@ fn map_engine_error(error: EvalAltResult) -> ScriptExecutionError {
             let message = value.to_string();
             if let Some(direction) = message.strip_prefix(INVALID_MOVE_PREFIX) {
                 ScriptExecutionError::InvalidMoveDirection {
+                    direction: direction.to_string(),
+                }
+            } else if let Some(direction) = message.strip_prefix(INVALID_DIG_PREFIX) {
+                ScriptExecutionError::InvalidMoveDirection {
+                    // Recycle error or add new one? Reusing for now as it's just invalid direction string
                     direction: direction.to_string(),
                 }
             } else if message.starts_with(INVALID_SLEEP_PREFIX) {
@@ -609,7 +654,7 @@ mod tests {
     fn touched_reflects_latest_state_between_steps() {
         let executor = RhaiScriptExecutor::new();
         let mut program = executor
-            .compile_step(r#"loop { if touched() { move_down(); } }"#, None)
+            .compile_step(r#"loop { if is_touched() { move_down(); } }"#, None)
             .expect("script should compile");
 
         let mut touched_state = ScriptState::default();

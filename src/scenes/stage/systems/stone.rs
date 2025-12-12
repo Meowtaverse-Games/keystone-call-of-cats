@@ -25,6 +25,7 @@ pub(crate) struct StoneCommandState {
     queue: VecDeque<ScriptCommand>,
     current: Option<StoneAction>,
     cooldown: Timer,
+    pub step_size: f32, // Dynamic step size based on map scale
 }
 
 impl Default for StoneCommandState {
@@ -33,6 +34,7 @@ impl Default for StoneCommandState {
             queue: VecDeque::new(),
             current: None,
             cooldown: Timer::from_seconds(0.0, TimerMode::Once),
+            step_size: 32.0,
         }
     }
 }
@@ -52,13 +54,14 @@ pub struct StoneMotion {
 struct MoveCommandProgress {
     velocity: Vec2,
     timer: Timer,
-    started_colliding: bool,
     moved_distance: f32,
+    start_position: Vec3, // Position at start of move command
 }
 
 enum StoneAction {
     Move(MoveCommandProgress),
     Sleep(Timer),
+    Dig(Timer, Entity),
 }
 
 const STONE_ATLAS_PATH: &str = "images/spr_allrunes_spritesheet_xx.png";
@@ -66,7 +69,7 @@ const STONE_TILE_SIZE: UVec2 = UVec2::new(64, 64);
 const STONE_SHEET_COLUMNS: u32 = 10;
 const STONE_SHEET_ROWS: u32 = 7;
 const STONE_SCALE: f32 = 1.6;
-const STONE_STEP_DISTANCE: f32 = 64.0;
+const STONE_STEP_DISTANCE: f32 = 32.0;
 const STONE_MOVE_DURATION: f32 = 1.3;
 const STONE_COLLISION_GRACE_DISTANCE: f32 = 1.0;
 const CARRY_VERTICAL_EPS: f32 = 3.0; // 乗っているとみなす高さ誤差
@@ -82,6 +85,7 @@ pub fn spawn_stone(
     layouts: &mut Assets<TextureAtlasLayout>,
     (object_x, object_y, _scale): (f32, f32, f32),
     stone_type: StoneType,
+    step_size: f32,
 ) {
     let texture = asset_server.load(STONE_ATLAS_PATH);
     let layout = layouts.add(TextureAtlasLayout::from_grid(
@@ -117,7 +121,10 @@ pub fn spawn_stone(
                 scale: STONE_SCALE,
             },
             stone_type,
-            StoneCommandState::default(),
+            StoneCommandState {
+                step_size,
+                ..default()
+            },
             StoneMotion {
                 last: Vec3::new(object_x, object_y, 1.0),
                 delta: Vec2::ZERO,
@@ -188,15 +195,24 @@ pub fn update_stone_behavior(
             Entity,
             &mut StoneCommandState,
             &mut Transform,
+            &GlobalTransform,
             &mut LinearVelocity,
             &mut StoneMotion,
-            &CollidingEntities,
+            Option<&CollidingEntities>,
         ),
         With<StoneRune>,
     >,
+    spatial: SpatialQuery,
 ) {
-    let Ok((_entity, mut state, mut transform, mut velocity, mut motion, collisions)) =
-        query.single_mut()
+    let Ok((
+        entity,
+        mut state,
+        mut transform,
+        global_transform,
+        mut velocity,
+        mut motion,
+        collisions,
+    )) = query.single_mut()
     else {
         audio_state.stop_push_loop(&mut commands);
         return;
@@ -214,42 +230,108 @@ pub fn update_stone_behavior(
     {
         info!("Stone received command: {:?}", command);
 
-        let started_colliding = collides_with_tile(collisions, &tiles);
         state.current = Some(match command {
             ScriptCommand::Move(direction) => {
                 let dir = direction_to_vec(direction);
-                let offset = Vec3::new(dir.x, dir.y, 0.0) * STONE_STEP_DISTANCE;
-                let velocity = offset.truncate() / STONE_MOVE_DURATION / 2.0;
-                StoneAction::Move(MoveCommandProgress {
-                    velocity,
-                    timer: Timer::from_seconds(STONE_MOVE_DURATION, TimerMode::Once),
-                    started_colliding,
-                    moved_distance: 0.0,
-                })
+
+                // Predictive raycast: check if path is blocked before moving
+                // Use same distance as is_empty check in ui.rs
+                let ray_dir = Dir2::new(dir).unwrap_or(Dir2::X);
+                let origin = global_transform.translation().truncate();
+                let check_dist = STONE_STEP_DISTANCE * 1.5 * global_transform.scale().x;
+                let filter =
+                    SpatialQueryFilter::from_mask(LayerMask::ALL).with_excluded_entities([entity]);
+
+                let path_blocked = if let Some(hit) =
+                    spatial.cast_ray(origin, ray_dir, check_dist, true, &filter)
+                {
+                    tiles.get(hit.entity).is_ok()
+                } else {
+                    false
+                };
+
+                if path_blocked {
+                    // Path is blocked - skip this move, just do a tiny pause
+                    info!("Move blocked by tile, skipping");
+                    StoneAction::Sleep(Timer::from_seconds(0.05, TimerMode::Once))
+                } else {
+                    let offset = Vec3::new(dir.x, dir.y, 0.0) * state.step_size;
+                    let velocity = offset.truncate() / STONE_MOVE_DURATION;
+                    StoneAction::Move(MoveCommandProgress {
+                        velocity,
+                        timer: Timer::from_seconds(STONE_MOVE_DURATION, TimerMode::Once),
+                        moved_distance: 0.0,
+                        start_position: transform.translation,
+                    })
+                }
             }
             ScriptCommand::Sleep(seconds) => {
                 StoneAction::Sleep(Timer::from_seconds(seconds.max(0.0), TimerMode::Once))
+            }
+            ScriptCommand::Dig(direction) => {
+                let dir_vec = direction_to_vec(direction);
+                let ray_dir = Dir2::new(dir_vec).unwrap_or(Dir2::X);
+                let origin = global_transform.translation().truncate();
+                let max_dist = STONE_STEP_DISTANCE * 1.5 * global_transform.scale().x;
+
+                let filter =
+                    SpatialQueryFilter::from_mask(LayerMask::ALL).with_excluded_entities([entity]);
+
+                let hit = spatial.cast_ray(origin, ray_dir, max_dist, true, &filter);
+
+                if let Some(hit) = hit {
+                    if tiles.get(hit.entity).is_ok() {
+                        StoneAction::Dig(Timer::from_seconds(0.5, TimerMode::Once), hit.entity)
+                    } else {
+                        // Hit something else (player? wall?)
+                        StoneAction::Dig(
+                            Timer::from_seconds(0.5, TimerMode::Once),
+                            Entity::PLACEHOLDER,
+                        )
+                    }
+                } else {
+                    // Nothing hit
+                    StoneAction::Dig(
+                        Timer::from_seconds(0.5, TimerMode::Once),
+                        Entity::PLACEHOLDER,
+                    )
+                }
             }
         });
     }
 
     let mut stop_current = false;
-    let mut revert_to_prev = false;
 
     if let Some(action) = state.current.as_mut() {
         match action {
             StoneAction::Move(progress) => {
                 progress.timer.tick(time.delta());
-                progress.moved_distance += progress.velocity.length() * time.delta_secs();
-                velocity.0 = progress.velocity;
-                if collides_with_tile(collisions, &tiles)
-                    && (!progress.started_colliding
-                        || progress.moved_distance > STONE_COLLISION_GRACE_DISTANCE)
+                let world_scale = global_transform.scale().x;
+                progress.moved_distance +=
+                    progress.velocity.length() * time.delta_secs() * world_scale;
+                velocity.0 = progress.velocity * world_scale;
+                let is_colliding = if let Some(collisions) = collisions {
+                    collides_with_tile(collisions, &tiles)
+                } else {
+                    false
+                };
+
+                if is_colliding
+                    && progress.moved_distance > STONE_COLLISION_GRACE_DISTANCE * world_scale
                 {
+                    info!(
+                        "Collision stop: moved_distance={}, grace={}, reverting to last safe",
+                        progress.moved_distance,
+                        STONE_COLLISION_GRACE_DISTANCE * world_scale
+                    );
                     velocity.0 = Vec2::ZERO;
                     stop_current = true;
-                    // Pull back to the last safe position so the stone never stays touching a tile
-                    revert_to_prev = true;
+                    // Revert to last safe position (just before collision)
+                    transform.translation = progress.start_position;
+                } else if !is_colliding {
+                    // Update safe position to PREVIOUS frame's position
+                    // (current position might already be overlapping with tile)
+                    progress.start_position = prev;
                 }
                 if progress.timer.is_finished() {
                     velocity.0 = Vec2::ZERO;
@@ -258,6 +340,14 @@ pub fn update_stone_behavior(
             }
             StoneAction::Sleep(timer) => {
                 if timer.tick(time.delta()).is_finished() {
+                    velocity.0 = Vec2::ZERO;
+                    stop_current = true;
+                }
+            }
+            StoneAction::Dig(timer, entity) => {
+                if timer.tick(time.delta()).is_finished() {
+                    commands.entity(*entity).despawn();
+                    // Play mining sound?
                     velocity.0 = Vec2::ZERO;
                     stop_current = true;
                 }
@@ -276,10 +366,6 @@ pub fn update_stone_behavior(
         audio_state.ensure_push_loop(&mut commands, &audio_handles, settings.sfx_volume_linear());
     } else {
         audio_state.stop_push_loop(&mut commands);
-    }
-
-    if revert_to_prev {
-        transform.translation = prev;
     }
 
     // このフレームの移動デルタを保存（ローカル空間の delta）
@@ -355,7 +441,7 @@ pub fn carry_riders_with_stone(
             With<StoneRune>,
         >,
     )>,
-    spatial_query: SpatialQuery,
+    spatial: SpatialQuery,
 ) {
     // Collect moving stones first to avoid borrow conflicts (we need to mutate them later if blocked)
     // We store the data needed for the check, plus the Entity ID to look it up again for mutation.
@@ -423,7 +509,7 @@ pub fn carry_riders_with_stone(
                 let mut correction = Vec2::ZERO;
 
                 if max_toi > f32::EPSILON
-                    && let Some(hit) = spatial_query.cast_shape(
+                    && let Some(hit) = spatial.cast_shape(
                         &shape,
                         origin,
                         0.0,

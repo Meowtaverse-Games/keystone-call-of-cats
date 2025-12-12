@@ -26,22 +26,26 @@ impl Default for StoneCapabilities {
         type1.insert("sleep".to_string());
         map.insert(StoneType::Type1, type1);
 
-        // Type 2: Move + Touched
+        // Type 2: Move + Touched + IsEmpty
         let mut type2 = HashSet::new();
         type2.insert("move".to_string());
-        type2.insert("touched".to_string());
+        type2.insert("is_touched".to_string());
+        type2.insert("is_empty".to_string());
         map.insert(StoneType::Type2, type2.clone());
 
-        // // Type 3: Move + Touched
-        // let mut type3 = HashSet::new();
-        // type3.insert("move".to_string());
-        // type3.insert("touched".to_string());
-        // map.insert(StoneType::Type3, type3.clone());
+        // Type 3: Move + Sleep + Touched + Dig + IsEmpty
+        let mut type3 = HashSet::new();
+        type3.insert("move".to_string());
+        type3.insert("sleep".to_string());
+        type3.insert("is_touched".to_string());
+        type3.insert("dig".to_string());
+        type3.insert("is_empty".to_string());
+        map.insert(StoneType::Type3, type3);
 
         // // Type 4: Move + Touched
         // let mut type4 = HashSet::new();
         // type4.insert("move".to_string());
-        // type4.insert("touched".to_string());
+        // type4.insert("is_touched".to_string());
         // map.insert(StoneType::Type4, type4);
 
         Self { map }
