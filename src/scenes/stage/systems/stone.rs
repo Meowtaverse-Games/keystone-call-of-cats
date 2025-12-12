@@ -54,7 +54,6 @@ pub struct StoneMotion {
 struct MoveCommandProgress {
     velocity: Vec2,
     timer: Timer,
-    started_colliding: bool,
     moved_distance: f32,
     start_position: Vec3, // Position at start of move command
 }
@@ -231,11 +230,6 @@ pub fn update_stone_behavior(
     {
         info!("Stone received command: {:?}", command);
 
-        let started_colliding = if let Some(collisions) = collisions {
-            collides_with_tile(collisions, &tiles)
-        } else {
-            false
-        };
         state.current = Some(match command {
             ScriptCommand::Move(direction) => {
                 let dir = direction_to_vec(direction);
@@ -266,7 +260,6 @@ pub fn update_stone_behavior(
                     StoneAction::Move(MoveCommandProgress {
                         velocity,
                         timer: Timer::from_seconds(STONE_MOVE_DURATION, TimerMode::Once),
-                        started_colliding,
                         moved_distance: 0.0,
                         start_position: transform.translation,
                     })
@@ -308,7 +301,6 @@ pub fn update_stone_behavior(
     }
 
     let mut stop_current = false;
-    let mut revert_to_prev = false;
 
     if let Some(action) = state.current.as_mut() {
         match action {
@@ -374,10 +366,6 @@ pub fn update_stone_behavior(
         audio_state.ensure_push_loop(&mut commands, &audio_handles, settings.sfx_volume_linear());
     } else {
         audio_state.stop_push_loop(&mut commands);
-    }
-
-    if revert_to_prev {
-        transform.translation = prev;
     }
 
     // このフレームの移動デルタを保存（ローカル空間の delta）
