@@ -56,6 +56,7 @@ struct MoveCommandProgress {
     timer: Timer,
     started_colliding: bool,
     moved_distance: f32,
+    start_position: Vec3, // Position at start of move command
 }
 
 enum StoneAction {
@@ -238,14 +239,38 @@ pub fn update_stone_behavior(
         state.current = Some(match command {
             ScriptCommand::Move(direction) => {
                 let dir = direction_to_vec(direction);
-                let offset = Vec3::new(dir.x, dir.y, 0.0) * state.step_size;
-                let velocity = offset.truncate() / STONE_MOVE_DURATION;
-                StoneAction::Move(MoveCommandProgress {
-                    velocity,
-                    timer: Timer::from_seconds(STONE_MOVE_DURATION, TimerMode::Once),
-                    started_colliding,
-                    moved_distance: 0.0,
-                })
+
+                // Predictive raycast: check if path is blocked before moving
+                // Use same distance as is_empty check in ui.rs
+                let ray_dir = Dir2::new(dir).unwrap_or(Dir2::X);
+                let origin = global_transform.translation().truncate();
+                let check_dist = STONE_STEP_DISTANCE * 1.5 * global_transform.scale().x;
+                let filter =
+                    SpatialQueryFilter::from_mask(LayerMask::ALL).with_excluded_entities([entity]);
+
+                let path_blocked = if let Some(hit) =
+                    spatial.cast_ray(origin, ray_dir, check_dist, true, &filter)
+                {
+                    tiles.get(hit.entity).is_ok()
+                } else {
+                    false
+                };
+
+                if path_blocked {
+                    // Path is blocked - skip this move, just do a tiny pause
+                    info!("Move blocked by tile, skipping");
+                    StoneAction::Sleep(Timer::from_seconds(0.05, TimerMode::Once))
+                } else {
+                    let offset = Vec3::new(dir.x, dir.y, 0.0) * state.step_size;
+                    let velocity = offset.truncate() / STONE_MOVE_DURATION;
+                    StoneAction::Move(MoveCommandProgress {
+                        velocity,
+                        timer: Timer::from_seconds(STONE_MOVE_DURATION, TimerMode::Once),
+                        started_colliding,
+                        moved_distance: 0.0,
+                        start_position: transform.translation,
+                    })
+                }
             }
             ScriptCommand::Sleep(seconds) => {
                 StoneAction::Sleep(Timer::from_seconds(seconds.max(0.0), TimerMode::Once))
@@ -300,13 +325,21 @@ pub fn update_stone_behavior(
                 };
 
                 if is_colliding
-                    && (!progress.started_colliding
-                        || progress.moved_distance > STONE_COLLISION_GRACE_DISTANCE)
+                    && progress.moved_distance > STONE_COLLISION_GRACE_DISTANCE * world_scale
                 {
+                    info!(
+                        "Collision stop: moved_distance={}, grace={}, reverting to last safe",
+                        progress.moved_distance,
+                        STONE_COLLISION_GRACE_DISTANCE * world_scale
+                    );
                     velocity.0 = Vec2::ZERO;
                     stop_current = true;
-                    // Pull back to the last safe position so the stone never stays touching a tile
-                    revert_to_prev = true;
+                    // Revert to last safe position (just before collision)
+                    transform.translation = progress.start_position;
+                } else if !is_colliding {
+                    // Update safe position to PREVIOUS frame's position
+                    // (current position might already be overlapping with tile)
+                    progress.start_position = prev;
                 }
                 if progress.timer.is_finished() {
                     velocity.0 = Vec2::ZERO;
