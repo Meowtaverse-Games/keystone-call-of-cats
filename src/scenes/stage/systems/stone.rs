@@ -25,6 +25,7 @@ pub(crate) struct StoneCommandState {
     queue: VecDeque<ScriptCommand>,
     current: Option<StoneAction>,
     cooldown: Timer,
+    pub step_size: f32, // Dynamic step size based on map scale
 }
 
 impl Default for StoneCommandState {
@@ -33,6 +34,7 @@ impl Default for StoneCommandState {
             queue: VecDeque::new(),
             current: None,
             cooldown: Timer::from_seconds(0.0, TimerMode::Once),
+            step_size: 32.0,
         }
     }
 }
@@ -83,6 +85,7 @@ pub fn spawn_stone(
     layouts: &mut Assets<TextureAtlasLayout>,
     (object_x, object_y, _scale): (f32, f32, f32),
     stone_type: StoneType,
+    step_size: f32,
 ) {
     let texture = asset_server.load(STONE_ATLAS_PATH);
     let layout = layouts.add(TextureAtlasLayout::from_grid(
@@ -118,7 +121,10 @@ pub fn spawn_stone(
                 scale: STONE_SCALE,
             },
             stone_type,
-            StoneCommandState::default(),
+            StoneCommandState {
+                step_size,
+                ..default()
+            },
             StoneMotion {
                 last: Vec3::new(object_x, object_y, 1.0),
                 delta: Vec2::ZERO,
@@ -232,7 +238,7 @@ pub fn update_stone_behavior(
         state.current = Some(match command {
             ScriptCommand::Move(direction) => {
                 let dir = direction_to_vec(direction);
-                let offset = Vec3::new(dir.x, dir.y, 0.0) * STONE_STEP_DISTANCE;
+                let offset = Vec3::new(dir.x, dir.y, 0.0) * state.step_size;
                 let velocity = offset.truncate() / STONE_MOVE_DURATION;
                 StoneAction::Move(MoveCommandProgress {
                     velocity,
