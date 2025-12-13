@@ -21,6 +21,7 @@ steamworks = "0.12.2"
 thiserror = "2.0.17"
 fluent_content = "0.0.5"
 unic-langid = { version = "0.9.4", features = ["macros"] }
+keystone-lang = { git="https://github.com/Meowtaverse-Games/keystone-lang.git", name="keystone_lang" }
 
 [package.metadata.bundle.mac]
 identifier = "com.meowtaverse-games.com.keystone-cc"
