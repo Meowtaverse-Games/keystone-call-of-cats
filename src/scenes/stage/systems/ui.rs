@@ -703,7 +703,7 @@ pub fn tick_script_program(
         ("right", Vec2::X),
     ];
     let stone_scale = stone_transform.scale().x;
-    let dist = 32.0 * 1.5 * stone_scale; // STONE_STEP_DISTANCE * 1.5
+    let dist = super::stone::STONE_RAYCAST_DISTANCE * stone_scale;
     let origin = stone_transform.translation().truncate();
     let filter =
         SpatialQueryFilter::from_mask(LayerMask::ALL).with_excluded_entities([stone_entity]);
