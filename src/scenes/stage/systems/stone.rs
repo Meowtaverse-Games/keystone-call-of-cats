@@ -184,7 +184,7 @@ pub fn handle_stone_append_messages(
     }
 }
 
-#[allow(clippy::type_complexity)]
+#[allow(clippy::type_complexity, clippy::too_many_arguments)]
 pub fn update_stone_behavior(
     mut commands: Commands,
     time: Res<Time>,
@@ -202,7 +202,7 @@ pub fn update_stone_behavior(
             &GlobalTransform,
             &mut LinearVelocity,
             &mut StoneMotion,
-            Option<&CollidingEntities>,
+            Option<&CollidingEntities>, // kept for potential future use
         ),
         With<StoneRune>,
     >,
@@ -215,7 +215,7 @@ pub fn update_stone_behavior(
         global_transform,
         mut velocity,
         mut motion,
-        collisions,
+        _collisions,
     )) = query.single_mut()
     else {
         audio_state.stop_push_loop(&mut commands);
@@ -432,10 +432,6 @@ fn direction_to_vec(direction: MoveDirection) -> Vec2 {
         MoveDirection::Top => Vec2::Y,
         MoveDirection::Down => Vec2::NEG_Y,
     }
-}
-
-fn collides_with_tile(collisions: &CollidingEntities, tiles: &Query<(), With<StageTile>>) -> bool {
-    collisions.iter().any(|&entity| tiles.get(entity).is_ok())
 }
 
 pub fn reset_stone_position(
