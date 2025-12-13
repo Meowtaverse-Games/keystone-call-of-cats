@@ -1,9 +1,11 @@
 mod rhai_executor;
+mod keystone_executor;
 
 use bevy::prelude::Resource;
 use serde::{Deserialize, Serialize};
 
 pub use rhai_executor::RhaiScriptExecutor;
+pub use keystone_executor::KeystoneScriptExecutor;
 
 use crate::util::script_types::{
     ScriptCommand, ScriptExecutionError, ScriptProgram, ScriptRunner, ScriptStepper,
@@ -12,7 +14,6 @@ use crate::util::script_types::{
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Language {
     Rhai,
-    #[allow(dead_code)]
     Keystone,
 }
 
