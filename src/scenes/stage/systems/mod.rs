@@ -1,9 +1,12 @@
 mod audio;
 mod goal;
 mod player;
+mod schedule;
 mod stone;
 mod tiles;
 mod ui;
+
+pub use schedule::StageSystemSet;
 
 use bevy::{
     ecs::system::SystemParam, prelude::*, render::view::ColorGrading, window::PrimaryWindow,
