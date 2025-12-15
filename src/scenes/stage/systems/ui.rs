@@ -406,6 +406,7 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                                     allowed_commands,
                                 ) {
                                     Ok(program) => {
+                                        info!("Starting script execution:\n{}", editor.buffer);
                                         // Clear any existing queue on the Stone
                                         stone_writer
                                             .write(StoneCommandMessage { commands: vec![] });
