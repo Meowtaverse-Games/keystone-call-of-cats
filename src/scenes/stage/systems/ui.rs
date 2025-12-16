@@ -16,6 +16,7 @@ use crate::{
     resources::{
         asset_store::AssetStore,
         design_resolution::LetterboxOffsets,
+        file_storage::FileStorageResource,
         game_state::GameState,
         script_engine::{Language, ScriptExecutor},
         settings::GameSettings,
@@ -242,6 +243,7 @@ pub struct StageUIParams<'w, 's> {
     stone_capabilities: Res<'w, StoneCapabilities>,
     stone_query:
         Query<'w, 's, (Entity, &'static GlobalTransform, &'static StoneType), With<StoneRune>>,
+    file_storage: Res<'w, FileStorageResource>,
 }
 
 pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
@@ -261,7 +263,9 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
         tutorial_overlays,
         stone_capabilities,
         stone_query,
+        file_storage,
     } = params;
+
     let Ok(ctx) = contexts.ctx_mut() else {
         return;
     };
@@ -407,6 +411,14 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                                 ) {
                                     Ok(program) => {
                                         info!("Starting script execution:\n{}", editor.buffer);
+
+                                        // Persist script on run
+                                        if let Err(err) =
+                                            stage_scripts.persist(file_storage.backend().as_ref())
+                                        {
+                                            warn!("Failed to persist stage scripts on run: {err}");
+                                        }
+
                                         // Clear any existing queue on the Stone
                                         stone_writer
                                             .write(StoneCommandMessage { commands: vec![] });
