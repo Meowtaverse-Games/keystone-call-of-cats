@@ -107,9 +107,9 @@ stage5-description = {$sleep}命令を使うと石が動くまでの時間を制
     {$sleep-1}
     {$move-up}
     
-    これまでのコマンド
+    -- これまでのコマンド --
     
-    * 石の移動
+    石の移動
     上: `{$move-up}`
     下: `{$move-down}`
     左: `{$move-left}`
