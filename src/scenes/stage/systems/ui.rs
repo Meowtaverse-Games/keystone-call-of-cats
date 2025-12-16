@@ -16,6 +16,7 @@ use crate::{
     resources::{
         asset_store::AssetStore,
         design_resolution::LetterboxOffsets,
+        file_storage::FileStorageResource,
         game_state::GameState,
         script_engine::{Language, ScriptExecutor},
         settings::GameSettings,
@@ -242,6 +243,7 @@ pub struct StageUIParams<'w, 's> {
     stone_capabilities: Res<'w, StoneCapabilities>,
     stone_query:
         Query<'w, 's, (Entity, &'static GlobalTransform, &'static StoneType), With<StoneRune>>,
+    file_storage: Res<'w, FileStorageResource>,
 }
 
 pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
@@ -261,7 +263,9 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
         tutorial_overlays,
         stone_capabilities,
         stone_query,
+        file_storage,
     } = params;
+
     let Ok(ctx) = contexts.ctx_mut() else {
         return;
     };
@@ -406,6 +410,15 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                                     allowed_commands,
                                 ) {
                                     Ok(program) => {
+                                        info!("Starting script execution:\n{}", editor.buffer);
+
+                                        // Persist script on run
+                                        if let Err(err) =
+                                            stage_scripts.persist(file_storage.backend().as_ref())
+                                        {
+                                            warn!("Failed to persist stage scripts on run: {err}");
+                                        }
+
                                         // Clear any existing queue on the Stone
                                         stone_writer
                                             .write(StoneCommandMessage { commands: vec![] });
@@ -651,7 +664,7 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
 pub fn tick_script_program(
     mut editor: ResMut<ScriptEditorState>,
     mut append_writer: MessageWriter<StoneAppendCommandMessage>,
-    players: Query<&CollidingEntities, With<Player>>,
+    players: Query<(Entity, &CollidingEntities), With<Player>>,
     stone_query: Query<(Entity, &GlobalTransform, &StoneType), With<StoneRune>>,
     stone_states: Query<&StoneCommandState, With<StoneRune>>,
     tiles: Query<(), With<StageTile>>,
@@ -695,7 +708,8 @@ pub fn tick_script_program(
         ScriptStateValue::Float(rand::rng().random_range(0.0..1.0)),
     );
 
-    // Calculate surrounding state
+    // Calculate surrounding state using shape cast
+    // We check if the stone can move one full step without hitting a wall
     let directions = [
         ("up", Vec2::Y),
         ("down", Vec2::NEG_Y),
@@ -703,18 +717,45 @@ pub fn tick_script_program(
         ("right", Vec2::X),
     ];
     let stone_scale = stone_transform.scale().x;
-    let dist = 32.0 * 1.5 * stone_scale; // STONE_STEP_DISTANCE * 1.5
+
+    // Get step_size from stone state if available, or use default
+    let step_size = stone_states
+        .get(stone_entity)
+        .map(|s| s.step_size)
+        .unwrap_or(super::stone::STONE_STEP_DISTANCE);
+
+    // Check distance = stone collider radius + a small margin
+    // This detects if the stone's edge is already touching or very close to a wall
+    let collider_radius = super::stone::STONE_COLLIDER_RADIUS * stone_scale;
+    let check_dist = step_size * stone_scale; // Check for one full step distance
     let origin = stone_transform.translation().truncate();
+    // Collect player entities to exclude from collision detection
+    let player_entities: Vec<Entity> = players.iter().map(|(e, _)| e).collect();
+    let mut excluded_entities = vec![stone_entity];
+    excluded_entities.extend(player_entities);
     let filter =
-        SpatialQueryFilter::from_mask(LayerMask::ALL).with_excluded_entities([stone_entity]);
+        SpatialQueryFilter::from_mask(LayerMask::ALL).with_excluded_entities(excluded_entities);
+    // Shape cast with a circle matching the stone's collider size
+    let cast_shape = Collider::circle(collider_radius);
+    let cast_config = ShapeCastConfig::from_max_distance(check_dist);
 
     for (name, dir) in directions {
-        let ray_dir = Dir2::new(dir).unwrap_or(Dir2::X);
-        let hit = spatial.cast_ray(origin, ray_dir, dist, true, &filter);
+        let ray_dir = Dir2::new(dir).expect("Invalid direction");
+        // Use shape cast to check if stone can move one step without collision
+        let hit = spatial.cast_shape(&cast_shape, origin, 0.0, ray_dir, &cast_config, &filter);
         let is_blocked = hit.is_some_and(|h| tiles.get(h.entity).is_ok());
         state.insert(
             format!("is-empty-{}", name),
             ScriptStateValue::Bool(!is_blocked),
+        );
+        info!(
+            "is-empty-{}: {} (origin={:?}, radius={}, step={}, hit={:?})",
+            name,
+            !is_blocked,
+            origin,
+            collider_radius,
+            check_dist,
+            hit.map(|h| (h.distance, h.entity))
         );
     }
 
@@ -731,10 +772,10 @@ pub fn tick_script_program(
 }
 
 fn is_player_touching_stone(
-    players: &Query<&CollidingEntities, With<Player>>,
+    players: &Query<(Entity, &CollidingEntities), With<Player>>,
     stone_entity: Entity,
 ) -> bool {
-    let Some(player_collisions) = players.iter().next() else {
+    let Some((_, player_collisions)) = players.iter().next() else {
         return false;
     };
 
