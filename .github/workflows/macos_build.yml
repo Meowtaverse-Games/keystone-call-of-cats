@@ -33,10 +33,14 @@ jobs:
           ${{ runner.os }}-cargo-
 
     - name: Build
-      run: cargo build --release --verbose
+      run: |
+        cargo build --release --verbose
+        find target/release/build -name "libsteam_api.dylib" -exec cp {} target/release/ \;
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
         name: keystone-cc-macos
-        path: target/release/keystone-cc
+        path: |
+          target/release/keystone-cc
+          target/release/libsteam_api.dylib
