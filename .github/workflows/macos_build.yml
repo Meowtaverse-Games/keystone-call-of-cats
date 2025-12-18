@@ -1,4 +1,4 @@
-name: Windows Build
+name: MacOS Build
 
 on:
   workflow_dispatch:
@@ -8,7 +8,7 @@ env:
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: macos-latest
 
     steps:
     - uses: actions/checkout@v4
@@ -17,7 +17,7 @@ jobs:
       uses: dtolnay/rust-toolchain@stable
       with:
         toolchain: stable
-        target: x86_64-pc-windows-msvc
+        target: x86_64-apple-darwin
 
     - name: Cache cargo registry
       uses: actions/cache@v4
@@ -33,10 +33,17 @@ jobs:
           ${{ runner.os }}-cargo-
 
     - name: Build
-      run: cargo build --release
+      run: |
+        chmod +x scripts/build_macos.sh
+        ./scripts/build_macos.sh
+
+    - name: Package
+      run: |
+        cd target/release
+        zip -r KeystoneCC.app.zip KeystoneCC.app
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: keystone-cc-windows
-        path: target/release/keystone-cc.exe
+        name: keystone-cc-macos-app
+        path: target/release/KeystoneCC.app.zip
