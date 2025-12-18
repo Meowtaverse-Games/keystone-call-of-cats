@@ -2,16 +2,18 @@ use bevy::prelude::*;
 use std::sync::Arc;
 
 use crate::resources::{
-    file_storage::{FileStorage, FileStorageResource, LocalFileStorage, SteamCloudFileStorage},
+    file_storage::{FileStorage, FileStorageResource, LocalFileStorage},
     stage_catalog::{self, StageCatalog},
     stage_progress::StageProgress,
     stage_scripts::StageScripts,
-    steam_client::SteamClientResource,
 };
+
+#[cfg(feature = "steam")]
+use crate::resources::{file_storage::SteamCloudFileStorage, steam_client::SteamClientResource};
 
 pub fn setup_stage_resources(
     mut commands: Commands,
-    steam_client: Option<Res<SteamClientResource>>,
+    #[cfg(feature = "steam")] steam_client: Option<Res<SteamClientResource>>,
     existing_storage: Option<Res<FileStorageResource>>,
     existing_catalog: Option<Res<StageCatalog>>,
     existing_scripts: Option<Res<StageScripts>>,
@@ -25,16 +27,26 @@ pub fn setup_stage_resources(
         return;
     }
 
-    let storage_backend: Arc<dyn FileStorage + Send + Sync> = if let Some(client) = steam_client {
-        let rs = client.remote_storage();
-        if rs.is_cloud_enabled_for_app() && rs.is_cloud_enabled_for_account() {
-            Arc::new(SteamCloudFileStorage::new(&client))
+    let storage_backend: Arc<dyn FileStorage + Send + Sync>;
+
+    #[cfg(feature = "steam")]
+    {
+        storage_backend = if let Some(client) = steam_client {
+            let rs = client.remote_storage();
+            if rs.is_cloud_enabled_for_app() && rs.is_cloud_enabled_for_account() {
+                Arc::new(SteamCloudFileStorage::new(&client))
+            } else {
+                Arc::new(LocalFileStorage::default_dir())
+            }
         } else {
             Arc::new(LocalFileStorage::default_dir())
-        }
-    } else {
-        Arc::new(LocalFileStorage::default_dir())
-    };
+        };
+    }
+
+    #[cfg(not(feature = "steam"))]
+    {
+        storage_backend = Arc::new(LocalFileStorage::default_dir());
+    }
 
     if existing_storage.is_none() {
         commands.insert_resource(FileStorageResource::new(storage_backend.clone()));
