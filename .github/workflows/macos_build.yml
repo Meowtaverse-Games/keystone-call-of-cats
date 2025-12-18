@@ -34,13 +34,16 @@ jobs:
 
     - name: Build
       run: |
-        cargo build --release --verbose
-        find target/release/build -name "libsteam_api.dylib" -exec cp {} target/release/ \;
+        chmod +x scripts/build_macos.sh
+        ./scripts/build_macos.sh
+
+    - name: Package
+      run: |
+        cd target/release
+        zip -r KeystoneCC.app.zip KeystoneCC.app
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: keystone-cc-macos
-        path: |
-          target/release/keystone-cc
-          target/release/libsteam_api.dylib
+        name: keystone-cc-macos-app
+        path: target/release/KeystoneCC.app.zip
