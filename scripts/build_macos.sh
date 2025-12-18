@@ -4,10 +4,21 @@ set -e
 # Mimic the environment variable from the workflow
 export CARGO_TERM_COLOR=always
 
-echo "Starting MacOS build..."
+# Default to enabling Steam if not specified
+if [ -z "$ENABLE_STEAM" ]; then
+    ENABLE_STEAM=true
+fi
+
+echo "Building with ENABLE_STEAM=$ENABLE_STEAM"
+
+if [ "$ENABLE_STEAM" = "true" ]; then
+    CARGO_FLAGS="--release"
+else
+    CARGO_FLAGS="--release --no-default-features"
+fi
 
 # Run the build command
-cargo build --release
+cargo build $CARGO_FLAGS
 
 APP_NAME="KeystoneCC.app"
 OUTPUT_DIR="target/release/$APP_NAME"
@@ -54,8 +65,10 @@ exec "\$DIR/keystone-cc-bin" "\$@"
 EOF
 chmod +x "$MACOS_DIR/keystone-cc"
 
-# Copy the steam library to the output directory
-find target/release/build -name "libsteam_api.dylib" -exec cp {} "$MACOS_DIR/" \;
+# Copy the steam library to the output directory only if Steam is enabled
+if [ "$ENABLE_STEAM" = "true" ]; then
+    find target/release/build -name "libsteam_api.dylib" -exec cp {} "$MACOS_DIR/" \;
+fi
 
 # Copy assets to the output directory (dereference symlinks)
 # Bevy looks for assets relative to executable on macOS by default in this configuration

@@ -9,6 +9,7 @@ pub mod settings;
 pub mod stage_catalog;
 pub mod stage_progress;
 pub mod stage_scripts;
+#[cfg(feature = "steam")]
 pub mod steam_client;
 pub mod stone_type;
 pub mod tiled;

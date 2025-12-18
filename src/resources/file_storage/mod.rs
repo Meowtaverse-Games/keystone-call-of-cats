@@ -3,9 +3,11 @@ use std::{io, sync::Arc};
 use thiserror::Error;
 
 pub mod local;
+#[cfg(feature = "steam")]
 pub mod steam_cloud;
 
 pub use local::LocalFileStorage;
+#[cfg(feature = "steam")]
 pub use steam_cloud::SteamCloudFileStorage;
 
 pub trait FileStorage {
@@ -16,6 +18,7 @@ pub trait FileStorage {
 #[derive(Debug, Error)]
 pub enum FileError {
     #[error("storage is unavailable")]
+    #[allow(dead_code)]
     Unavailable,
     #[error(transparent)]
     Io(#[from] io::Error),

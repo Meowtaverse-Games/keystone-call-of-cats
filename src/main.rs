@@ -35,6 +35,7 @@ use crate::{
 pub struct MainCamera;
 
 fn main() {
+    #[allow(unused_variables)]
     let steam_app_id = steam_app_id();
 
     let launch_profile = LaunchProfile::from_args(env::args().collect::<Vec<_>>().as_slice());
@@ -46,6 +47,7 @@ fn main() {
             chunk_grammar_map::show_ascii_map(launch_profile.stage_id.unwrap_or(StageId(1)).0);
             return;
         }
+        #[cfg(feature = "steam")]
         LaunchType::SteamAppInfo => {
             steam::show_steam_app_info(steam_app_id);
             return;
@@ -59,6 +61,7 @@ fn main() {
         .insert_resource(launch_profile.clone());
 
     app.add_plugins((
+        #[cfg(feature = "steam")]
         SteamPlugin::new(steam_app_id),
         StagePlugin,
         SettingsPlugin,
