@@ -1,5 +1,4 @@
 use bevy::{asset::Assets, prelude::*};
-use std::sync::Arc;
 
 use crate::resources::tiled::{TiledLoaderConfig, TiledMapAssets, TiledTilesetImage, Tileset};
 
@@ -9,90 +8,61 @@ pub fn load_tiled_assets(
     asset_server: Res<AssetServer>,
     mut layouts: ResMut<Assets<TextureAtlasLayout>>,
 ) {
-    let mut loader = tiled::Loader::new();
-
-    let tsx = match loader.load_tsx_tileset(&config.tsx_path) {
-        Ok(tileset) => tileset,
-        Err(err) => {
-            error!(
-                target: "tiled",
-                "Failed to load TSX tilesets from '{}': {err}",
-                config.tsx_path
-            );
-            return;
-        }
-    };
-
-    let tileset = load_tileset(&asset_server, &mut layouts, &tsx);
-    commands.insert_resource(TiledMapAssets {
-        tsx: Arc::new(tsx),
-        tileset,
-    });
+    let tileset = load_tileset(&asset_server, &mut layouts, &config.image_path);
+    commands.insert_resource(TiledMapAssets { tileset });
 }
 
 fn load_tileset(
     asset_server: &AssetServer,
     layouts: &mut Assets<TextureAtlasLayout>,
-    tileset: &tiled::Tileset,
+    image_path: &str,
 ) -> Tileset {
-    let image = tileset
-        .image
-        .as_ref()
-        .map(|image| create_tileset_image(tileset, image, asset_server, layouts));
-
-    Tileset { image }
+    let image = create_tileset_image(image_path, asset_server, layouts);
+    Tileset { image: Some(image) }
 }
 
 fn create_tileset_image(
-    tileset: &tiled::Tileset,
-    image: &tiled::Image,
+    path: &str,
     asset_server: &AssetServer,
     layouts: &mut Assets<TextureAtlasLayout>,
 ) -> TiledTilesetImage {
-    let path = normalize_asset_path(&image.source);
     info!(target: "tiled", "Loading tileset image from path: {}", path);
-    let texture = asset_server.load(path.clone());
+    // Bevy's asset server handles relative paths from assets/ folder
+    let texture = asset_server.load(path.to_string());
 
-    let columns = tileset.columns.max(1);
-    let tile_count = tileset.tilecount;
-    let rows = tile_count.div_ceil(columns).max(1);
+    // Hardcoded values from super-platfomer-assets.tsx
+    let tile_width = 16;
+    let tile_height = 16;
+    let spacing = 3;
+    let margin = 0;
+    let columns = 17;
+    let tile_count = 561;
 
-    let mut layout = TextureAtlasLayout::from_grid(
-        UVec2::new(tileset.tile_width, tileset.tile_height),
+    let rows = tile_count / columns + if tile_count % columns > 0 { 1 } else { 0 };
+
+    let layout = TextureAtlasLayout::from_grid(
+        UVec2::new(tile_width, tile_height),
         columns,
         rows,
-        Some(UVec2::new(tileset.spacing, tileset.spacing)),
-        Some(UVec2::new(tileset.margin, tileset.margin)),
+        Some(UVec2::new(spacing, spacing)),
+        Some(UVec2::new(margin, margin)),
     );
     info!(
         target: "tiled",
-        "Tileset '{}' layout: {} columns x {} rows (tile size: {}x{}, spacing: {}, margin: {})",
-        tileset.name,
+        "Tileset 'super-platfomer-assets' (Manual) layout: {} columns x {} rows (tile size: {}x{}, spacing: {}, margin: {})",
         columns,
         rows,
-        tileset.tile_width,
-        tileset.tile_height,
-        tileset.spacing,
-        tileset.margin
+        tile_width,
+        tile_height,
+        spacing,
+        margin
     );
-
-    layout.textures.truncate(tile_count as usize);
 
     let layout = layouts.add(layout);
 
     TiledTilesetImage {
         texture,
         layout,
-        tile_size: UVec2::new(tileset.tile_width, tileset.tile_height),
-    }
-}
-
-fn normalize_asset_path(path: &std::path::Path) -> String {
-    let path_str = path.to_string_lossy().replace('\\', "/");
-
-    if let Some(stripped) = path_str.strip_prefix("assets/") {
-        stripped.to_string()
-    } else {
-        path_str
+        tile_size: UVec2::new(tile_width, tile_height),
     }
 }

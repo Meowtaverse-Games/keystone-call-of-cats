@@ -41,9 +41,9 @@ cat > "$CONTENTS_DIR/Info.plist" <<EOF
     <key>CFBundleExecutable</key>
     <string>keystone-cc</string>
     <key>CFBundleIdentifier</key>
-    <string>com.meowtaverse.keystone-cc</string>
+    <string>com.meowtaverse-games.keystone-cc</string>
     <key>CFBundleName</key>
-    <string>Keystone Call of Cats</string>
+    <string>keystone: call of cats</string>
     <key>CFBundleVersion</key>
     <string>1.0.0</string>
     <key>CFBundlePackageType</key>

@@ -1,45 +1,36 @@
-use std::sync::Arc;
+// use std::sync::Arc;
 
 use bevy::{math::UVec2, prelude::*};
 
 #[derive(Resource, Clone)]
 pub struct TiledLoaderConfig {
-    pub tsx_path: String,
+    pub image_path: String,
 }
 
 impl TiledLoaderConfig {
     pub fn new(path: impl Into<String>) -> Self {
         Self {
-            tsx_path: path.into(),
+            image_path: path.into(),
         }
     }
 }
 
 #[derive(Resource, Clone)]
 pub struct TiledMapAssets {
-    pub tsx: Arc<tiled::Tileset>,
     pub tileset: Tileset,
 }
 
 impl TiledMapAssets {
     pub fn tile(&self, id: u32) -> Option<Tile> {
-        let tile = self.tsx.get_tile(id)?;
-
-        let shapes = match &tile.collision {
-            Some(collision) => collision
-                .object_data()
-                .iter()
-                .map(|data| match data.shape {
-                    tiled::ObjectShape::Rect { width, height } => TileShape::Rect {
-                        width,
-                        height,
-                        x: data.x,
-                        y: data.y,
-                    },
-                    _ => unimplemented!("Tile shape not implemented"),
-                })
-                .collect(),
-            None => vec![],
+        let shapes = if id == 235 || id == 236 {
+            vec![TileShape::Rect {
+                width: 16.0,
+                height: 9.0,
+                x: 0.0,
+                y: 3.0,
+            }]
+        } else {
+            vec![]
         };
 
         Some(Tile { shapes })
