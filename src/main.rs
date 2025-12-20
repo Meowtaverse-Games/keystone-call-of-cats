@@ -96,7 +96,7 @@ fn main() {
             1200.0,
             Color::linear_rgb(0.0, 0.0, 0.0),
         ))
-        .add_plugins(TiledPlugin::new("assets/tiled/super-platfomer-assets.tsx"))
+        .add_plugins(TiledPlugin::new("images/spa.png"))
         .add_plugins(AssetLoaderPlugin)
         .add_plugins(EguiPlugin::default())
         .add_plugins(ScenesPlugin)

@@ -223,6 +223,10 @@ fn generate_random_layout(config: &ChunkGrammarConfig) -> PlacedChunkLayout {
 }
 
 pub fn generate_random_layout_from_file(path: impl AsRef<Path>) -> Result<Map, ChunkGrammarError> {
+    println!(
+        "Loading chunk grammar config from file: {}",
+        path.as_ref().display()
+    );
     let config = load_config_from_file(path)?;
     let placed_chunk_layout = generate_random_layout(&config);
     Ok(Map {
