@@ -5,7 +5,7 @@ set -e
 ITCH_USER="${ITCH_USER:-meowtaverse-games}"
 ITCH_GAME="${ITCH_GAME:-keystone-call-of-cats}"
 CHANNEL="mac-universal"
-ENABLE_STEAM=false
+export ENABLE_STEAM=false
 BUILD_SCRIPT="./scripts/build_macos.sh"
 SKIP_BUILD=false
 
