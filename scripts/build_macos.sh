@@ -18,6 +18,7 @@ else
 fi
 
 # Run the build command
+echo cargo build $CARGO_FLAGS
 cargo build $CARGO_FLAGS
 
 APP_NAME="KeystoneCC.app"

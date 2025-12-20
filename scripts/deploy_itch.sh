@@ -2,9 +2,10 @@
 set -e
 
 # Default configuration
-ITCH_USER="${ITCH_USER:-meowtaverse}"
+ITCH_USER="${ITCH_USER:-meowtaverse-games}"
 ITCH_GAME="${ITCH_GAME:-keystone-call-of-cats}"
 CHANNEL="mac-universal"
+ENABLE_STEAM=false
 BUILD_SCRIPT="./scripts/build_macos.sh"
 SKIP_BUILD=false
 
@@ -29,6 +30,7 @@ fi
 if [ "$SKIP_BUILD" = false ]; then
     echo "Running build script..."
     if [ -f "$BUILD_SCRIPT" ]; then
+        echo "$BUILD_SCRIPT"
         "$BUILD_SCRIPT"
     else
         echo "Error: Build script $BUILD_SCRIPT not found."
