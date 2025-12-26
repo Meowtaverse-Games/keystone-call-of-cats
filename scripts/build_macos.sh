@@ -48,11 +48,41 @@ cat > "$CONTENTS_DIR/Info.plist" <<EOF
     <string>1.0.0</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
     <key>LSMinimumSystemVersion</key>
     <string>10.15</string>
 </dict>
 </plist>
 EOF
+
+# Create App Icon
+ICON_SOURCE="assets/images/app_icon.png"
+if [ -f "$ICON_SOURCE" ]; then
+    echo "Creating AppIcon.icns from $ICON_SOURCE..."
+    ICONSET_DIR="target/release/AppIcon.iconset"
+    mkdir -p "$ICONSET_DIR"
+
+    # Generate icons of various sizes
+    sips -z 16 16     "$ICON_SOURCE" --out "$ICONSET_DIR/icon_16x16.png" > /dev/null
+    sips -z 32 32     "$ICON_SOURCE" --out "$ICONSET_DIR/icon_16x16@2x.png" > /dev/null
+    sips -z 32 32     "$ICON_SOURCE" --out "$ICONSET_DIR/icon_32x32.png" > /dev/null
+    sips -z 64 64     "$ICON_SOURCE" --out "$ICONSET_DIR/icon_32x32@2x.png" > /dev/null
+    sips -z 128 128   "$ICON_SOURCE" --out "$ICONSET_DIR/icon_128x128.png" > /dev/null
+    sips -z 256 256   "$ICON_SOURCE" --out "$ICONSET_DIR/icon_128x128@2x.png" > /dev/null
+    sips -z 256 256   "$ICON_SOURCE" --out "$ICONSET_DIR/icon_256x256.png" > /dev/null
+    sips -z 512 512   "$ICON_SOURCE" --out "$ICONSET_DIR/icon_256x256@2x.png" > /dev/null
+    sips -z 512 512   "$ICON_SOURCE" --out "$ICONSET_DIR/icon_512x512.png" > /dev/null
+    sips -z 1024 1024 "$ICON_SOURCE" --out "$ICONSET_DIR/icon_512x512@2x.png" > /dev/null
+
+    # Create icns file
+    iconutil -c icns "$ICONSET_DIR" -o "$RESOURCES_DIR/AppIcon.icns"
+    
+    # Cleanup
+    rm -rf "$ICONSET_DIR"
+else
+    echo "Warning: Icon source not found at $ICON_SOURCE"
+fi
 
 # Copy executable as binary
 cp target/release/keystone-cc "$MACOS_DIR/keystone-cc-bin"
