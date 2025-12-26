@@ -25,6 +25,9 @@ unic-langid = { version = "0.9.4", features = ["macros"] }
 default = ["steam"]
 steam = ["dep:steamworks"]
 
+[target.'cfg(windows)'.build-dependencies]
+winres = "0.1.12"
+
 [package.metadata.bundle.mac]
 identifier = "com.meowtaverse-games.com.keystone-cc"
 
