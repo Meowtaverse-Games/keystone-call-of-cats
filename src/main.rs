@@ -3,6 +3,9 @@ use std::env;
 use bevy::asset::AssetPlugin;
 use bevy::{camera::ScalingMode, prelude::*, render::view::ColorGrading};
 
+#[cfg(feature = "embed-assets")]
+use bevy_embedded_assets::EmbeddedAssetPlugin;
+
 use bevy_fluent::prelude::*;
 
 use bevy_egui::EguiPlugin;
@@ -65,6 +68,8 @@ fn main() {
         SteamPlugin::new(steam_app_id),
         StagePlugin,
         SettingsPlugin,
+        #[cfg(feature = "embed-assets")]
+        EmbeddedAssetPlugin::default(),
         DefaultPlugins
             .set(AssetPlugin {
                 file_path: "assets".to_string(),
