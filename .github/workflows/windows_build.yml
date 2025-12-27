@@ -43,6 +43,15 @@ jobs:
     - name: Install Pillow
       run: pip install pillow
 
+    - name: Resolve Symlinks
+      shell: pwsh
+      run: |
+        if (Test-Path "assets/fonts") { Remove-Item "assets/fonts" -Force }
+        if (Test-Path "assets/images") { Remove-Item "assets/images" -Force }
+        Copy-Item -Path "ext-assets/fonts" -Destination "assets/fonts" -Recurse
+        Copy-Item -Path "ext-assets/images" -Destination "assets/images" -Recurse
+        Get-ChildItem -Recurse assets
+
     - name: Generate Icon
       run: python scripts/generate_ico.py assets/images/logo.png assets/icon.ico
 
