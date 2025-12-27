@@ -32,11 +32,38 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-cargo-
 
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x'
+
+    - name: Install Pillow
+      run: pip install pillow
+
+    - name: Generate Icon
+      run: python scripts/generate_ico.py assets/images/logo.png assets/icon.ico
+
     - name: Build
-      run: cargo build --release
+      run: cargo build --release --no-default-features
+
+    - name: Prepare Distribution
+      shell: bash
+      run: |
+        mkdir -p dist/assets
+        cp target/release/keystone-cc.exe dist/
+        cp -r assets/* dist/assets/
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
         name: keystone-cc-windows
-        path: target/release/keystone-cc.exe
+        path: dist/
+
+    - name: Deploy to Itch.io
+      uses: Ayowel/butler-to-itch@v1
+      with:
+        butler_key: ${{ secrets.BUTLER_API_KEY }}
+        itch_user: meowtaverse-games
+        itch_game: keystone-call-of-cats
+        version: ${{ github.ref_name }}
+        files: windows:dist
