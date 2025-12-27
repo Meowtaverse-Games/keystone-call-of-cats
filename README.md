@@ -3,11 +3,15 @@ Keystone: Call of Cats invites you to guide curious cats and stones toward a sha
 
 ## Repository Layout
 - `src/main.rs` – Binary entrypoint that configures Bevy and registers the game layers
-- `src/application/` – High-level game/application state, modes, and platform glue (e.g., Steam)
-- `src/domain/` – Engine-agnostic rules, chunk grammars, and script definitions shared across layers
-- `src/infrastructure/` – Bridges to external systems and engine services (Steam APIs, tiled import, scripting, asset loading)
-- `src/presentation/` – Scenes, cameras, and UI/state presentation built on Bevy ECS
-- `assets/` – Runtime assets loaded by the game
+- `src/config.rs` – Game configuration constants and settings
+- `src/plugins/` – Modular game features and engine integrations
+- `src/resources/` – Shared game state and data structures
+- `src/scenes/` – High-level game states (e.g., Title, Gameplay) and screen definitions
+- `src/systems/` – Game logic systems (input handling, movement, collision, etc.)
+- `src/util/` – Helper functions and common utilities
+- `assets/` – Runtime assets (images, audio, fonts, stage data)
+- `scripts/` – Build, packaging, and deployment scripts
+- `tools/` – Internal development tools (e.g., sprite sheet exporter)
 - `ext-assets/` – Source files gathered from external tools/artists before import or optimization
 
 ## How To Run
