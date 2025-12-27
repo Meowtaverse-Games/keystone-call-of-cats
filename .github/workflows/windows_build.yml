@@ -12,6 +12,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+      with:
+        submodules: recursive
 
     - name: Install Rust toolchain
       uses: dtolnay/rust-toolchain@stable
@@ -44,14 +46,13 @@ jobs:
       run: python scripts/generate_ico.py assets/images/logo.png assets/icon.ico
 
     - name: Build
-      run: cargo build --release --no-default-features
+      run: cargo build --release --no-default-features --features embed-assets
 
     - name: Prepare Distribution
       shell: bash
       run: |
-        mkdir -p dist/assets
+        mkdir -p dist
         cp target/release/keystone-cc.exe dist/
-        cp -r assets/* dist/assets/
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
