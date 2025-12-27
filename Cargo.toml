@@ -28,6 +28,7 @@ steam = ["dep:steamworks"]
 embed-assets = []
 
 [build-dependencies]
+bevy_embedded_assets = "0.14.0"
 winres = "0.1.12"
 
 [package.metadata.bundle.mac]
