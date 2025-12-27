@@ -70,6 +70,10 @@ jobs:
         name: keystone-cc-windows
         path: dist/
 
+    - name: Verify Dist Content
+      shell: bash
+      run: ls -R dist
+
     - name: Deploy to Itch.io
       uses: Ayowel/butler-to-itch@v1
       with:
@@ -77,4 +81,5 @@ jobs:
         itch_user: meowtaverse-games
         itch_game: keystone-call-of-cats
         version: ${{ github.ref_name }}
-        files: windows:dist
+        files: |
+          windows: dist
