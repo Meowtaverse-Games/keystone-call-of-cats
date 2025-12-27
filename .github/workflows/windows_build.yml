@@ -75,11 +75,10 @@ jobs:
       run: ls -R dist
 
     - name: Deploy to Itch.io
-      uses: Ayowel/butler-to-itch@v1
-      with:
-        butler_key: ${{ secrets.BUTLER_API_KEY }}
-        itch_user: meowtaverse-games
-        itch_game: keystone-call-of-cats
-        version: ${{ github.ref_name }}
-        files: |
-          windows: dist
+      shell: bash
+      env:
+        BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+      run: |
+        curl -L -o butler.zip https://broth.itch.ovh/butler/windows-amd64/LATEST/archive/default
+        unzip butler.zip
+        ./butler push dist meowtaverse-games/keystone-call-of-cats:windows --userversion "${{ github.ref_name }}"
