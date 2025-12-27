@@ -3,6 +3,7 @@ pub mod design_resolution;
 pub mod scripts;
 pub mod settings;
 pub mod stage;
+#[cfg(feature = "steam")]
 pub mod steam;
 pub mod tiled;
 pub mod visibility;
@@ -12,6 +13,7 @@ pub use design_resolution::DesignResolutionPlugin;
 pub use scripts::ScriptPlugin;
 pub use settings::SettingsPlugin;
 pub use stage::StagePlugin;
+#[cfg(feature = "steam")]
 pub use steam::SteamPlugin;
 pub use tiled::TiledPlugin;
 pub use visibility::VisibilityPlugin;

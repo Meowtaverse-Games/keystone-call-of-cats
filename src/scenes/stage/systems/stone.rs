@@ -69,11 +69,13 @@ const STONE_TILE_SIZE: UVec2 = UVec2::new(64, 64);
 const STONE_SHEET_COLUMNS: u32 = 10;
 const STONE_SHEET_ROWS: u32 = 7;
 const STONE_SCALE: f32 = 1.6;
-const STONE_STEP_DISTANCE: f32 = 32.0;
-const STONE_MOVE_DURATION: f32 = 1.3;
+pub const STONE_STEP_DISTANCE: f32 = 32.0; // 2 tiles per move
+const STONE_MOVE_DURATION: f32 = 0.87;
 const STONE_COLLISION_GRACE_DISTANCE: f32 = 1.0;
-const CARRY_VERTICAL_EPS: f32 = 3.0; // 乗っているとみなす高さ誤差
-const CARRY_X_MARGIN: f32 = 2.0; // 横方向の許容マージン
+pub const STONE_COLLIDER_RADIUS: f32 = 16.5; // Large for player riding
+pub const STONE_RAYCAST_DISTANCE: f32 = STONE_STEP_DISTANCE + 8.0 * 2.0;
+const CARRY_VERTICAL_EPS: f32 = 3.0;
+const CARRY_X_MARGIN: f32 = 2.0;
 const STONE_ACTION_COOLDOWN: f32 = 0.2;
 
 use crate::resources::stone_type::StoneType;
@@ -133,9 +135,9 @@ pub fn spawn_stone(
             GravityScale(0.0),
             LinearVelocity(Vec2::ZERO),
             Collider::compound(vec![(
-                Position::from_xy(0.0, STONE_SCALE * -0.4),
+                Position::from_xy(0.0, -STONE_COLLIDER_RADIUS * 0.04),
                 Rotation::degrees(0.0),
-                Collider::circle(STONE_SCALE * 10.5),
+                Collider::circle(STONE_COLLIDER_RADIUS),
             )]),
             LockedAxes::ROTATION_LOCKED,
             CollidingEntities::default(),
@@ -182,14 +184,16 @@ pub fn handle_stone_append_messages(
     }
 }
 
-#[allow(clippy::type_complexity)]
+#[allow(clippy::type_complexity, clippy::too_many_arguments)]
 pub fn update_stone_behavior(
     mut commands: Commands,
     time: Res<Time>,
     audio_handles: Res<StageAudioHandles>,
     mut audio_state: ResMut<StageAudioState>,
     settings: Res<GameSettings>,
+    launch_profile: Res<crate::resources::launch_profile::LaunchProfile>,
     tiles: Query<(), With<StageTile>>,
+    mut gizmos: Gizmos,
     mut query: Query<
         (
             Entity,
@@ -198,7 +202,7 @@ pub fn update_stone_behavior(
             &GlobalTransform,
             &mut LinearVelocity,
             &mut StoneMotion,
-            Option<&CollidingEntities>,
+            Option<&CollidingEntities>, // kept for potential future use
         ),
         With<StoneRune>,
     >,
@@ -211,7 +215,7 @@ pub fn update_stone_behavior(
         global_transform,
         mut velocity,
         mut motion,
-        collisions,
+        _collisions,
     )) = query.single_mut()
     else {
         audio_state.stop_push_loop(&mut commands);
@@ -235,10 +239,9 @@ pub fn update_stone_behavior(
                 let dir = direction_to_vec(direction);
 
                 // Predictive raycast: check if path is blocked before moving
-                // Use same distance as is_empty check in ui.rs
                 let ray_dir = Dir2::new(dir).unwrap_or(Dir2::X);
                 let origin = global_transform.translation().truncate();
-                let check_dist = STONE_STEP_DISTANCE * 1.5 * global_transform.scale().x;
+                let check_dist = STONE_RAYCAST_DISTANCE * global_transform.scale().x;
                 let filter =
                     SpatialQueryFilter::from_mask(LayerMask::ALL).with_excluded_entities([entity]);
 
@@ -272,7 +275,7 @@ pub fn update_stone_behavior(
                 let dir_vec = direction_to_vec(direction);
                 let ray_dir = Dir2::new(dir_vec).unwrap_or(Dir2::X);
                 let origin = global_transform.translation().truncate();
-                let max_dist = STONE_STEP_DISTANCE * 1.5 * global_transform.scale().x;
+                let max_dist = STONE_RAYCAST_DISTANCE * global_transform.scale().x;
 
                 let filter =
                     SpatialQueryFilter::from_mask(LayerMask::ALL).with_excluded_entities([entity]);
@@ -310,8 +313,51 @@ pub fn update_stone_behavior(
                 progress.moved_distance +=
                     progress.velocity.length() * time.delta_secs() * world_scale;
                 velocity.0 = progress.velocity * world_scale;
-                let is_colliding = if let Some(collisions) = collisions {
-                    collides_with_tile(collisions, &tiles)
+                // Use shape cast to check for tile in the movement direction
+                // This casts a circle (same size as stone collider) to detect collisions properly
+                let dir = progress.velocity.normalize_or_zero();
+                let is_colliding = if dir.length_squared() > 0.0 {
+                    let ray_dir = Dir2::new(dir).unwrap_or(Dir2::X);
+                    let origin = global_transform.translation().truncate();
+                    let check_dist = STONE_COLLIDER_RADIUS * world_scale + 2.0;
+                    let filter = SpatialQueryFilter::from_mask(LayerMask::ALL)
+                        .with_excluded_entities([entity]);
+
+                    // Use shape cast with a circle matching the stone's collider
+                    let cast_shape = Collider::circle(STONE_COLLIDER_RADIUS * world_scale);
+                    let cast_config = ShapeCastConfig::from_max_distance(check_dist);
+                    let hit = spatial.cast_shape(
+                        &cast_shape,
+                        origin,
+                        0.0, // rotation
+                        ray_dir,
+                        &cast_config,
+                        &filter,
+                    );
+
+                    // Debug: visualize shape cast (only when render_physics is enabled)
+                    if launch_profile.render_physics {
+                        let end = origin + dir * check_dist;
+                        let color = if hit.is_some() {
+                            Color::srgb(1.0, 0.0, 0.0)
+                        } else {
+                            Color::srgb(0.0, 1.0, 0.0)
+                        };
+                        // Draw the circle shape at origin and destination
+                        gizmos.circle_2d(
+                            Isometry2d::from_translation(origin),
+                            STONE_COLLIDER_RADIUS * world_scale,
+                            color,
+                        );
+                        gizmos.circle_2d(
+                            Isometry2d::from_translation(end),
+                            STONE_COLLIDER_RADIUS * world_scale,
+                            color,
+                        );
+                        gizmos.line_2d(origin, end, color);
+                    }
+
+                    hit.is_some_and(|h| tiles.get(h.entity).is_ok())
                 } else {
                     false
                 };
@@ -386,10 +432,6 @@ fn direction_to_vec(direction: MoveDirection) -> Vec2 {
         MoveDirection::Top => Vec2::Y,
         MoveDirection::Down => Vec2::NEG_Y,
     }
-}
-
-fn collides_with_tile(collisions: &CollidingEntities, tiles: &Query<(), With<StageTile>>) -> bool {
-    collisions.iter().any(|&entity| tiles.get(entity).is_ok())
 }
 
 pub fn reset_stone_position(
