@@ -114,12 +114,15 @@ pub fn check_goal_completion(
         let goal_pos = goal_transform;
         // Descend until the top of the bottom-most tile in view, if available; otherwise
         // fall back to the bottom of the goal collider as before.
-        let target_y = tiles
+        let Some(target_y) = tiles
             .iter()
             .map(|tf| tf.translation().y)
             .min_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
             .map(|min_tile_center_y| min_tile_center_y + goal.half_extents.y)
-            .unwrap();
+        else {
+            warn!("Goal completion: failed to find target Y (no tiles?)");
+            continue;
+        };
         let align_x = goal_pos.translation.x + 4.0;
         let original_memberships = layers.memberships;
         let original_filters = layers.filters;
