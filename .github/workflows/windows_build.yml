@@ -43,7 +43,7 @@ jobs:
         Get-ChildItem -Recurse assets
 
     - name: Generate Icon
-      run: python scripts/generate_ico.py assets/images/logo.png assets/icon.ico
+      run: python scripts/generate_ico.py assets/images/app_icon.png assets/icon.ico
 
     - name: Build
       env:
