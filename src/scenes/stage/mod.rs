@@ -98,7 +98,7 @@ impl Plugin for StageScenePlugin {
                     .chain()
                     .in_set(systems::StageSystemSet::Progression)
                     .run_if(in_state(GameState::Stage)),
-            )
+            );
         // // Audio: 音声処理（Movementの後、他のシステムと並列実行可能）
         // .add_systems(
         //     Update,
