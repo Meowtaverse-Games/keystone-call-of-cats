@@ -38,8 +38,10 @@ jobs:
       run: |
         if (Test-Path "assets/fonts") { Remove-Item "assets/fonts" -Force }
         if (Test-Path "assets/images") { Remove-Item "assets/images" -Force }
+        if (Test-Path "assets/stages") { Remove-Item "assets/stages" -Force }
         Copy-Item -Path "ext-assets/fonts" -Destination "assets/fonts" -Recurse
         Copy-Item -Path "ext-assets/images" -Destination "assets/images" -Recurse
+        Copy-Item -Path "ext-assets/stages" -Destination "assets/stages" -Recurse
         Get-ChildItem -Recurse assets
 
     - name: Generate Icon
