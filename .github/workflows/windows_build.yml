@@ -36,9 +36,9 @@ jobs:
     - name: Resolve Symlinks
       shell: pwsh
       run: |
-        if (Test-Path "assets/fonts") { Remove-Item "assets/fonts" -Force }
-        if (Test-Path "assets/images") { Remove-Item "assets/images" -Force }
-        if (Test-Path "assets/stages") { Remove-Item "assets/stages" -Force }
+        if (Test-Path "assets/fonts") { Remove-Item "assets/fonts" -Force -Recurse }
+        if (Test-Path "assets/images") { Remove-Item "assets/images" -Force -Recurse }
+        if (Test-Path "assets/stages") { Remove-Item "assets/stages" -Force -Recurse }
         Copy-Item -Path "ext-assets/fonts" -Destination "assets/fonts" -Recurse
         Copy-Item -Path "ext-assets/images" -Destination "assets/images" -Recurse
         Copy-Item -Path "ext-assets/stages" -Destination "assets/stages" -Recurse
