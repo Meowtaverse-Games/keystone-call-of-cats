@@ -75,7 +75,7 @@ pub fn check_goal_completion(
         return;
     }
 
-    let Ok((
+    let Some((
         player_entity,
         mut velocity,
         mut motion,
@@ -83,7 +83,7 @@ pub fn check_goal_completion(
         mut layers,
         gravity,
         collisions,
-    )) = player_query.single_mut()
+    )) = player_query.iter_mut().next()
     else {
         return;
     };

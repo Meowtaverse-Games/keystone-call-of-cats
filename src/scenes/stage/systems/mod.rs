@@ -330,7 +330,7 @@ pub fn setup(mut commands: Commands, mut params: StageSetupParams) {
 
     let current_map = params.progression.current_map();
 
-    let Ok(window) = params.window_query.single() else {
+    let Some(window) = params.window_query.iter().next() else {
         warn!("Stage setup: primary window not available");
         return;
     };
@@ -497,7 +497,7 @@ pub fn reload_stage_if_needed(mut commands: Commands, mut params: StageReloadPar
         commands.insert_resource(StageAudioState::default());
     }
 
-    let Ok(window) = params.window_query.single() else {
+    let Some(window) = params.window_query.iter().next() else {
         warn!("Stage reload: primary window not available");
         return;
     };
@@ -556,15 +556,16 @@ pub fn update_stage_root(
     window_query: Query<&Window, With<PrimaryWindow>>,
     mut stage_root: Query<(&StageRoot, &mut Transform)>,
 ) {
+    info!("Update stage root heartbeat");
     if !viewport.is_changed() {
         return;
     }
 
-    let Ok(window) = window_query.single() else {
+    let Some(window) = window_query.iter().next() else {
         return;
     };
 
-    let Ok((_root, mut transform)) = stage_root.single_mut() else {
+    let Some((_root, mut transform)) = stage_root.iter_mut().next() else {
         return;
     };
 
@@ -582,7 +583,8 @@ pub fn update_stage_color_grading(
     editor_state: Option<Res<ScriptEditorState>>,
     mut camera_query: Query<&mut ColorGrading, With<MainCamera>>,
 ) {
-    let Ok(mut color_grading) = camera_query.single_mut() else {
+    info!("Update stage color grading heart beat");
+    let Some(mut color_grading) = camera_query.iter_mut().next() else {
         return;
     };
 

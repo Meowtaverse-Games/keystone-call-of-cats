@@ -269,8 +269,9 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
     let Ok(ctx) = contexts.ctx_mut() else {
         return;
     };
-
+    info!("UI system heart beat");
     let mut action_from_keys = None;
+
     ctx.input(|input| {
         for action in EditorMenuAction::ALL {
             if let Some(key) = action.key()
@@ -655,6 +656,7 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
         );
         letterbox_offsets.left = left;
     }
+    info!("UI system finished iteration");
 }
 
 /// Each frame, pull at most one next command from the active program and append it to the Stone.
@@ -667,6 +669,7 @@ pub fn tick_script_program(
     tiles: Query<(), With<StageTile>>,
     spatial: SpatialQuery,
 ) {
+    info!("tick_script_program heart beat");
     if !editor.controls_enabled {
         editor.active_program = None;
         return;
@@ -1034,7 +1037,7 @@ pub fn handle_tutorial_overlay_input(
     letterbox_offsets: ResMut<LetterboxOffsets>,
 ) {
     if letterbox_offsets.is_changed()
-        && let Ok((_, mut overlay)) = tutorial_overlays.single_mut()
+        && let Some((_, mut overlay)) = tutorial_overlays.iter_mut().next()
     {
         overlay.padding.left = Val::Px(letterbox_offsets.left);
     }
@@ -1043,7 +1046,7 @@ pub fn handle_tutorial_overlay_input(
         return;
     }
 
-    if let Ok((entity, mut overlay)) = tutorial_overlay_panels.single_mut() {
+    if let Some((entity, mut overlay)) = tutorial_overlay_panels.iter_mut().next() {
         if overlay.advance() {
             if let Ok(mut text) = texts.get_mut(overlay.body_entity) {
                 update_overlay_text(&overlay, &mut text);

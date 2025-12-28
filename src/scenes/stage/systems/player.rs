@@ -161,7 +161,7 @@ pub fn move_player(
     mut gizmos: Gizmos,
     launch_profile: Res<LaunchProfile>,
 ) {
-    let Ok((
+    let Some((
         player_entity,
         player_transform,
         mut velocity,
@@ -169,7 +169,7 @@ pub fn move_player(
         mut sprite,
         mut gravity_scale,
         collision_layers,
-    )) = query.single_mut()
+    )) = query.iter_mut().next()
     else {
         return;
     };
@@ -317,7 +317,7 @@ pub fn drive_player_goal_descent(
     mut query: Query<PlayerGoalDescentComponents<'_>, With<Player>>,
     mut count: Local<u32>,
 ) {
-    let Ok((
+    let Some((
         entity,
         mut transform,
         mut velocity,
@@ -325,7 +325,7 @@ pub fn drive_player_goal_descent(
         mut layers,
         mut gravity_scale,
         descent,
-    )) = query.single_mut()
+    )) = query.iter_mut().next()
     else {
         return;
     };
