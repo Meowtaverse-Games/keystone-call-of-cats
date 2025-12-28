@@ -4,8 +4,8 @@ use bevy_ecs::system::SystemParam;
 use bevy_egui::{
     EguiContexts,
     egui::{
-        self, Align2, FontFamily::Proportional, FontId, FontSelection, Id, Layout, RichText,
-        TextFormat, TextStyle, text::LayoutJob,
+        self, Align2, FontFamily::Monospace, FontFamily::Proportional, FontId, FontSelection, Id,
+        Layout, RichText, TextFormat, TextStyle, text::LayoutJob,
     },
 };
 use bevy_fluent::prelude::Localization;
@@ -303,7 +303,7 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
         ),
         (
             TextStyle::Monospace,
-            FontId::new(scaled_panel_font_size(10.0, font_offset), Proportional),
+            FontId::new(scaled_panel_font_size(10.0, font_offset), Monospace),
         ),
         (
             TextStyle::Button,
@@ -506,10 +506,7 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                 let text_edit_response = ui.add_sized(
                     egui::Vec2::new(available_size.x, text_height),
                     egui::TextEdit::multiline(&mut editor.buffer)
-                        .font(FontSelection::FontId(FontId::new(
-                            font_size,
-                            egui::FontFamily::Name("pixel_mplus".into()),
-                        )))
+                        .font(FontSelection::FontId(FontId::new(font_size, Monospace)))
                         .code_editor()
                         .interactive(!editing_locked)
                         .desired_width(f32::INFINITY),

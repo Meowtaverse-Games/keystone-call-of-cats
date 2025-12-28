@@ -75,13 +75,22 @@ pub fn setup_font(
     }
 
     let Some(handle) = asset_store.font(FontKey::Default) else {
-        warn!("UI font '{}' not found in asset store", UI_FONT_ID);
+        warn_once!("UI font '{}' not found in asset store", UI_FONT_ID);
         return;
     };
 
     let Some(font) = fonts.get(&handle) else {
+        debug!(
+            "UI font '{}' handle found, but data not loaded yet",
+            UI_FONT_ID
+        );
         return;
     };
+
+    info!(
+        "UI font '{}' successfully loaded and registering to Egui",
+        UI_FONT_ID
+    );
 
     let Ok(ctx) = contexts.ctx_mut() else {
         return;
