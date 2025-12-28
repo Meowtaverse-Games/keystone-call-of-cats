@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 bevy = { version = "0.17.3", features = ["wav"]}
 bevy_ecs = "0.17.3"
-bevy_asset_loader = "0.23.0"
+bevy_asset_loader = "0.24.0"
 bevy_egui = "0.38.0"
 bevy_render = "0.17.3"
 bevy_camera = "0.17.3"
@@ -20,15 +20,12 @@ steamworks = { version = "0.12.2", optional = true }
 thiserror = "2.0.17"
 fluent_content = "0.0.5"
 unic-langid = { version = "0.9.4", features = ["macros"] }
-bevy_embedded_assets = "0.14.0"
 
 [features]
 default = ["steam"]
 steam = ["dep:steamworks"]
-embed-assets = []
 
 [build-dependencies]
-bevy_embedded_assets = "0.14.0"
 winres = "0.1.12"
 
 [package.metadata.bundle.mac]

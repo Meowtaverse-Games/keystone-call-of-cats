@@ -22,18 +22,8 @@ jobs:
         toolchain: stable
         target: x86_64-pc-windows-msvc
 
-    - name: Cache cargo registry
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.cargo/bin/
-          ~/.cargo/registry/index/
-          ~/.cargo/registry/cache/
-          ~/.cargo/git/db/
-          target/
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-cargo-
+    - name: Run sccache-cache
+      uses: mozilla-actions/sccache-action@v0.0.8
 
     - name: Set up Python
       uses: actions/setup-python@v5
@@ -57,14 +47,17 @@ jobs:
 
     - name: Build
       env:
-        RUSTFLAGS: "-C target-feature=+crt-static"
-      run: cargo build --release --no-default-features --features embed-assets
+        RUSTFLAGS: "-C target-feature=+crt-static -C link-arg=-fuse-ld=lld"
+        RUSTC_WRAPPER: "sccache"
+        SCCACHE_GHA_ENABLED: "true"
+      run: cargo build --release --no-default-features
 
     - name: Prepare Distribution
       shell: bash
       run: |
         mkdir -p dist
         cp target/release/keystone-cc.exe dist/
+        cp -r assets dist/
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
