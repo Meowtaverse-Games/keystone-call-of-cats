@@ -409,8 +409,12 @@ fn spawn_hero_section(
                 ..default()
             })
             .with_children(|row| {
-                let badge_label = tr(localization, "stage-select-badge-experimental");
-                spawn_status_badge(row, font, &badge_label);
+                if cfg!(feature = "experimental") {
+                    let label = tr(localization, "stage-select-badge-experimental");
+                    spawn_experimental_label(row, font, &label, true);
+                } else {
+                    spawn_experimental_label(row, font, "", false);
+                }
 
                 row.spawn(Node {
                     flex_direction: FlexDirection::Row,
@@ -437,7 +441,19 @@ fn spawn_hero_section(
         });
 }
 
-fn spawn_status_badge(parent: &mut ChildSpawnerCommands, font: &Handle<Font>, label: &str) {
+fn spawn_experimental_label(
+    parent: &mut ChildSpawnerCommands,
+    font: &Handle<Font>,
+    label: &str,
+    is_show: bool,
+) {
+    if !is_show {
+        parent.spawn((Node {
+            padding: UiRect::axes(Val::Px(20.0), Val::Px(10.0)),
+            ..default()
+        },));
+        return;
+    }
     parent
         .spawn((
             Node {
