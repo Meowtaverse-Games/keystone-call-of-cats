@@ -98,20 +98,20 @@ impl Plugin for StageScenePlugin {
                     .chain()
                     .in_set(systems::StageSystemSet::Progression)
                     .run_if(in_state(GameState::Stage)),
-            )
-            // Audio: 音声処理（Movementの後、他のシステムと並列実行可能）
-            .add_systems(
-                Update,
-                systems::update_stage_color_grading
-                    .in_set(systems::StageSystemSet::Audio)
-                    .run_if(in_state(GameState::Stage)),
-            )
-            // UI: UI更新（最後に実行）
-            .add_systems(
-                EguiPrimaryContextPass,
-                systems::ui
-                    .in_set(systems::StageSystemSet::UI)
-                    .run_if(in_state(GameState::Stage)),
             );
+        // // Audio: 音声処理（Movementの後、他のシステムと並列実行可能）
+        // .add_systems(
+        //     Update,
+        //     systems::update_stage_color_grading
+        //         .in_set(systems::StageSystemSet::Audio)
+        //         .run_if(in_state(GameState::Stage)),
+        // )
+        // // UI: UI更新（最後に実行）
+        // .add_systems(
+        //     EguiPrimaryContextPass,
+        //     systems::ui
+        //         .in_set(systems::StageSystemSet::UI)
+        //         .run_if(in_state(GameState::Stage)),
+        // );
     }
 }
