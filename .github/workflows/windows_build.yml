@@ -22,8 +22,8 @@ jobs:
         toolchain: stable
         target: x86_64-pc-windows-msvc
 
-    - name: Run sccache-cache
-      uses: mozilla-actions/sccache-action@v0.0.8
+    # - name: Run sccache-cache
+    #   uses: mozilla-actions/sccache-action@v0.0.8
 
     - name: Set up Python
       uses: actions/setup-python@v5
