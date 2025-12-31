@@ -8,16 +8,22 @@ env:
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: self-hosted
 
     steps:
     - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+        token: ${{ secrets.GH_PAT }}
 
     - name: Install Rust toolchain
       uses: dtolnay/rust-toolchain@stable
       with:
         toolchain: stable
         target: x86_64-pc-windows-msvc
+
+    - name: Run sccache-cache
+      uses: mozilla-actions/sccache-action@v0.0.8
 
     - name: Cache cargo registry
       uses: actions/cache@v4
@@ -27,16 +33,59 @@ jobs:
           ~/.cargo/registry/index/
           ~/.cargo/registry/cache/
           ~/.cargo/git/db/
-          target/
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
         restore-keys: |
           ${{ runner.os }}-cargo-
 
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x'
+
+    - name: Install Pillow
+      run: pip install pillow
+
+    - name: Resolve Symlinks
+      shell: pwsh
+      run: |
+        if (Test-Path "assets/fonts") { Remove-Item "assets/fonts" -Force -Recurse }
+        if (Test-Path "assets/images") { Remove-Item "assets/images" -Force -Recurse }
+        Copy-Item -Path "ext-assets/fonts" -Destination "assets/fonts" -Recurse
+        Copy-Item -Path "ext-assets/images" -Destination "assets/images" -Recurse
+        Get-ChildItem -Recurse assets
+
+    - name: Generate Icon
+      run: python scripts/generate_ico.py assets/images/app_icon.png assets/icon.ico
+
     - name: Build
-      run: cargo build --release
+      env:
+        RUSTFLAGS: "-C target-feature=+crt-static -C link-arg=-fuse-ld=lld"
+        RUSTC_WRAPPER: "sccache"
+        # SCCACHE_GHA_ENABLED: "true"
+      run: cargo build --release --no-default-features
+
+    - name: Prepare Distribution
+      shell: bash
+      run: |
+        mkdir -p dist
+        cp target/release/keystone-cc.exe dist/
+        cp -r assets dist/
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
         name: keystone-cc-windows
-        path: target/release/keystone-cc.exe
+        path: dist/
+
+    - name: Verify Dist Content
+      shell: bash
+      run: ls -R dist
+
+    - name: Deploy to Itch.io
+      shell: bash
+      env:
+        BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+      run: |
+        curl -L -o butler.zip https://broth.itch.zone/butler/windows-amd64/LATEST/archive/default
+        unzip butler.zip
+        ./butler push dist meowtaverse-games/keystone-call-of-cats:windows

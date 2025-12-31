@@ -4,8 +4,8 @@ use bevy_ecs::system::SystemParam;
 use bevy_egui::{
     EguiContexts,
     egui::{
-        self, Align2, FontFamily::Proportional, FontId, FontSelection, Id, Layout, RichText,
-        TextFormat, TextStyle, text::LayoutJob,
+        self, Align2, FontFamily::Monospace, FontFamily::Proportional, FontId, FontSelection, Id,
+        Layout, RichText, TextFormat, TextStyle, text::LayoutJob,
     },
 };
 use bevy_fluent::prelude::Localization;
@@ -269,8 +269,8 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
     let Ok(ctx) = contexts.ctx_mut() else {
         return;
     };
-
     let mut action_from_keys = None;
+
     ctx.input(|input| {
         for action in EditorMenuAction::ALL {
             if let Some(key) = action.key()
@@ -303,7 +303,7 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
         ),
         (
             TextStyle::Monospace,
-            FontId::new(scaled_panel_font_size(10.0, font_offset), Proportional),
+            FontId::new(scaled_panel_font_size(10.0, font_offset), Monospace),
         ),
         (
             TextStyle::Button,
@@ -506,10 +506,7 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                 let text_edit_response = ui.add_sized(
                     egui::Vec2::new(available_size.x, text_height),
                     egui::TextEdit::multiline(&mut editor.buffer)
-                        .font(FontSelection::FontId(FontId::new(
-                            font_size,
-                            egui::FontFamily::Name("pixel_mplus".into()),
-                        )))
+                        .font(FontSelection::FontId(FontId::new(font_size, Monospace)))
                         .code_editor()
                         .interactive(!editing_locked)
                         .desired_width(f32::INFINITY),
@@ -1037,7 +1034,7 @@ pub fn handle_tutorial_overlay_input(
     letterbox_offsets: ResMut<LetterboxOffsets>,
 ) {
     if letterbox_offsets.is_changed()
-        && let Ok((_, mut overlay)) = tutorial_overlays.single_mut()
+        && let Some((_, mut overlay)) = tutorial_overlays.iter_mut().next()
     {
         overlay.padding.left = Val::Px(letterbox_offsets.left);
     }
@@ -1046,7 +1043,7 @@ pub fn handle_tutorial_overlay_input(
         return;
     }
 
-    if let Ok((entity, mut overlay)) = tutorial_overlay_panels.single_mut() {
+    if let Some((entity, mut overlay)) = tutorial_overlay_panels.iter_mut().next() {
         if overlay.advance() {
             if let Ok(mut text) = texts.get_mut(overlay.body_entity) {
                 update_overlay_text(&overlay, &mut text);

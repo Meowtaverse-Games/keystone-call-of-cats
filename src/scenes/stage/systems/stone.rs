@@ -149,7 +149,7 @@ pub fn handle_stone_messages(
     mut reader: MessageReader<StoneCommandMessage>,
     mut query: Query<&mut StoneCommandState, With<StoneRune>>,
 ) {
-    let Ok(mut state) = query.single_mut() else {
+    let Some(mut state) = query.iter_mut().next() else {
         return;
     };
 
@@ -171,7 +171,7 @@ pub fn handle_stone_append_messages(
     mut reader: MessageReader<StoneAppendCommandMessage>,
     mut query: Query<&mut StoneCommandState, With<StoneRune>>,
 ) {
-    let Ok(mut state) = query.single_mut() else {
+    let Some(mut state) = query.iter_mut().next() else {
         return;
     };
 
@@ -208,7 +208,7 @@ pub fn update_stone_behavior(
     >,
     spatial: SpatialQuery,
 ) {
-    let Ok((
+    let Some((
         entity,
         mut state,
         mut transform,
@@ -216,7 +216,7 @@ pub fn update_stone_behavior(
         mut velocity,
         mut motion,
         _collisions,
-    )) = query.single_mut()
+    )) = query.iter_mut().next()
     else {
         audio_state.stop_push_loop(&mut commands);
         return;
