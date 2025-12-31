@@ -556,7 +556,6 @@ pub fn update_stage_root(
     window_query: Query<&Window, With<PrimaryWindow>>,
     mut stage_root: Query<(&StageRoot, &mut Transform)>,
 ) {
-    info!("Update stage root heartbeat");
     if !viewport.is_changed() {
         return;
     }
@@ -583,7 +582,6 @@ pub fn update_stage_color_grading(
     editor_state: Option<Res<ScriptEditorState>>,
     mut camera_query: Query<&mut ColorGrading, With<MainCamera>>,
 ) {
-    info!("Update stage color grading heart beat");
     let Some(mut color_grading) = camera_query.iter_mut().next() else {
         return;
     };

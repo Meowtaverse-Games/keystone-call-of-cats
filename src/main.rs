@@ -91,8 +91,6 @@ fn main() {
     app.add_plugins(ScriptPlugin)
         .add_plugins(VisibilityPlugin)
         .add_systems(Startup, setup_camera)
-        .add_systems(PostUpdate, log_post_update)
-        .add_systems(Last, log_last)
         .add_plugins(DesignResolutionPlugin::new(
             1800.0,
             1200.0,
@@ -106,14 +104,6 @@ fn main() {
         .init_resource::<resources::stone_type::StoneCapabilities>()
         .init_state::<GameState>()
         .run();
-}
-
-fn log_post_update() {
-    info!("PostUpdate heart beat");
-}
-
-fn log_last() {
-    info!("Last heart beat");
 }
 
 fn setup_camera(mut commands: Commands) {

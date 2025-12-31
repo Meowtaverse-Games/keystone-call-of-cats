@@ -269,7 +269,6 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
     let Ok(ctx) = contexts.ctx_mut() else {
         return;
     };
-    info!("UI system heart beat");
     let mut action_from_keys = None;
 
     ctx.input(|input| {
@@ -656,7 +655,6 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
         );
         letterbox_offsets.left = left;
     }
-    info!("UI system finished iteration");
 }
 
 /// Each frame, pull at most one next command from the active program and append it to the Stone.
@@ -669,7 +667,6 @@ pub fn tick_script_program(
     tiles: Query<(), With<StageTile>>,
     spatial: SpatialQuery,
 ) {
-    info!("tick_script_program heart beat");
     if !editor.controls_enabled {
         editor.active_program = None;
         return;

@@ -208,7 +208,6 @@ pub fn update_stone_behavior(
     >,
     spatial: SpatialQuery,
 ) {
-    info!("Update stone behavior heart beat");
     let Some((
         entity,
         mut state,
