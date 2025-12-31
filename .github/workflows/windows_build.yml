@@ -39,7 +39,6 @@ jobs:
       with:
         cache-on-failure: true
 
-
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
@@ -74,15 +73,28 @@ jobs:
         cp target/release/keystone-cc.exe dist/
         cp -r assets dist/
 
+    - name: Verify Dist Content
+      shell: bash
+      run: ls -R dist
+
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
         name: keystone-cc-windows
         path: dist/
 
-    - name: Verify Dist Content
-      shell: bash
-      run: ls -R dist
+  # Itch.io用デプロイジョブ
+  deploy-itch:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: production-itch
+
+    steps:
+    - name: Download Artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: keystone-cc-windows
+        path: dist
 
     - name: Deploy to Itch.io
       shell: bash
