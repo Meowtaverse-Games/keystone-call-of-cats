@@ -1,4 +1,4 @@
-name: Windows Build
+name: Windows Universal Build
 
 on:
   workflow_dispatch:
@@ -16,8 +16,16 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
+  build-core:
     runs-on: ${{ inputs.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-pc-windows-msvc
+            arch_name: x64
+          - target: aarch64-pc-windows-msvc
+            arch_name: arm64
 
     steps:
     - uses: actions/checkout@v4
@@ -29,7 +37,7 @@ jobs:
       uses: dtolnay/rust-toolchain@stable
       with:
         toolchain: stable
-        target: x86_64-pc-windows-msvc
+        targets: ${{ matrix.target }}
 
     - name: Run sccache-cache
       uses: mozilla-actions/sccache-action@v0.0.8
@@ -37,8 +45,51 @@ jobs:
     - name: Rust Cache
       uses: Swatinem/rust-cache@v2
       with:
+        key: ${{ matrix.target }}
         cache-on-failure: true
 
+    - name: Build Game
+      env:
+        RUSTFLAGS: "-C target-feature=+crt-static"
+        RUSTC_WRAPPER: "sccache"
+        SCCACHE_DIR: "C:\\sccache"
+      run: cargo build --release --no-default-features --target ${{ matrix.target }}
+
+    - name: Upload Exe Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: game-bin-${{ matrix.arch_name }}
+        path: target/${{ matrix.target }}/release/keystone-cc.exe
+
+  build-launcher:
+    runs-on: ${{ inputs.runner }}
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: stable
+        target: x86_64-pc-windows-msvc
+
+    - name: Build Launcher
+      run: |
+        cd launcher
+        cargo build --release
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: launcher-bin
+        path: launcher/target/release/keystone-launcher.exe
+
+  package-and-deploy:
+    needs: [build-core, build-launcher]
+    runs-on: ubuntu-latest
+    environment: production-itch
+
+    steps:
+    - uses: actions/checkout@v4
+    
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
@@ -47,54 +98,52 @@ jobs:
     - name: Install Pillow
       run: pip install pillow
 
-    - name: Resolve Symlinks
-      shell: pwsh
+    - name: Setup Assets
       run: |
-        if (Test-Path "assets/fonts") { Remove-Item "assets/fonts" -Force -Recurse }
-        if (Test-Path "assets/images") { Remove-Item "assets/images" -Force -Recurse }
-        Copy-Item -Path "ext-assets/fonts" -Destination "assets/fonts" -Recurse
-        Copy-Item -Path "ext-assets/images" -Destination "assets/images" -Recurse
-        Get-ChildItem -Recurse assets
+        mkdir -p dist/bin/x64
+        mkdir -p dist/bin/arm64
+        mkdir -p dist/assets
+        
+        # Resolve symlinks and copy assets
+        # Note: on ubuntu runner, we need to be careful with symlinks.
+        # But 'assets' folder in repo likely has symlinks to 'ext-assets' or similar?
+        # Original script used PowerShell to force copy. 
+        # Here we use standard cp -L (dereference) or specific logic.
+        # The repo structure: fonts/images might be symlinks?
+        # Let's assume cp -rL works or just copy explicitly as in Windows script but using bash.
+        
+        rm -rf assets/fonts assets/images
+        cp -r ext-assets/fonts assets/
+        cp -r ext-assets/images assets/
+        
+        # Generate Icon
+        python3 scripts/generate_ico.py assets/images/app_icon.png assets/icon.ico
+        
+        cp -r assets/* dist/assets/
 
-    - name: Generate Icon
-      run: python scripts/generate_ico.py assets/images/app_icon.png assets/icon.ico
-
-    - name: Build
-      env:
-        RUSTFLAGS: "-C target-feature=+crt-static -C link-arg=-fuse-ld=lld"
-        RUSTC_WRAPPER: "sccache"
-        SCCACHE_DIR: "C:\\sccache"
-      run: cargo build --release --no-default-features
-
-    - name: Prepare Distribution
-      shell: bash
-      run: |
-        mkdir -p dist
-        cp target/release/keystone-cc.exe dist/
-        cp -r assets dist/
-
-    - name: Verify Dist Content
-      shell: bash
-      run: ls -R dist
-
-    - name: Upload Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: keystone-cc-windows
-        path: dist/
-
-  # Itch.io用デプロイジョブ
-  deploy-itch:
-    needs: build
-    runs-on: ubuntu-latest
-    environment: production-itch
-
-    steps:
-    - name: Download Artifact
+    - name: Download Launcher
       uses: actions/download-artifact@v4
       with:
-        name: keystone-cc-windows
+        name: launcher-bin
         path: dist
+    
+    - name: Rename Launcher
+      run: mv dist/keystone-launcher.exe dist/Start.exe
+
+    - name: Download x64 Build
+      uses: actions/download-artifact@v4
+      with:
+        name: game-bin-x64
+        path: dist/bin/x64
+
+    - name: Download arm64 Build
+      uses: actions/download-artifact@v4
+      with:
+        name: game-bin-arm64
+        path: dist/bin/arm64
+
+    - name: Verify Bundle
+      run: ls -R dist
 
     - name: Deploy to Itch.io
       env:
@@ -103,4 +152,4 @@ jobs:
         curl -L -o butler.zip https://broth.itch.zone/butler/linux-amd64/LATEST/archive/default
         unzip butler.zip
         chmod +x butler
-        ./butler push dist meowtaverse-games/keystone-call-of-cats:windows
+        ./butler push dist meowtaverse-games/keystone-call-of-cats:windows-universal
