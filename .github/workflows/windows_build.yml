@@ -82,11 +82,10 @@ jobs:
         name: launcher-bin
         path: launcher/target/release/keystone-launcher.exe
 
-  package-and-deploy:
+  package:
     needs: [build-core, build-launcher]
     runs-on: ubuntu-latest
-    environment: production-itch
-
+    
     steps:
     - uses: actions/checkout@v4
     
@@ -105,13 +104,6 @@ jobs:
         mkdir -p dist/assets
         
         # Resolve symlinks and copy assets
-        # Note: on ubuntu runner, we need to be careful with symlinks.
-        # But 'assets' folder in repo likely has symlinks to 'ext-assets' or similar?
-        # Original script used PowerShell to force copy. 
-        # Here we use standard cp -L (dereference) or specific logic.
-        # The repo structure: fonts/images might be symlinks?
-        # Let's assume cp -rL works or just copy explicitly as in Windows script but using bash.
-        
         rm -rf assets/fonts assets/images
         cp -r ext-assets/fonts assets/
         cp -r ext-assets/images assets/
@@ -144,6 +136,24 @@ jobs:
 
     - name: Verify Bundle
       run: ls -R dist
+
+    - name: Upload Package
+      uses: actions/upload-artifact@v4
+      with:
+        name: final-package
+        path: dist
+
+  deploy:
+    needs: package
+    runs-on: ubuntu-latest
+    environment: production-itch
+
+    steps:
+    - name: Download Package
+      uses: actions/download-artifact@v4
+      with:
+        name: final-package
+        path: dist
 
     - name: Deploy to Itch.io
       env:
