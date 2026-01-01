@@ -1,6 +1,7 @@
 #![windows_subsystem = "windows"]
 
 use std::env;
+use std::path::PathBuf;
 use std::process::Command;
 use windows::Win32::System::SystemInformation::{
     GetNativeSystemInfo, PROCESSOR_ARCHITECTURE_ARM64, SYSTEM_INFO,
@@ -12,11 +13,13 @@ fn is_native_arm64() -> bool {
         GetNativeSystemInfo(&mut system_info);
     }
     // PROCESSOR_ARCHITECTURE_ARM64 is 12 (0xC)
-    system_info.wProcessorArchitecture.0 == PROCESSOR_ARCHITECTURE_ARM64.0
+    unsafe {
+        system_info.Anonymous.Anonymous.wProcessorArchitecture.0 == PROCESSOR_ARCHITECTURE_ARM64.0
+    }
 }
 
 fn main() {
-    let current_dir = env::current_dir().unwrap_or_else(|_| env::path::PathBuf::from("."));
+    let current_dir = env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
 
     let is_arm = is_native_arm64();
 
@@ -34,7 +37,7 @@ fn main() {
     let target_path = current_dir.join(exe_path);
 
     // Spawn the game process
-    if let Ok(mut child) = Command::new(&target_path).current_dir(&current_dir).spawn() {
+    if let Ok(_child) = Command::new(&target_path).current_dir(&current_dir).spawn() {
         // Launcher exits immediately, letting the game run
     } else {
         // If spawn fails, maybe show a message box?
