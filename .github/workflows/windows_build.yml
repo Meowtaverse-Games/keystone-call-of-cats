@@ -73,6 +73,8 @@ jobs:
         target: x86_64-pc-windows-msvc
 
     - name: Build Launcher
+      env:
+        RUSTFLAGS: "-C target-feature=+crt-static"
       run: |
         cd launcher
         cargo build --release
