@@ -12,6 +12,10 @@ use bevy_egui::EguiPlugin;
 
 use avian2d::{debug_render::PhysicsDebugPlugin, prelude::*};
 
+use bevy_render::{
+    RenderPlugin,
+    settings::{Backends, RenderCreation, WgpuSettings},
+};
 use unic_langid::langid;
 
 mod config;
@@ -72,6 +76,13 @@ fn main() {
             .set(AssetPlugin {
                 file_path: "assets".to_string(),
                 watch_for_changes_override: Some(true),
+                ..default()
+            })
+            .set(RenderPlugin {
+                render_creation: RenderCreation::Automatic(WgpuSettings {
+                    backends: Some(Backends::DX12),
+                    ..default()
+                }),
                 ..default()
             })
             .set(WindowPlugin {
