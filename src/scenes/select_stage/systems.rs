@@ -251,11 +251,13 @@ pub fn handle_options_button(
     settings: Res<GameSettings>,
     mut interactions: Query<(&StageOptionsButton, &Interaction), Changed<Interaction>>,
     mut overlay: ResMut<OptionsOverlayState>,
+    time: Res<Time>,
 ) {
     for (_, interaction) in &mut interactions {
         if *interaction == Interaction::Pressed {
             play_ui_click(&mut commands, &audio, &settings);
             overlay.open = true;
+            overlay.opened_at = time.elapsed_secs_f64();
         }
     }
 }

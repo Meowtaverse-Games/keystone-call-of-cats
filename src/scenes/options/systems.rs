@@ -21,17 +21,29 @@ const SLIDER_KNOB_RING: Color32 = Color32::from_rgb(0xff, 0x45, 0x7f);
 #[derive(Resource, Default)]
 pub struct OptionsOverlayState {
     pub open: bool,
+    pub opened_at: f64,
+    pub pending_locale_change: bool,
 }
 
 pub fn handle_overlay_input(
     keys: Res<ButtonInput<KeyCode>>,
     mut overlay: ResMut<OptionsOverlayState>,
+    time: Res<Time>,
+    mut locale: ResMut<Locale>,
 ) {
     if !overlay.open {
         return;
     }
 
     if keys.just_pressed(KeyCode::Escape) {
+        if time.elapsed_secs_f64() - overlay.opened_at < 0.2 {
+            return;
+        }
+
+        if overlay.pending_locale_change {
+            locale.set_changed();
+            overlay.pending_locale_change = false;
+        }
         overlay.open = false;
     }
 }
@@ -44,6 +56,7 @@ pub fn options_overlay_ui(
     mut locale: ResMut<Locale>,
     audio: Res<AudioHandles>,
     mut overlay: ResMut<OptionsOverlayState>,
+    time: Res<Time>,
 ) {
     if !overlay.open {
         return;
@@ -69,7 +82,8 @@ pub fn options_overlay_ui(
 
     let mut settings_changed = false;
     {
-        let settings = settings.bypass_change_detection();
+        let settings_ref = settings.bypass_change_detection();
+        let locale_ref = locale.bypass_change_detection();
         egui::Area::new(Id::new("stage-select-options-overlay"))
             .order(Order::Foreground)
             .fixed_pos(panel_rect.min)
@@ -85,11 +99,12 @@ pub fn options_overlay_ui(
                         draw_contents(
                             ui,
                             &mut commands,
-                            settings,
+                            settings_ref,
                             &localization,
-                            &mut locale,
+                            locale_ref,
                             &audio,
                             &mut overlay,
+                            time.elapsed_secs_f64(),
                         )
                     });
                 settings_changed = response.inner;
@@ -98,6 +113,10 @@ pub fn options_overlay_ui(
 
     if settings_changed {
         settings.set_changed();
+    }
+    if !overlay.open && overlay.pending_locale_change {
+        locale.set_changed();
+        overlay.pending_locale_change = false;
     }
 }
 
@@ -109,6 +128,7 @@ fn draw_contents(
     locale: &mut Locale,
     audio: &AudioHandles,
     overlay: &mut OptionsOverlayState,
+    current_time: f64,
 ) -> bool {
     let mut settings_changed = false;
 
@@ -158,6 +178,7 @@ fn draw_contents(
         ui.add_space(12.0);
         if locale_selector(ui, settings, locale, localization) {
             settings_changed = true;
+            overlay.pending_locale_change = true;
         }
 
         ui.add_space(32.0);
@@ -170,8 +191,10 @@ fn draw_contents(
         .fill(Color32::from_rgb(0x29, 0x1c, 0x33));
 
         if ui.add(button).clicked() {
-            play_ui_click(commands, audio, settings);
-            overlay.open = false;
+            if current_time - overlay.opened_at >= 0.2 {
+                play_ui_click(commands, audio, settings);
+                overlay.open = false;
+            }
         }
     });
 
