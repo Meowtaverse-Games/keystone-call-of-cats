@@ -6,4 +6,5 @@ pub enum GameState {
     Boot,
     SelectStage,
     Stage,
+    Reloading,
 }

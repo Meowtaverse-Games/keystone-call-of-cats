@@ -3,7 +3,9 @@ use bevy_egui::EguiPrimaryContextPass;
 
 use crate::{
     resources::game_state::GameState,
-    scenes::options::{OptionsOverlayState, handle_overlay_input, options_overlay_ui},
+    scenes::options::{
+        OptionsOverlayState, handle_overlay_input, options_overlay_ui, update_localization,
+    },
 };
 
 mod components;
@@ -30,6 +32,7 @@ impl Plugin for StageSelectPlugin {
                     systems::refresh_cards,
                     systems::update_page_indicator,
                     systems::update_button_visuals,
+                    update_localization,
                 )
                     .run_if(in_state(GameState::SelectStage)),
             )

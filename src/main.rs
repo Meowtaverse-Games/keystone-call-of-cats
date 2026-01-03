@@ -76,7 +76,13 @@ fn main() {
     };
 
     app.insert_resource(Locale::new(locale_id).with_default(langid!("en-US")))
-        .insert_resource(launch_profile.clone());
+        .insert_resource(launch_profile.clone())
+        .add_systems(
+            OnEnter(GameState::Reloading),
+            |mut next_state: ResMut<NextState<GameState>>| {
+                next_state.set(GameState::SelectStage);
+            },
+        );
 
     app.add_plugins((
         #[cfg(feature = "steam")]

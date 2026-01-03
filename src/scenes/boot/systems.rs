@@ -1,9 +1,6 @@
 use std::time::Duration;
 
-use bevy::{
-    asset::{LoadState, LoadedFolder},
-    prelude::*,
-};
+use bevy::{asset::LoadState, prelude::*};
 use bevy_egui::{EguiContexts, egui};
 use bevy_fluent::prelude::*;
 
@@ -27,8 +24,7 @@ pub struct BootTimer {
     timer: Timer,
 }
 
-#[derive(Resource)]
-pub struct LocaleFolder(Handle<LoadedFolder>);
+use crate::resources::locale_resources::LocaleFolder;
 
 pub fn setup(
     asset_server: Res<AssetServer>,
@@ -155,7 +151,7 @@ pub fn update(
     {
         let localization_resource = localization_builder.build(&folder.0);
         commands.insert_resource(localization_resource);
-        commands.remove_resource::<LocaleFolder>();
+        // commands.remove_resource::<LocaleFolder>();
         localization_ready = true;
     }
 

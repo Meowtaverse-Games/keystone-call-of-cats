@@ -4,6 +4,7 @@ pub mod design_resolution;
 pub mod file_storage;
 pub mod game_state;
 pub mod launch_profile;
+pub mod locale_resources;
 pub mod script_engine;
 pub mod settings;
 pub mod stage_catalog;

@@ -1,9 +1,10 @@
+use crate::resources::locale_resources::LocaleFolder;
 use bevy::{input::ButtonInput, prelude::*};
 use bevy_egui::{
     EguiContexts,
     egui::{self, Color32, Frame, Id, LayerId, Margin, Order, RichText, Sense, Vec2},
 };
-use bevy_fluent::prelude::{Locale, Localization};
+use bevy_fluent::prelude::{Locale, Localization, LocalizationBuilder};
 
 use crate::{
     resources::{script_engine::Language, settings::GameSettings},
@@ -364,4 +365,22 @@ fn locale_selector(
     });
 
     changed
+}
+
+pub fn update_localization(
+    mut commands: Commands,
+    localization_builder: LocalizationBuilder,
+    locale_folder: Res<LocaleFolder>,
+    locale: Res<Locale>,
+    state: Res<State<crate::resources::game_state::GameState>>,
+    mut next_state: ResMut<NextState<crate::resources::game_state::GameState>>,
+) {
+    if locale.is_changed() {
+        let localization = localization_builder.build(&locale_folder.0);
+        commands.insert_resource(localization);
+
+        if *state.get() == crate::resources::game_state::GameState::SelectStage {
+            next_state.set(crate::resources::game_state::GameState::Reloading);
+        }
+    }
 }
