@@ -1,14 +1,16 @@
+use crate::resources::locale_resources::LocaleFolder;
 use bevy::{input::ButtonInput, prelude::*};
 use bevy_egui::{
     EguiContexts,
     egui::{self, Color32, Frame, Id, LayerId, Margin, Order, RichText, Sense, Vec2},
 };
-use bevy_fluent::prelude::Localization;
+use bevy_fluent::prelude::{Locale, Localization, LocalizationBuilder};
 
 use crate::{
+    resources::asset_store::AssetStore,
     resources::{script_engine::Language, settings::GameSettings},
     scenes::audio::{AudioHandles, play_ui_click},
-    util::localization::tr,
+    util::{font::apply_font_for_locale, localization::tr},
 };
 
 const LABEL_COLOR: Color32 = Color32::from_rgb(0xff, 0xf1, 0xf1);
@@ -20,17 +22,30 @@ const SLIDER_KNOB_RING: Color32 = Color32::from_rgb(0xff, 0x45, 0x7f);
 #[derive(Resource, Default)]
 pub struct OptionsOverlayState {
     pub open: bool,
+    pub opened_at: f64,
+    pub pending_locale_change: bool,
 }
 
 pub fn handle_overlay_input(
     keys: Res<ButtonInput<KeyCode>>,
     mut overlay: ResMut<OptionsOverlayState>,
+    time: Res<Time>,
+    mut locale: ResMut<Locale>,
 ) {
     if !overlay.open {
         return;
     }
 
     if keys.just_pressed(KeyCode::Escape) {
+        if time.elapsed_secs_f64() - overlay.opened_at < 0.2 {
+            return;
+        }
+
+        if overlay.pending_locale_change {
+            // Apply locale change
+            locale.set_changed();
+            overlay.pending_locale_change = false; // Reset flag
+        }
         overlay.open = false;
     }
 }
@@ -40,8 +55,10 @@ pub fn options_overlay_ui(
     mut contexts: EguiContexts,
     mut settings: ResMut<GameSettings>,
     localization: Res<Localization>,
+    mut locale: ResMut<Locale>,
     audio: Res<AudioHandles>,
     mut overlay: ResMut<OptionsOverlayState>,
+    time: Res<Time>,
 ) {
     if !overlay.open {
         return;
@@ -67,7 +84,8 @@ pub fn options_overlay_ui(
 
     let mut settings_changed = false;
     {
-        let settings = settings.bypass_change_detection();
+        let settings_ref = settings.bypass_change_detection();
+        let locale_ref = locale.bypass_change_detection();
         egui::Area::new(Id::new("stage-select-options-overlay"))
             .order(Order::Foreground)
             .fixed_pos(panel_rect.min)
@@ -83,10 +101,12 @@ pub fn options_overlay_ui(
                         draw_contents(
                             ui,
                             &mut commands,
-                            settings,
+                            settings_ref,
                             &localization,
+                            locale_ref,
                             &audio,
                             &mut overlay,
+                            time.elapsed_secs_f64(),
                         )
                     });
                 settings_changed = response.inner;
@@ -96,6 +116,10 @@ pub fn options_overlay_ui(
     if settings_changed {
         settings.set_changed();
     }
+    if !overlay.open && overlay.pending_locale_change {
+        locale.set_changed();
+        overlay.pending_locale_change = false;
+    }
 }
 
 fn draw_contents(
@@ -103,8 +127,10 @@ fn draw_contents(
     commands: &mut Commands,
     settings: &mut GameSettings,
     localization: &Localization,
+    locale: &mut Locale,
     audio: &AudioHandles,
     overlay: &mut OptionsOverlayState,
+    current_time: f64,
 ) -> bool {
     let mut settings_changed = false;
 
@@ -151,6 +177,11 @@ fn draw_contents(
         if language_selector(ui, settings, localization) {
             settings_changed = true;
         }
+        ui.add_space(12.0);
+        if locale_selector(ui, settings, locale, localization) {
+            settings_changed = true;
+            overlay.pending_locale_change = true;
+        }
 
         ui.add_space(32.0);
         let button = egui::Button::new(
@@ -161,7 +192,7 @@ fn draw_contents(
         .min_size(Vec2::new(200.0, 46.0))
         .fill(Color32::from_rgb(0x29, 0x1c, 0x33));
 
-        if ui.add(button).clicked() {
+        if ui.add(button).clicked() && current_time - overlay.opened_at >= 0.2 {
             play_ui_click(commands, audio, settings);
             overlay.open = false;
         }
@@ -305,4 +336,82 @@ fn language_selector(
     });
 
     changed
+}
+
+fn locale_selector(
+    ui: &mut egui::Ui,
+    settings: &mut GameSettings,
+    locale: &mut Locale,
+    localization: &Localization,
+) -> bool {
+    let mut changed = false;
+    use unic_langid::langid;
+
+    ui.vertical(|ui| {
+        ui.label(
+            RichText::new(tr(localization, "options-locale-label"))
+                .size(22.0)
+                .color(LABEL_COLOR),
+        );
+        ui.add_space(8.0);
+        ui.horizontal(|ui| {
+            for (lang_id, label_key) in [
+                (langid!("en-US"), "options-locale-en"),
+                (langid!("ja-JP"), "options-locale-ja"),
+                (langid!("zh-Hans"), "options-locale-zh"),
+            ] {
+                let is_selected = locale.requested == lang_id;
+                let mut button =
+                    egui::Button::new(RichText::new(tr(localization, label_key)).size(20.0).color(
+                        if is_selected {
+                            Color32::from_rgb(0x12, 0x0c, 0x1c)
+                        } else {
+                            LABEL_COLOR
+                        },
+                    ))
+                    .min_size(Vec2::new(140.0, 34.0));
+
+                if is_selected {
+                    button = button.fill(Color32::from_rgb(0xf8, 0xd3, 0xec));
+                } else {
+                    button = button.fill(Color32::from_rgb(0x1f, 0x1a, 0x2a));
+                }
+
+                if ui.add(button).clicked() {
+                    locale.requested = lang_id.clone();
+                    settings.locale = Some(lang_id.to_string());
+                    changed = true;
+                }
+                ui.add_space(12.0);
+            }
+        });
+    });
+
+    changed
+}
+
+pub fn update_localization(
+    mut commands: Commands,
+    localization_builder: LocalizationBuilder,
+    locale_folder: Res<LocaleFolder>,
+    locale: Res<Locale>,
+    state: Res<State<crate::resources::game_state::GameState>>,
+    mut next_state: ResMut<NextState<crate::resources::game_state::GameState>>,
+    mut contexts: EguiContexts,
+    asset_store: Res<AssetStore>,
+    fonts: Res<Assets<Font>>,
+) {
+    if locale.is_changed() {
+        let localization = localization_builder.build(&locale_folder.0);
+        commands.insert_resource(localization);
+
+        // Update font
+        if let Ok(ctx) = contexts.ctx_mut() {
+            apply_font_for_locale(ctx, &locale.requested.to_string(), &asset_store, &fonts);
+        }
+
+        if *state.get() == crate::resources::game_state::GameState::SelectStage {
+            next_state.set(crate::resources::game_state::GameState::Reloading);
+        }
+    }
 }

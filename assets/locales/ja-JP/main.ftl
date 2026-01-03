@@ -28,6 +28,10 @@ options-language-label = スクリプト言語
 options-language-rhai = Rhai
 options-language-keystone = Keystone
 options-button-back = 戻る
+options-locale-label = 言語設定
+options-locale-ja = 日本語
+options-locale-en = English
+options-locale-zh = 中文
 
 stage-ui-back-to-title = ステージ選択に戻る
 stage-ui-menu-run = 実行

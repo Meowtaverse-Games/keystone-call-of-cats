@@ -1,5 +1,5 @@
 (
-    locale: "en-US",
+    locale: "zh-Hans",
     resources: [
         "main.ftl",
         "stages.ftl",

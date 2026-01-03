@@ -29,6 +29,7 @@ use crate::{
         chunk_grammar_map,
         game_state::GameState,
         launch_profile::{LaunchProfile, LaunchType},
+        settings::GameSettings,
     },
     scenes::ScenesPlugin,
 };
@@ -60,8 +61,28 @@ fn main() {
 
     let mut app = App::new();
 
-    app.insert_resource(Locale::new(langid!("ja-JP")).with_default(langid!("en-US")))
-        .insert_resource(launch_profile.clone());
+    let storage = resources::file_storage::LocalFileStorage::default_dir();
+    let mut settings = GameSettings::load_or_default(&storage);
+
+    let locale_id = if let Some(saved_locale) = &settings.locale {
+        saved_locale.parse().unwrap_or_else(|_| langid!("ja-JP"))
+    } else {
+        let determined = determine_initial_locale();
+        settings.locale = Some(determined.to_string());
+        if let Err(e) = settings.persist(&storage) {
+            warn!("Failed to persist determined locale: {}", e);
+        }
+        determined
+    };
+
+    app.insert_resource(Locale::new(locale_id).with_default(langid!("en-US")))
+        .insert_resource(launch_profile.clone())
+        .add_systems(
+            OnEnter(GameState::Reloading),
+            |mut next_state: ResMut<NextState<GameState>>| {
+                next_state.set(GameState::SelectStage);
+            },
+        );
 
     app.add_plugins((
         #[cfg(feature = "steam")]
@@ -107,6 +128,21 @@ fn main() {
         .init_resource::<resources::stone_type::StoneCapabilities>()
         .init_state::<GameState>()
         .run();
+}
+
+fn determine_initial_locale() -> unic_langid::LanguageIdentifier {
+    // Priority: ITCHIO_OFFICIAL_LOCALE > LANG > System Default (if accessible via some crate, but std::env is easier)
+    let env_locale = std::env::var("ITCHIO_OFFICIAL_LOCALE")
+        .or_else(|_| std::env::var("LANG"))
+        .unwrap_or_else(|_| "en-US".to_string());
+
+    let short_code = env_locale.split(&['-', '_'][..]).next().unwrap_or("en");
+
+    match short_code {
+        "ja" => langid!("ja-JP"),
+        "zh" => langid!("zh-Hans"), // Assuming Simplified Chinese for generic 'zh'
+        _ => langid!("en-US"),
+    }
 }
 
 fn setup_camera(mut commands: Commands) {

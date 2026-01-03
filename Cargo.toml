@@ -22,7 +22,7 @@ fluent_content = "0.0.5"
 unic-langid = { version = "0.9.4", features = ["macros"] }
 
 [features]
-default = ["steam", "experimental"]
+default = ["experimental"]
 steam = ["dep:steamworks"]
 experimental = []
 

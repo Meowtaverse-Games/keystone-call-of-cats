@@ -19,6 +19,7 @@ pub struct GameSettings {
     music_volume: f32,
     pub fullscreen: bool,
     pub script_language: Language,
+    pub locale: Option<String>,
 }
 
 impl Default for GameSettings {
@@ -29,6 +30,7 @@ impl Default for GameSettings {
             music_volume: 0.7,
             fullscreen: false,
             script_language: Language::Rhai,
+            locale: None,
         }
     }
 }
