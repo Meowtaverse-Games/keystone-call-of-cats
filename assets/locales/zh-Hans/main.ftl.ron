@@ -1,0 +1,6 @@
+(
+    locale: "zh-Hans",
+    resources: [
+        "main.ftl",
+    ],
+)
