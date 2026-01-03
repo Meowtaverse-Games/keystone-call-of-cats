@@ -1,6 +1,6 @@
 use bevy::{app::AppExit, prelude::*, ui::BorderRadius};
 use bevy_ecs::hierarchy::ChildSpawnerCommands;
-use bevy_fluent::prelude::Localization;
+use bevy_fluent::prelude::{Locale, Localization};
 
 use super::components::*;
 use crate::{
@@ -126,6 +126,7 @@ pub fn setup(
     progress: Res<StageProgress>,
     localization: Res<Localization>,
     mut options_overlay: ResMut<OptionsOverlayState>,
+    locale: Res<Locale>,
 ) {
     clear_color.0 = background_color();
     letterbox_offsets.left = 0.0;
@@ -133,15 +134,33 @@ pub fn setup(
     letterbox_visibility.0 = false; // Hide letterbox only in SelectStage
     options_overlay.open = false;
 
-    let font = if let Some(handle) = asset_store.font(FontKey::Default) {
+    let is_chinese = locale.requested.to_string() == "zh-Hans";
+    let font_key = if is_chinese {
+        FontKey::Chinese
+    } else {
+        FontKey::Default
+    };
+
+    let font = if let Some(handle) = asset_store.font(font_key) {
         handle
     } else {
-        warn!("StageSelect: default font is not available, UI text may be missing");
+        warn!(
+            "StageSelect: font {:?} is not available, UI text may be missing",
+            font_key
+        );
         Handle::default()
     };
-    let display_font = asset_store
-        .font(FontKey::Title)
-        .unwrap_or_else(|| font.clone());
+
+    let display_font = if is_chinese {
+        // Use the same Chinese font for titles as Quicky Story likely lacks CJK
+        asset_store
+            .font(FontKey::Chinese)
+            .unwrap_or_else(|| font.clone())
+    } else {
+        asset_store
+            .font(FontKey::Title)
+            .unwrap_or_else(|| font.clone())
+    };
 
     let entries: Vec<StageEntry> = catalog
         .iter()

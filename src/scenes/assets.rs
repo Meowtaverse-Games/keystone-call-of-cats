@@ -56,6 +56,7 @@ pub const PLAYER_CLIMB_KEYS: [ImageKey; 2] = [ImageKey::PlayerClimb1, ImageKey::
 pub enum FontKey {
     Default,
     Title,
+    Chinese,
 }
 
 impl From<FontKey> for u32 {
@@ -121,6 +122,10 @@ pub const DEFAULT_GROUP: LoadAssetGroup = LoadAssetGroup {
     fonts: &[
         (FontKey::Default as u32, "fonts/PixelMplus12-Regular.ttf"),
         (FontKey::Title as u32, "fonts/Quicky Story.ttf"),
+        (
+            FontKey::Chinese as u32,
+            "fonts/fusion-pixel-12px-monospaced-zh_hans.ttf",
+        ),
     ],
     audio: &[
         (AudioKey::UiClick as u32, "audio/ui_click.ogg"),

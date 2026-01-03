@@ -7,9 +7,10 @@ use bevy_egui::{
 use bevy_fluent::prelude::{Locale, Localization, LocalizationBuilder};
 
 use crate::{
+    resources::asset_store::AssetStore,
     resources::{script_engine::Language, settings::GameSettings},
     scenes::audio::{AudioHandles, play_ui_click},
-    util::localization::tr,
+    util::{font::apply_font_for_locale, localization::tr},
 };
 
 const LABEL_COLOR: Color32 = Color32::from_rgb(0xff, 0xf1, 0xf1);
@@ -41,8 +42,9 @@ pub fn handle_overlay_input(
         }
 
         if overlay.pending_locale_change {
+            // Apply locale change
             locale.set_changed();
-            overlay.pending_locale_change = false;
+            overlay.pending_locale_change = false; // Reset flag
         }
         overlay.open = false;
     }
@@ -397,10 +399,18 @@ pub fn update_localization(
     locale: Res<Locale>,
     state: Res<State<crate::resources::game_state::GameState>>,
     mut next_state: ResMut<NextState<crate::resources::game_state::GameState>>,
+    mut contexts: EguiContexts,
+    asset_store: Res<AssetStore>,
+    fonts: Res<Assets<Font>>,
 ) {
     if locale.is_changed() {
         let localization = localization_builder.build(&locale_folder.0);
         commands.insert_resource(localization);
+
+        // Update font
+        if let Ok(ctx) = contexts.ctx_mut() {
+            apply_font_for_locale(ctx, &locale.requested.to_string(), &asset_store, &fonts);
+        }
 
         if *state.get() == crate::resources::game_state::GameState::SelectStage {
             next_state.set(crate::resources::game_state::GameState::Reloading);

@@ -1,8 +1,10 @@
 use std::time::Duration;
 
 use bevy::{asset::LoadState, prelude::*};
-use bevy_egui::{EguiContexts, egui};
+use bevy_egui::EguiContexts;
 use bevy_fluent::prelude::*;
+
+use crate::util::font::apply_font_for_locale;
 
 use crate::{
     resources::{
@@ -12,10 +14,7 @@ use crate::{
         launch_profile::LaunchProfile,
         stage_catalog::StageCatalog,
     },
-    scenes::{
-        assets::{DEFAULT_GROUP, FontKey},
-        stage::StageProgressionState,
-    },
+    scenes::{assets::DEFAULT_GROUP, stage::StageProgressionState},
 };
 
 use super::components::BootRoot;
@@ -58,55 +57,34 @@ pub fn setup(
     });
 }
 
-const UI_FONT_ID: &str = "pixel_mplus";
-
 pub fn setup_font(
     mut contexts: EguiContexts,
     mut loaded: Local<bool>,
     asset_store: Res<AssetStore>,
     fonts: Res<Assets<Font>>,
+    locale: Option<Res<Locale>>,
 ) {
     if *loaded {
         return;
     }
 
-    let Some(handle) = asset_store.font(FontKey::Default) else {
-        warn_once!("UI font '{}' not found in asset store", UI_FONT_ID);
-        return;
+    let locale_code = if let Some(l) = locale {
+        l.requested.to_string()
+    } else {
+        "en-US".to_string()
     };
 
-    let Some(font) = fonts.get(&handle) else {
-        debug!(
-            "UI font '{}' handle found, but data not loaded yet",
-            UI_FONT_ID
-        );
-        return;
-    };
+    // Attempt to apply font. We will retry next frame if standard font not loaded,
+    // unless system font is found.
+    // Actually, apply_font_for_locale handles fallback.
+    // But we need to ensure fonts are loaded.
 
-    info!(
-        "UI font '{}' successfully loaded and registering to Egui",
-        UI_FONT_ID
-    );
-
+    // We can just call it.
     let Ok(ctx) = contexts.ctx_mut() else {
         return;
     };
 
-    let mut defs = egui::FontDefinitions::default();
-    defs.families
-        .get_mut(&egui::FontFamily::Proportional)
-        .unwrap()
-        .insert(0, UI_FONT_ID.to_owned());
-    defs.families
-        .get_mut(&egui::FontFamily::Monospace)
-        .unwrap()
-        .insert(0, UI_FONT_ID.to_owned());
-
-    defs.font_data.insert(
-        UI_FONT_ID.to_owned(),
-        egui::FontData::from_owned(font.data.as_ref().clone()).into(),
-    );
-    ctx.set_fonts(defs);
+    apply_font_for_locale(ctx, &locale_code, &asset_store, &fonts);
 
     *loaded = true;
 }
