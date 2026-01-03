@@ -3,7 +3,7 @@ use bevy_egui::{
     EguiContexts,
     egui::{self, Color32, Frame, Id, LayerId, Margin, Order, RichText, Sense, Vec2},
 };
-use bevy_fluent::prelude::Localization;
+use bevy_fluent::prelude::{Locale, Localization};
 
 use crate::{
     resources::{script_engine::Language, settings::GameSettings},
@@ -40,6 +40,7 @@ pub fn options_overlay_ui(
     mut contexts: EguiContexts,
     mut settings: ResMut<GameSettings>,
     localization: Res<Localization>,
+    mut locale: ResMut<Locale>,
     audio: Res<AudioHandles>,
     mut overlay: ResMut<OptionsOverlayState>,
 ) {
@@ -85,6 +86,7 @@ pub fn options_overlay_ui(
                             &mut commands,
                             settings,
                             &localization,
+                            &mut locale,
                             &audio,
                             &mut overlay,
                         )
@@ -103,6 +105,7 @@ fn draw_contents(
     commands: &mut Commands,
     settings: &mut GameSettings,
     localization: &Localization,
+    locale: &mut Locale,
     audio: &AudioHandles,
     overlay: &mut OptionsOverlayState,
 ) -> bool {
@@ -149,6 +152,10 @@ fn draw_contents(
         }
         ui.add_space(12.0);
         if language_selector(ui, settings, localization) {
+            settings_changed = true;
+        }
+        ui.add_space(12.0);
+        if locale_selector(ui, settings, locale, localization) {
             settings_changed = true;
         }
 
@@ -297,6 +304,58 @@ fn language_selector(
 
                 if ui.add(button).clicked() {
                     settings.script_language = language;
+                    changed = true;
+                }
+                ui.add_space(12.0);
+            }
+        });
+    });
+
+    changed
+}
+
+fn locale_selector(
+    ui: &mut egui::Ui,
+    settings: &mut GameSettings,
+    locale: &mut Locale,
+    localization: &Localization,
+) -> bool {
+    let mut changed = false;
+    use unic_langid::langid;
+
+    ui.vertical(|ui| {
+        ui.label(
+            RichText::new(tr(localization, "options-locale-label"))
+                .size(22.0)
+                .color(LABEL_COLOR),
+        );
+        ui.add_space(8.0);
+        ui.horizontal(|ui| {
+            for (lang_id, label_key) in [
+                (langid!("ja-JP"), "options-locale-ja"),
+                (langid!("en-US"), "options-locale-en"),
+                (langid!("zh-Hans"), "options-locale-zh"),
+            ] {
+                let is_selected = locale.requested == lang_id;
+                let mut button =
+                    egui::Button::new(RichText::new(tr(localization, label_key)).size(20.0).color(
+                        if is_selected {
+                            Color32::from_rgb(0x12, 0x0c, 0x1c)
+                        } else {
+                            LABEL_COLOR
+                        },
+                    ))
+                    .min_size(Vec2::new(140.0, 34.0));
+
+                if is_selected {
+                    button = button.fill(Color32::from_rgb(0xf8, 0xd3, 0xec));
+                } else {
+                    button = button.fill(Color32::from_rgb(0x1f, 0x1a, 0x2a));
+                }
+
+                if ui.add(button).clicked() {
+                    locale.requested = lang_id.clone();
+                    settings.locale = Some(lang_id.to_string());
                     changed = true;
                 }
                 ui.add_space(12.0);
