@@ -2,5 +2,6 @@
     locale: "en-US",
     resources: [
         "main.ftl",
+        "stages.ftl",
     ],
 )
