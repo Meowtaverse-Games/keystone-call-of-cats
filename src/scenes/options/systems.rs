@@ -332,8 +332,8 @@ fn locale_selector(
         ui.add_space(8.0);
         ui.horizontal(|ui| {
             for (lang_id, label_key) in [
-                (langid!("ja-JP"), "options-locale-ja"),
                 (langid!("en-US"), "options-locale-en"),
+                (langid!("ja-JP"), "options-locale-ja"),
                 (langid!("zh-Hans"), "options-locale-zh"),
             ] {
                 let is_selected = locale.requested == lang_id;
