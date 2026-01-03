@@ -192,11 +192,9 @@ fn draw_contents(
         .min_size(Vec2::new(200.0, 46.0))
         .fill(Color32::from_rgb(0x29, 0x1c, 0x33));
 
-        if ui.add(button).clicked() {
-            if current_time - overlay.opened_at >= 0.2 {
-                play_ui_click(commands, audio, settings);
-                overlay.open = false;
-            }
+        if ui.add(button).clicked() && current_time - overlay.opened_at >= 0.2 {
+            play_ui_click(commands, audio, settings);
+            overlay.open = false;
         }
     });
 

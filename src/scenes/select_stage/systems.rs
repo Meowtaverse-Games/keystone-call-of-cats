@@ -134,7 +134,7 @@ pub fn setup(
     letterbox_visibility.0 = false; // Hide letterbox only in SelectStage
     options_overlay.open = false;
 
-    let is_chinese = locale.requested.to_string() == "zh-Hans";
+    let is_chinese = locale.requested == unic_langid::langid!("zh-Hans");
     let font_key = if is_chinese {
         FontKey::Chinese
     } else {
