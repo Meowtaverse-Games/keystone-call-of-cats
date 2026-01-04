@@ -53,7 +53,12 @@ pub fn setup(
     let locale_folder = asset_server.load_folder("locales");
     commands.insert_resource(LocaleFolder(locale_folder));
 
-    let mills = if !launch_profile.skip_boot { 2400 } else { 0 };
+    let mills = if !launch_profile.skip_boot && launch_profile.stage_id.is_none() {
+        2400
+    } else {
+        0
+    };
+    info!("Boot timer: {}", mills);
     commands.insert_resource(BootTimer {
         // for testing, make it shorter
         timer: Timer::new(Duration::from_millis(mills), TimerMode::Once),
