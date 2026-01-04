@@ -78,8 +78,6 @@ pub fn setup_font(
     // unless system font is found.
     // Actually, apply_font_for_locale handles fallback.
     // But we need to ensure fonts are loaded.
-
-    // We can just call it.
     let Ok(ctx) = contexts.ctx_mut() else {
         return;
     };
