@@ -65,7 +65,7 @@ fn main() {
     let mut settings = GameSettings::load_or_default(&storage);
 
     let locale_id = if let Some(saved_locale) = &settings.locale {
-        saved_locale.parse().unwrap_or_else(|_| langid!("ja-JP"))
+        saved_locale.parse().unwrap_or_else(|_| langid!("en-US"))
     } else {
         let determined = determine_initial_locale();
         settings.locale = Some(determined.to_string());
