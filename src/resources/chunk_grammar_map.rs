@@ -229,14 +229,124 @@ pub fn generate_random_layout_from_file(path: impl AsRef<Path>) -> Result<Map, C
     );
     let config = load_config_from_file(path)?;
     let placed_chunk_layout = generate_random_layout(&config);
-    Ok(Map {
+    let mut map = Map {
         placed_chunks: placed_chunk_layout.placed_chunks,
         adjustment: placed_chunk_layout.adjustment,
         map_size: placed_chunk_layout.map_size,
         stone_type: config.stone_type,
         boundary_margin: placed_chunk_layout.boundary_margin,
         margin_tiles: placed_chunk_layout.margin_tiles,
-    })
+    };
+
+    adjust_goal_layout(&mut map);
+
+    Ok(map)
+}
+
+fn adjust_goal_layout(map: &mut Map) {
+    // 1. Identify Goal Column (max x with Goal)
+    let mut goal_max_x = isize::MIN;
+    let mut found_goal = false;
+
+    // We only look at placed_chunks, assuming goals are there.
+    for chunk in &map.placed_chunks {
+        for tile in &chunk.tiles_world {
+            if tile.kind == TileKind::Goal {
+                if tile.x > goal_max_x {
+                    goal_max_x = tile.x;
+                }
+                found_goal = true;
+            }
+        }
+    }
+
+    if !found_goal {
+        return;
+    }
+
+    // 2. Determine Target Bottom (top of the bottom wall)
+    let target_bottom_y = map.boundary_margin.1;
+
+    // We will collect new tiles to add, and locations to modify.
+    // Since we need to modify the specific chunk that has the goals at goal_max_x,
+    // let's identify relevant chunks and modify them directly.
+    // It's possible there are multiple chunks, but typically one for the goal area.
+    // But we might need to add tiles to extend downwards. We can add them to the first chunk we find with a goal at that x.
+
+    let mut chunk_index_to_modify = None;
+    let mut min_goal_y = isize::MAX;
+
+    for (i, chunk) in map.placed_chunks.iter().enumerate() {
+        for tile in &chunk.tiles_world {
+            if tile.kind == TileKind::Goal && tile.x == goal_max_x {
+                if tile.y < min_goal_y {
+                    min_goal_y = tile.y;
+                }
+                chunk_index_to_modify = Some(i);
+            }
+        }
+    }
+
+    let Some(chunk_idx) = chunk_index_to_modify else {
+        return;
+    };
+
+    // 3. Extend Goal Downwards
+    if min_goal_y > target_bottom_y {
+        for y in target_bottom_y..min_goal_y {
+            map.placed_chunks[chunk_idx].tiles_world.push(Tile {
+                x: goal_max_x,
+                y,
+                kind: TileKind::Goal,
+            });
+        }
+    }
+
+    // 4. Add Guard '*'
+    // We need to re-scan mostly to cover the newly added tiles as well.
+    // Or we can just calculate the range.
+    // The range of Y for goals at goal_max_x is now [target_bottom_y, ...original_max_y?].
+    // Actually, simply iterating again is safer.
+
+    // Collect all Y positions of goals at goal_max_x
+    let mut goal_ys = Vec::new();
+    for chunk in &map.placed_chunks {
+        for tile in &chunk.tiles_world {
+            if tile.kind == TileKind::Goal && tile.x == goal_max_x {
+                goal_ys.push(tile.y);
+            }
+        }
+    }
+
+    for y in goal_ys {
+        let guard_x = goal_max_x - 1;
+        let guard_y = y;
+
+        // Ensure this spot is Solid.
+        // Check if a tile exists in placed_chunks at this spot.
+        let mut modified = false;
+        for chunk in &mut map.placed_chunks {
+            for tile in &mut chunk.tiles_world {
+                if tile.x == guard_x && tile.y == guard_y {
+                    // If it's not Solid, make it Solid.
+                    if tile.kind != TileKind::Solid {
+                        tile.kind = TileKind::Solid;
+                    }
+                    modified = true;
+                }
+            }
+        }
+
+        if !modified {
+            // No tile existed there (in chunks), so add a new Solid tile.
+            // We can add it to the same chunk where we added goals.
+            map.placed_chunks[chunk_idx].tiles_world.push(Tile {
+                x: guard_x,
+                y: guard_y,
+                kind: TileKind::Solid,
+            });
+        }
+    }
 }
 
 pub fn show_ascii_map(stage_id: usize) {
@@ -730,6 +840,5 @@ pub fn print_ascii_map(map: &Map) {
             let ch = tile_map.get(&(x, y)).copied().unwrap_or('.');
             print!("{ch}");
         }
-        println!();
     }
 }
