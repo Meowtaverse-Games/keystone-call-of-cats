@@ -14,7 +14,10 @@ use crate::{
         launch_profile::LaunchProfile,
         stage_catalog::StageCatalog,
     },
-    scenes::{assets::DEFAULT_GROUP, stage::StageProgressionState},
+    scenes::{
+        assets::{DEFAULT_GROUP, FontKey},
+        stage::StageProgressionState,
+    },
 };
 
 use super::components::BootRoot;
@@ -81,6 +84,16 @@ pub fn setup_font(
     let Ok(ctx) = contexts.ctx_mut() else {
         return;
     };
+
+    // Check if necessary fonts are loaded
+    if locale_code == "zh-Hans" && asset_store.font(FontKey::Chinese).is_none() {
+        // Wait for Chinese font
+        return;
+    }
+    if asset_store.font(FontKey::Default).is_none() {
+        // Wait for Default font (needed for fallback or main)
+        return;
+    }
 
     apply_font_for_locale(ctx, &locale_code, &asset_store, &fonts);
 
