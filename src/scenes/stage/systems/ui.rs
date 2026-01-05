@@ -30,7 +30,7 @@ use crate::{
         stage::{components::*, systems::*},
     },
     util::{
-        localization::{script_error_message, tr, tr_or, tr_with_args},
+        localization::{localized_stage_name, script_error_message, tr, tr_or, tr_with_args},
         script_types::{
             PLAYER_TOUCHED_STATE_KEY, RAND_STATE_KEY, ScriptProgram, ScriptState, ScriptStateValue,
         },
@@ -647,6 +647,27 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
     //         egui::Color32::from_rgb(255, 255, 200),
     //     );
     // }
+
+    // Display stage name in top-right corner
+    let stage_name = localized_stage_name(
+        &localization,
+        progression.current_stage_id(),
+        &format!("Stage {}", progression.current_stage_id().0),
+    );
+
+    let top_right_margin = 12.0;
+    let label_color = egui::Color32::from_white_alpha(200);
+    let font_id = FontId::new(scaled_panel_font_size(10.0, 0.0), Proportional);
+
+    egui::Area::new(Id::new("stage_name_overlay"))
+        .anchor(
+            Align2::RIGHT_TOP,
+            egui::Vec2::new(-top_right_margin, top_right_margin),
+        )
+        .order(egui::Order::Foreground)
+        .show(ctx, |ui| {
+            ui.label(RichText::new(stage_name).font(font_id).color(label_color));
+        });
 
     if (letterbox_offsets.left - left).abs() > f32::EPSILON {
         info!(
