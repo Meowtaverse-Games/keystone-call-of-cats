@@ -41,6 +41,7 @@ stage-ui-menu-font-increase = +
 stage-ui-status-command-help-open = Command reference opened.
 stage-ui-status-command-help-close = Command reference hidden.
 stage-ui-feedback-stopped = Execution stopped.
+stage-ui-feedback-step-started = Execution started.
 stage-ui-feedback-no-commands = No commands were returned.
 stage-ui-feedback-commands = {$count} commands: {$summary}
 stage-ui-commands-list = Commands: {$summary}

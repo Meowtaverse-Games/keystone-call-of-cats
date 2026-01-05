@@ -41,6 +41,7 @@ stage-ui-menu-font-increase = +
 stage-ui-status-command-help-open = 打开了“命令说明”菜单。
 stage-ui-status-command-help-close = 关闭了“命令说明”菜单。
 stage-ui-feedback-stopped = 已停止运行。
+stage-ui-feedback-step-started = 执行已开始。
 stage-ui-feedback-no-commands = 未返回任何命令。
 stage-ui-feedback-commands = {$count}条命令: {$summary}
 stage-ui-commands-list = 命令: {$summary}

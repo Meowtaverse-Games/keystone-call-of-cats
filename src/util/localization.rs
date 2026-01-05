@@ -47,7 +47,7 @@ pub fn script_error_message(localization: &Localization, error: &ScriptExecution
     match error {
         ScriptExecutionError::InvalidMoveDirection { direction } => tr_with_args(
             localization,
-            "stage-ui-error.invalid-move-direction",
+            "stage-ui-error-invalid-move-direction",
             &[("direction", direction.as_str())],
         ),
         ScriptExecutionError::InvalidSleepDuration => {
@@ -55,12 +55,12 @@ pub fn script_error_message(localization: &Localization, error: &ScriptExecution
         }
         ScriptExecutionError::Engine(message) => tr_with_args(
             localization,
-            "stage-ui-error.engine",
+            "stage-ui-error-engine",
             &[("message", message.as_str())],
         ),
         ScriptExecutionError::UnsupportedLanguage(language) => tr_with_args(
             localization,
-            "stage-ui-error.unsupported-language",
+            "stage-ui-error-unsupported-language",
             &[("language", language.as_str())],
         ),
         ScriptExecutionError::InvalidCommand(message) => message.clone(),

@@ -41,6 +41,7 @@ stage-ui-menu-font-increase = +
 stage-ui-status-command-help-open = メニュー「コマンド説明」を開きました。
 stage-ui-status-command-help-close = メニュー「コマンド説明」を閉じました。
 stage-ui-feedback-stopped = 実行を停止しました。
+stage-ui-feedback-step-started = 実行を開始しました。
 stage-ui-feedback-no-commands = 命令は返されませんでした。
 stage-ui-feedback-commands = {$count}件の命令: {$summary}
 stage-ui-commands-list = 命令: {$summary}
