@@ -198,14 +198,24 @@ fn populate_stage_contents(
         stone::STONE_STEP_DISTANCE,
     );
 
-    let obstacle_position = (8.0, 9.0 - 0.3); // map.tile_position(TileKind::Obstacle);
-    obstacle::spawn_obstacle(
-        commands,
-        stage_root,
-        asset_server,
-        atlas_layouts,
-        tile_position_to_world(obstacle_position, real_tile_size, viewport_size, scale, 0.0),
-    );
+    map.tile_positions(TileKind::Obstacle)
+        .iter()
+        .for_each(|&obstacle_position| {
+            let (x, y) = obstacle_position;
+            obstacle::spawn_obstacle(
+                commands,
+                stage_root,
+                asset_server,
+                atlas_layouts,
+                tile_position_to_world(
+                    (x as f32, y as f32 - 0.3),
+                    real_tile_size,
+                    viewport_size,
+                    scale,
+                    0.0,
+                ),
+            );
+        });
 
     map.tile_positions(TileKind::Goal)
         .iter()
