@@ -101,6 +101,7 @@ impl ChunkTemplate {
                     '@' => Some(TileKind::PlayerSpawn),
                     'S' => Some(TileKind::Stone),
                     'G' => Some(TileKind::Goal),
+                    'O' => Some(TileKind::Obstacle),
                     _ => None,
                 };
                 let Some(kind) = kind else {
