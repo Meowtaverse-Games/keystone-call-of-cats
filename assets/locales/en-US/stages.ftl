@@ -172,7 +172,21 @@ stage8-text = You have reached a maze-like level.
     Use the detection function is_empty to determine which path to take and guide the player to the goal.
 
 
-stage8-description = ...
+stage8-description = Instead of the sleep command, you can use the is_touched command.
+    Combining loop and if statements as follows allows you to check if the player is touching, and move the stone in the desired direction while touching.
+    
+    {$is_touched-example}
+    
+    loop is a statement used to repeat endlessly, and if, in this case, executes the statement inside if the result of is_touched() is true, and does not execute it if false.
+    In other words, it checks if the player is touching forever, and moves the stone only when it judges that it is touching.
+    
+    -- Commands so far --
+    
+    Stone Movement
+    Up: `{$move-up}`
+    Down: `{$move-down}`
+    Left: `{$move-left}`
+    Right: `{$move-right}`
 
 
 # Mining
