@@ -40,16 +40,12 @@ use rand::Rng;
 
 #[derive(Clone, Debug)]
 pub struct TutorialDialog {
-    pub title_key: String,
     pub body_key: String,
 }
 
 impl TutorialDialog {
-    fn new(title_key: String, body_key: String) -> Self {
-        Self {
-            title_key,
-            body_key,
-        }
+    fn new(body_key: String) -> Self {
+        Self { body_key }
     }
 }
 
@@ -800,10 +796,7 @@ fn is_player_touching_stone(
 
 pub fn tutorial_dialog_for_stage(stage_id: StageId) -> Option<TutorialDialog> {
     let id = stage_id.0;
-    Some(TutorialDialog::new(
-        format!("stage{}-name", id),
-        format!("stage{}-text", id),
-    ))
+    Some(TutorialDialog::new(format!("stage{}-text", id)))
 }
 
 fn command_help_for_stage(stage_id: StageId) -> Option<CommandHelpDialog> {
@@ -923,7 +916,6 @@ pub fn spawn_tutorial_overlay(
         return;
     };
 
-    let title = tr(localization, &dialog.title_key);
     let body = tr_or(localization, &dialog.body_key, "");
     let chunks = chunk_tutorial_text(&body);
     let mut body_value = if chunks.is_empty() {
@@ -975,21 +967,6 @@ pub fn spawn_tutorial_overlay(
                     BackgroundColor(Color::srgba(0.04, 0.04, 0.04, 0.75)),
                 ))
                 .with_children(|panel| {
-                    panel.spawn((
-                        Node {
-                            width: Val::Percent(100.0),
-                            ..default()
-                        },
-                        Text::new(title),
-                        TextFont {
-                            font: font.clone(),
-                            font_size: 28.0,
-                            ..default()
-                        },
-                        TextLayout::new(Justify::Left, LineBreak::WordBoundary),
-                        TextColor(Color::srgb(0.95, 0.9, 0.65)),
-                    ));
-
                     let entity = panel
                         .spawn((
                             Node {
