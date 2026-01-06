@@ -247,7 +247,7 @@ fn tile_id_for_kind(rng: &mut impl Rng, kind: TileKind) -> Option<u32> {
         TileKind::Solid => Some(rng.random_range(235..237)),
         TileKind::Goal => None, // Some(178),
         TileKind::Wall => None, // Some(152),
-        TileKind::PlayerSpawn | TileKind::Stone => None,
+        TileKind::PlayerSpawn | TileKind::Stone | TileKind::Obstacle => None,
     }
 }
 

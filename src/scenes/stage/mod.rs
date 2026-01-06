@@ -55,7 +55,7 @@ impl Plugin for StageScenePlugin {
             // Animation: アニメーション更新
             .add_systems(
                 Update,
-                systems::animate_player
+                (systems::animate_player, systems::animate_obstacle)
                     .in_set(systems::StageSystemSet::Animation)
                     .run_if(in_state(GameState::Stage)),
             )
