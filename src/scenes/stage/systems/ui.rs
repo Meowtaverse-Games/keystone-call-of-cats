@@ -110,8 +110,6 @@ impl CommandHelpDialog {
 }
 
 const BASE_EDITOR_FONT_SIZE: f32 = 10.0;
-const MIN_EDITOR_FONT_SIZE: f32 = 8.0;
-const MAX_EDITOR_FONT_SIZE: f32 = 20.0;
 const FONT_OFFSET_STEP: f32 = 1.0;
 const FONT_OFFSET_MIN: f32 = -6.0;
 const FONT_OFFSET_MAX: f32 = 0.0;
@@ -291,27 +289,26 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
         });
         *not_first = true;
     }
-    let font_offset = editor.font_offset;
     style.text_styles = [
         (
             TextStyle::Heading,
-            FontId::new(scaled_panel_font_size(16.0, font_offset), Proportional),
+            FontId::new(scaled_panel_font_size(16.0, 0.0), Proportional),
         ),
         (
             TextStyle::Body,
-            FontId::new(scaled_panel_font_size(10.0, font_offset), Proportional),
+            FontId::new(scaled_panel_font_size(10.0, 0.0), Proportional),
         ),
         (
             TextStyle::Monospace,
-            FontId::new(scaled_panel_font_size(10.0, font_offset), Monospace),
+            FontId::new(scaled_panel_font_size(10.0, 0.0), Monospace),
         ),
         (
             TextStyle::Button,
-            FontId::new(scaled_panel_font_size(10.0, font_offset), Proportional),
+            FontId::new(scaled_panel_font_size(10.0, 0.0), Proportional),
         ),
         (
             TextStyle::Small,
-            FontId::new(scaled_panel_font_size(8.0, font_offset), Proportional),
+            FontId::new(scaled_panel_font_size(8.0, 0.0), Proportional),
         ),
     ]
     .into();
@@ -499,15 +496,14 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                 let help_height = help_anim * help_target_height;
 
                 let text_height = (available_size.y - help_height).max(160.0);
-                let font_size = (BASE_EDITOR_FONT_SIZE + editor.font_offset)
-                    .clamp(MIN_EDITOR_FONT_SIZE, MAX_EDITOR_FONT_SIZE);
+                let font_size = scaled_panel_font_size(BASE_EDITOR_FONT_SIZE, editor.font_offset);
                 let editing_locked = editor.controls_enabled;
 
                 let text_edit_response = ui.add_sized(
                     egui::Vec2::new(available_size.x, text_height),
                     egui::TextEdit::multiline(&mut editor.buffer)
-                        .font(FontSelection::FontId(FontId::new(font_size, Monospace)))
                         .code_editor()
+                        .font(FontSelection::FontId(FontId::new(font_size, Monospace)))
                         .interactive(!editing_locked)
                         .desired_width(f32::INFINITY),
                 );
