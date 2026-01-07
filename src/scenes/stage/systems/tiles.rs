@@ -281,3 +281,22 @@ fn spawn_boundary_tile(
         Collider::compound(Vec::from([(pos, rot, collider)])),
     ));
 }
+
+pub fn restore_dug_tiles(
+    mut commands: Commands,
+    mut query: Query<(Entity, &crate::scenes::stage::components::DugTile)>,
+    editor_state: Res<crate::scenes::stage::systems::ui::ScriptEditorState>,
+) {
+    if !editor_state.pending_player_reset {
+        return;
+    }
+
+    for (entity, dug_tile) in &mut query {
+        commands
+            .entity(entity)
+            .remove::<crate::scenes::stage::components::DugTile>()
+            .remove::<Visibility>() // Remove hidden
+            .insert(Visibility::Inherited) // Restore visibility
+            .insert(dug_tile.collider.clone()); // Restore physics
+    }
+}

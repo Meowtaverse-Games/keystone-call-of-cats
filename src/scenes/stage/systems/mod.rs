@@ -44,6 +44,8 @@ pub use stone::{
 use ui::{ScriptEditorState, StageTutorialOverlay};
 pub use ui::{handle_tutorial_overlay_input, tick_script_program, ui};
 
+pub use tiles::restore_dug_tiles;
+
 #[derive(Resource, Default)]
 pub struct StageProgressionState {
     current_stage: Option<StageMeta>,

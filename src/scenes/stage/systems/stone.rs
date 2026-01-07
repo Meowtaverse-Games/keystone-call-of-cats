@@ -206,6 +206,7 @@ pub fn update_stone_behavior(
         ),
         With<StoneRune>,
     >,
+    query_colliders: Query<&Collider>,
     spatial: SpatialQuery,
 ) {
     let Some((
@@ -392,7 +393,18 @@ pub fn update_stone_behavior(
             }
             StoneAction::Dig(timer, entity) => {
                 if timer.tick(time.delta()).is_finished() {
-                    commands.entity(*entity).despawn();
+                    if let Ok(collider) = query_colliders.get(*entity) {
+                        commands
+                            .entity(*entity)
+                            .remove::<Collider>()
+                            .insert(Visibility::Hidden)
+                            .insert(crate::scenes::stage::components::DugTile {
+                                collider: collider.clone(),
+                            });
+                    } else {
+                        // Fallback for non-colliding entities or if query fails (shouldn't happen for tiles)
+                        commands.entity(*entity).despawn();
+                    }
                     // Play mining sound?
                     velocity.0 = Vec2::ZERO;
                     stop_current = true;
