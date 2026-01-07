@@ -46,8 +46,7 @@ pub fn spawn_obstacle(
     let vanish_frames = all_indices[4..8].to_vec();
 
     let mut rng = rand::rng();
-    // Random duration between 2 and 5 seconds (adjust as needed)
-    let duration = rng.random_range(2.0..5.0);
+    let duration = rng.random_range(10.0..18.0);
     let collider_size = Vec2::new(tile_width as f32, tile_height as f32);
 
     let obstacle_entity = commands
