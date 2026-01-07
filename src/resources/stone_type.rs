@@ -38,8 +38,8 @@ impl Default for StoneCapabilities {
         type3.insert("move".to_string());
         type3.insert("sleep".to_string());
         type3.insert("is_touched".to_string());
-        type3.insert("dig".to_string());
         type3.insert("is_empty".to_string());
+        type3.insert("dig".to_string());
         map.insert(StoneType::Type3, type3);
 
         // // Type 4: Move + Touched
