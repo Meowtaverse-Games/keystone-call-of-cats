@@ -41,8 +41,8 @@ pub fn spawn_obstacle(
     // Frame indices based on requirement:
     // First 4 frames: Loop
     // Last 4 frames: Vanish
-    let all_indices = vec![195, 196, 197, 198, 212, 213, 214, 215];
-    let loop_frames = vec![195, 196, 197, 198, 197, 196];
+    let all_indices = [195, 196, 197, 198, 212, 213, 214, 215];
+    let loop_frames = [195, 196, 197, 198, 197, 196].to_vec();
     let vanish_frames = all_indices[4..8].to_vec();
 
     let mut rng = rand::rng();
