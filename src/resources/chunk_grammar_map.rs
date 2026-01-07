@@ -843,5 +843,6 @@ pub fn print_ascii_map(map: &Map) {
             let ch = tile_map.get(&(x, y)).copied().unwrap_or('.');
             print!("{ch}");
         }
+        println!();
     }
 }

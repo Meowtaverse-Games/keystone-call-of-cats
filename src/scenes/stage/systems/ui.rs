@@ -813,8 +813,14 @@ fn command_help_args(language: Language) -> &'static [(&'static str, &'static st
             ("move-down", "move(\"down\");"),
             ("move-right", "move(\"right\");"),
             ("move-left", "move(\"left\");"),
+            ("sleep", "sleep(<seconds>);"),
             ("sleep-1", "sleep(1);"),
             ("sleep-2x5", "sleep(2<<dot>>5);"), // https://github.com/kgv/fluent_content/issues/3
+            ("is-touched", "is_touched();"),
+            ("dig-up", "dig(\"up\");"),
+            ("dig-down", "dig(\"down\");"),
+            ("dig-left", "dig(\"left\");"),
+            ("dig-right", "dig(\"right\");"),
             ("loop-example", "loop {\n    move(\"up\");\n}"),
             (
                 "loop-example2",

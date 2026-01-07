@@ -187,14 +187,48 @@ stage9-text = The stone is buried. But this stone seems to be a special stone th
     Use the dig command, which allows you to dig around 5 times, to proceed deeper.
 
 
-stage9-description = ...
+stage9-description = You can use the dig command to dig in a specified direction. Specify the direction just like you do for movement.
+    
+    To dig below the stone, write:
+    {$dig-down}
+    
+    -- Commands so far --
+    
+    Stone Movement
+    Up: `{$move-up}`
+    Down: `{$move-down}`
+    Left: `{$move-left}`
+    Right: `{$move-right}`
+    
+    Checks
+    Check if player touches stone: `{$is-touched}`
+    
+    Other
+    Wait for specified seconds: `{$sleep}`
 
 
 stage10-text = In this level, the stone is further blocked by surrounding rocks.
     Combine dig learned in the previous stage and move to let the rock escape.
 
 
-stage10-description = ...
+stage10-description = You can use the dig command to dig in a specified direction. Specify the direction just like you do for movement.
+    
+    To dig below the stone, write:
+    {$dig-down}
+    
+    -- Commands so far --
+    
+    Stone Movement
+    Up: `{$move-up}`
+    Down: `{$move-down}`
+    Left: `{$move-left}`
+    Right: `{$move-right}`
+    
+    Checks
+    Check if player touches stone: `{$is-touched}`
+    
+    Other
+    Wait for specified seconds: `{$sleep}`
 
 
 stage11-text = This level alternates between hollows and rocks.

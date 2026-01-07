@@ -101,8 +101,8 @@ pub fn spawn_stone(
     let coord = match stone_type {
         StoneType::Type1 => UVec2::new(2, 4),
         StoneType::Type2 => UVec2::new(4, 4),
-        StoneType::Type3 => UVec2::new(2, 6),
-        StoneType::Type4 => UVec2::new(2, 3),
+        StoneType::Type3 => UVec2::new(2, 0),
+        StoneType::Type4 => UVec2::new(5, 0),
     };
 
     info!("stone_type: {:?}", stone_type);
@@ -206,6 +206,7 @@ pub fn update_stone_behavior(
         ),
         With<StoneRune>,
     >,
+    query_colliders: Query<&Collider>,
     spatial: SpatialQuery,
 ) {
     let Some((
@@ -392,7 +393,18 @@ pub fn update_stone_behavior(
             }
             StoneAction::Dig(timer, entity) => {
                 if timer.tick(time.delta()).is_finished() {
-                    commands.entity(*entity).despawn();
+                    if let Ok(collider) = query_colliders.get(*entity) {
+                        commands
+                            .entity(*entity)
+                            .remove::<Collider>()
+                            .insert(Visibility::Hidden)
+                            .insert(crate::scenes::stage::components::DugTile {
+                                collider: collider.clone(),
+                            });
+                    } else {
+                        // Fallback for non-colliding entities or if query fails (shouldn't happen for tiles)
+                        commands.entity(*entity).despawn();
+                    }
                     // Play mining sound?
                     velocity.0 = Vec2::ZERO;
                     stop_current = true;

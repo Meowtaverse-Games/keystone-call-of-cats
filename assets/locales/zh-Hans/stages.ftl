@@ -187,14 +187,48 @@ stage9-text = 石头被埋住了。但是，这块石头似乎是可以挖掘周
     使用只能挖掘5次周围的 dig 命令，向更深处前进吧。
 
 
-stage9-description = ...
+stage9-description = 使用 dig 命令可以在指定方向进行挖掘。就像移动石头一样，输入方向来指定挖掘方向。
+    
+    若要挖掘石头下方，请这样写：
+    {$dig-down}
+    
+    -- 目前为止的命令 --
+    
+    石头的移动
+    上: `{$move-up}`
+    下: `{$move-down}`
+    左: `{$move-left}`
+    右: `{$move-right}`
+    
+    判定
+    玩家是否触碰石头: `{$is-touched}`
+    
+    其他
+    等待指定秒数: `{$sleep}`
 
 
 stage10-text = 这一层，石头的去路被周围的岩石堵住了。
     结合前一关学到的 dig 和移动的 move，让岩石逃脱吧。
 
 
-stage10-description = ...
+stage10-description = 使用 dig 命令可以在指定方向进行挖掘。就像移动石头一样，输入方向来指定挖掘方向。
+    
+    若要挖掘石头下方，请这样写：
+    {$dig-down}
+    
+    -- 目前为止的命令 --
+    
+    石头的移动
+    上: `{$move-up}`
+    下: `{$move-down}`
+    左: `{$move-left}`
+    右: `{$move-right}`
+    
+    判定
+    玩家是否触碰石头: `{$is-touched}`
+    
+    其他
+    等待指定秒数: `{$sleep}`
 
 
 stage11-text = 这一层空洞和岩石交错分布。

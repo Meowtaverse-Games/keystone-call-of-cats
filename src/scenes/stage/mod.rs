@@ -46,9 +46,11 @@ impl Plugin for StageScenePlugin {
             .add_systems(
                 Update,
                 (
+                    systems::restore_dug_tiles,
                     systems::reset_stone_position,
                     systems::reset_player_position,
                 )
+                    .chain()
                     .in_set(systems::StageSystemSet::Reset)
                     .run_if(in_state(GameState::Stage)),
             )
