@@ -101,8 +101,8 @@ pub fn spawn_stone(
     let coord = match stone_type {
         StoneType::Type1 => UVec2::new(2, 4),
         StoneType::Type2 => UVec2::new(4, 4),
-        StoneType::Type3 => UVec2::new(2, 6),
-        StoneType::Type4 => UVec2::new(2, 3),
+        StoneType::Type3 => UVec2::new(2, 0),
+        StoneType::Type4 => UVec2::new(5, 0),
     };
 
     info!("stone_type: {:?}", stone_type);
