@@ -45,6 +45,7 @@ pub enum TileKind {
     Stone,
     Goal,
     Wall,
+    Obstacle,
 }
 
 type ExitPoint = ((isize, isize), Dir);
@@ -100,6 +101,7 @@ impl ChunkTemplate {
                     '@' => Some(TileKind::PlayerSpawn),
                     'S' => Some(TileKind::Stone),
                     'G' => Some(TileKind::Goal),
+                    'O' => Some(TileKind::Obstacle),
                     _ => None,
                 };
                 let Some(kind) = kind else {
@@ -376,6 +378,7 @@ fn build_tile_char_map(map: &Map) -> HashMap<(isize, isize), char> {
             TileKind::Stone => 'S',
             TileKind::Goal => 'G',
             TileKind::Wall => '#',
+            TileKind::Obstacle => 'O',
         };
         char_map.insert((x, y), ch);
     }

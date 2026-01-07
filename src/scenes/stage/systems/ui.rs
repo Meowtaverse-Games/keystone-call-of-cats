@@ -40,16 +40,12 @@ use rand::Rng;
 
 #[derive(Clone, Debug)]
 pub struct TutorialDialog {
-    pub title_key: String,
     pub body_key: String,
 }
 
 impl TutorialDialog {
-    fn new(title_key: String, body_key: String) -> Self {
-        Self {
-            title_key,
-            body_key,
-        }
+    fn new(body_key: String) -> Self {
+        Self { body_key }
     }
 }
 
@@ -110,8 +106,6 @@ impl CommandHelpDialog {
 }
 
 const BASE_EDITOR_FONT_SIZE: f32 = 10.0;
-const MIN_EDITOR_FONT_SIZE: f32 = 8.0;
-const MAX_EDITOR_FONT_SIZE: f32 = 20.0;
 const FONT_OFFSET_STEP: f32 = 1.0;
 const FONT_OFFSET_MIN: f32 = -6.0;
 const FONT_OFFSET_MAX: f32 = 0.0;
@@ -291,27 +285,26 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
         });
         *not_first = true;
     }
-    let font_offset = editor.font_offset;
     style.text_styles = [
         (
             TextStyle::Heading,
-            FontId::new(scaled_panel_font_size(16.0, font_offset), Proportional),
+            FontId::new(scaled_panel_font_size(16.0, 0.0), Proportional),
         ),
         (
             TextStyle::Body,
-            FontId::new(scaled_panel_font_size(10.0, font_offset), Proportional),
+            FontId::new(scaled_panel_font_size(10.0, 0.0), Proportional),
         ),
         (
             TextStyle::Monospace,
-            FontId::new(scaled_panel_font_size(10.0, font_offset), Monospace),
+            FontId::new(scaled_panel_font_size(10.0, 0.0), Monospace),
         ),
         (
             TextStyle::Button,
-            FontId::new(scaled_panel_font_size(10.0, font_offset), Proportional),
+            FontId::new(scaled_panel_font_size(10.0, 0.0), Proportional),
         ),
         (
             TextStyle::Small,
-            FontId::new(scaled_panel_font_size(8.0, font_offset), Proportional),
+            FontId::new(scaled_panel_font_size(8.0, 0.0), Proportional),
         ),
     ]
     .into();
@@ -499,15 +492,14 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                 let help_height = help_anim * help_target_height;
 
                 let text_height = (available_size.y - help_height).max(160.0);
-                let font_size = (BASE_EDITOR_FONT_SIZE + editor.font_offset)
-                    .clamp(MIN_EDITOR_FONT_SIZE, MAX_EDITOR_FONT_SIZE);
+                let font_size = scaled_panel_font_size(BASE_EDITOR_FONT_SIZE, editor.font_offset);
                 let editing_locked = editor.controls_enabled;
 
                 let text_edit_response = ui.add_sized(
                     egui::Vec2::new(available_size.x, text_height),
                     egui::TextEdit::multiline(&mut editor.buffer)
-                        .font(FontSelection::FontId(FontId::new(font_size, Monospace)))
                         .code_editor()
+                        .font(FontSelection::FontId(FontId::new(font_size, Monospace)))
                         .interactive(!editing_locked)
                         .desired_width(f32::INFINITY),
                 );
@@ -804,10 +796,7 @@ fn is_player_touching_stone(
 
 pub fn tutorial_dialog_for_stage(stage_id: StageId) -> Option<TutorialDialog> {
     let id = stage_id.0;
-    Some(TutorialDialog::new(
-        format!("stage{}-name", id),
-        format!("stage{}-text", id),
-    ))
+    Some(TutorialDialog::new(format!("stage{}-text", id)))
 }
 
 fn command_help_for_stage(stage_id: StageId) -> Option<CommandHelpDialog> {
@@ -832,7 +821,7 @@ fn command_help_args(language: Language) -> &'static [(&'static str, &'static st
                 "loop {\n    move(\"up\");\n    sleep(1);\n}",
             ),
             (
-                "touched-example",
+                "is-touched-example",
                 "loop {\n    if is_touched() {\n        <<dot>><<dot>><<dot>>\n    }\n}",
             ),
         ],
@@ -927,7 +916,6 @@ pub fn spawn_tutorial_overlay(
         return;
     };
 
-    let title = tr(localization, &dialog.title_key);
     let body = tr_or(localization, &dialog.body_key, "");
     let chunks = chunk_tutorial_text(&body);
     let mut body_value = if chunks.is_empty() {
@@ -979,21 +967,6 @@ pub fn spawn_tutorial_overlay(
                     BackgroundColor(Color::srgba(0.04, 0.04, 0.04, 0.75)),
                 ))
                 .with_children(|panel| {
-                    panel.spawn((
-                        Node {
-                            width: Val::Percent(100.0),
-                            ..default()
-                        },
-                        Text::new(title),
-                        TextFont {
-                            font: font.clone(),
-                            font_size: 28.0,
-                            ..default()
-                        },
-                        TextLayout::new(Justify::Left, LineBreak::WordBoundary),
-                        TextColor(Color::srgb(0.95, 0.9, 0.65)),
-                    ));
-
                     let entity = panel
                         .spawn((
                             Node {

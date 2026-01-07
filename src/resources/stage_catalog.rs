@@ -63,7 +63,6 @@ impl StageCatalog {
 #[derive(Deserialize, Default)]
 struct RonStageEntry {
     id: usize,
-    title: String,
     #[serde(default)]
     unlocked: bool,
 }
@@ -83,7 +82,7 @@ fn build_stage_meta(entries: Vec<RonStageEntry>) -> Vec<StageMeta> {
         .into_iter()
         .map(|entry| StageMeta {
             id: StageId(entry.id),
-            title: entry.title,
+            title: format!("Stage {}", entry.id),
             unlocked: entry.unlocked,
         })
         .collect()

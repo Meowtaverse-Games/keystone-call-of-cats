@@ -1,5 +1,6 @@
 mod audio;
 mod goal;
+mod obstacle;
 mod player;
 mod schedule;
 mod stone;
@@ -33,6 +34,7 @@ use crate::{
 use audio::{StageAudioHandles, StageAudioState};
 
 pub use goal::check_goal_completion;
+pub use obstacle::*;
 pub use player::*;
 pub use stone::{
     StoneAppendCommandMessage, StoneCommandMessage, carry_riders_with_stone,
@@ -195,6 +197,25 @@ fn populate_stage_contents(
         map.stone_type,
         stone::STONE_STEP_DISTANCE,
     );
+
+    map.tile_positions(TileKind::Obstacle)
+        .iter()
+        .for_each(|&obstacle_position| {
+            let (x, y) = obstacle_position;
+            obstacle::spawn_obstacle(
+                commands,
+                stage_root,
+                asset_server,
+                atlas_layouts,
+                tile_position_to_world(
+                    (x as f32, y as f32 - 0.3),
+                    real_tile_size,
+                    viewport_size,
+                    scale,
+                    0.0,
+                ),
+            );
+        });
 
     map.tile_positions(TileKind::Goal)
         .iter()
