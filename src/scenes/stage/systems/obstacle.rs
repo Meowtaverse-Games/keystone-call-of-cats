@@ -1,3 +1,4 @@
+use crate::scenes::stage::systems::ui::ScriptEditorState;
 use avian2d::prelude::*;
 use bevy::prelude::*;
 use rand::Rng;
@@ -10,6 +11,7 @@ pub struct AnimatedObstacle {
     pub vanish_frames: Vec<usize>,
     pub current_step: usize,
     pub is_vanishing: bool,
+    pub collider_size: Vec2,
 }
 
 pub fn spawn_obstacle(
@@ -46,6 +48,7 @@ pub fn spawn_obstacle(
     let mut rng = rand::rng();
     // Random duration between 2 and 5 seconds (adjust as needed)
     let duration = rng.random_range(2.0..5.0);
+    let collider_size = Vec2::new(tile_width as f32, tile_height as f32);
 
     let obstacle_entity = commands
         .spawn((
@@ -65,9 +68,10 @@ pub fn spawn_obstacle(
                 vanish_frames,
                 current_step: 0,
                 is_vanishing: false,
+                collider_size,
             },
-            RigidBody::Static,
-            Collider::rectangle(tile_width as f32, tile_height as f32),
+            RigidBody::Kinematic,
+            Collider::rectangle(collider_size.x, collider_size.y),
         ))
         .id();
     commands.entity(stage_root).add_child(obstacle_entity);
@@ -76,40 +80,90 @@ pub fn spawn_obstacle(
 pub fn animate_obstacle(
     mut commands: Commands,
     time: Res<Time>,
-    mut query: Query<(Entity, &mut AnimatedObstacle, &mut Sprite)>,
+    editor_state: Option<Res<ScriptEditorState>>,
+    mut query: Query<(
+        Entity,
+        &mut AnimatedObstacle,
+        &mut Sprite,
+        &mut Visibility,
+        Option<&Collider>,
+    )>,
 ) {
-    for (entity, mut obstacle, mut sprite) in &mut query {
-        obstacle.animation_timer.tick(time.delta());
-        obstacle.lifetime_timer.tick(time.delta());
+    let is_playing = editor_state.map(|s| s.controls_enabled).unwrap_or(false);
 
-        // Check if lifetime expired to switch to vanishing mode
-        if !obstacle.is_vanishing && obstacle.lifetime_timer.is_finished() {
-            obstacle.is_vanishing = true;
-            obstacle.current_step = 0; // Start vanish animation from beginning
+    for (entity, mut obstacle, mut sprite, mut visibility, collider) in &mut query {
+        if !is_playing {
+            // Edit Mode: Reset and Loop
+            if *visibility == Visibility::Hidden || obstacle.is_vanishing {
+                // Reset to initial state
+                obstacle.is_vanishing = false;
+                obstacle.current_step = 0;
+                *visibility = Visibility::Visible;
 
-            // Remove collision when vanishing starts
-            commands.entity(entity).remove::<Collider>();
-            commands.entity(entity).remove::<RigidBody>();
+                // Reset timer with new random duration
+                let mut rng = rand::rng();
+                let duration = rng.random_range(2.0..5.0);
+                obstacle
+                    .lifetime_timer
+                    .set_duration(std::time::Duration::from_secs_f32(duration));
+                obstacle.lifetime_timer.reset();
 
-            // Force update display immediately
-            if let Some(atlas) = &mut sprite.texture_atlas {
-                atlas.index = obstacle.vanish_frames[0];
-            }
-        }
-
-        if obstacle.animation_timer.just_finished() {
-            if obstacle.is_vanishing {
-                obstacle.current_step += 1;
-                if obstacle.current_step >= obstacle.vanish_frames.len() {
-                    commands.entity(entity).despawn();
-                } else if let Some(atlas) = &mut sprite.texture_atlas {
-                    atlas.index = obstacle.vanish_frames[obstacle.current_step];
+                // Restore collision if missing.
+                // Note: We keeping RigidBody always, only toggling Collider preventing avian2d panic.
+                if collider.is_none() {
+                    commands.entity(entity).insert(Collider::rectangle(
+                        obstacle.collider_size.x,
+                        obstacle.collider_size.y,
+                    ));
                 }
-            } else {
-                // Looping mode
+            }
+
+            // Always loop animation in edit mode (ignoring lifetime timer)
+            obstacle.animation_timer.tick(time.delta());
+            if obstacle.animation_timer.just_finished() {
                 obstacle.current_step = (obstacle.current_step + 1) % obstacle.loop_frames.len();
                 if let Some(atlas) = &mut sprite.texture_atlas {
                     atlas.index = obstacle.loop_frames[obstacle.current_step];
+                }
+            }
+        } else {
+            // Play Mode
+            if *visibility != Visibility::Hidden {
+                obstacle.animation_timer.tick(time.delta());
+                obstacle.lifetime_timer.tick(time.delta());
+
+                // Timer expired -> Start Vanish
+                if !obstacle.is_vanishing && obstacle.lifetime_timer.is_finished() {
+                    obstacle.is_vanishing = true;
+                    obstacle.current_step = 0;
+
+                    // Remove collision immediately (only Collider)
+                    commands.entity(entity).remove::<Collider>();
+
+                    if let Some(atlas) = &mut sprite.texture_atlas {
+                        atlas.index = obstacle.vanish_frames[0];
+                    }
+                }
+
+                if obstacle.animation_timer.just_finished() {
+                    if obstacle.is_vanishing {
+                        obstacle.current_step += 1;
+                        if obstacle.current_step >= obstacle.vanish_frames.len() {
+                            // Finished vanishing -> Hide
+                            *visibility = Visibility::Hidden;
+                            // Ensure collision is gone
+                            commands.entity(entity).remove::<Collider>();
+                        } else if let Some(atlas) = &mut sprite.texture_atlas {
+                            atlas.index = obstacle.vanish_frames[obstacle.current_step];
+                        }
+                    } else {
+                        // Loop until vanish
+                        obstacle.current_step =
+                            (obstacle.current_step + 1) % obstacle.loop_frames.len();
+                        if let Some(atlas) = &mut sprite.texture_atlas {
+                            atlas.index = obstacle.loop_frames[obstacle.current_step];
+                        }
+                    }
                 }
             }
         }

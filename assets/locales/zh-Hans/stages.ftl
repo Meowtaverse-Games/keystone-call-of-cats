@@ -144,7 +144,7 @@ stage7-text = 石头的样子似乎和以前不一样了。
 stage7-description = 代替 sleep 命令，可以使用 is_touched 命令。
     如下组合 loop 和 if 语句，可以判定是否与玩家及其接触，并且可以在接触期间让石头向想移动的方向移动。
     
-    {$is_touched-example}
+    {$is-touched-example}
     
     loop 是用于一直重复的语句，而 if，在这次的情况下，如果 is_touched() 的结果为真，则执行其中的语句，如果 is_touched() 的结果为假，则不执行其中的语句。
     也就是说，一直检查是否与玩家接触，只有在判断为接触时才移动石头的写法。
@@ -167,7 +167,7 @@ stage8-text = 来到了迷宫一样的楼层。
 stage8-description = 代替 sleep 命令，可以使用 is_touched 命令。
     如下组合 loop 和 if 语句，可以判定是否与玩家及其接触，并且可以在接触期间让石头向想移动的方向移动。
     
-    {$is_touched-example}
+    {$is-touched-example}
     
     loop 是用于一直重复的语句，而 if，在这次的情况下，如果 is_touched() 的结果为真，则执行其中的语句，如果 is_touched() 的结果为假，则不执行其中的语句。
     也就是说，一直检查是否与玩家接触，只有在判断为接触时才移动石头的写法。

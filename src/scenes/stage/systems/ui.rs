@@ -821,7 +821,7 @@ fn command_help_args(language: Language) -> &'static [(&'static str, &'static st
                 "loop {\n    move(\"up\");\n    sleep(1);\n}",
             ),
             (
-                "touched-example",
+                "is-touched-example",
                 "loop {\n    if is_touched() {\n        <<dot>><<dot>><<dot>>\n    }\n}",
             ),
         ],
