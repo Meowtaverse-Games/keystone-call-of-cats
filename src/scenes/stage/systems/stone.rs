@@ -6,7 +6,9 @@ use bevy::prelude::*;
 use super::{StageAudioHandles, StageAudioState, ui::ScriptEditorState};
 use crate::{
     resources::settings::GameSettings,
-    scenes::stage::components::{Player, StageRoot, StageTile, StoneRune, StoneSpawnState},
+    scenes::stage::components::{
+        PlacedTile, Player, StageRoot, StageTile, StoneRune, StoneSpawnState,
+    },
     util::script_types::{MoveDirection, ScriptCommand},
 };
 
@@ -432,6 +434,43 @@ pub fn update_stone_behavior(
                         commands.entity(*entity).despawn();
                     }
                     // Play mining sound?
+                    velocity.0 = Vec2::ZERO;
+                    stop_current = true;
+                }
+            }
+            StoneAction::Place(timer, target_pos) => {
+                info!("Place hit: {:?}", target_pos);
+
+                if timer.tick(time.delta()).is_finished() {
+                    // Spawn tile as child of stage_root
+                    if let Some(stage_root) = stage_root_query.iter().next() {
+                        let tile_z = -5.0; // Same as standard tiles
+                        let spawn_pos = target_pos.truncate().extend(tile_z);
+
+                        // We need a way to determine the correct scale.
+                        // Assuming step_size reflects the grid size.
+                        // If we use Sprite.custom_size, we can force the visual size.
+                        let size = state.step_size;
+
+                        commands.entity(stage_root).with_children(|parent| {
+                            parent.spawn((
+                                StageTile,
+                                PlacedTile, // Mark as placed
+                                Transform::from_translation(spawn_pos),
+                                GlobalTransform::default(),
+                                Visibility::Inherited,
+                                Sprite {
+                                    color: Color::WHITE,
+                                    custom_size: Some(Vec2::splat(size)),
+                                    ..default()
+                                },
+                                // Physics
+                                RigidBody::Static,
+                                Collider::rectangle(size, size),
+                            ));
+                        });
+                    }
+
                     velocity.0 = Vec2::ZERO;
                     stop_current = true;
                 }

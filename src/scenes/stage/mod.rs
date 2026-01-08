@@ -47,6 +47,7 @@ impl Plugin for StageScenePlugin {
                 Update,
                 (
                     systems::restore_dug_tiles,
+                    systems::despawn_placed_tiles,
                     systems::reset_stone_position,
                     systems::reset_player_position,
                 )
