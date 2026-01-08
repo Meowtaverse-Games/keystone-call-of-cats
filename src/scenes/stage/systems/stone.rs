@@ -5,12 +5,20 @@ use bevy::prelude::*;
 
 use super::{StageAudioHandles, StageAudioState, ui::ScriptEditorState};
 use crate::{
-    resources::settings::GameSettings,
+    resources::{settings::GameSettings, tiled::TiledMapAssets},
     scenes::stage::components::{
         PlacedTile, Player, StageRoot, StageTile, StoneRune, StoneSpawnState,
     },
     util::script_types::{MoveDirection, ScriptCommand},
 };
+
+const BACKGROUND_TILE_IDS: [u32; 2] = [235, 236];
+
+fn background_tile_id(rng: &mut rand::rngs::ThreadRng) -> u32 {
+    use rand::Rng;
+    let index = rng.random_range(0..(BACKGROUND_TILE_IDS.len()));
+    BACKGROUND_TILE_IDS[index]
+}
 
 #[derive(Message, Clone)]
 pub struct StoneCommandMessage {
@@ -195,6 +203,8 @@ pub fn update_stone_behavior(
     mut audio_state: ResMut<StageAudioState>,
     settings: Res<GameSettings>,
     launch_profile: Res<crate::resources::launch_profile::LaunchProfile>,
+    tiled_map_assets: Res<TiledMapAssets>,
+    // viewport: Res<crate::resources::design_resolution::ScaledViewport>, // Unused now
     tiles: Query<(), With<StageTile>>,
     mut gizmos: Gizmos,
     mut query: Query<
@@ -317,8 +327,6 @@ pub fn update_stone_behavior(
                 // Check if there is anything at the target position
                 let hit = spatial.cast_ray(origin, ray_dir, max_dist, true, &filter);
 
-                info!("Place hit: {:?}", hit);
-
                 if hit.is_none() {
                     // Calculate target position for placement
                     let target_pos = transform.translation
@@ -333,6 +341,9 @@ pub fn update_stone_behavior(
     }
 
     let mut stop_current = false;
+
+    // Copy step_size before mutable borrow of state.current
+    let step_size = state.step_size;
 
     if let Some(action) = state.current.as_mut() {
         match action {
@@ -439,36 +450,45 @@ pub fn update_stone_behavior(
                 }
             }
             StoneAction::Place(timer, target_pos) => {
-                info!("Place hit: {:?}", target_pos);
-
                 if timer.tick(time.delta()).is_finished() {
                     // Spawn tile as child of stage_root
                     if let Some(stage_root) = stage_root_query.iter().next() {
-                        let tile_z = -5.0; // Same as standard tiles
+                        // Use a Z value that ensures visibility relative to stage_root
+                        // Stone is at Z=1.0. Global spawn at Z=10.0 worked.
+                        // Let's try Local Z=2.0 (in front of Stone).
+                        let tile_z = 2.0;
                         let spawn_pos = target_pos.truncate().extend(tile_z);
 
-                        // We need a way to determine the correct scale.
-                        // Assuming step_size reflects the grid size.
-                        // If we use Sprite.custom_size, we can force the visual size.
-                        let size = state.step_size;
+                        // Get a random background tile ID
+                        let mut rng = rand::rng();
+                        let tile_id = background_tile_id(&mut rng);
+                        info!("Spawning placed tile id={} at {:?}", tile_id, spawn_pos);
 
-                        commands.entity(stage_root).with_children(|parent| {
-                            parent.spawn((
-                                StageTile,
-                                PlacedTile, // Mark as placed
-                                Transform::from_translation(spawn_pos),
-                                GlobalTransform::default(),
-                                Visibility::Inherited,
-                                Sprite {
-                                    color: Color::WHITE,
-                                    custom_size: Some(Vec2::splat(size)),
-                                    ..default()
-                                },
-                                // Physics
-                                RigidBody::Static,
-                                Collider::rectangle(size, size),
-                            ));
-                        });
+                        let tileset = &tiled_map_assets.tileset;
+                        let tile_size = tileset.tile_size();
+
+                        // CRITICAL: Scale must match the Stone's step_size so the grid aligns visually.
+                        // step_size (32.0) / tile_size (16.0) = 2.0
+                        let scale = step_size / tile_size.x;
+
+                        if let Some(tile_sprite) = tileset.atlas_sprite(tile_id) {
+                            let image =
+                                Sprite::from_atlas_image(tile_sprite.texture, tile_sprite.atlas);
+                            let transform = Transform::from_translation(spawn_pos)
+                                .with_scale(Vec3::new(scale, scale, 1.0));
+
+                            commands.entity(stage_root).with_children(|parent| {
+                                parent.spawn((
+                                    StageTile,
+                                    PlacedTile,
+                                    image,
+                                    transform,
+                                    Visibility::Visible,
+                                    RigidBody::Static,
+                                    Collider::rectangle(tile_size.x, tile_size.y),
+                                ));
+                            });
+                        }
                     }
 
                     velocity.0 = Vec2::ZERO;
