@@ -42,11 +42,12 @@ impl Default for StoneCapabilities {
         type3.insert("dig".to_string());
         map.insert(StoneType::Type3, type3);
 
-        // // Type 4: Move + Touched
-        // let mut type4 = HashSet::new();
-        // type4.insert("move".to_string());
-        // type4.insert("is_touched".to_string());
-        // map.insert(StoneType::Type4, type4);
+        // Type 4: Move + Touched + Place
+        let mut type4 = HashSet::new();
+        type4.insert("move".to_string());
+        type4.insert("is_touched".to_string());
+        type4.insert("place".to_string());
+        map.insert(StoneType::Type4, type4);
 
         Self { map }
     }

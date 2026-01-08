@@ -6,7 +6,7 @@ use bevy::prelude::*;
 use super::{StageAudioHandles, StageAudioState, ui::ScriptEditorState};
 use crate::{
     resources::settings::GameSettings,
-    scenes::stage::components::{Player, StageTile, StoneRune, StoneSpawnState},
+    scenes::stage::components::{Player, StageRoot, StageTile, StoneRune, StoneSpawnState},
     util::script_types::{MoveDirection, ScriptCommand},
 };
 
@@ -62,6 +62,7 @@ enum StoneAction {
     Move(MoveCommandProgress),
     Sleep(Timer),
     Dig(Timer, Entity),
+    Place(Timer, Vec3),
 }
 
 const STONE_ATLAS_PATH: &str = "images/spr_allrunes_spritesheet_xx.png";
@@ -208,6 +209,7 @@ pub fn update_stone_behavior(
     >,
     query_colliders: Query<&Collider>,
     spatial: SpatialQuery,
+    stage_root_query: Query<Entity, With<StageRoot>>,
 ) {
     let Some((
         entity,
@@ -299,6 +301,30 @@ pub fn update_stone_behavior(
                         Timer::from_seconds(0.5, TimerMode::Once),
                         Entity::PLACEHOLDER,
                     )
+                }
+            }
+            ScriptCommand::Place(direction) => {
+                let dir_vec = direction_to_vec(direction);
+                let ray_dir = Dir2::new(dir_vec).unwrap_or(Dir2::X);
+                let origin = global_transform.translation().truncate();
+                let max_dist = STONE_RAYCAST_DISTANCE * global_transform.scale().x;
+
+                let filter =
+                    SpatialQueryFilter::from_mask(LayerMask::ALL).with_excluded_entities([entity]);
+
+                // Check if there is anything at the target position
+                let hit = spatial.cast_ray(origin, ray_dir, max_dist, true, &filter);
+
+                info!("Place hit: {:?}", hit);
+
+                if hit.is_none() {
+                    // Calculate target position for placement
+                    let target_pos = transform.translation
+                        + Vec3::new(dir_vec.x, dir_vec.y, 0.0) * state.step_size;
+                    StoneAction::Place(Timer::from_seconds(0.5, TimerMode::Once), target_pos)
+                } else {
+                    // Blocked
+                    StoneAction::Sleep(Timer::from_seconds(0.5, TimerMode::Once))
                 }
             }
         });
