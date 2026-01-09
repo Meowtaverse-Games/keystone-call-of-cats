@@ -36,6 +36,7 @@ pub(crate) struct StoneCommandState {
     current: Option<StoneAction>,
     cooldown: Timer,
     pub step_size: f32, // Dynamic step size based on map scale
+    pub tile_size: f32,
 }
 
 impl Default for StoneCommandState {
@@ -45,6 +46,7 @@ impl Default for StoneCommandState {
             current: None,
             cooldown: Timer::from_seconds(0.0, TimerMode::Once),
             step_size: 32.0,
+            tile_size: 16.0,
         }
     }
 }
@@ -99,6 +101,7 @@ pub fn spawn_stone(
     (object_x, object_y, _scale): (f32, f32, f32),
     stone_type: StoneType,
     step_size: f32,
+    tile_size: f32,
 ) {
     let texture = asset_server.load(STONE_ATLAS_PATH);
     let layout = layouts.add(TextureAtlasLayout::from_grid(
@@ -136,6 +139,7 @@ pub fn spawn_stone(
             stone_type,
             StoneCommandState {
                 step_size,
+                tile_size,
                 ..default()
             },
             StoneMotion {
@@ -330,7 +334,7 @@ pub fn update_stone_behavior(
                 if hit.is_none() {
                     // Calculate target position for placement
                     let target_pos = transform.translation
-                        + Vec3::new(dir_vec.x, dir_vec.y, 0.0) * state.step_size;
+                        + Vec3::new(dir_vec.x, dir_vec.y, 0.0) * state.tile_size;
                     StoneAction::Place(Timer::from_seconds(0.5, TimerMode::Once), target_pos)
                 } else {
                     // Blocked
@@ -341,9 +345,6 @@ pub fn update_stone_behavior(
     }
 
     let mut stop_current = false;
-
-    // Copy step_size before mutable borrow of state.current
-    let step_size = state.step_size;
 
     if let Some(action) = state.current.as_mut() {
         match action {
@@ -469,7 +470,7 @@ pub fn update_stone_behavior(
 
                         // CRITICAL: Scale must match the Stone's step_size so the grid aligns visually.
                         // step_size (32.0) / tile_size (16.0) = 2.0
-                        let scale = step_size / tile_size.x;
+                        let scale = state.tile_size / tile_size.x;
 
                         if let Some(tile_sprite) = tileset.atlas_sprite(tile_id) {
                             let image =

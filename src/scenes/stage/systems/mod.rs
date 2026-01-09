@@ -197,6 +197,7 @@ fn populate_stage_contents(
         atlas_layouts,
         tile_position_to_world(stone_position, real_tile_size, viewport_size, scale, 0.0),
         map.stone_type,
+        stone::STONE_STEP_DISTANCE,
         real_tile_size.x,
     );
 
