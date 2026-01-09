@@ -207,14 +207,57 @@ stage9-description = You can use the dig command to dig in a specified direction
     Wait for specified seconds: `{$sleep}`
 
 
-stage10-text = In this level, the stone is further blocked by surrounding rocks.
-    Combine dig learned in the previous stage and move to let the rock escape.
+stage10-text = In this level, there are several places to dig.
+    Combine dig and move learned in the previous stage to open up a path.
 
 
-stage10-description = You can use the dig command to dig in a specified direction. Specify the direction just like you do for movement.
+stage10-description = Stone Movement
+    Up: `{$move-up}`
+    Down: `{$move-down}`
+    Left: `{$move-left}`
+    Right: `{$move-right}`
     
-    To dig below the stone, write:
-    {$dig-down}
+    Dig
+    Up: `{$dig-up}`
+    Down: `{$dig-down}`
+    Left: `{$dig-left}`
+    Right: `{$dig-right}`
+    
+    Checks
+    Check if player touches stone: `{$is-touched}`
+    
+    Other
+    Wait for specified seconds: `{$sleep}`
+
+
+stage11-text = There is a stone a little further away. Time it right and have it dig for you.
+
+
+stage11-description = Stone Movement
+    Up: `{$move-up}`
+    Down: `{$move-down}`
+    Left: `{$move-left}`
+    Right: `{$move-right}`
+    
+    Dig
+    Up: `{$dig-up}`
+    Down: `{$dig-down}`
+    Left: `{$dig-left}`
+    Right: `{$dig-right}`
+    
+    Checks
+    Check if player touches stone: `{$is-touched}`
+    
+    Other
+    Wait for specified seconds: `{$sleep}`
+
+
+stage12-text = This level alternates between hollows and rocks.
+    Use the dig command, which can only be used 5 times, only when necessary, checking with is_empty to proceed efficiently.
+
+
+stage12-description = is_empty allows you to determine if you can dig in the specified direction.
+    {$is-empty-example}
     
     -- Commands so far --
     
@@ -224,18 +267,17 @@ stage10-description = You can use the dig command to dig in a specified directio
     Left: `{$move-left}`
     Right: `{$move-right}`
     
+    Dig
+    Up: `{$dig-up}`
+    Down: `{$dig-down}`
+    Left: `{$dig-left}`
+    Right: `{$dig-right}`
+    
     Checks
     Check if player touches stone: `{$is-touched}`
     
     Other
     Wait for specified seconds: `{$sleep}`
-
-
-stage11-text = This level alternates between hollows and rocks.
-    Use the dig command, which can only be used 5 times, only when necessary, check with is_empty, and proceed efficiently.
-
-
-stage11-description = ...
 
 
 stage13-text = Within a narrow tunnel, you and the stone must pass each other.
