@@ -825,6 +825,10 @@ fn command_help_args(language: Language) -> &'static [(&'static str, &'static st
                 "is-touched-example",
                 "loop {\n    if is_touched() {\n        <<dot>><<dot>><<dot>>\n    }\n}",
             ),
+            (
+                "is-empty-example",
+                "loop {\n    if is_empty(\"up\") {\n        <<dot>><<dot>><<dot>>\n    }\n}",
+            ),
         ],
         Language::Keystone => &[
             ("move-up", "move up"),

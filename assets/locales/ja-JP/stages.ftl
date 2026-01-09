@@ -261,7 +261,7 @@ stage12-text = この階層は空洞と岩が交互に挟まれています。
 
 
 stage12-description = is_empty で指定した方向は掘ることができるのか判断できます。
-    ${is-empty-example}
+    {$is-empty-example}
     
     -- これまでのコマンド --
     
