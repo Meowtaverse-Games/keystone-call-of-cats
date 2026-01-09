@@ -758,15 +758,6 @@ pub fn tick_script_program(
             format!("is-empty-{}", name),
             ScriptStateValue::Bool(!is_blocked),
         );
-        // info!(
-        //     "is-empty-{}: {} (origin={:?}, radius={}, step={}, hit={:?})",
-        //     name,
-        //     !is_blocked,
-        //     origin,
-        //     collider_radius,
-        //     check_dist,
-        //     hit.map(|h| (h.distance, h.entity))
-        // );
     }
 
     if let Some(command) = program.next(&state) {
