@@ -11,6 +11,9 @@ use crate::{
     },
     util::script_types::{MoveDirection, ScriptCommand},
 };
+use std::io::Read;
+use std::net::TcpListener;
+use std::sync::{Arc, Mutex};
 
 const BACKGROUND_TILE_IDS: [u32; 2] = [235, 236];
 
@@ -117,6 +120,7 @@ pub fn spawn_stone(
         StoneType::Type2 => UVec2::new(4, 4),
         StoneType::Type3 => UVec2::new(2, 0),
         StoneType::Type4 => UVec2::new(5, 0),
+        StoneType::Type5 => UVec2::new(1, 0), // Orange/Yellowish stone
     };
 
     info!("stone_type: {:?}", stone_type);
@@ -698,6 +702,141 @@ pub fn carry_riders_with_stone(
                 velocity.0 = Vec2::ZERO;
                 command_state.current = None;
                 command_state.queue.clear();
+            }
+        }
+    }
+}
+
+#[derive(Resource)]
+pub struct NetworkStoneQueue {
+    pub commands: Arc<Mutex<VecDeque<ScriptCommand>>>,
+}
+
+impl Default for NetworkStoneQueue {
+    fn default() -> Self {
+        Self {
+            commands: Arc::new(Mutex::new(VecDeque::new())),
+        }
+    }
+}
+
+pub fn start_network_stone_server(
+    queue: Res<NetworkStoneQueue>,
+    progression: Res<super::StageProgressionState>,
+) {
+    if progression.current_map().stone_type != StoneType::Type5 {
+        return;
+    }
+
+    let commands = queue.commands.clone();
+    std::thread::spawn(move || {
+        // ... (rest of the thread logic)
+        let listener = TcpListener::bind("127.0.0.1:8080");
+        match listener {
+            Ok(listener) => {
+                info!("Network Stone Server listening on 127.0.0.1:8080");
+                for stream in listener.incoming() {
+                    match stream {
+                        Ok(mut stream) => {
+                            let mut buffer = [0; 1024];
+                            if let Ok(size) = stream.read(&mut buffer) {
+                                let request = String::from_utf8_lossy(&buffer[..size]);
+
+                                if request.starts_with("GET / ") {
+                                    let html = r#"
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stone Controller</title>
+<style>
+  body { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #222; color: #fff; font-family: sans-serif; }
+  .pad { display: grid; grid-template-columns: 80px 80px 80px; grid-template-rows: 80px 80px 80px; gap: 10px; }
+  button { width: 100%; height: 100%; font-size: 32px; cursor: pointer; background: #444; color: white; border: none; border-radius: 12px; touch-action: manipulation; }
+  button:active { background: #666; transform: scale(0.95); }
+  .instructions { margin-top: 20px; text-align: center; color: #aaa; }
+</style>
+</head>
+<body>
+  <div class="pad">
+    <div></div>
+    <button onclick="move('U')">▲</button>
+    <div></div>
+    <button onclick="move('L')">◀</button>
+    <div></div>
+    <button onclick="move('R')">▶</button>
+    <div></div>
+    <button onclick="move('D')">▼</button>
+    <div></div>
+  </div>
+  <div class="instructions">Tap buttons to move the stone</div>
+  <script>
+    function move(dir) {
+      fetch('/', { method: 'POST', body: dir });
+    }
+  </script>
+</body>
+</html>
+"#;
+                                    let response = format!(
+                                        "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nContent-Type: text/html\r\n\r\n{}",
+                                        html.len(),
+                                        html
+                                    );
+                                    let _ =
+                                        std::io::Write::write_all(&mut stream, response.as_bytes());
+                                } else if request.starts_with("POST / ") {
+                                    // Very basic HTTP parsing: find body after \r\n\r\n
+                                    if let Some(body_start) = request.find("\r\n\r\n") {
+                                        let body = &request[body_start + 4..];
+                                        let command = match body.trim() {
+                                            "U" => Some(ScriptCommand::Move(MoveDirection::Top)),
+                                            "D" => Some(ScriptCommand::Move(MoveDirection::Down)),
+                                            "L" => Some(ScriptCommand::Move(MoveDirection::Left)),
+                                            "R" => Some(ScriptCommand::Move(MoveDirection::Right)),
+                                            _ => None,
+                                        };
+
+                                        if let Some(cmd) = command {
+                                            if let Ok(mut queue) = commands.lock() {
+                                                queue.push_back(cmd);
+                                                info!(
+                                                    "Network Stone received command: {:?}",
+                                                    body.trim()
+                                                );
+                                            }
+                                        }
+                                    }
+                                    // Send simple 200 OK response
+                                    let response = "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n";
+                                    let _ =
+                                        std::io::Write::write_all(&mut stream, response.as_bytes());
+                                }
+                            }
+                        }
+                        Err(e) => warn!("Connection failed: {}", e),
+                    }
+                }
+            }
+            Err(e) => warn!("Failed to bind port 8080: {}", e),
+        }
+    });
+}
+
+pub fn update_network_stone(
+    mut query: Query<(&mut StoneCommandState, &StoneType), With<StoneRune>>,
+    queue: Res<NetworkStoneQueue>,
+) {
+    let Ok(mut queue) = queue.commands.lock() else {
+        return;
+    };
+
+    for (mut state, stone_type) in query.iter_mut() {
+        if *stone_type == StoneType::Type5 {
+            // If queue has commands, feed them to the stone
+            while let Some(cmd) = queue.pop_front() {
+                state.queue.push_back(cmd);
             }
         }
     }

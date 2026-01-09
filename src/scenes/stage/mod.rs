@@ -15,9 +15,13 @@ impl Plugin for StageScenePlugin {
         systems::StageSystemSet::configure_sets(app);
 
         app.init_resource::<systems::StageProgressionState>()
+            .init_resource::<systems::NetworkStoneQueue>()
             .add_message::<systems::StoneCommandMessage>()
             .add_message::<systems::StoneAppendCommandMessage>()
-            .add_systems(OnEnter(GameState::Stage), systems::setup)
+            .add_systems(
+                OnEnter(GameState::Stage),
+                (systems::setup, systems::start_network_stone_server),
+            )
             .add_systems(
                 OnEnter(GameState::Stage),
                 crate::systems::engine::friction::apply_zero_friction_to_rigid_bodies
@@ -68,6 +72,7 @@ impl Plugin for StageScenePlugin {
                 (
                     systems::move_player,
                     systems::update_stone_behavior,
+                    systems::update_network_stone,
                     systems::update_stage_root,
                 )
                     .in_set(systems::StageSystemSet::Movement)

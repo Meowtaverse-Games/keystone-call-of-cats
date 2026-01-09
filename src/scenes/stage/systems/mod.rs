@@ -37,9 +37,9 @@ pub use goal::check_goal_completion;
 pub use obstacle::*;
 pub use player::*;
 pub use stone::{
-    StoneAppendCommandMessage, StoneCommandMessage, carry_riders_with_stone,
+    NetworkStoneQueue, StoneAppendCommandMessage, StoneCommandMessage, carry_riders_with_stone,
     handle_stone_append_messages, handle_stone_messages, reset_stone_position,
-    update_stone_behavior,
+    start_network_stone_server, update_network_stone, update_stone_behavior,
 };
 use ui::{ScriptEditorState, StageTutorialOverlay};
 pub use ui::{handle_tutorial_overlay_input, tick_script_program, ui};

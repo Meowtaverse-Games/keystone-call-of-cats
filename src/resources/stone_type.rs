@@ -9,6 +9,7 @@ pub enum StoneType {
     Type2,
     Type3,
     Type4,
+    Type5,
 }
 
 #[derive(Resource)]
@@ -48,6 +49,11 @@ impl Default for StoneCapabilities {
         type4.insert("is_touched".to_string());
         type4.insert("place".to_string());
         map.insert(StoneType::Type4, type4);
+
+        // Type 5: Move (Network Controlled)
+        let type5 = HashSet::new();
+        // type5.insert("move".to_string());
+        map.insert(StoneType::Type5, type5);
 
         Self { map }
     }
