@@ -22,6 +22,8 @@ pub struct ScriptExecutor {
     #[allow(dead_code)]
     runner: Box<dyn ScriptRunner>,
     stepper: Box<dyn ScriptStepper>,
+    ks_runner: Box<dyn ScriptRunner>,
+    ks_stepper: Box<dyn ScriptStepper>,
 }
 
 impl Default for ScriptExecutor {
@@ -29,13 +31,15 @@ impl Default for ScriptExecutor {
         Self::new(
             Box::<RhaiScriptExecutor>::default(),
             Box::<RhaiScriptExecutor>::default(),
+            Box::<KeystoneScriptExecutor>::default(),
+            Box::<KeystoneScriptExecutor>::default(),
         )
     }
 }
 
 impl ScriptExecutor {
-    pub fn new(runner: Box<dyn ScriptRunner>, stepper: Box<dyn ScriptStepper>) -> Self {
-        Self { runner, stepper }
+    pub fn new(runner: Box<dyn ScriptRunner>, stepper: Box<dyn ScriptStepper>, ks_runner: Box<dyn ScriptRunner>, ks_stepper: Box<dyn ScriptStepper>,) -> Self {
+        Self { runner, stepper, ks_runner, ks_stepper }
     }
 
     #[allow(dead_code)]
@@ -47,9 +51,7 @@ impl ScriptExecutor {
     ) -> Result<Vec<ScriptCommand>, ScriptExecutionError> {
         match language {
             Language::Rhai => self.runner.run(source, allowed_commands),
-            Language::Keystone => Err(ScriptExecutionError::UnsupportedLanguage(
-                "Keystone scripting is not yet implemented".to_string(),
-            )),
+            Language::Keystone => self.ks_runner.run(source, allowed_commands),
         }
     }
 
@@ -61,9 +63,7 @@ impl ScriptExecutor {
     ) -> Result<Box<dyn ScriptProgram>, ScriptExecutionError> {
         match language {
             Language::Rhai => self.stepper.compile_step(source, allowed_commands),
-            Language::Keystone => Err(ScriptExecutionError::UnsupportedLanguage(
-                "Keystone scripting is not yet implemented".to_string(),
-            )),
+            Language::Keystone => self.ks_stepper.compile_step(source, allowed_commands),
         }
     }
 }
