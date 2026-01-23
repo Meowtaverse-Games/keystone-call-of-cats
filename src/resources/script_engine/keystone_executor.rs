@@ -39,6 +39,12 @@ impl ScriptStepper for KeystoneScriptExecutor {
         let res = eval(source);
         match res {
             Ok(iter) => {
+                let preflight = iter.clone();
+                for res in preflight {
+                    if let Err(e) = res {
+                        return Err(map_error(e));
+                    }
+                }
                 Ok(Box::new(KeystoneScriptProgram { iterator: iter }))
             },
             Err(err) => {
@@ -66,7 +72,7 @@ fn map_event(event: Event, _state: &ScriptState) -> Option<ScriptCommand> {
     match event {
         Event::Move(dir) => Some(ScriptCommand::Move(map_direction(dir)?)),
         Event::Sleep(duration) => Some(ScriptCommand::Sleep(duration)),
-        // Event::Dig(dir) => Some(ScriptCommand::Dig(map_direction(dir))),
+        Event::Dig(dir) => Some(ScriptCommand::Dig(map_direction(dir)?)),
         _ => None,
     }
 }

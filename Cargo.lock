@@ -3495,7 +3495,7 @@ dependencies = [
 [[package]]
 name = "keystone-lang"
 version = "0.1.0"
-source = "git+https://github.com/Meowtaverse-Games/keystone-lang.git#876bc2d6eab0fdfcb224a7f9fc1fb19927aa405f"
+source = "git+https://github.com/Meowtaverse-Games/keystone-lang.git#3d3dc5aadd1bebf0d5c1a3cf84221e62c182fe30"
 dependencies = [
  "chumsky",
 ]
