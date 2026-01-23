@@ -1,9 +1,11 @@
 mod rhai_executor;
+mod keystone_executor;
 
 use bevy::prelude::Resource;
 use serde::{Deserialize, Serialize};
 
 pub use rhai_executor::RhaiScriptExecutor;
+pub use keystone_executor::KeystoneScriptExecutor;
 
 use crate::util::script_types::{
     ScriptCommand, ScriptExecutionError, ScriptProgram, ScriptRunner, ScriptStepper,
@@ -12,7 +14,6 @@ use crate::util::script_types::{
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Language {
     Rhai,
-    #[allow(dead_code)]
     Keystone,
 }
 
@@ -21,6 +22,8 @@ pub struct ScriptExecutor {
     #[allow(dead_code)]
     runner: Box<dyn ScriptRunner>,
     stepper: Box<dyn ScriptStepper>,
+    ks_runner: Box<dyn ScriptRunner>,
+    ks_stepper: Box<dyn ScriptStepper>,
 }
 
 impl Default for ScriptExecutor {
@@ -28,13 +31,15 @@ impl Default for ScriptExecutor {
         Self::new(
             Box::<RhaiScriptExecutor>::default(),
             Box::<RhaiScriptExecutor>::default(),
+            Box::<KeystoneScriptExecutor>::default(),
+            Box::<KeystoneScriptExecutor>::default(),
         )
     }
 }
 
 impl ScriptExecutor {
-    pub fn new(runner: Box<dyn ScriptRunner>, stepper: Box<dyn ScriptStepper>) -> Self {
-        Self { runner, stepper }
+    pub fn new(runner: Box<dyn ScriptRunner>, stepper: Box<dyn ScriptStepper>, ks_runner: Box<dyn ScriptRunner>, ks_stepper: Box<dyn ScriptStepper>,) -> Self {
+        Self { runner, stepper, ks_runner, ks_stepper }
     }
 
     #[allow(dead_code)]
@@ -46,9 +51,7 @@ impl ScriptExecutor {
     ) -> Result<Vec<ScriptCommand>, ScriptExecutionError> {
         match language {
             Language::Rhai => self.runner.run(source, allowed_commands),
-            Language::Keystone => Err(ScriptExecutionError::UnsupportedLanguage(
-                "Keystone scripting is not yet implemented".to_string(),
-            )),
+            Language::Keystone => self.ks_runner.run(source, allowed_commands),
         }
     }
 
@@ -60,9 +63,7 @@ impl ScriptExecutor {
     ) -> Result<Box<dyn ScriptProgram>, ScriptExecutionError> {
         match language {
             Language::Rhai => self.stepper.compile_step(source, allowed_commands),
-            Language::Keystone => Err(ScriptExecutionError::UnsupportedLanguage(
-                "Keystone scripting is not yet implemented".to_string(),
-            )),
+            Language::Keystone => self.ks_stepper.compile_step(source, allowed_commands),
         }
     }
 }
