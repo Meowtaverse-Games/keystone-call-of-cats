@@ -3,19 +3,29 @@ use crate::util::script_types::{
     ScriptRunner, ScriptState, ScriptStepper,
 };
 use keystone_lang::*;
-use std::{collections::HashSet};
+use std::{collections::HashSet,sync::Arc};
 
-pub struct KeystoneScriptExecutor;
+struct StandardApi;
+
+impl ExternalApi for StandardApi {
+    fn is_touched(&self) -> bool { false }
+    fn is_empty(&self) -> bool { true }
+}
+
+
+pub struct KeystoneScriptExecutor{
+    api: Arc<dyn ExternalApi + Send + Sync>
+}
 
 impl KeystoneScriptExecutor {
-    pub fn new() -> Self {
-        Self
+    pub fn new(api: Arc<dyn ExternalApi + Send + Sync>) -> Self {
+        Self { api }
     }
 }
 
 impl Default for KeystoneScriptExecutor {
     fn default() -> Self {
-        Self::new()
+        Self::new(Arc::new(StandardApi))
     }
 }
 
@@ -36,11 +46,15 @@ impl ScriptStepper for KeystoneScriptExecutor {
         source: &str,
         _allowed_commands: Option<&HashSet<String>>,
     ) -> Result<Box<dyn ScriptProgram>, ScriptExecutionError> {
-        let res = eval(source);
+        let res = eval(source,Arc::clone(&self.api));
         match res {
             Ok(iter) => {
+                let max_step = 1000000;
+                let mut step = 0;
                 let preflight = iter.clone();
                 for res in preflight {
+                    step+=1;
+                    if max_step < step{ break; }
                     if let Err(e) = res {
                         return Err(map_error(e));
                     }
@@ -53,7 +67,6 @@ impl ScriptStepper for KeystoneScriptExecutor {
         }
     }
 }
-
 
 struct KeystoneScriptProgram {
     iterator: EventIterator,
@@ -92,6 +105,8 @@ fn map_error(err:Error)->ScriptExecutionError{
     match err {
         Error::InvalidOperandType { op,typ } => 
             ScriptExecutionError::Engine(format!("Cannot use type {} with operator '{}'",type_to_str(typ),op_to_str(op))),
+        Error::InvalidUnaryOperandType { op, typ } => 
+            ScriptExecutionError::Engine(format!("Cannot use type {} with operator '{}'",type_to_str(typ),uop_to_str(op))),
         Error::MismatchedTypes { op, left, right } => 
             ScriptExecutionError::Engine(format!("{} and {} cannot be used together with operator '{}'",type_to_str(left),type_to_str(right),op_to_str(op))),
         Error::NameError { name } => 
@@ -104,6 +119,8 @@ fn map_error(err:Error)->ScriptExecutionError{
             ScriptExecutionError::Engine(format!("Unexpected type '{}' in statement '{}'", type_to_str(found_type), statement)),
         Error::ZeroDivisionError => 
             ScriptExecutionError::Engine(format!("Cannot divide by zero.")),
+        Error::ArgError { called, expected, got } => 
+            ScriptExecutionError::Engine(format!("{} expected {} args, but got {}",called,expected,got)),
     }
 }
 
@@ -132,5 +149,11 @@ fn op_to_str(op: Op) -> String{
         Op::Le => "<=".to_string(),
         Op::Lt => "<".to_string(),
         Op::Neq => "!=".to_string(),
+    }
+}
+
+fn uop_to_str(op:UnaryOp) -> String{
+    match op{
+        UnaryOp::Not => "not".to_string()
     }
 }
