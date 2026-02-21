@@ -1,31 +1,53 @@
 use crate::util::script_types::{
-    MoveDirection, ScriptCommand, ScriptExecutionError, ScriptProgram,
-    ScriptRunner, ScriptState, ScriptStepper,
+    MoveDirection, PLAYER_TOUCHED_STATE_KEY, ScriptCommand, ScriptExecutionError, ScriptProgram, ScriptRunner, ScriptState, ScriptStateValue, ScriptStepper
 };
 use keystone_lang::*;
-use std::{collections::HashSet,sync::Arc};
+use std::{collections::HashSet,sync::{Arc, Mutex}};
 
-struct StandardApi;
+
+#[derive(Clone, Default)]
+struct StandardApi{
+    inner: Arc<Mutex<ScriptState>>
+}
 
 impl ExternalApi for StandardApi {
-    fn is_touched(&self) -> bool { false }
+    fn is_touched(&self) -> bool { 
+        self.inner
+            .lock()
+            .ok()
+            .and_then(|state| {
+                state
+                    .get(PLAYER_TOUCHED_STATE_KEY)
+                    .and_then(ScriptStateValue::as_bool)
+            })
+            .unwrap_or(false)
+     }
     fn is_empty(&self) -> bool { true }
 }
 
+impl StandardApi{
+    fn write(&self, state: &ScriptState) {
+        if let Ok(mut inner) = self.inner.lock() {
+            *inner = state.clone();
+        }
+    }
+}
+
+#[derive(Clone)]
 
 pub struct KeystoneScriptExecutor{
-    api: Arc<dyn ExternalApi + Send + Sync>
+    api: StandardApi
 }
 
 impl KeystoneScriptExecutor {
-    pub fn new(api: Arc<dyn ExternalApi + Send + Sync>) -> Self {
+    fn new(api: StandardApi) -> Self {
         Self { api }
     }
 }
 
 impl Default for KeystoneScriptExecutor {
     fn default() -> Self {
-        Self::new(Arc::new(StandardApi))
+        Self::new(StandardApi{ inner:Arc::new(Mutex::new(ScriptState::default())) })
     }
 }
 
@@ -46,10 +68,11 @@ impl ScriptStepper for KeystoneScriptExecutor {
         source: &str,
         _allowed_commands: Option<&HashSet<String>>,
     ) -> Result<Box<dyn ScriptProgram>, ScriptExecutionError> {
-        let res = eval(source,Arc::clone(&self.api));
+        let api_dyn = Arc::new(self.api.clone()) as Arc<dyn ExternalApi + Send + Sync>;
+        let res = eval(source,api_dyn);
         match res {
             Ok(iter) => {
-                let max_step = 1000000;
+                let max_step = 100000;
                 let mut step = 0;
                 let preflight = iter.clone();
                 for res in preflight {
@@ -59,7 +82,7 @@ impl ScriptStepper for KeystoneScriptExecutor {
                         return Err(map_error(e));
                     }
                 }
-                Ok(Box::new(KeystoneScriptProgram { iterator: iter }))
+                Ok(Box::new(KeystoneScriptProgram { iterator: iter, api: self.api.clone() }))
             },
             Err(err) => {
                 Err(map_error(err))
@@ -70,18 +93,19 @@ impl ScriptStepper for KeystoneScriptExecutor {
 
 struct KeystoneScriptProgram {
     iterator: EventIterator,
+    api: StandardApi
 }
 
 impl ScriptProgram for KeystoneScriptProgram {
     fn next(&mut self, state: &ScriptState) -> Option<ScriptCommand> {
+        self.api.write(state);
         self.iterator.next().and_then(|event| {
-            //Keystone Lang Specification Change Needed
-            map_event(event.expect("error"), state)
+            map_event(event.expect("error"))
         })
     }
 }
 
-fn map_event(event: Event, _state: &ScriptState) -> Option<ScriptCommand> {
+fn map_event(event: Event) -> Option<ScriptCommand> {
     match event {
         Event::Move(dir) => Some(ScriptCommand::Move(map_direction(dir)?)),
         Event::Sleep(duration) => Some(ScriptCommand::Sleep(duration)),
