@@ -11,7 +11,7 @@ struct StandardApi{
 }
 
 impl ExternalApi for StandardApi {
-    fn is_touched(&self) -> bool { 
+    fn is_touched(&self) -> bool {
         self.inner
             .lock()
             .ok()
@@ -22,7 +22,15 @@ impl ExternalApi for StandardApi {
             })
             .unwrap_or(false)
      }
-    fn is_empty(&self) -> bool { true }
+    fn is_empty(&self, dir:Direction) -> bool {
+        let key = format!("is-empty-{}", dir_to_str(dir));
+        self
+            .inner
+            .lock()
+            .ok()
+            .and_then(|s| s.get(&key).and_then(|v| v.as_bool()))
+            .unwrap_or(false)
+    }
 }
 
 impl StandardApi{
@@ -127,23 +135,23 @@ fn map_direction(dir: Direction) -> Option<MoveDirection>{
 
 fn map_error(err:Error)->ScriptExecutionError{
     match err {
-        Error::InvalidOperandType { op,typ } => 
+        Error::InvalidOperandType { op,typ } =>
             ScriptExecutionError::Engine(format!("Cannot use type {} with operator '{}'",type_to_str(typ),op_to_str(op))),
-        Error::InvalidUnaryOperandType { op, typ } => 
+        Error::InvalidUnaryOperandType { op, typ } =>
             ScriptExecutionError::Engine(format!("Cannot use type {} with operator '{}'",type_to_str(typ),uop_to_str(op))),
-        Error::MismatchedTypes { op, left, right } => 
+        Error::MismatchedTypes { op, left, right } =>
             ScriptExecutionError::Engine(format!("{} and {} cannot be used together with operator '{}'",type_to_str(left),type_to_str(right),op_to_str(op))),
-        Error::NameError { name } => 
+        Error::NameError { name } =>
             ScriptExecutionError::Engine(format!("Name '{}' is not defined.", name)),
-        Error::SyntaxError { messages } => 
+        Error::SyntaxError { messages } =>
             ScriptExecutionError::Engine(format!("Syntax error occurred. {}", messages[0])),
-        Error::TooLargeNumber => 
+        Error::TooLargeNumber =>
             ScriptExecutionError::Engine(format!("Too large Number used.")),
-        Error::UnexpectedType { statement, found_type } => 
+        Error::UnexpectedType { statement, found_type } =>
             ScriptExecutionError::Engine(format!("Unexpected type '{}' in statement '{}'", type_to_str(found_type), statement)),
-        Error::ZeroDivisionError => 
+        Error::ZeroDivisionError =>
             ScriptExecutionError::Engine(format!("Cannot divide by zero.")),
-        Error::ArgError { called, expected, got } => 
+        Error::ArgError { called, expected, got } =>
             ScriptExecutionError::Engine(format!("{} expected {} args, but got {}",called,expected,got)),
     }
 }
@@ -179,5 +187,15 @@ fn op_to_str(op: Op) -> String{
 fn uop_to_str(op:UnaryOp) -> String{
     match op{
         UnaryOp::Not => "not".to_string()
+    }
+}
+
+fn dir_to_str(dir:Direction) -> String{
+    match dir{
+        Direction::Up => String::from("top"),
+        Direction::Down => String::from("down"),
+        Direction::Left => String::from("left"),
+        Direction::Right => String::from("right"),
+        _ => String::from("unknown")
     }
 }
