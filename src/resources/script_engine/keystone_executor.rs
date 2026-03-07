@@ -1,8 +1,15 @@
 use crate::util::script_types::{
-    MoveDirection, PLAYER_TOUCHED_STATE_KEY, ScriptCommand, ScriptExecutionError, ScriptProgram, ScriptRunner, ScriptState, ScriptStateValue, ScriptStepper
+    MoveDirection, PLAYER_TOUCHED_STATE_KEY, ScriptCommand, ScriptExecutionError, ScriptProgram,
+    ScriptRunner, ScriptState, ScriptStateValue, ScriptStepper
 };
 use keystone_lang::*;
-use std::{collections::HashSet,sync::{Arc, Mutex}};
+use std::{
+    collections::HashSet,
+    sync::{Arc, Mutex,
+        atomic::{AtomicBool, Ordering}, mpsc::{sync_channel,Receiver}
+    },
+    thread::JoinHandle
+};
 
 
 #[derive(Clone, Default)]
@@ -90,7 +97,9 @@ impl ScriptStepper for KeystoneScriptExecutor {
                         return Err(map_error(e));
                     }
                 }
-                Ok(Box::new(KeystoneScriptProgram { iterator: iter, api: self.api.clone() }))
+                Ok(Box::new(
+                    KeystoneScriptProgram::spawn(iter, self.api.clone())
+                ))
             },
             Err(err) => {
                 Err(map_error(err))
@@ -100,16 +109,58 @@ impl ScriptStepper for KeystoneScriptExecutor {
 }
 
 struct KeystoneScriptProgram {
-    iterator: EventIterator,
-    api: StandardApi
+    receiver: Mutex<Receiver<Option<ScriptCommand>>>,
+    stop_flag: Arc<AtomicBool>,
+    api: StandardApi,
+    handle: Option<JoinHandle<()>>,
+}
+
+impl KeystoneScriptProgram {
+    fn spawn(mut iter: EventIterator, api: StandardApi) -> Self {
+        let stop_flag = Arc::new(AtomicBool::new(false));
+        let stop_flag_inner = stop_flag.clone();
+        let (tx, rx) = sync_channel::<Option<ScriptCommand>>(1);
+        let handle = std::thread::spawn(move || {
+            while let Some(event) = iter.next() {
+                if stop_flag_inner.load(Ordering::SeqCst) { break; }
+                let command = map_event(event.expect("error"));
+                if tx.send(command).is_err() { break; }
+            }
+            let _ = tx.send(None);
+        });
+        Self {
+            receiver: Mutex::new(rx),
+            api,
+            stop_flag,
+            handle: Some(handle),
+        }
+    }
 }
 
 impl ScriptProgram for KeystoneScriptProgram {
     fn next(&mut self, state: &ScriptState) -> Option<ScriptCommand> {
+        if self.stop_flag.load(Ordering::SeqCst) {
+            return None;
+        }
         self.api.write(state);
-        self.iterator.next().and_then(|event| {
-            map_event(event.expect("error"))
-        })
+        let result = if let Ok(rx) = self.receiver.lock() {
+            rx.recv().ok().flatten()
+        } else {
+            None
+        };
+        result
+    }
+}
+
+impl Drop for KeystoneScriptProgram {
+    fn drop(&mut self) {
+        self.stop_flag.store(true, Ordering::SeqCst);
+        if let Ok(mut rx_lock) = self.receiver.lock() {
+            let _ = std::mem::replace(&mut *rx_lock, std::sync::mpsc::channel().1);
+        }
+        if let Some(handle) = self.handle.take() {
+            let _ = handle.join();
+        }
     }
 }
 
