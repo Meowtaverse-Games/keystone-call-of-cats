@@ -19,14 +19,7 @@ use super::components::*;
 use crate::{
     MainCamera,
     resources::{
-        asset_store::AssetStore,
-        chunk_grammar_map::{self, Map, TileKind, generate_random_layout_from_file},
-        design_resolution::{LetterboxOffsets, ScaledViewport},
-        file_storage::FileStorageResource,
-        stage_catalog::*,
-        stage_progress::StageProgress,
-        stage_scripts::StageScripts,
-        tiled::TiledMapAssets,
+        asset_store::AssetStore, chunk_grammar_map::{self, Map, TileKind, generate_random_layout_from_file}, design_resolution::{LetterboxOffsets, ScaledViewport}, file_storage::FileStorageResource, settings::GameSettings, stage_catalog::*, stage_progress::StageProgress, stage_scripts::StageScripts, tiled::TiledMapAssets
     },
     scenes::{assets::AudioKey, stage::components::StageTile},
     util::localization::{localized_stage_name, tr, tr_with_args},
@@ -307,14 +300,16 @@ pub struct StageSetupParams<'w, 's> {
     audio_handles: Option<Res<'w, StageAudioHandles>>,
     audio_state: Option<ResMut<'w, StageAudioState>>,
     localization: Res<'w, Localization>,
+    settings: Res<'w, GameSettings>
 }
 
 pub fn setup(mut commands: Commands, mut params: StageSetupParams) {
     let current_stage_id = params.progression.current_stage_id();
+    let current_lang = params.settings.script_language;
     let saved_code = params
         .stage_scripts
         .as_ref()
-        .and_then(|scripts| scripts.stage_code(current_stage_id))
+        .and_then(|scripts| scripts.stage_code(current_lang, current_stage_id))
         .map(|s| s.to_string());
     match params.editor_state.as_deref_mut() {
         Some(editor) => {
@@ -478,6 +473,7 @@ pub struct StageReloadParams<'w, 's> {
     localization: Res<'w, Localization>,
     audio_state: Option<ResMut<'w, StageAudioState>>,
     stage_scripts: Option<Res<'w, StageScripts>>,
+    settings: Res<'w, GameSettings>,
 }
 
 pub fn reload_stage_if_needed(mut commands: Commands, mut params: StageReloadParams) {
@@ -492,10 +488,11 @@ pub fn reload_stage_if_needed(mut commands: Commands, mut params: StageReloadPar
         .map(|stage| localized_stage_name(&params.localization, stage.id, &stage.title))
         .unwrap_or_else(|| format!("STAGE-{}", stage_id.0));
     let current_map = params.progression.current_map();
+    let lang = params.settings.script_language;
     let saved_code = params
         .stage_scripts
         .as_ref()
-        .and_then(|scripts| scripts.stage_code(stage_id))
+        .and_then(|scripts| scripts.stage_code(lang, stage_id))
         .map(|s| s.to_string());
 
     if let (Some(scripts), Some(storage)) = (params.stage_scripts.as_ref(), params.storage.as_ref())

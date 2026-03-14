@@ -1,10 +1,10 @@
 use bevy::prelude::{Resource, info, warn};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-
 use crate::resources::{
     file_storage::{FileError, FileStorage},
     stage_catalog::StageId,
+    script_engine::Language
 };
 
 pub const STAGE_SCRIPTS_FILE: &str = "stage_scripts.ron";
@@ -12,7 +12,7 @@ pub const STAGE_SCRIPTS_FILE: &str = "stage_scripts.ron";
 /// Stores the latest editor script per stage.
 #[derive(Resource, Debug, Clone, Serialize, Deserialize, Default)]
 pub struct StageScripts {
-    scripts: HashMap<StageId, String>,
+    scripts: HashMap<Language, HashMap<StageId, String>>,
 }
 
 impl StageScripts {
@@ -42,11 +42,11 @@ impl StageScripts {
             })
     }
 
-    pub fn stage_code(&self, stage_id: StageId) -> Option<&str> {
-        self.scripts.get(&stage_id).map(String::as_str)
+    pub fn stage_code(&self, lang: Language, stage_id: StageId) -> Option<&str> {
+        self.scripts.get(&lang)?.get(&stage_id).map(String::as_str)
     }
 
-    pub fn set_stage_code(&mut self, stage_id: StageId, code: String) {
-        self.scripts.insert(stage_id, code);
+    pub fn set_stage_code(&mut self, lang: Language, stage_id: StageId, code: String) {
+        self.scripts.entry(lang).or_default().insert(stage_id, code);
     }
 }
