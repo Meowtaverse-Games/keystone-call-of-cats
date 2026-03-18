@@ -1,11 +1,11 @@
-mod rhai_executor;
 mod keystone_executor;
+mod rhai_executor;
 
 use bevy::prelude::Resource;
 use serde::{Deserialize, Serialize};
 
-pub use rhai_executor::RhaiScriptExecutor;
 pub use keystone_executor::KeystoneScriptExecutor;
+pub use rhai_executor::RhaiScriptExecutor;
 
 use crate::util::script_types::{
     ScriptCommand, ScriptExecutionError, ScriptProgram, ScriptRunner, ScriptStepper,
@@ -38,8 +38,18 @@ impl Default for ScriptExecutor {
 }
 
 impl ScriptExecutor {
-    pub fn new(runner: Box<dyn ScriptRunner>, stepper: Box<dyn ScriptStepper>, ks_runner: Box<dyn ScriptRunner>, ks_stepper: Box<dyn ScriptStepper>,) -> Self {
-        Self { runner, stepper, ks_runner, ks_stepper }
+    pub fn new(
+        runner: Box<dyn ScriptRunner>,
+        stepper: Box<dyn ScriptStepper>,
+        ks_runner: Box<dyn ScriptRunner>,
+        ks_stepper: Box<dyn ScriptStepper>,
+    ) -> Self {
+        Self {
+            runner,
+            stepper,
+            ks_runner,
+            ks_stepper,
+        }
     }
 
     #[allow(dead_code)]

@@ -1,20 +1,21 @@
 use crate::util::script_types::{
     MoveDirection, PLAYER_TOUCHED_STATE_KEY, ScriptCommand, ScriptExecutionError, ScriptProgram,
-    ScriptRunner, ScriptState, ScriptStateValue, ScriptStepper
+    ScriptRunner, ScriptState, ScriptStateValue, ScriptStepper,
 };
 use keystone_lang::*;
 use std::{
     collections::HashSet,
-    sync::{Arc, Mutex,
-        atomic::{AtomicBool, Ordering}, mpsc::{sync_channel,Receiver}
+    sync::{
+        Arc, Mutex,
+        atomic::{AtomicBool, Ordering},
+        mpsc::{Receiver, sync_channel},
     },
-    thread::JoinHandle
+    thread::JoinHandle,
 };
 
-
 #[derive(Clone, Default)]
-struct StandardApi{
-    inner: Arc<Mutex<ScriptState>>
+struct StandardApi {
+    inner: Arc<Mutex<ScriptState>>,
 }
 
 impl ExternalApi for StandardApi {
@@ -28,11 +29,10 @@ impl ExternalApi for StandardApi {
                     .and_then(ScriptStateValue::as_bool)
             })
             .unwrap_or(false)
-     }
-    fn is_empty(&self, dir:Direction) -> bool {
+    }
+    fn is_empty(&self, dir: Direction) -> bool {
         let key = format!("is-empty-{}", dir_to_str(dir));
-        self
-            .inner
+        self.inner
             .lock()
             .ok()
             .and_then(|s| s.get(&key).and_then(|v| v.as_bool()))
@@ -40,7 +40,7 @@ impl ExternalApi for StandardApi {
     }
 }
 
-impl StandardApi{
+impl StandardApi {
     fn write(&self, state: &ScriptState) {
         if let Ok(mut inner) = self.inner.lock() {
             *inner = state.clone();
@@ -50,8 +50,8 @@ impl StandardApi{
 
 #[derive(Clone)]
 
-pub struct KeystoneScriptExecutor{
-    api: StandardApi
+pub struct KeystoneScriptExecutor {
+    api: StandardApi,
 }
 
 impl KeystoneScriptExecutor {
@@ -62,7 +62,9 @@ impl KeystoneScriptExecutor {
 
 impl Default for KeystoneScriptExecutor {
     fn default() -> Self {
-        Self::new(StandardApi{ inner:Arc::new(Mutex::new(ScriptState::default())) })
+        Self::new(StandardApi {
+            inner: Arc::new(Mutex::new(ScriptState::default())),
+        })
     }
 }
 
@@ -73,7 +75,9 @@ impl ScriptRunner for KeystoneScriptExecutor {
         source: &str,
         allowed_commands: Option<&HashSet<String>>,
     ) -> Result<Vec<ScriptCommand>, ScriptExecutionError> {
-        Err(ScriptExecutionError::UnsupportedLanguage("Keystone scripting is not yet implemented".to_string()))
+        Err(ScriptExecutionError::UnsupportedLanguage(
+            "Keystone scripting is not yet implemented".to_string(),
+        ))
     }
 }
 
@@ -84,26 +88,27 @@ impl ScriptStepper for KeystoneScriptExecutor {
         _allowed_commands: Option<&HashSet<String>>,
     ) -> Result<Box<dyn ScriptProgram>, ScriptExecutionError> {
         let api_dyn = Arc::new(self.api.clone()) as Arc<dyn ExternalApi + Send + Sync>;
-        let res = eval(source,api_dyn);
+        let res = eval(source, api_dyn);
         match res {
             Ok(iter) => {
                 let max_step = 100000;
                 let mut step = 0;
                 let preflight = iter.clone();
                 for res in preflight {
-                    step+=1;
-                    if max_step < step{ break; }
+                    step += 1;
+                    if max_step < step {
+                        break;
+                    }
                     if let Err(e) = res {
                         return Err(map_error(e));
                     }
                 }
-                Ok(Box::new(
-                    KeystoneScriptProgram::spawn(iter, self.api.clone())
-                ))
-            },
-            Err(err) => {
-                Err(map_error(err))
+                Ok(Box::new(KeystoneScriptProgram::spawn(
+                    iter,
+                    self.api.clone(),
+                )))
             }
+            Err(err) => Err(map_error(err)),
         }
     }
 }
@@ -122,9 +127,13 @@ impl KeystoneScriptProgram {
         let (tx, rx) = sync_channel::<Option<ScriptCommand>>(1);
         let handle = std::thread::spawn(move || {
             while let Some(event) = iter.next() {
-                if stop_flag_inner.load(Ordering::SeqCst) { break; }
+                if stop_flag_inner.load(Ordering::SeqCst) {
+                    break;
+                }
                 let command = map_event(event.expect("error"));
-                if tx.send(command).is_err() { break; }
+                if tx.send(command).is_err() {
+                    break;
+                }
             }
             let _ = tx.send(None);
         });
@@ -173,42 +182,63 @@ fn map_event(event: Event) -> Option<ScriptCommand> {
     }
 }
 
-fn map_direction(dir: Direction) -> Option<MoveDirection>{
+fn map_direction(dir: Direction) -> Option<MoveDirection> {
     match dir {
         Direction::Up => Some(MoveDirection::Top),
         Direction::Down => Some(MoveDirection::Down),
         Direction::Left => Some(MoveDirection::Left),
         Direction::Right => Some(MoveDirection::Right),
-        _ => None
+        _ => None,
     }
 }
 
-
-fn map_error(err:Error)->ScriptExecutionError{
+fn map_error(err: Error) -> ScriptExecutionError {
     match err {
-        Error::InvalidOperandType { op,typ } =>
-            ScriptExecutionError::Engine(format!("Cannot use type {} with operator '{}'",type_to_str(typ),op_to_str(op))),
-        Error::InvalidUnaryOperandType { op, typ } =>
-            ScriptExecutionError::Engine(format!("Cannot use type {} with operator '{}'",type_to_str(typ),uop_to_str(op))),
-        Error::MismatchedTypes { op, left, right } =>
-            ScriptExecutionError::Engine(format!("{} and {} cannot be used together with operator '{}'",type_to_str(left),type_to_str(right),op_to_str(op))),
-        Error::NameError { name } =>
-            ScriptExecutionError::Engine(format!("Name '{}' is not defined.", name)),
-        Error::SyntaxError { messages } =>
-            ScriptExecutionError::Engine(format!("Syntax error occurred. {}", messages[0])),
-        Error::TooLargeNumber =>
-            ScriptExecutionError::Engine(format!("Too large Number used.")),
-        Error::UnexpectedType { statement, found_type } =>
-            ScriptExecutionError::Engine(format!("Unexpected type '{}' in statement '{}'", type_to_str(found_type), statement)),
-        Error::ZeroDivisionError =>
-            ScriptExecutionError::Engine(format!("Cannot divide by zero.")),
-        Error::ArgError { called, expected, got } =>
-            ScriptExecutionError::Engine(format!("{} expected {} args, but got {}",called,expected,got)),
+        Error::InvalidOperandType { op, typ } => ScriptExecutionError::Engine(format!(
+            "Cannot use type {} with operator '{}'",
+            type_to_str(typ),
+            op_to_str(op)
+        )),
+        Error::InvalidUnaryOperandType { op, typ } => ScriptExecutionError::Engine(format!(
+            "Cannot use type {} with operator '{}'",
+            type_to_str(typ),
+            uop_to_str(op)
+        )),
+        Error::MismatchedTypes { op, left, right } => ScriptExecutionError::Engine(format!(
+            "{} and {} cannot be used together with operator '{}'",
+            type_to_str(left),
+            type_to_str(right),
+            op_to_str(op)
+        )),
+        Error::NameError { name } => {
+            ScriptExecutionError::Engine(format!("Name '{}' is not defined.", name))
+        }
+        Error::SyntaxError { messages } => {
+            ScriptExecutionError::Engine(format!("Syntax error occurred. {}", messages[0]))
+        }
+        Error::TooLargeNumber => ScriptExecutionError::Engine(format!("Too large Number used.")),
+        Error::UnexpectedType {
+            statement,
+            found_type,
+        } => ScriptExecutionError::Engine(format!(
+            "Unexpected type '{}' in statement '{}'",
+            type_to_str(found_type),
+            statement
+        )),
+        Error::ZeroDivisionError => ScriptExecutionError::Engine(format!("Cannot divide by zero.")),
+        Error::ArgError {
+            called,
+            expected,
+            got,
+        } => ScriptExecutionError::Engine(format!(
+            "{} expected {} args, but got {}",
+            called, expected, got
+        )),
     }
 }
 
-fn type_to_str(typ:Type) -> String{
-    match typ{
+fn type_to_str(typ: Type) -> String {
+    match typ {
         Type::Uint => "Uint".to_string(),
         Type::Float => "Float".to_string(),
         Type::String => "String".to_string(),
@@ -218,8 +248,8 @@ fn type_to_str(typ:Type) -> String{
     }
 }
 
-fn op_to_str(op: Op) -> String{
-    match op{
+fn op_to_str(op: Op) -> String {
+    match op {
         Op::Add => "+".to_string(),
         Op::Sub => "-".to_string(),
         Op::Mul => "*".to_string(),
@@ -235,18 +265,18 @@ fn op_to_str(op: Op) -> String{
     }
 }
 
-fn uop_to_str(op:UnaryOp) -> String{
-    match op{
-        UnaryOp::Not => "not".to_string()
+fn uop_to_str(op: UnaryOp) -> String {
+    match op {
+        UnaryOp::Not => "not".to_string(),
     }
 }
 
-fn dir_to_str(dir:Direction) -> String{
-    match dir{
+fn dir_to_str(dir: Direction) -> String {
+    match dir {
         Direction::Up => String::from("top"),
         Direction::Down => String::from("down"),
         Direction::Left => String::from("left"),
         Direction::Right => String::from("right"),
-        _ => String::from("unknown")
+        _ => String::from("unknown"),
     }
 }
