@@ -1,11 +1,11 @@
+use crate::resources::{
+    file_storage::{FileError, FileStorage},
+    script_engine::Language,
+    stage_catalog::StageId,
+};
 use bevy::prelude::{Resource, info, warn};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use crate::resources::{
-    file_storage::{FileError, FileStorage},
-    stage_catalog::StageId,
-    script_engine::Language
-};
 
 pub const STAGE_SCRIPTS_FILE: &str = "stage_scripts.ron";
 

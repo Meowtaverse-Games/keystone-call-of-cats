@@ -19,7 +19,15 @@ use super::components::*;
 use crate::{
     MainCamera,
     resources::{
-        asset_store::AssetStore, chunk_grammar_map::{self, Map, TileKind, generate_random_layout_from_file}, design_resolution::{LetterboxOffsets, ScaledViewport}, file_storage::FileStorageResource, settings::GameSettings, stage_catalog::*, stage_progress::StageProgress, stage_scripts::StageScripts, tiled::TiledMapAssets
+        asset_store::AssetStore,
+        chunk_grammar_map::{self, Map, TileKind, generate_random_layout_from_file},
+        design_resolution::{LetterboxOffsets, ScaledViewport},
+        file_storage::FileStorageResource,
+        settings::GameSettings,
+        stage_catalog::*,
+        stage_progress::StageProgress,
+        stage_scripts::StageScripts,
+        tiled::TiledMapAssets,
     },
     scenes::{assets::AudioKey, stage::components::StageTile},
     util::localization::{localized_stage_name, tr, tr_with_args},
@@ -300,7 +308,7 @@ pub struct StageSetupParams<'w, 's> {
     audio_handles: Option<Res<'w, StageAudioHandles>>,
     audio_state: Option<ResMut<'w, StageAudioState>>,
     localization: Res<'w, Localization>,
-    settings: Res<'w, GameSettings>
+    settings: Res<'w, GameSettings>,
 }
 
 pub fn setup(mut commands: Commands, mut params: StageSetupParams) {

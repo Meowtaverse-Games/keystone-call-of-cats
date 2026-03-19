@@ -515,7 +515,11 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                     let stage_id = progression.current_stage_id();
                     let current = stage_scripts.stage_code(settings.script_language, stage_id);
                     if current.map(|c| c != editor.buffer.as_str()).unwrap_or(true) {
-                        stage_scripts.set_stage_code(settings.script_language, stage_id, editor.buffer.clone());
+                        stage_scripts.set_stage_code(
+                            settings.script_language,
+                            stage_id,
+                            editor.buffer.clone(),
+                        );
                     }
                 }
 
