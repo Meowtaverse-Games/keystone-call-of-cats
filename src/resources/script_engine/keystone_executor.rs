@@ -126,7 +126,7 @@ impl KeystoneScriptProgram {
         let stop_flag_inner = stop_flag.clone();
         let (tx, rx) = sync_channel::<Option<ScriptCommand>>(1);
         let handle = std::thread::spawn(move || {
-            while let Some(event) = iter.next() {
+            for event in iter {
                 if stop_flag_inner.load(Ordering::SeqCst) {
                     break;
                 }
@@ -152,12 +152,11 @@ impl ScriptProgram for KeystoneScriptProgram {
             return None;
         }
         self.api.write(state);
-        let result = if let Ok(rx) = self.receiver.lock() {
+        if let Ok(rx) = self.receiver.lock() {
             rx.recv().ok().flatten()
         } else {
             None
-        };
-        result
+        }
     }
 }
 
@@ -216,7 +215,7 @@ fn map_error(err: Error) -> ScriptExecutionError {
         Error::SyntaxError { messages } => {
             ScriptExecutionError::Engine(format!("Syntax error occurred. {}", messages[0]))
         }
-        Error::TooLargeNumber => ScriptExecutionError::Engine(format!("Too large Number used.")),
+        Error::TooLargeNumber => ScriptExecutionError::Engine("Too large Number used.".to_string()),
         Error::UnexpectedType {
             statement,
             found_type,
@@ -225,7 +224,7 @@ fn map_error(err: Error) -> ScriptExecutionError {
             type_to_str(found_type),
             statement
         )),
-        Error::ZeroDivisionError => ScriptExecutionError::Engine(format!("Cannot divide by zero.")),
+        Error::ZeroDivisionError => ScriptExecutionError::Engine("Cannot divide by zero.".to_string()),
         Error::ArgError {
             called,
             expected,
