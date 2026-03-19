@@ -121,7 +121,7 @@ struct KeystoneScriptProgram {
 }
 
 impl KeystoneScriptProgram {
-    fn spawn(mut iter: EventIterator, api: StandardApi) -> Self {
+    fn spawn(iter: EventIterator, api: StandardApi) -> Self {
         let stop_flag = Arc::new(AtomicBool::new(false));
         let stop_flag_inner = stop_flag.clone();
         let (tx, rx) = sync_channel::<Option<ScriptCommand>>(1);
