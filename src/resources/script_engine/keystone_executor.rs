@@ -224,7 +224,9 @@ fn map_error(err: Error) -> ScriptExecutionError {
             type_to_str(found_type),
             statement
         )),
-        Error::ZeroDivisionError => ScriptExecutionError::Engine("Cannot divide by zero.".to_string()),
+        Error::ZeroDivisionError => {
+            ScriptExecutionError::Engine("Cannot divide by zero.".to_string())
+        }
         Error::ArgError {
             called,
             expected,
