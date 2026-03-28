@@ -37,14 +37,14 @@ pub use goal::check_goal_completion;
 pub use obstacle::*;
 pub use player::*;
 pub use stone::{
-    StoneAppendCommandMessage, StoneCommandMessage, carry_riders_with_stone,
+    NetworkStoneQueue, StoneAppendCommandMessage, StoneCommandMessage, carry_riders_with_stone,
     handle_stone_append_messages, handle_stone_messages, reset_stone_position,
-    update_stone_behavior,
+    start_network_stone_server, update_network_stone, update_stone_behavior,
 };
 use ui::{ScriptEditorState, StageTutorialOverlay};
 pub use ui::{handle_tutorial_overlay_input, tick_script_program, ui};
 
-pub use tiles::restore_dug_tiles;
+pub use tiles::{despawn_placed_tiles, restore_dug_tiles};
 
 #[derive(Resource, Default)]
 pub struct StageProgressionState {
@@ -198,6 +198,7 @@ fn populate_stage_contents(
         tile_position_to_world(stone_position, real_tile_size, viewport_size, scale, 0.0),
         map.stone_type,
         stone::STONE_STEP_DISTANCE,
+        real_tile_size.x,
     );
 
     map.tile_positions(TileKind::Obstacle)

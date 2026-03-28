@@ -442,6 +442,19 @@ fn register_commands(
             engine.register_fn("is_empty", move |_: &str| -> bool { false });
         }
     }
+    {
+        let emitter = emitter.clone();
+        if allowed_commands.is_none_or(|s| s.contains("place")) {
+            engine.register_fn("place", move |direction: &str| {
+                place_named(direction, &emitter)
+            });
+        } else {
+            engine.register_fn(
+                "place",
+                move |_: &str| -> Result<CommandValue, Box<EvalAltResult>> { Ok(CommandValue()) },
+            );
+        }
+    }
 }
 
 fn record_dig(
@@ -459,6 +472,29 @@ fn dig_named(
 ) -> Result<CommandValue, Box<EvalAltResult>> {
     match MoveDirection::from_str(direction) {
         Some(dir) => record_dig(emitter, dir),
+        None => Err(EvalAltResult::ErrorRuntime(
+            format!("{INVALID_DIG_PREFIX}{direction}").into(),
+            Position::NONE,
+        )
+        .into()),
+    }
+}
+
+fn record_place(
+    emitter: &CommandEmitter,
+    direction: MoveDirection,
+) -> Result<CommandValue, Box<EvalAltResult>> {
+    let command = ScriptCommand::Place(direction);
+    emitter.emit(command)?;
+    Ok(CommandValue())
+}
+
+fn place_named(
+    direction: &str,
+    emitter: &CommandEmitter,
+) -> Result<CommandValue, Box<EvalAltResult>> {
+    match MoveDirection::from_str(direction) {
+        Some(dir) => record_place(emitter, dir),
         None => Err(EvalAltResult::ErrorRuntime(
             format!("{INVALID_DIG_PREFIX}{direction}").into(),
             Position::NONE,

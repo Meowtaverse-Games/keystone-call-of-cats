@@ -300,3 +300,17 @@ pub fn restore_dug_tiles(
             .insert(dug_tile.collider.clone()); // Restore physics
     }
 }
+
+pub fn despawn_placed_tiles(
+    mut commands: Commands,
+    query: Query<Entity, With<crate::scenes::stage::components::PlacedTile>>,
+    editor_state: Res<crate::scenes::stage::systems::ui::ScriptEditorState>,
+) {
+    if !editor_state.pending_player_reset {
+        return;
+    }
+
+    for entity in query.iter() {
+        commands.entity(entity).despawn();
+    }
+}

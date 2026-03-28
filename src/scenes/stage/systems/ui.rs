@@ -758,15 +758,6 @@ pub fn tick_script_program(
             format!("is-empty-{}", name),
             ScriptStateValue::Bool(!is_blocked),
         );
-        info!(
-            "is-empty-{}: {} (origin={:?}, radius={}, step={}, hit={:?})",
-            name,
-            !is_blocked,
-            origin,
-            collider_radius,
-            check_dist,
-            hit.map(|h| (h.distance, h.entity))
-        );
     }
 
     if let Some(command) = program.next(&state) {
@@ -821,6 +812,10 @@ fn command_help_args(language: Language) -> &'static [(&'static str, &'static st
             ("dig-down", "dig(\"down\");"),
             ("dig-left", "dig(\"left\");"),
             ("dig-right", "dig(\"right\");"),
+            ("place-up", "place(\"up\");"),
+            ("place-down", "place(\"down\");"),
+            ("place-left", "place(\"left\");"),
+            ("place-right", "place(\"right\");"),
             ("loop-example", "loop {\n    move(\"up\");\n}"),
             (
                 "loop-example2",
@@ -829,6 +824,10 @@ fn command_help_args(language: Language) -> &'static [(&'static str, &'static st
             (
                 "is-touched-example",
                 "loop {\n    if is_touched() {\n        <<dot>><<dot>><<dot>>\n    }\n}",
+            ),
+            (
+                "is-empty-example",
+                "loop {\n    if is_empty(\"up\") {\n        <<dot>><<dot>><<dot>>\n    }\n}",
             ),
         ],
         Language::Keystone => &[

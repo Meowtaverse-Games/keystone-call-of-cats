@@ -207,14 +207,57 @@ stage9-description = 使用 dig 命令可以在指定方向进行挖掘。就像
     等待指定秒数: `{$sleep}`
 
 
-stage10-text = 这一层，石头的去路被周围的岩石堵住了。
-    结合前一关学到的 dig 和移动的 move，让岩石逃脱吧。
+stage10-text = 这一层似乎有几处需要挖掘的地方。
+    结合上一关学到的 dig 和 move，开辟道路吧。
 
 
-stage10-description = 使用 dig 命令可以在指定方向进行挖掘。就像移动石头一样，输入方向来指定挖掘方向。
+stage10-description = 石头的移动
+    上: `{$move-up}`
+    下: `{$move-down}`
+    左: `{$move-left}`
+    右: `{$move-right}`
     
-    若要挖掘石头下方，请这样写：
-    {$dig-down}
+    挖掘
+    上: `{$dig-up}`
+    下: `{$dig-down}`
+    左: `{$dig-left}`
+    右: `{$dig-right}`
+    
+    判定
+    玩家是否触碰石头: `{$is-touched}`
+    
+    其他
+    等待指定秒数: `{$sleep}`
+
+
+stage11-text = 稍微远一点的地方有一块石头。找准时机让它以此进行挖掘吧。
+
+
+stage11-description = 石头的移动
+    上: `{$move-up}`
+    下: `{$move-down}`
+    左: `{$move-left}`
+    右: `{$move-right}`
+    
+    挖掘
+    上: `{$dig-up}`
+    下: `{$dig-down}`
+    左: `{$dig-left}`
+    右: `{$dig-right}`
+    
+    判定
+    玩家是否触碰石头: `{$is-touched}`
+    
+    其他
+    等待指定秒数: `{$sleep}`
+
+
+stage12-text = 这一层空洞和岩石交错分布。
+    只在必要时使用只能用5次的 dig 命令，用 is_empty 检查，高效地前进吧。
+
+
+stage12-description = 使用 is_empty 可以判断指定方向是否可以挖掘。
+    {$is-empty-example}
     
     -- 目前为止的命令 --
     
@@ -224,18 +267,17 @@ stage10-description = 使用 dig 命令可以在指定方向进行挖掘。就�
     左: `{$move-left}`
     右: `{$move-right}`
     
+    挖掘
+    上: `{$dig-up}`
+    下: `{$dig-down}`
+    左: `{$dig-left}`
+    右: `{$dig-right}`
+    
     判定
     玩家是否触碰石头: `{$is-touched}`
     
     其他
     等待指定秒数: `{$sleep}`
-
-
-stage11-text = 这一层空洞和岩石交错分布。
-    只在必要时使用只能用5次的 dig 命令，用 is_empty 检查，高效地前进吧。
-
-
-stage11-description = ...
 
 
 stage13-text = 在狭窄的隧道中，你和石头必须互相错开。

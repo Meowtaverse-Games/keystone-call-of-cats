@@ -19,6 +19,9 @@ pub struct DugTile {
 }
 
 #[derive(Component)]
+pub struct PlacedTile;
+
+#[derive(Component)]
 pub struct StoneRune;
 
 #[derive(Component)]
