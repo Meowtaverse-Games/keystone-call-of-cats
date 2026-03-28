@@ -8,7 +8,7 @@ use std::{
     sync::{
         Arc, Mutex,
         atomic::{AtomicBool, Ordering},
-        mpsc::{Receiver, sync_channel},
+        mpsc::{self, Receiver, sync_channel},
     },
     thread::JoinHandle,
 };
@@ -42,7 +42,7 @@ impl ExternalApi for StandardApi {
 
 impl StandardApi {
     fn write(&self, state: &ScriptState) {
-        if let Ok(mut inner) = self.inner.lock() {
+        if let Ok(mut inner) = self.inner.try_lock() {
             *inner = state.clone();
         }
     }
@@ -117,6 +117,7 @@ struct KeystoneScriptProgram {
     receiver: Mutex<Receiver<Option<ScriptCommand>>>,
     stop_flag: Arc<AtomicBool>,
     api: StandardApi,
+    resume_tx: mpsc::Sender<()>,
     handle: Option<JoinHandle<()>>,
 }
 
@@ -125,10 +126,17 @@ impl KeystoneScriptProgram {
         let stop_flag = Arc::new(AtomicBool::new(false));
         let stop_flag_inner = stop_flag.clone();
         let (tx, rx) = sync_channel::<Option<ScriptCommand>>(1);
+        let (resume_tx, resume_rx) = mpsc::channel::<()>();
         let handle = std::thread::spawn(move || {
             for event in iter {
                 if stop_flag_inner.load(Ordering::SeqCst) {
                     break;
+                }
+                if resume_rx
+                    .recv_timeout(std::time::Duration::from_millis(10))
+                    .is_err()
+                {
+                    continue;
                 }
                 let command = map_event(event.expect("error"));
                 if tx.send(command).is_err() {
@@ -141,6 +149,7 @@ impl KeystoneScriptProgram {
             receiver: Mutex::new(rx),
             api,
             stop_flag,
+            resume_tx,
             handle: Some(handle),
         }
     }
@@ -151,9 +160,14 @@ impl ScriptProgram for KeystoneScriptProgram {
         if self.stop_flag.load(Ordering::SeqCst) {
             return None;
         }
-        self.api.write(state);
-        if let Ok(rx) = self.receiver.lock() {
-            rx.recv().ok().flatten()
+        let api_clone = self.api.clone();
+        let state_clone = state.clone();
+        std::thread::spawn(move || {
+            api_clone.write(&state_clone);
+        });
+        let _ = self.resume_tx.send(());
+        if let Ok(rx) = self.receiver.try_lock() {
+            rx.try_recv().ok().flatten()
         } else {
             None
         }
