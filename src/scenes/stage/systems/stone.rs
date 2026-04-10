@@ -5,7 +5,7 @@ use bevy::prelude::*;
 
 use super::{StageAudioHandles, StageAudioState, ui::ScriptEditorState};
 use crate::{
-    resources::settings::GameSettings,
+    resources::{chunk_grammar_map::TileKind, settings::GameSettings},
     scenes::stage::components::{Player, StageTile, StoneRune, StoneSpawnState},
     util::script_types::{MoveDirection, ScriptCommand},
 };
@@ -193,6 +193,7 @@ pub fn update_stone_behavior(
     settings: Res<GameSettings>,
     launch_profile: Res<crate::resources::launch_profile::LaunchProfile>,
     tiles: Query<(), With<StageTile>>,
+    tile_kinds: Query<&TileKind>,
     mut gizmos: Gizmos,
     mut query: Query<
         (
@@ -284,17 +285,23 @@ pub fn update_stone_behavior(
                 let hit = spatial.cast_ray(origin, ray_dir, max_dist, true, &filter);
 
                 if let Some(hit) = hit {
-                    if tiles.get(hit.entity).is_ok() {
-                        StoneAction::Dig(Timer::from_seconds(0.5, TimerMode::Once), hit.entity)
+                    if let Ok(kind) = tile_kinds.get(hit.entity) {
+                        if *kind == TileKind::Wall {
+                            info!("Hit a Wall, skipping dig");
+                            StoneAction::Dig(
+                                Timer::from_seconds(0.5, TimerMode::Once),
+                                Entity::PLACEHOLDER,
+                            )
+                        } else {
+                            StoneAction::Dig(Timer::from_seconds(0.5, TimerMode::Once), hit.entity)
+                        }
                     } else {
-                        // Hit something else (player? wall?)
                         StoneAction::Dig(
                             Timer::from_seconds(0.5, TimerMode::Once),
                             Entity::PLACEHOLDER,
                         )
                     }
                 } else {
-                    // Nothing hit
                     StoneAction::Dig(
                         Timer::from_seconds(0.5, TimerMode::Once),
                         Entity::PLACEHOLDER,

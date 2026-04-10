@@ -206,11 +206,12 @@ pub fn spawn_tiles(
                     .collect::<Vec<_>>();
 
                 if shapes.is_empty() {
-                    parent.spawn((StageTile, image, transform));
+                    parent.spawn((StageTile, kind, image, transform));
                     continue;
                 }
                 parent.spawn((
                     StageTile,
+                    kind,
                     image,
                     transform,
                     RigidBody::Static,

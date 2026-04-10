@@ -1,3 +1,4 @@
+use bevy_ecs::component::Component;
 use rand::{Rng, seq::SliceRandom};
 use std::collections::{HashMap, HashSet};
 use std::fmt;
@@ -38,7 +39,7 @@ struct Port {
     dir: Dir, // チャンク外へ出る（または入る）向き
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Component)]
 pub enum TileKind {
     Solid,
     PlayerSpawn,
