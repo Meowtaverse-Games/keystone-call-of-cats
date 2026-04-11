@@ -185,6 +185,22 @@ pub fn handle_stone_append_messages(
     }
 }
 
+type StoneBehaviorQuery<'w, 's> = Query<
+    'w,
+    's,
+    (
+        Entity,
+        &'static mut StoneCommandState,
+        &'static mut Transform,
+        &'static GlobalTransform,
+        &'static mut LinearVelocity,
+        &'static mut StoneMotion,
+        &'static mut DigLimit,
+        Option<&'static CollidingEntities>, // kept for potential future use
+    ),
+    With<StoneRune>,
+>;
+
 #[allow(clippy::type_complexity, clippy::too_many_arguments)]
 pub fn update_stone_behavior(
     mut commands: Commands,
@@ -195,19 +211,7 @@ pub fn update_stone_behavior(
     launch_profile: Res<crate::resources::launch_profile::LaunchProfile>,
     tiles: Query<(), With<StageTile>>,
     mut gizmos: Gizmos,
-    mut query: Query<
-        (
-            Entity,
-            &mut StoneCommandState,
-            &mut Transform,
-            &GlobalTransform,
-            &mut LinearVelocity,
-            &mut StoneMotion,
-            &mut DigLimit,
-            Option<&CollidingEntities>, // kept for potential future use
-        ),
-        With<StoneRune>,
-    >,
+    mut query: StoneBehaviorQuery,
     query_colliders: Query<&Collider>,
     spatial: SpatialQuery,
 ) {
@@ -454,21 +458,24 @@ fn direction_to_vec(direction: MoveDirection) -> Vec2 {
     }
 }
 
+type StoneResetQuery<'w, 's> = Query<
+    'w,
+    's,
+    (
+        &'static mut Transform,
+        &'static mut StoneCommandState,
+        &'static mut StoneMotion,
+        &'static mut LinearVelocity,
+        &'static StoneSpawnState,
+        &'static mut DigLimit,
+    ),
+    With<StoneRune>,
+>;
 pub fn reset_stone_position(
     mut commands: Commands,
     editor_state: Res<ScriptEditorState>,
     mut audio_state: ResMut<StageAudioState>,
-    mut query: Query<
-        (
-            &mut Transform,
-            &mut StoneCommandState,
-            &mut StoneMotion,
-            &mut LinearVelocity,
-            &StoneSpawnState,
-            &mut DigLimit,
-        ),
-        With<StoneRune>,
-    >,
+    mut query: StoneResetQuery,
 ) {
     if !editor_state.pending_player_reset {
         return;
