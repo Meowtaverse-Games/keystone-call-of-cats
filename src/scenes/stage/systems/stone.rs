@@ -294,31 +294,32 @@ pub fn update_stone_behavior(
 
                     let hit = spatial.cast_ray(origin, ray_dir, max_dist, true, &filter);
 
-                if let Some(hit) = hit {
-                    if let Ok(kind) = tile_kinds.get(hit.entity) {
-                        if *kind == TileKind::Wall {
-                            info!("Hit a Wall, skipping dig");
+                    if let Some(hit) = hit {
+                        if let Ok(kind) = tile_kinds.get(hit.entity) {
+                            if *kind == TileKind::Wall {
+                                info!("Hit a Wall, skipping dig");
+                                StoneAction::Dig(
+                                    Timer::from_seconds(0.5, TimerMode::Once),
+                                    Entity::PLACEHOLDER,
+                                )
+                            } else {
+                                StoneAction::Dig(
+                                    Timer::from_seconds(0.5, TimerMode::Once),
+                                    hit.entity,
+                                )
+                            }
+                        } else {
                             StoneAction::Dig(
                                 Timer::from_seconds(0.5, TimerMode::Once),
                                 Entity::PLACEHOLDER,
                             )
-                        } else {
-                            // タイルが見つかり、かつ壁ではないので掘る
-                            StoneAction::Dig(Timer::from_seconds(0.5, TimerMode::Once), hit.entity)
                         }
                     } else {
-                        // タイル成分がないものに当たった
                         StoneAction::Dig(
                             Timer::from_seconds(0.5, TimerMode::Once),
                             Entity::PLACEHOLDER,
                         )
                     }
-                } else {
-                    // 何も当たっていない
-                    StoneAction::Dig(
-                        Timer::from_seconds(0.5, TimerMode::Once),
-                        Entity::PLACEHOLDER,
-                    )
                 }
             }
         });
