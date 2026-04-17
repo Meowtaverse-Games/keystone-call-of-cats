@@ -6,7 +6,7 @@ use bevy::prelude::*;
 use super::{StageAudioHandles, StageAudioState, ui::ScriptEditorState};
 use crate::{
     resources::{chunk_grammar_map::TileKind, settings::GameSettings},
-    scenes::stage::components::{Player, StageTile, StoneRune, StoneSpawnState},
+    scenes::stage::components::{DigLimit, Player, StageTile, StoneRune, StoneSpawnState},
     util::script_types::{MoveDirection, ScriptCommand},
 };
 
@@ -122,6 +122,7 @@ pub fn spawn_stone(
                 translation: Vec3::new(object_x, object_y, 1.0),
                 scale: STONE_SCALE,
             },
+            DigLimit(1),
             stone_type,
             StoneCommandState {
                 step_size,
@@ -184,6 +185,22 @@ pub fn handle_stone_append_messages(
     }
 }
 
+type StoneBehaviorQuery<'w, 's> = Query<
+    'w,
+    's,
+    (
+        Entity,
+        &'static mut StoneCommandState,
+        &'static mut Transform,
+        &'static GlobalTransform,
+        &'static mut LinearVelocity,
+        &'static mut StoneMotion,
+        &'static mut DigLimit,
+        Option<&'static CollidingEntities>, // kept for potential future use
+    ),
+    With<StoneRune>,
+>;
+
 #[allow(clippy::type_complexity, clippy::too_many_arguments)]
 pub fn update_stone_behavior(
     mut commands: Commands,
@@ -195,18 +212,7 @@ pub fn update_stone_behavior(
     tiles: Query<(), With<StageTile>>,
     tile_kinds: Query<&TileKind>,
     mut gizmos: Gizmos,
-    mut query: Query<
-        (
-            Entity,
-            &mut StoneCommandState,
-            &mut Transform,
-            &GlobalTransform,
-            &mut LinearVelocity,
-            &mut StoneMotion,
-            Option<&CollidingEntities>, // kept for potential future use
-        ),
-        With<StoneRune>,
-    >,
+    mut query: StoneBehaviorQuery,
     query_colliders: Query<&Collider>,
     spatial: SpatialQuery,
 ) {
@@ -217,6 +223,7 @@ pub fn update_stone_behavior(
         global_transform,
         mut velocity,
         mut motion,
+        mut dig_limit,
         _collisions,
     )) = query.iter_mut().next()
     else {
@@ -274,26 +281,38 @@ pub fn update_stone_behavior(
                 StoneAction::Sleep(Timer::from_seconds(seconds.max(0.0), TimerMode::Once))
             }
             ScriptCommand::Dig(direction) => {
-                let dir_vec = direction_to_vec(direction);
-                let ray_dir = Dir2::new(dir_vec).unwrap_or(Dir2::X);
-                let origin = global_transform.translation().truncate();
-                let max_dist = STONE_RAYCAST_DISTANCE * global_transform.scale().x;
+                if dig_limit.0 == 0 {
+                    StoneAction::Sleep(Timer::from_seconds(0.1, TimerMode::Once))
+                } else {
+                    let dir_vec = direction_to_vec(direction);
+                    let ray_dir = Dir2::new(dir_vec).unwrap_or(Dir2::X);
+                    let origin = global_transform.translation().truncate();
+                    let max_dist = STONE_RAYCAST_DISTANCE * global_transform.scale().x;
 
-                let filter =
-                    SpatialQueryFilter::from_mask(LayerMask::ALL).with_excluded_entities([entity]);
+                    let filter = SpatialQueryFilter::from_mask(LayerMask::ALL)
+                        .with_excluded_entities([entity]);
 
-                let hit = spatial.cast_ray(origin, ray_dir, max_dist, true, &filter);
+                    let hit = spatial.cast_ray(origin, ray_dir, max_dist, true, &filter);
 
-                if let Some(hit) = hit {
-                    if let Ok(kind) = tile_kinds.get(hit.entity) {
-                        if *kind == TileKind::Wall {
-                            info!("Hit a Wall, skipping dig");
+                    if let Some(hit) = hit {
+                        if let Ok(kind) = tile_kinds.get(hit.entity) {
+                            if *kind == TileKind::Wall {
+                                info!("Hit a Wall, skipping dig");
+                                StoneAction::Dig(
+                                    Timer::from_seconds(0.5, TimerMode::Once),
+                                    Entity::PLACEHOLDER,
+                                )
+                            } else {
+                                StoneAction::Dig(
+                                    Timer::from_seconds(0.5, TimerMode::Once),
+                                    hit.entity,
+                                )
+                            }
+                        } else {
                             StoneAction::Dig(
                                 Timer::from_seconds(0.5, TimerMode::Once),
                                 Entity::PLACEHOLDER,
                             )
-                        } else {
-                            StoneAction::Dig(Timer::from_seconds(0.5, TimerMode::Once), hit.entity)
                         }
                     } else {
                         StoneAction::Dig(
@@ -301,11 +320,6 @@ pub fn update_stone_behavior(
                             Entity::PLACEHOLDER,
                         )
                     }
-                } else {
-                    StoneAction::Dig(
-                        Timer::from_seconds(0.5, TimerMode::Once),
-                        Entity::PLACEHOLDER,
-                    )
                 }
             }
         });
@@ -400,6 +414,7 @@ pub fn update_stone_behavior(
             }
             StoneAction::Dig(timer, entity) => {
                 if timer.tick(time.delta()).is_finished() {
+                    dig_limit.0 = dig_limit.0.saturating_sub(1);
                     if let Ok(collider) = query_colliders.get(*entity) {
                         commands
                             .entity(*entity)
@@ -453,26 +468,32 @@ fn direction_to_vec(direction: MoveDirection) -> Vec2 {
     }
 }
 
+type StoneResetQuery<'w, 's> = Query<
+    'w,
+    's,
+    (
+        &'static mut Transform,
+        &'static mut StoneCommandState,
+        &'static mut StoneMotion,
+        &'static mut LinearVelocity,
+        &'static StoneSpawnState,
+        &'static mut DigLimit,
+    ),
+    With<StoneRune>,
+>;
 pub fn reset_stone_position(
     mut commands: Commands,
     editor_state: Res<ScriptEditorState>,
     mut audio_state: ResMut<StageAudioState>,
-    mut query: Query<
-        (
-            &mut Transform,
-            &mut StoneCommandState,
-            &mut StoneMotion,
-            &mut LinearVelocity,
-            &StoneSpawnState,
-        ),
-        With<StoneRune>,
-    >,
+    mut query: StoneResetQuery,
 ) {
     if !editor_state.pending_player_reset {
         return;
     }
 
-    if let Ok((mut transform, mut state, mut motion, mut velocity, spawn)) = query.single_mut() {
+    if let Ok((mut transform, mut state, mut motion, mut velocity, spawn, mut dig_limit)) =
+        query.single_mut()
+    {
         transform.translation = spawn.translation;
         transform.scale = Vec3::splat(spawn.scale);
 
@@ -482,6 +503,8 @@ pub fn reset_stone_position(
         motion.delta = Vec2::ZERO;
         motion.last = spawn.translation;
         velocity.0 = Vec2::ZERO;
+
+        dig_limit.0 = 1;
 
         audio_state.stop_push_loop(&mut commands);
     }

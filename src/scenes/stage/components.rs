@@ -22,6 +22,9 @@ pub struct DugTile {
 pub struct StoneRune;
 
 #[derive(Component)]
+pub struct DigLimit(pub u8);
+
+#[derive(Component)]
 pub struct StoneSpawnState {
     pub translation: Vec3,
     pub scale: f32,
