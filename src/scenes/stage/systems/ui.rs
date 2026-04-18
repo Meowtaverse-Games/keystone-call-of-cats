@@ -541,7 +541,7 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                     // Reserve animated height so the help rises from the bottom.
                     remaining.y = help_height;
 
-                    if let Some(help) = editor.command_help.as_ref().filter(|h| h.is_open) {
+                    if let Some(help) = editor.command_help.as_ref() {
                         let font_id = FontId::new(
                             scaled_panel_font_size(10.0, editor.font_offset),
                             Proportional,
