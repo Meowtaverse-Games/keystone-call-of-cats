@@ -495,31 +495,41 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                 let font_size = scaled_panel_font_size(BASE_EDITOR_FONT_SIZE, editor.font_offset);
                 let editing_locked = editor.controls_enabled;
 
-                let text_edit_response = ui.add_sized(
-                    egui::Vec2::new(available_size.x, text_height),
-                    egui::TextEdit::multiline(&mut editor.buffer)
-                        .code_editor()
-                        .font(FontSelection::FontId(FontId::new(font_size, Monospace)))
-                        .interactive(!editing_locked)
-                        .desired_width(f32::INFINITY),
-                );
+                let mut text_edit_response = None;
 
-                if text_edit_response.changed() {
-                    // Prevent non-ASCII input (e.g. Japanese) as requested.
-                    editor.buffer.retain(|c| c.is_ascii());
-
-                    info!("Script editor buffer changed");
-                    editor.controls_enabled = false;
-                    editor.stage_cleared = false;
-                    editor.stage_clear_popup_open = false;
-                    let stage_id = progression.current_stage_id();
-                    let current = stage_scripts.stage_code(settings.script_language, stage_id);
-                    if current.map(|c| c != editor.buffer.as_str()).unwrap_or(true) {
-                        stage_scripts.set_stage_code(
-                            settings.script_language,
-                            stage_id,
-                            editor.buffer.clone(),
+                egui::ScrollArea::vertical()
+                    .max_height(text_height)
+                    .show(ui, |ui| {
+                        text_edit_response = Some(
+                            ui.add_sized(
+                                egui::Vec2::new(available_size.x, text_height),
+                                egui::TextEdit::multiline(&mut editor.buffer)
+                                    .code_editor()
+                                    .font(FontSelection::FontId(FontId::new(font_size, Monospace)))
+                                    .interactive(!editing_locked)
+                                    .desired_width(f32::INFINITY),
+                            ),
                         );
+                    });
+
+                if let Some(response) = text_edit_response {
+                    if response.changed() {
+                        // Prevent non-ASCII input (e.g. Japanese) as requested.
+                        editor.buffer.retain(|c| c.is_ascii());
+
+                        info!("Script editor buffer changed");
+                        editor.controls_enabled = false;
+                        editor.stage_cleared = false;
+                        editor.stage_clear_popup_open = false;
+                        let stage_id = progression.current_stage_id();
+                        let current = stage_scripts.stage_code(settings.script_language, stage_id);
+                        if current.map(|c| c != editor.buffer.as_str()).unwrap_or(true) {
+                            stage_scripts.set_stage_code(
+                                settings.script_language,
+                                stage_id,
+                                editor.buffer.clone(),
+                            );
+                        }
                     }
                 }
 
