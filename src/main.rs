@@ -5,6 +5,7 @@ use std::env;
 
 use bevy::asset::AssetPlugin;
 use bevy::{camera::ScalingMode, prelude::*, render::view::ColorGrading};
+// use bevy_embedded_assets::EmbeddedAssetPlugin;
 
 use bevy_fluent::prelude::*;
 
@@ -83,6 +84,8 @@ fn main() {
                 next_state.set(GameState::SelectStage);
             },
         );
+
+    // app.add_plugins(EmbeddedAssetPlugin);
 
     app.add_plugins((
         #[cfg(feature = "steam")]
