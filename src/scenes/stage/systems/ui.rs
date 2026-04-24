@@ -495,16 +495,24 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                 let font_size = scaled_panel_font_size(BASE_EDITOR_FONT_SIZE, editor.font_offset);
                 let editing_locked = editor.controls_enabled;
 
-                let text_edit_response = ui.add_sized(
-                    egui::Vec2::new(available_size.x, text_height),
-                    egui::TextEdit::multiline(&mut editor.buffer)
-                        .code_editor()
-                        .font(FontSelection::FontId(FontId::new(font_size, Monospace)))
-                        .interactive(!editing_locked)
-                        .desired_width(f32::INFINITY),
-                );
+                let mut text_edit_response = None;
 
-                if text_edit_response.changed() {
+                egui::ScrollArea::vertical()
+                    .max_height(text_height)
+                    .show(ui, |ui| {
+                        text_edit_response = Some(
+                            ui.add_sized(
+                                egui::Vec2::new(available_size.x, text_height),
+                                egui::TextEdit::multiline(&mut editor.buffer)
+                                    .code_editor()
+                                    .font(FontSelection::FontId(FontId::new(font_size, Monospace)))
+                                    .interactive(!editing_locked)
+                                    .desired_width(f32::INFINITY),
+                            ),
+                        );
+                    });
+
+                if text_edit_response.is_some_and(|r| r.changed()) {
                     // Prevent non-ASCII input (e.g. Japanese) as requested.
                     editor.buffer.retain(|c| c.is_ascii());
 
@@ -531,7 +539,7 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                     // Reserve animated height so the help rises from the bottom.
                     remaining.y = help_height;
 
-                    if let Some(help) = editor.command_help.as_ref().filter(|h| h.is_open) {
+                    if let Some(help) = editor.command_help.as_ref() {
                         let font_id = FontId::new(
                             scaled_panel_font_size(10.0, editor.font_offset),
                             Proportional,
