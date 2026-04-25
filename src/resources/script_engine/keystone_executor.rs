@@ -8,9 +8,8 @@ use std::{
     sync::{
         Arc, Mutex,
         atomic::{AtomicBool, Ordering},
-        mpsc::{self, Receiver, sync_channel},
+        mpsc::{self, Receiver},
     },
-    thread::JoinHandle,
 };
 
 #[derive(Clone, Default)]
@@ -20,29 +19,23 @@ struct StandardApi {
 
 impl ExternalApi for StandardApi {
     fn is_touched(&self) -> bool {
-        self.inner
-            .lock()
-            .ok()
-            .and_then(|state| {
-                state
-                    .get(PLAYER_TOUCHED_STATE_KEY)
-                    .and_then(ScriptStateValue::as_bool)
-            })
+        let state = self.inner.lock().unwrap();
+        state
+            .get(PLAYER_TOUCHED_STATE_KEY)
+            .and_then(ScriptStateValue::as_bool)
             .unwrap_or(false)
     }
+
     fn is_empty(&self, dir: Direction) -> bool {
         let key = format!("is-empty-{}", dir_to_str(dir));
-        self.inner
-            .lock()
-            .ok()
-            .and_then(|s| s.get(&key).and_then(|v| v.as_bool()))
-            .unwrap_or(false)
+        let state = self.inner.lock().unwrap();
+        state.get(&key).and_then(|v| v.as_bool()).unwrap_or(false)
     }
 }
 
 impl StandardApi {
     fn write(&self, state: &ScriptState) {
-        if let Ok(mut inner) = self.inner.try_lock() {
+        if let Ok(mut inner) = self.inner.lock() {
             *inner = state.clone();
         }
     }
@@ -117,40 +110,41 @@ struct KeystoneScriptProgram {
     receiver: Mutex<Receiver<Option<ScriptCommand>>>,
     stop_flag: Arc<AtomicBool>,
     api: StandardApi,
-    resume_tx: mpsc::Sender<()>,
-    handle: Option<JoinHandle<()>>,
+    resume_tx: mpsc::SyncSender<()>,
 }
 
 impl KeystoneScriptProgram {
     fn spawn(iter: EventIterator, api: StandardApi) -> Self {
         let stop_flag = Arc::new(AtomicBool::new(false));
         let stop_flag_inner = stop_flag.clone();
-        let (tx, rx) = sync_channel::<Option<ScriptCommand>>(1);
-        let (resume_tx, resume_rx) = mpsc::channel::<()>();
-        let handle = std::thread::spawn(move || {
+
+        let (tx, rx) = mpsc::sync_channel::<Option<ScriptCommand>>(1);
+        let (resume_tx, resume_rx) = mpsc::sync_channel::<()>(0);
+
+        std::thread::spawn(move || {
             for event in iter {
                 if stop_flag_inner.load(Ordering::SeqCst) {
                     break;
                 }
-                if resume_rx
-                    .recv_timeout(std::time::Duration::from_millis(10))
-                    .is_err()
-                {
-                    continue;
+
+                if resume_rx.recv().is_err() {
+                    break;
                 }
-                let command = map_event(event.expect("error"));
+
+                let command = map_event(event.expect("script error"));
+
                 if tx.send(command).is_err() {
                     break;
                 }
             }
             let _ = tx.send(None);
         });
+
         Self {
             receiver: Mutex::new(rx),
             api,
             stop_flag,
             resume_tx,
-            handle: Some(handle),
         }
     }
 }
@@ -160,28 +154,17 @@ impl ScriptProgram for KeystoneScriptProgram {
         if self.stop_flag.load(Ordering::SeqCst) {
             return None;
         }
-        let api_clone = self.api.clone();
-        let state_clone = state.clone();
-        std::thread::spawn(move || {
-            api_clone.write(&state_clone);
-        });
-        let _ = self.resume_tx.send(());
-        if let Ok(rx) = self.receiver.try_lock() {
-            rx.try_recv().ok().flatten()
+
+        self.api.write(state);
+
+        if self.resume_tx.send(()).is_err() {
+            return None;
+        }
+
+        if let Ok(rx) = self.receiver.lock() {
+            rx.recv().ok().flatten()
         } else {
             None
-        }
-    }
-}
-
-impl Drop for KeystoneScriptProgram {
-    fn drop(&mut self) {
-        self.stop_flag.store(true, Ordering::SeqCst);
-        if let Ok(mut rx_lock) = self.receiver.lock() {
-            let _ = std::mem::replace(&mut *rx_lock, std::sync::mpsc::channel().1);
-        }
-        if let Some(handle) = self.handle.take() {
-            let _ = handle.join();
         }
     }
 }
