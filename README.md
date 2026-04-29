@@ -6,23 +6,26 @@ Keystone: Call of Cats invites you to guide curious cats and stones toward a sha
 - `src/config.rs` – Game configuration constants and settings
 - `src/plugins/` – Modular game features and engine integrations
 - `src/resources/` – Shared game state and data structures
-- `src/scenes/` – High-level game states (e.g., Title, Gameplay) and screen definitions
+- `src/scenes/` – High-level game states (`Boot`, `SelectStage`, `Stage`) and screen definitions
 - `src/systems/` – Game logic systems (input handling, movement, collision, etc.)
 - `src/util/` – Helper functions and common utilities
-- `assets/` – Runtime assets (images, audio, fonts, stage data)
+- `assets/` – Runtime assets (images, audio, fonts, locales, stage data)
 - `scripts/` – Build, packaging, and deployment scripts
-- `tools/` – Internal development tools (e.g., sprite sheet exporter)
+- `tools/` – Internal development tools (e.g., `ftl_sheet_exporter` for syncing translations from Google Sheets)
 - `ext-assets/` – Source files gathered from external tools/artists before import or optimization
 
 ## How To Run
 
-- Prerequisites: Rust toolchain (stable) via `rustup`.
+- Prerequisites: Rust toolchain (stable, ≥ 1.85 for the 2024 edition) via `rustup`.
 - Run (debug): `cargo run`
 - Run (optimized): `cargo run --release`
 
-Notes:
-- Transparent window behavior is primarily tuned for macOS/Linux. On Windows, transparency or reveal effects may differ.
-- Typing prints characters; Backspace and Enter are handled. Window resize adjusts layout.
+### Cargo features
+- `experimental` (default) – gates work-in-progress features. Disable with `--no-default-features`.
+- `steam` – opt-in Steamworks integration: `cargo run --features steam`.
+
+### Localization
+The game ships with `en-US`, `ja-JP`, and `zh-Hans` locales under `assets/locales/`. The initial locale is picked from `ITCHIO_OFFICIAL_LOCALE`, then `LANG`, falling back to `en-US`. The user's choice is persisted in the game settings file.
 
 ## Code License
 
