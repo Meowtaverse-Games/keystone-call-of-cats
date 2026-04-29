@@ -315,14 +315,8 @@ pub fn drive_player_goal_descent(
     mut query: Query<PlayerGoalDescentComponents<'_>, With<Player>>,
     mut count: Local<u32>,
 ) {
-    let Some((
-        entity,
-        mut transform,
-        mut velocity,
-        mut motion,
-        mut gravity_scale,
-        descent,
-    )) = query.iter_mut().next()
+    let Some((entity, mut transform, mut velocity, mut motion, mut gravity_scale, descent)) =
+        query.iter_mut().next()
     else {
         return;
     };
