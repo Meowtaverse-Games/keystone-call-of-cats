@@ -55,7 +55,7 @@ type GoalCheckPlayer<'w> = (
     &'w mut LinearVelocity,
     &'w mut PlayerMotion,
     Option<&'w PlayerGoalDescent>,
-    &'w mut CollisionLayers,
+    &'w CollisionLayers,
     &'w GravityScale,
     &'w CollidingEntities,
 );
@@ -80,7 +80,7 @@ pub fn check_goal_completion(
         mut velocity,
         mut motion,
         active_descent,
-        mut layers,
+        layers,
         gravity,
         collisions,
     )) = player_query.iter_mut().next()
@@ -126,17 +126,18 @@ pub fn check_goal_completion(
         let align_x = goal_pos.translation.x + 4.0;
         let original_memberships = layers.memberships;
         let original_filters = layers.filters;
-        layers.memberships = LayerMask::NONE;
-        layers.filters = LayerMask::NONE;
 
-        commands.entity(player_entity).insert(PlayerGoalDescent {
-            target_y,
-            align_x,
-            speed: GOAL_DESCENT_SPEED,
-            original_memberships,
-            original_filters,
-            original_gravity: gravity.0,
-        });
+        commands.entity(player_entity).insert((
+            CollisionLayers::new(LayerMask::NONE, LayerMask::NONE),
+            PlayerGoalDescent {
+                target_y,
+                align_x,
+                speed: GOAL_DESCENT_SPEED,
+                original_memberships,
+                original_filters,
+                original_gravity: gravity.0,
+            },
+        ));
 
         break;
     }

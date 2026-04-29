@@ -157,7 +157,7 @@ pub fn move_player(
     keyboard_input: Res<ButtonInput<KeyCode>>,
     viewport: Res<ScaledViewport>,
     mut query: Query<MovePlayerComponents<'_>, With<Player>>,
-    mut spatial_query: SpatialQuery,
+    spatial_query: SpatialQuery,
     mut gizmos: Gizmos,
     launch_profile: Res<LaunchProfile>,
 ) {
@@ -227,7 +227,6 @@ pub fn move_player(
     let query_filter =
         SpatialQueryFilter::from_mask(filter_mask).with_excluded_entities([player_entity]);
 
-    spatial_query.update_pipeline();
     let grounded = spatial_query
         .cast_shape_predicate(
             &cast_shape,
@@ -274,7 +273,6 @@ type PlayerGoalDescentComponents<'w> = (
     &'w mut Transform,
     &'w mut LinearVelocity,
     &'w mut PlayerMotion,
-    &'w mut CollisionLayers,
     &'w mut GravityScale,
     &'w PlayerGoalDescent,
 );
@@ -322,7 +320,6 @@ pub fn drive_player_goal_descent(
         mut transform,
         mut velocity,
         mut motion,
-        mut layers,
         mut gravity_scale,
         descent,
     )) = query.iter_mut().next()
@@ -330,8 +327,6 @@ pub fn drive_player_goal_descent(
         return;
     };
 
-    layers.memberships = LayerMask::NONE;
-    layers.filters = LayerMask::NONE;
     motion.is_moving = false;
     motion.is_jumping = false;
     motion.is_climbing = true;
@@ -356,8 +351,12 @@ pub fn drive_player_goal_descent(
 
     transform.translation.y = descent.target_y;
     motion.is_climbing = false;
-    layers.memberships = descent.original_memberships;
-    layers.filters = descent.original_filters;
     gravity_scale.0 = descent.original_gravity;
-    commands.entity(entity).remove::<PlayerGoalDescent>();
+    commands
+        .entity(entity)
+        .insert(CollisionLayers::new(
+            descent.original_memberships,
+            descent.original_filters,
+        ))
+        .remove::<PlayerGoalDescent>();
 }
