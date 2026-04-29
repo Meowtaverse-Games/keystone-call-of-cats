@@ -13,7 +13,7 @@ bevy_camera = "0.18.1"
 bevy_fluent = "0.14.0"
 avian2d = "0.6.1"
 rhai = { version = "1.24.0", features = ["sync"] }
-rand = "0.9.4"
+rand = "0.10.1"
 ron = "0.12.1"
 serde = { version = "1", features = ["derive"] }
 steamworks = { version = "0.12.2", optional = true }
