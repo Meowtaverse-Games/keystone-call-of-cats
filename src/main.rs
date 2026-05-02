@@ -14,7 +14,7 @@ use avian2d::{debug_render::PhysicsDebugPlugin, prelude::*};
 
 use unic_langid::langid;
 
-#[cfg(all(target_os = "windows", not(debug_assertions)))]
+#[cfg(all(target_os = "windows"))]
 use bevy_embedded_assets::EmbeddedAssetPlugin;
 
 mod config;
@@ -87,7 +87,7 @@ fn main() {
             },
         );
 
-    #[cfg(all(target_os = "windows", not(debug_assertions)))]
+    #[cfg(all(target_os = "windows"))]
     app.add_plugins(EmbeddedAssetPlugin::default());
 
     app.add_plugins((
