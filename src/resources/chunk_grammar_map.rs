@@ -158,6 +158,7 @@ pub struct ChunkGrammarConfig {
     map_size: (isize, isize),
     #[serde(default)]
     pub stone_type: StoneType,
+    pub dig_limit: Option<u32>,
     pub adjustments: Option<Adjustments>,
     start_chunks: Vec<ChunkTemplate>,
     middle_chunks: Vec<ChunkTemplate>,
@@ -237,6 +238,7 @@ pub fn generate_random_layout_from_file(path: impl AsRef<Path>) -> Result<Map, C
         adjustment: placed_chunk_layout.adjustment,
         map_size: placed_chunk_layout.map_size,
         stone_type: config.stone_type,
+        dig_limit: config.dig_limit,
         boundary_margin: placed_chunk_layout.boundary_margin,
         margin_tiles: placed_chunk_layout.margin_tiles,
     };
@@ -480,6 +482,7 @@ pub struct Map {
     pub adjustment: Option<Adjustments>,
     pub map_size: (isize, isize),
     pub stone_type: StoneType,
+    pub dig_limit: Option<u32>,
     pub boundary_margin: (isize, isize),
     margin_tiles: Vec<Tile>,
 }
@@ -507,6 +510,7 @@ impl Map {
     fn new(
         mut placed_chunks: Vec<PlacedChunk>,
         stone_type: StoneType,
+        dig_limit: Option<u32>,
         adjustment: Option<Adjustments>,
         boundary_margin: (isize, isize),
     ) -> Self {
@@ -526,6 +530,7 @@ impl Map {
             adjustment,
             map_size: (MAP_SIZE.0, MAP_SIZE.1),
             stone_type,
+            dig_limit,
             boundary_margin,
             margin_tiles: build_margin_tiles(boundary_margin),
         }

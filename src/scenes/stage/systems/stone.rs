@@ -87,6 +87,7 @@ pub fn spawn_stone(
     layouts: &mut Assets<TextureAtlasLayout>,
     (object_x, object_y, _scale): (f32, f32, f32),
     stone_type: StoneType,
+    dig_limit: Option<u32>,
     step_size: f32,
 ) {
     let texture = asset_server.load(STONE_ATLAS_PATH);
@@ -121,8 +122,9 @@ pub fn spawn_stone(
             StoneSpawnState {
                 translation: Vec3::new(object_x, object_y, 1.0),
                 scale: STONE_SCALE,
+                dig_limit,
             },
-            DigLimit(1),
+            DigLimit(dig_limit),
             stone_type,
             StoneCommandState {
                 step_size,
@@ -280,10 +282,9 @@ pub fn update_stone_behavior(
             ScriptCommand::Sleep(seconds) => {
                 StoneAction::Sleep(Timer::from_seconds(seconds.max(0.0), TimerMode::Once))
             }
-            ScriptCommand::Dig(direction) => {
-                if dig_limit.0 == 0 {
-                    StoneAction::Sleep(Timer::from_seconds(0.1, TimerMode::Once))
-                } else {
+            ScriptCommand::Dig(direction) => match dig_limit.0 {
+                None | Some(0) => StoneAction::Sleep(Timer::from_seconds(0.1, TimerMode::Once)),
+                Some(_) => {
                     let dir_vec = direction_to_vec(direction);
                     let ray_dir = Dir2::new(dir_vec).unwrap_or(Dir2::X);
                     let origin = global_transform.translation().truncate();
@@ -321,7 +322,7 @@ pub fn update_stone_behavior(
                         )
                     }
                 }
-            }
+            },
         });
     }
 
@@ -414,7 +415,9 @@ pub fn update_stone_behavior(
             }
             StoneAction::Dig(timer, entity) => {
                 if timer.tick(time.delta()).is_finished() {
-                    dig_limit.0 = dig_limit.0.saturating_sub(1);
+                    if let Some(count) = dig_limit.0 {
+                        dig_limit.0 = Some(count.saturating_sub(1));
+                    }
                     if let Ok(collider) = query_colliders.get(*entity) {
                         commands
                             .entity(*entity)
@@ -504,7 +507,7 @@ pub fn reset_stone_position(
         motion.last = spawn.translation;
         velocity.0 = Vec2::ZERO;
 
-        dig_limit.0 = 1;
+        dig_limit.0 = spawn.dig_limit;
 
         audio_state.stop_push_loop(&mut commands);
     }

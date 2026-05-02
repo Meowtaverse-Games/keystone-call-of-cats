@@ -1,6 +1,7 @@
 (
     map_size: (28, 18),
     stone_type: Type1,
+    dig_limit: None,
     start_chunks: [
         ChunkTemplate(
             id: "start-1",
