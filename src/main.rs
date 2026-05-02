@@ -5,7 +5,6 @@ use std::env;
 
 use bevy::asset::AssetPlugin;
 use bevy::{camera::ScalingMode, prelude::*, render::view::ColorGrading};
-// use bevy_embedded_assets::EmbeddedAssetPlugin;
 
 use bevy_fluent::prelude::*;
 
@@ -14,6 +13,9 @@ use bevy_egui::EguiPlugin;
 use avian2d::{debug_render::PhysicsDebugPlugin, prelude::*};
 
 use unic_langid::langid;
+
+#[cfg(all(target_os = "windows", not(debug_assertions)))]
+use bevy_embedded_assets::EmbeddedAssetPlugin;
 
 mod config;
 mod plugins;
@@ -85,7 +87,8 @@ fn main() {
             },
         );
 
-    // app.add_plugins(EmbeddedAssetPlugin);
+    #[cfg(all(target_os = "windows", not(debug_assertions)))]
+    app.add_plugins(EmbeddedAssetPlugin::default());
 
     app.add_plugins((
         #[cfg(feature = "steam")]
