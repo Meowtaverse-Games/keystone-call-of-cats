@@ -1,13 +1,10 @@
 use bevy_ecs::component::Component;
 use rand::{Rng, seq::SliceRandom};
 use std::collections::{HashMap, HashSet};
-use std::fmt;
-use std::fs::File;
-use std::io::BufReader;
-use std::path::Path;
 
 use serde::Deserialize;
 
+use crate::resources::stage_catalog::{StageId, StageMeta};
 use crate::resources::stone_type::StoneType;
 
 pub const MAP_SIZE: (isize, isize) = (30, 20);
@@ -187,31 +184,6 @@ impl ChunkGrammarConfig {
     }
 }
 
-#[derive(Debug)]
-pub enum ChunkGrammarError {
-    Io(std::io::Error),
-    Parse(ron::error::SpannedError),
-}
-
-impl fmt::Display for ChunkGrammarError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            ChunkGrammarError::Io(err) => write!(f, "io error: {err}"),
-            ChunkGrammarError::Parse(err) => write!(f, "parse error: {err}"),
-        }
-    }
-}
-
-impl std::error::Error for ChunkGrammarError {}
-
-pub fn load_config_from_file(
-    path: impl AsRef<Path>,
-) -> Result<ChunkGrammarConfig, ChunkGrammarError> {
-    let file = File::open(path).map_err(ChunkGrammarError::Io)?;
-    let reader = BufReader::new(file);
-    ron::de::from_reader(reader).map_err(ChunkGrammarError::Parse)
-}
-
 fn generate_random_layout(config: &ChunkGrammarConfig) -> PlacedChunkLayout {
     let starts = config.starts();
     let middles = config.middles();
@@ -225,13 +197,9 @@ fn generate_random_layout(config: &ChunkGrammarConfig) -> PlacedChunkLayout {
     )
 }
 
-pub fn generate_random_layout_from_file(path: impl AsRef<Path>) -> Result<Map, ChunkGrammarError> {
-    println!(
-        "Loading chunk grammar config from file: {}",
-        path.as_ref().display()
-    );
-    let config = load_config_from_file(path)?;
+pub fn generate_map_from_config(config: ChunkGrammarConfig) -> Map {
     let placed_chunk_layout = generate_random_layout(&config);
+
     let mut map = Map {
         placed_chunks: placed_chunk_layout.placed_chunks,
         adjustment: placed_chunk_layout.adjustment,
@@ -243,7 +211,7 @@ pub fn generate_random_layout_from_file(path: impl AsRef<Path>) -> Result<Map, C
 
     adjust_goal_layout(&mut map);
 
-    Ok(map)
+    map
 }
 
 fn adjust_goal_layout(map: &mut Map) {
@@ -353,8 +321,14 @@ fn adjust_goal_layout(map: &mut Map) {
 }
 
 pub fn show_ascii_map(stage_id: usize) {
-    let map = generate_random_layout_from_file(format!("assets/stages/stage-{}.ron", stage_id))
-        .expect("failed to generate layout from config");
+    let meta = StageMeta {
+        id: StageId(stage_id),
+        title: "".to_string(),
+        unlocked: true,
+    };
+
+    let map = meta.load_map();
+
     println!("== Placed Chunks ==");
     println!(
         "map size: {:?}, boundary margin: {:?}",

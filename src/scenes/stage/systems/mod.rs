@@ -20,7 +20,7 @@ use crate::{
     MainCamera,
     resources::{
         asset_store::AssetStore,
-        chunk_grammar_map::{self, Map, TileKind, generate_random_layout_from_file},
+        chunk_grammar_map::{self, Map, TileKind},
         design_resolution::{LetterboxOffsets, ScaledViewport},
         file_storage::FileStorageResource,
         settings::GameSettings,
@@ -56,16 +56,12 @@ pub struct StageProgressionState {
 impl StageProgressionState {
     pub fn current_map(&self) -> Map {
         let current_stage = self.current_stage.as_ref().expect("no current stage");
-        let map = generate_random_layout_from_file(current_stage.map_path())
-            .expect("failed to generate layout from config");
-
-        for chunk in &map {
+        let map = current_stage.load_map();
+        for chunk in &map.placed_chunks {
             println!("- {}", chunk.id);
         }
         println!();
-
         chunk_grammar_map::print_ascii_map(&map);
-
         map
     }
 

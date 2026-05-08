@@ -1,6 +1,8 @@
 use bevy::prelude::{Resource, *};
 use serde::{Deserialize, Serialize};
 
+use crate::resources::chunk_grammar_map::{ChunkGrammarConfig, Map, generate_map_from_config};
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 pub struct StageId(pub usize);
 
@@ -12,10 +14,28 @@ pub struct StageMeta {
 }
 
 impl StageMeta {
-    pub fn map_path(&self) -> String {
-        info!("assets/stages/stage-{}.ron", self.id.0);
+    pub fn load_map(&self) -> Map {
+        let stage_id = self.id.0;
+        let bytes: &'static [u8] = match stage_id {
+            1 => include_bytes!("../../assets/stages/stage-1.ron"),
+            2 => include_bytes!("../../assets/stages/stage-2.ron"),
+            3 => include_bytes!("../../assets/stages/stage-3.ron"),
+            4 => include_bytes!("../../assets/stages/stage-4.ron"),
+            5 => include_bytes!("../../assets/stages/stage-5.ron"),
+            6 => include_bytes!("../../assets/stages/stage-6.ron"),
+            7 => include_bytes!("../../assets/stages/stage-7.ron"),
+            8 => include_bytes!("../../assets/stages/stage-8.ron"),
+            9 => include_bytes!("../../assets/stages/stage-9.ron"),
+            10 => include_bytes!("../../assets/stages/stage-10.ron"),
+            11 => include_bytes!("../../assets/stages/stage-11.ron"),
+            12 => include_bytes!("../../assets/stages/stage-12.ron"),
+            _ => panic!("Stage ID: {} Not found.", stage_id),
+        };
 
-        format!("assets/stages/stage-{}.ron", self.id.0)
+        let config: ChunkGrammarConfig =
+            ron::de::from_bytes(bytes).expect(&format!("Parse failed: stage-{}.ron", stage_id));
+
+        generate_map_from_config(config)
     }
 }
 
