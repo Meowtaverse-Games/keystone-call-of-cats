@@ -283,8 +283,8 @@ pub fn update_stone_behavior(
                 StoneAction::Sleep(Timer::from_seconds(seconds.max(0.0), TimerMode::Once))
             }
             ScriptCommand::Dig(direction) => match dig_limit.0 {
-                None | Some(0) => StoneAction::Sleep(Timer::from_seconds(0.1, TimerMode::Once)),
-                Some(_) => {
+                Some(0) => StoneAction::Sleep(Timer::from_seconds(0.1, TimerMode::Once)),
+                Some(_) | None => {
                     let dir_vec = direction_to_vec(direction);
                     let ray_dir = Dir2::new(dir_vec).unwrap_or(Dir2::X);
                     let origin = global_transform.translation().truncate();
