@@ -88,7 +88,9 @@ fn main() {
         );
 
     #[cfg(all(target_os = "windows"))]
-    app.add_plugins(EmbeddedAssetPlugin::default());
+    app.add_plugins(EmbeddedAssetPlugin {
+        mode: bevy_embedded_assets::PluginMode::ReplaceDefault,
+    });
 
     app.add_plugins((
         #[cfg(feature = "steam")]
