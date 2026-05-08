@@ -32,8 +32,8 @@ impl StageMeta {
             _ => panic!("Stage ID: {} Not found.", stage_id),
         };
 
-        let config: ChunkGrammarConfig =
-            ron::de::from_bytes(bytes).expect(&format!("Parse failed: stage-{}.ron", stage_id));
+        let config: ChunkGrammarConfig = ron::de::from_bytes(bytes)
+            .unwrap_or_else(|_| panic!("Parse failed: stage-{}.ron", stage_id));
 
         generate_map_from_config(config)
     }
