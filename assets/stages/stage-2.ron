@@ -1,6 +1,7 @@
 (
     map_size: (28, 10),
     stone_type: Type1,
+    dig_limit: Some(0),
     adjustments: Some(Adjustments(
         stones: [(0.5, 0)],
     )),
