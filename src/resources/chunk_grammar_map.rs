@@ -1,5 +1,5 @@
 use bevy_ecs::component::Component;
-use rand::{Rng, seq::SliceRandom};
+use rand::{Rng, RngExt, seq::SliceRandom};
 use std::collections::{HashMap, HashSet};
 
 use serde::Deserialize;

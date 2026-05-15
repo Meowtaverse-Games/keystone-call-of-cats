@@ -36,7 +36,7 @@ use crate::{
         },
     },
 };
-use rand::Rng;
+use rand::RngExt;
 
 #[derive(Clone, Debug)]
 pub struct TutorialDialog {

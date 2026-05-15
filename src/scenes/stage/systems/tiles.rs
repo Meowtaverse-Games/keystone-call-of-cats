@@ -1,7 +1,7 @@
 use avian2d::prelude::*;
 use bevy::prelude::*;
 
-use rand::Rng;
+use rand::{Rng, RngExt};
 
 use crate::{
     resources::{chunk_grammar_map::*, design_resolution::ScaledViewport, tiled::*},
