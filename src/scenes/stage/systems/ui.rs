@@ -1033,6 +1033,70 @@ pub fn spawn_tutorial_overlay(
     }
 }
 
+pub fn spawn_tutorial_start_hint(
+    commands: &mut Commands,
+    asset_store: &AssetStore,
+    localization: &Localization,
+    letterbox_offsets: &LetterboxOffsets,
+) {
+    let Some(font) = asset_store.font(FontKey::Default) else {
+        warn!("Tutorial start hint: default font is missing");
+        return;
+    };
+
+    let hint_text = tr(localization, "stage-ui-tutorial-start-hint");
+
+    let overlay_entity = commands
+        .spawn((
+            Node {
+                width: Val::Percent(100.0),
+                height: Val::Percent(100.0),
+                position_type: PositionType::Absolute,
+                padding: UiRect {
+                    left: Val::Px(letterbox_offsets.left + 20.0),
+                    right: Val::Px(letterbox_offsets.right + 20.0),
+                    top: Val::Px(0.0),
+                    bottom: Val::Px(30.0),
+                },
+                justify_content: JustifyContent::FlexEnd,
+                align_items: AlignItems::FlexEnd,
+                ..default()
+            },
+            ZIndex(5),
+            StageTutorialOverlay,
+        ))
+        .with_children(|parent| {
+            parent
+                .spawn((
+                    Node {
+                        padding: UiRect::axes(Val::Px(16.0), Val::Px(10.0)),
+                        ..default()
+                    },
+                    BackgroundColor(Color::srgba(0.04, 0.04, 0.04, 0.75)),
+                ))
+                .with_children(|panel| {
+                    panel.spawn((
+                        Node { ..default() },
+                        Text::new(hint_text),
+                        TextFont {
+                            font: font.clone(),
+                            font_size: 18.0,
+                            ..default()
+                        },
+                        TextColor(Color::srgb(0.95, 0.95, 0.95)),
+                    ));
+                });
+        })
+        .id();
+    commands
+        .entity(overlay_entity)
+        .insert(TutorialOverlayPanel {
+            chunks: Vec::new(),
+            current_chunk: 0,
+            body_entity: Entity::PLACEHOLDER,
+        });
+}
+
 pub fn handle_tutorial_overlay_input(
     mut commands: Commands,
     keys: Res<ButtonInput<KeyCode>>,
