@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_egui::EguiPrimaryContextPass;
 
-use crate::resources::game_state::GameState;
+use crate::{resources::game_state::GameState, scenes::stage::systems::tick_pending_tutorial};
 
 pub mod components;
 pub mod systems;
@@ -18,6 +18,10 @@ impl Plugin for StageScenePlugin {
             .add_message::<systems::StoneCommandMessage>()
             .add_message::<systems::StoneAppendCommandMessage>()
             .add_systems(OnEnter(GameState::Stage), systems::setup)
+            .add_systems(
+                Update,
+                tick_pending_tutorial.run_if(in_state(GameState::Stage)),
+            )
             .add_systems(
                 OnEnter(GameState::Stage),
                 crate::systems::engine::friction::apply_zero_friction_to_rigid_bodies

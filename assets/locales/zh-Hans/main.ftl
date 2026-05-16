@@ -53,6 +53,7 @@ stage-ui-feedback-complete = 所有关卡已通关！
 stage-ui-tutorial-controls-hint = F1运行，F2/F3调整字体大小，箭头键移动，空格键跳跃。
 stage-ui-tutorial-ok = 明白了！
 stage-ui-tutorial-next-hint = 按 [Enter] 显示下一条
+stage-ui-tutorial-start-hint = 按 [Enter] 显示教程
 stage-ui-clear-window-title = 关卡通过！
 stage-ui-clear-heading = 已到达终点。
 stage-ui-clear-body = 在挑战下一关之前，先休息一下吧。
