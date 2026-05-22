@@ -1,7 +1,7 @@
 use crate::scenes::stage::systems::ui::ScriptEditorState;
 use avian2d::prelude::*;
 use bevy::prelude::*;
-use rand::Rng;
+use rand::RngExt;
 
 #[derive(Component)]
 pub struct AnimatedObstacle {
