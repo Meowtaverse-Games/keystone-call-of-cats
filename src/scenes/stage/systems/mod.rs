@@ -308,6 +308,45 @@ pub struct StageSetupParams<'w, 's> {
     settings: Res<'w, GameSettings>,
 }
 
+#[derive(Resource)]
+pub struct PendingTutorial {
+    pub dialog: ui::TutorialDialog,
+}
+
+pub fn tick_pending_tutorial(
+    mut commands: Commands,
+    keys: Res<ButtonInput<KeyCode>>,
+    pending_tutorial: Option<ResMut<PendingTutorial>>,
+    asset_store: Res<AssetStore>,
+    localization: Option<Res<Localization>>,
+    letterbox_offsets: Option<Res<LetterboxOffsets>>,
+) {
+    let Some(pending) = pending_tutorial else {
+        return;
+    };
+
+    if !keys.just_pressed(KeyCode::Enter) {
+        return;
+    }
+
+    let Some(local) = localization else {
+        return;
+    };
+    let Some(offsets) = letterbox_offsets else {
+        return;
+    };
+
+    ui::spawn_tutorial_overlay(
+        &mut commands,
+        asset_store.as_ref(),
+        local.as_ref(),
+        &pending.dialog,
+        offsets.as_ref(),
+    );
+
+    commands.remove_resource::<PendingTutorial>();
+}
+
 pub fn setup(mut commands: Commands, mut params: StageSetupParams) {
     let current_stage_id = params.progression.current_stage_id();
     let current_lang = params.settings.script_language;
@@ -378,11 +417,14 @@ pub fn setup(mut commands: Commands, mut params: StageSetupParams) {
         .and_then(|editor| editor.tutorial_dialog.clone())
         .or_else(|| ui::tutorial_dialog_for_stage(current_stage_id));
     if let Some(dialog) = tutorial_dialog {
-        ui::spawn_tutorial_overlay(
+        commands.insert_resource(PendingTutorial {
+            dialog: dialog.clone(),
+        });
+
+        ui::spawn_tutorial_start_hint(
             &mut commands,
             params.asset_store.as_ref(),
             params.localization.as_ref(),
-            &dialog,
             params.letterbox_offsets.as_ref(),
         );
     }
