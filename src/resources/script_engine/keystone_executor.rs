@@ -15,6 +15,7 @@ use std::{
 #[derive(Clone, Default)]
 struct StandardApi {
     inner: Arc<Mutex<ScriptState>>,
+    shared_signals: Arc<Mutex<HashSet<String>>>,
 }
 
 impl ExternalApi for StandardApi {
@@ -30,6 +31,20 @@ impl ExternalApi for StandardApi {
         let key = format!("is-empty-{}", dir_to_str(dir));
         let state = self.inner.lock().unwrap();
         state.get(&key).and_then(|v| v.as_bool()).unwrap_or(false)
+    }
+
+    fn send_signal(&self, channel: &str) {
+        if let Ok(mut g) = self.shared_signals.lock() {
+            g.insert(channel.to_owned());
+        }
+    }
+
+    fn receive_signal(&self, channel: &str) -> bool {
+        if let Ok(mut g) = self.shared_signals.lock() {
+            g.remove(channel)
+        } else {
+            false
+        }
     }
 }
 
@@ -48,16 +63,20 @@ pub struct KeystoneScriptExecutor {
 }
 
 impl KeystoneScriptExecutor {
-    fn new(api: StandardApi) -> Self {
-        Self { api }
+    pub fn new(inner_state: ScriptState, shared_signals: Arc<Mutex<HashSet<String>>>) -> Self {
+        Self {
+            api: StandardApi {
+                inner: Arc::new(Mutex::new(inner_state)),
+                shared_signals,
+            },
+        }
     }
 }
 
 impl Default for KeystoneScriptExecutor {
     fn default() -> Self {
-        Self::new(StandardApi {
-            inner: Arc::new(Mutex::new(ScriptState::default())),
-        })
+        let isolated_signals = Arc::new(Mutex::new(HashSet::new()));
+        Self::new(ScriptState::default(), isolated_signals)
     }
 }
 
