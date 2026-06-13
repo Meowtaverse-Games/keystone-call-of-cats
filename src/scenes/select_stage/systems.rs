@@ -385,9 +385,9 @@ fn spawn_glow_layers(parent: &mut ChildSpawnerCommands) {
             top: Val::Px(32.0),
             width: Val::Px(360.0),
             height: Val::Px(360.0),
+            border_radius: BorderRadius::all(Val::Px(360.0)),
             ..default()
         },
-        BorderRadius::all(Val::Px(360.0)),
         BackgroundColor(primary_glow_color()),
         ZIndex(-1),
     ));
@@ -399,9 +399,9 @@ fn spawn_glow_layers(parent: &mut ChildSpawnerCommands) {
             bottom: Val::Px(-80.0),
             width: Val::Px(420.0),
             height: Val::Px(420.0),
+            border_radius: BorderRadius::all(Val::Px(420.0)),
             ..default()
         },
-        BorderRadius::all(Val::Px(420.0)),
         BackgroundColor(secondary_glow_color()),
         ZIndex(-1),
     ));
@@ -479,9 +479,9 @@ fn spawn_experimental_label(
         .spawn((
             Node {
                 padding: UiRect::axes(Val::Px(20.0), Val::Px(10.0)),
+                border_radius: BorderRadius::all(Val::Px(999.0)),
                 ..default()
             },
-            BorderRadius::all(Val::Px(999.0)),
             BackgroundColor(badge_background_color()),
         ))
         .with_children(|badge| {
@@ -591,9 +591,9 @@ fn spawn_stat_card(
                 padding: UiRect::axes(Val::Px(20.0), Val::Px(14.0)),
                 flex_direction: FlexDirection::Column,
                 row_gap: Val::Px(6.0),
+                border_radius: BorderRadius::all(Val::Px(18.0)),
                 ..default()
             },
-            BorderRadius::all(Val::Px(18.0)),
             BackgroundColor(stat_card_background(accent)),
         ))
         .with_children(|card| {
@@ -636,9 +636,9 @@ fn spawn_back_button(
             visual,
             Node {
                 padding: UiRect::axes(Val::Px(24.0), Val::Px(12.0)),
+                border_radius: BorderRadius::all(Val::Px(999.0)),
                 ..default()
             },
-            BorderRadius::all(Val::Px(999.0)),
             BackgroundColor(initial),
         ))
         .with_children(|btn| {
@@ -674,9 +674,9 @@ fn spawn_options_button(
             visual,
             Node {
                 padding: UiRect::axes(Val::Px(24.0), Val::Px(12.0)),
+                border_radius: BorderRadius::all(Val::Px(999.0)),
                 ..default()
             },
-            BorderRadius::all(Val::Px(999.0)),
             BackgroundColor(initial),
         ))
         .with_children(|btn| {
@@ -735,9 +735,9 @@ fn spawn_stage_cards(
                         } else {
                             Display::None
                         },
+                        border_radius: BorderRadius::all(Val::Px(28.0)),
                         ..default()
                     },
-                    BorderRadius::all(Val::Px(28.0)),
                     BackgroundColor(card_background_color()),
                     BorderColor::all(card_border_color()),
                 ))
@@ -779,9 +779,9 @@ fn spawn_stage_cards(
                     card.spawn((
                         Node {
                             flex_grow: 1.0,
+                            border_radius: BorderRadius::all(Val::Px(20.0)),
                             ..default()
                         },
-                        BorderRadius::all(Val::Px(20.0)),
                         BackgroundColor(preview_background()),
                     ))
                     .with_children(|_| {});
@@ -809,9 +809,9 @@ fn spawn_stage_chip(
         .spawn((
             Node {
                 padding: UiRect::axes(Val::Px(12.0), Val::Px(6.0)),
+                border_radius: BorderRadius::all(Val::Px(999.0)),
                 ..default()
             },
-            BorderRadius::all(Val::Px(999.0)),
             BackgroundColor(color),
         ))
         .with_children(|chip| {
@@ -857,9 +857,9 @@ fn spawn_play_button(
                 align_items: AlignItems::Center,
                 align_self: AlignSelf::FlexEnd,
                 padding: UiRect::axes(Val::Px(32.0), Val::Px(12.0)),
+                border_radius: BorderRadius::all(Val::Px(999.0)),
                 ..default()
             },
-            BorderRadius::all(Val::Px(999.0)),
             BackgroundColor(button_initial_color(&visual)),
         ))
         .with_children(|btn| {
@@ -887,9 +887,9 @@ fn spawn_bottom_bar(parent: &mut ChildSpawnerCommands, font: &Handle<Font>, init
                     ..default()
                 },
                 border: UiRect::all(Val::Px(1.0)),
+                border_radius: BorderRadius::all(Val::Px(28.0)),
                 ..default()
             },
-            BorderRadius::all(Val::Px(28.0)),
             BackgroundColor(nav_background_color()),
             BorderColor::all(card_border_color()),
         ))
@@ -930,9 +930,9 @@ fn spawn_nav_button(
             visual,
             Node {
                 padding: UiRect::all(Val::Px(12.0)),
+                border_radius: BorderRadius::all(Val::Px(18.0)),
                 ..default()
             },
-            BorderRadius::all(Val::Px(18.0)),
             BackgroundColor(button_initial_color(&visual)),
         ))
         .with_children(|btn| {

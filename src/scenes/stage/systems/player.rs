@@ -157,7 +157,7 @@ pub fn move_player(
     keyboard_input: Res<ButtonInput<KeyCode>>,
     viewport: Res<ScaledViewport>,
     mut query: Query<MovePlayerComponents<'_>, With<Player>>,
-    mut spatial_query: SpatialQuery,
+    spatial_query: SpatialQuery,
     mut gizmos: Gizmos,
     launch_profile: Res<LaunchProfile>,
 ) {
@@ -227,7 +227,6 @@ pub fn move_player(
     let query_filter =
         SpatialQueryFilter::from_mask(filter_mask).with_excluded_entities([player_entity]);
 
-    spatial_query.update_pipeline();
     let grounded = spatial_query
         .cast_shape_predicate(
             &cast_shape,
@@ -274,7 +273,7 @@ type PlayerGoalDescentComponents<'w> = (
     &'w mut Transform,
     &'w mut LinearVelocity,
     &'w mut PlayerMotion,
-    &'w mut CollisionLayers,
+    &'w CollisionLayers,
     &'w mut GravityScale,
     &'w PlayerGoalDescent,
 );
@@ -317,21 +316,14 @@ pub fn drive_player_goal_descent(
     mut query: Query<PlayerGoalDescentComponents<'_>, With<Player>>,
     mut count: Local<u32>,
 ) {
-    let Some((
-        entity,
-        mut transform,
-        mut velocity,
-        mut motion,
-        mut layers,
-        mut gravity_scale,
-        descent,
-    )) = query.iter_mut().next()
+    let Some((entity, mut transform, mut velocity, mut motion, _, mut gravity_scale, descent)) =
+        query.iter_mut().next()
     else {
         return;
     };
 
-    layers.memberships = LayerMask::NONE;
-    layers.filters = LayerMask::NONE;
+    let new_layers = CollisionLayers::new(LayerMask::NONE, LayerMask::NONE);
+    commands.entity(entity).insert(new_layers);
     motion.is_moving = false;
     motion.is_jumping = false;
     motion.is_climbing = true;
@@ -356,8 +348,9 @@ pub fn drive_player_goal_descent(
 
     transform.translation.y = descent.target_y;
     motion.is_climbing = false;
-    layers.memberships = descent.original_memberships;
-    layers.filters = descent.original_filters;
+    let restored_layers =
+        CollisionLayers::new(descent.original_memberships, descent.original_filters);
+    commands.entity(entity).insert(restored_layers);
     gravity_scale.0 = descent.original_gravity;
     commands.entity(entity).remove::<PlayerGoalDescent>();
 }
