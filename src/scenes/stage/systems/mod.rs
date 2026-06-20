@@ -7,7 +7,7 @@ mod stone;
 mod tiles;
 mod ui;
 
-pub use schedule::StageSystemSet;
+pub use {schedule::StageSystemSet, tiles::update_dynamic_solid};
 
 use bevy::{
     ecs::system::SystemParam, prelude::*, render::view::ColorGrading, window::PrimaryWindow,
@@ -38,7 +38,7 @@ pub use goal::check_goal_completion;
 pub use obstacle::*;
 pub use player::*;
 pub use stone::{
-    StoneAppendCommandMessage, StoneCommandMessage, carry_riders_with_stone,
+    StoneAppendCommandMessage, StoneCommandMessage, StoneTickMessage, carry_riders_with_stone,
     handle_stone_append_messages, handle_stone_messages, reset_stone_position,
     update_stone_behavior,
 };

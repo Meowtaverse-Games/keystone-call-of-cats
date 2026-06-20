@@ -20,6 +20,9 @@ pub struct StoneAppendCommandMessage {
     pub command: ScriptCommand,
 }
 
+#[derive(Message, Clone)]
+pub struct StoneTickMessage;
+
 #[derive(Component)]
 pub(crate) struct StoneCommandState {
     queue: VecDeque<ScriptCommand>,
@@ -217,6 +220,7 @@ pub fn update_stone_behavior(
     mut query: StoneBehaviorQuery,
     query_colliders: Query<&Collider>,
     spatial: SpatialQuery,
+    mut stone_moved_writer: MessageWriter<StoneTickMessage>,
 ) {
     let Some((
         entity,
@@ -405,12 +409,14 @@ pub fn update_stone_behavior(
                 if progress.timer.is_finished() {
                     velocity.0 = Vec2::ZERO;
                     stop_current = true;
+                    stone_moved_writer.write(StoneTickMessage);
                 }
             }
             StoneAction::Sleep(timer) => {
                 if timer.tick(time.delta()).is_finished() {
                     velocity.0 = Vec2::ZERO;
                     stop_current = true;
+                    stone_moved_writer.write(StoneTickMessage);
                 }
             }
             StoneAction::Dig(timer, entity) => {
@@ -433,6 +439,7 @@ pub fn update_stone_behavior(
                     // Play mining sound?
                     velocity.0 = Vec2::ZERO;
                     stop_current = true;
+                    stone_moved_writer.write(StoneTickMessage);
                 }
             }
         }
