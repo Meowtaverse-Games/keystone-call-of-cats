@@ -409,7 +409,6 @@ pub fn update_stone_behavior(
                 if progress.timer.is_finished() {
                     velocity.0 = Vec2::ZERO;
                     stop_current = true;
-                    stone_moved_writer.write(StoneTickMessage);
                 }
             }
             StoneAction::Sleep(timer) => {
@@ -439,7 +438,6 @@ pub fn update_stone_behavior(
                     // Play mining sound?
                     velocity.0 = Vec2::ZERO;
                     stop_current = true;
-                    stone_moved_writer.write(StoneTickMessage);
                 }
             }
         }

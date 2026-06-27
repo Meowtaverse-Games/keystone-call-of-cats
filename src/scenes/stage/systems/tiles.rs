@@ -239,7 +239,6 @@ pub fn spawn_tiles(
                 }
 
                 if kind == TileKind::DynamicSolid {
-                    println!("DynamicSolid");
                     let Some(wall_image) = image_from_tileset(&tileset, rng.random_range(235..237))
                     else {
                         continue;
@@ -330,14 +329,30 @@ pub fn restore_dug_tiles(
 pub fn update_dynamic_solid(
     mut commands: Commands,
     mut message_reader: MessageReader<StoneTickMessage>,
+    map: Option<Res<Map>>,
     query: Query<(Entity, Option<&ColliderDisabled>), With<DynamicSolidMarker>>,
 ) {
+    let Some(current_map) = map else {
+        return;
+    };
+    let mut remaining_cells = query.iter().len();
+    if remaining_cells == 0 {
+        return;
+    }
+    let mut has_updated = false;
+
     for _msg in message_reader.read() {
+        if has_updated {
+            continue;
+        }
         let mut rng = rand::rng();
-
+        let min = current_map.dynamic_min;
+        let max = current_map.dynamic_max.max(min);
+        let mut remain_dynamic = rng.random_range(min..=max);
+        remain_dynamic = remain_dynamic.min(remaining_cells as u32);
         for (entity, maybe_disabled) in query.iter() {
-            let should_be_solid = rng.random_bool(0.5);
-
+            let probability = remain_dynamic as f64 / remaining_cells as f64;
+            let should_be_solid = rng.random_bool(probability);
             if should_be_solid {
                 if maybe_disabled.is_some() {
                     commands
@@ -345,6 +360,7 @@ pub fn update_dynamic_solid(
                         .remove::<ColliderDisabled>()
                         .insert(Visibility::Visible);
                 }
+                remain_dynamic = remain_dynamic.saturating_sub(1);
             } else {
                 if maybe_disabled.is_none() {
                     commands
@@ -353,6 +369,8 @@ pub fn update_dynamic_solid(
                         .insert(Visibility::Hidden);
                 }
             }
+            remaining_cells -= 1;
         }
+        has_updated = true;
     }
 }

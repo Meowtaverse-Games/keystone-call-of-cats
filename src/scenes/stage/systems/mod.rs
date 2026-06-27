@@ -391,6 +391,7 @@ pub fn setup(mut commands: Commands, mut params: StageSetupParams) {
     }
 
     let current_map = params.progression.current_map();
+    commands.insert_resource(current_map.clone());
 
     let Some(window) = params.window_query.iter().next() else {
         warn!("Stage setup: primary window not available");
