@@ -494,10 +494,13 @@ pub fn reset_stone_position(
     editor_state: Res<ScriptEditorState>,
     mut audio_state: ResMut<StageAudioState>,
     mut query: StoneResetQuery,
+    mut stone_moved_writer: MessageWriter<StoneTickMessage>,
 ) {
     if !editor_state.pending_player_reset {
         return;
     }
+
+    stone_moved_writer.write(StoneTickMessage);
 
     if let Ok((mut transform, mut state, mut motion, mut velocity, spawn, mut dig_limit)) =
         query.single_mut()

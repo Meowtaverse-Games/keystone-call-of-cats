@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use avian2d::prelude::*;
 use bevy::prelude::*;
 
@@ -5,7 +7,10 @@ use rand::Rng;
 
 use crate::{
     resources::{chunk_grammar_map::*, design_resolution::ScaledViewport, tiled::*},
-    scenes::stage::{components::StageTile, systems::StoneTickMessage},
+    scenes::stage::{
+        components::{Player, StageTile, StoneRune},
+        systems::StoneTickMessage,
+    },
 };
 
 const BACKGROUND_IDS: [u32; 16] = [
@@ -331,6 +336,9 @@ pub fn update_dynamic_solid(
     mut message_reader: MessageReader<StoneTickMessage>,
     map: Option<Res<Map>>,
     query: Query<(Entity, Option<&ColliderDisabled>), With<DynamicSolidMarker>>,
+    stones: Query<(&Transform, &Collider), With<StoneRune>>,
+    player: Query<(&Transform, &Collider), With<Player>>,
+    spatial_query: SpatialQuery,
 ) {
     let Some(current_map) = map else {
         return;
@@ -340,10 +348,68 @@ pub fn update_dynamic_solid(
         return;
     }
     let mut has_updated = false;
+    let mut occupied_entities = HashSet::new();
+
+    for (transform, collider) in player.iter() {
+        let rotation = transform.rotation.to_euler(EulerRot::XYZ).2;
+        let intersections = spatial_query.shape_intersections(
+            collider,
+            transform.translation.truncate(),
+            rotation,
+            &SpatialQueryFilter::default(),
+        );
+        for hit_entity in intersections {
+            if query.contains(hit_entity) {
+                occupied_entities.insert(hit_entity);
+            }
+        }
+    }
+
+    for (transform, collider) in stones.iter() {
+        let rotation = transform.rotation.to_euler(EulerRot::XYZ).2;
+        let stone_pos = transform.translation.truncate();
+
+        let intersections_stone = spatial_query.shape_intersections(
+            collider,
+            stone_pos,
+            rotation,
+            &SpatialQueryFilter::default(),
+        );
+        for hit_entity in intersections_stone {
+            if query.contains(hit_entity) {
+                occupied_entities.insert(hit_entity);
+            }
+        }
+
+        let tile_size = 32.0;
+
+        let check_offsets = vec![
+            Vec2::new(-tile_size, tile_size),
+            Vec2::new(0.0, tile_size),
+            Vec2::new(tile_size, tile_size),
+        ];
+
+        for offset in check_offsets {
+            let target_pos = stone_pos + offset;
+
+            let intersections_upper = spatial_query.shape_intersections(
+                collider,
+                target_pos,
+                rotation,
+                &SpatialQueryFilter::default(),
+            );
+
+            for hit_entity in intersections_upper {
+                if query.contains(hit_entity) {
+                    occupied_entities.insert(hit_entity);
+                }
+            }
+        }
+    }
 
     for _msg in message_reader.read() {
         if has_updated {
-            continue;
+            break;
         }
         let mut rng = rand::rng();
         let min = current_map.dynamic_min;
@@ -351,6 +417,16 @@ pub fn update_dynamic_solid(
         let mut remain_dynamic = rng.random_range(min..=max);
         remain_dynamic = remain_dynamic.min(remaining_cells as u32);
         for (entity, maybe_disabled) in query.iter() {
+            if occupied_entities.contains(&entity) {
+                if maybe_disabled.is_none() {
+                    commands
+                        .entity(entity)
+                        .insert(ColliderDisabled)
+                        .insert(Visibility::Hidden);
+                }
+                remaining_cells -= 1;
+                continue;
+            }
             let probability = remain_dynamic as f64 / remaining_cells as f64;
             let should_be_solid = rng.random_bool(probability);
             if should_be_solid {
