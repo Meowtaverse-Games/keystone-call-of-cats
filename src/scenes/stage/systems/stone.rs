@@ -20,6 +20,9 @@ pub struct StoneAppendCommandMessage {
     pub command: ScriptCommand,
 }
 
+#[derive(Message, Clone)]
+pub struct StoneTickMessage;
+
 #[derive(Component)]
 pub(crate) struct StoneCommandState {
     queue: VecDeque<ScriptCommand>,
@@ -217,6 +220,7 @@ pub fn update_stone_behavior(
     mut query: StoneBehaviorQuery,
     query_colliders: Query<&Collider>,
     spatial: SpatialQuery,
+    mut stone_moved_writer: MessageWriter<StoneTickMessage>,
 ) {
     let Some((
         entity,
@@ -411,6 +415,7 @@ pub fn update_stone_behavior(
                 if timer.tick(time.delta()).is_finished() {
                     velocity.0 = Vec2::ZERO;
                     stop_current = true;
+                    stone_moved_writer.write(StoneTickMessage);
                 }
             }
             StoneAction::Dig(timer, entity) => {
@@ -489,10 +494,13 @@ pub fn reset_stone_position(
     editor_state: Res<ScriptEditorState>,
     mut audio_state: ResMut<StageAudioState>,
     mut query: StoneResetQuery,
+    mut stone_moved_writer: MessageWriter<StoneTickMessage>,
 ) {
     if !editor_state.pending_player_reset {
         return;
     }
+
+    stone_moved_writer.write(StoneTickMessage);
 
     if let Ok((mut transform, mut state, mut motion, mut velocity, spawn, mut dig_limit)) =
         query.single_mut()

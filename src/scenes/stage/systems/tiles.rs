@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use avian2d::prelude::*;
 use bevy::prelude::*;
 
@@ -5,7 +7,10 @@ use rand::Rng;
 
 use crate::{
     resources::{chunk_grammar_map::*, design_resolution::ScaledViewport, tiled::*},
-    scenes::stage::components::StageTile,
+    scenes::stage::{
+        components::{Player, StageTile, StoneRune},
+        systems::StoneTickMessage,
+    },
 };
 
 const BACKGROUND_IDS: [u32; 16] = [
@@ -16,6 +21,9 @@ fn background_tile_id(rng: &mut rand::rngs::ThreadRng) -> u32 {
     let index = rng.random_range(0..(BACKGROUND_IDS.len()));
     BACKGROUND_IDS[index]
 }
+
+#[derive(Component)]
+pub struct DynamicSolidMarker;
 
 pub fn spawn_tiles(
     commands: &mut Commands,
@@ -209,14 +217,16 @@ pub fn spawn_tiles(
                     parent.spawn((StageTile, kind, image, transform));
                     continue;
                 }
-                parent.spawn((
-                    StageTile,
-                    kind,
-                    image,
-                    transform,
-                    RigidBody::Static,
-                    Collider::compound(shapes.clone()),
-                ));
+                if kind != TileKind::DynamicSolid {
+                    parent.spawn((
+                        StageTile,
+                        kind,
+                        image,
+                        transform,
+                        RigidBody::Static,
+                        Collider::compound(shapes.clone()),
+                    ));
+                }
 
                 if kind == TileKind::Solid && rng.random_bool(0.3) {
                     let Some(moss_image) = image_from_tileset(&tileset, rng.random_range(224..226))
@@ -229,7 +239,25 @@ pub fn spawn_tiles(
                         moss_image,
                         transform,
                         RigidBody::Static,
-                        Collider::compound(shapes),
+                        Collider::compound(shapes.clone()),
+                    ));
+                }
+
+                if kind == TileKind::DynamicSolid {
+                    let Some(wall_image) = image_from_tileset(&tileset, rng.random_range(235..237))
+                    else {
+                        continue;
+                    };
+
+                    let transform = transform.with_translation(Vec3::new(tile_x, tile_y, -2.5));
+
+                    parent.spawn((
+                        StageTile,
+                        DynamicSolidMarker,
+                        wall_image,
+                        transform,
+                        RigidBody::Static,
+                        Collider::compound(shapes.clone()),
                     ));
                 }
             }
@@ -248,6 +276,7 @@ fn tile_id_for_kind(rng: &mut impl Rng, kind: TileKind) -> Option<u32> {
         TileKind::Solid => Some(rng.random_range(235..237)),
         TileKind::Goal => None, // Some(178),
         TileKind::Wall => None, // Some(152),
+        TileKind::DynamicSolid => Some(rng.random_range(235..237)),
         TileKind::PlayerSpawn | TileKind::Stone | TileKind::Obstacle => None,
     }
 }
@@ -299,5 +328,125 @@ pub fn restore_dug_tiles(
             .remove::<Visibility>() // Remove hidden
             .insert(Visibility::Inherited) // Restore visibility
             .insert(dug_tile.collider.clone()); // Restore physics
+    }
+}
+
+pub fn update_dynamic_solid(
+    mut commands: Commands,
+    mut message_reader: MessageReader<StoneTickMessage>,
+    map: Option<Res<Map>>,
+    query: Query<(Entity, Option<&ColliderDisabled>), With<DynamicSolidMarker>>,
+    stones: Query<(&Transform, &Collider), With<StoneRune>>,
+    player: Query<(&Transform, &Collider), With<Player>>,
+    spatial_query: SpatialQuery,
+) {
+    let Some(current_map) = map else {
+        return;
+    };
+    let mut remaining_cells = query.iter().len();
+    if remaining_cells == 0 {
+        return;
+    }
+    let mut has_updated = false;
+    let mut occupied_entities = HashSet::new();
+
+    for (transform, collider) in player.iter() {
+        let rotation = transform.rotation.to_euler(EulerRot::XYZ).2;
+        let intersections = spatial_query.shape_intersections(
+            collider,
+            transform.translation.truncate(),
+            rotation,
+            &SpatialQueryFilter::default(),
+        );
+        for hit_entity in intersections {
+            if query.contains(hit_entity) {
+                occupied_entities.insert(hit_entity);
+            }
+        }
+    }
+
+    for (transform, collider) in stones.iter() {
+        let rotation = transform.rotation.to_euler(EulerRot::XYZ).2;
+        let stone_pos = transform.translation.truncate();
+
+        let intersections_stone = spatial_query.shape_intersections(
+            collider,
+            stone_pos,
+            rotation,
+            &SpatialQueryFilter::default(),
+        );
+        for hit_entity in intersections_stone {
+            if query.contains(hit_entity) {
+                occupied_entities.insert(hit_entity);
+            }
+        }
+
+        let tile_size = 32.0;
+
+        let check_offsets = vec![
+            Vec2::new(-tile_size, tile_size),
+            Vec2::new(0.0, tile_size),
+            Vec2::new(tile_size, tile_size),
+        ];
+
+        for offset in check_offsets {
+            let target_pos = stone_pos + offset;
+
+            let intersections_upper = spatial_query.shape_intersections(
+                collider,
+                target_pos,
+                rotation,
+                &SpatialQueryFilter::default(),
+            );
+
+            for hit_entity in intersections_upper {
+                if query.contains(hit_entity) {
+                    occupied_entities.insert(hit_entity);
+                }
+            }
+        }
+    }
+
+    for _msg in message_reader.read() {
+        if has_updated {
+            break;
+        }
+        let mut rng = rand::rng();
+        let min = current_map.dynamic_min;
+        let max = current_map.dynamic_max.max(min);
+        let mut remain_dynamic = rng.random_range(min..=max);
+        remain_dynamic = remain_dynamic.min(remaining_cells as u32);
+        for (entity, maybe_disabled) in query.iter() {
+            if occupied_entities.contains(&entity) {
+                if maybe_disabled.is_none() {
+                    commands
+                        .entity(entity)
+                        .insert(ColliderDisabled)
+                        .insert(Visibility::Hidden);
+                }
+                remaining_cells -= 1;
+                continue;
+            }
+            let probability = remain_dynamic as f64 / remaining_cells as f64;
+            let should_be_solid = rng.random_bool(probability);
+            if should_be_solid {
+                if maybe_disabled.is_some() {
+                    commands
+                        .entity(entity)
+                        .remove::<ColliderDisabled>()
+                        .insert(Visibility::Visible);
+                }
+                remain_dynamic = remain_dynamic.saturating_sub(1);
+            } else {
+                if maybe_disabled.is_none() {
+                    commands
+                        .entity(entity)
+                        .insert(ColliderDisabled)
+                        .insert(Visibility::Hidden);
+                }
+            }
+            remaining_cells -= 1;
+        }
+        has_updated = true;
     }
 }

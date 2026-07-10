@@ -1,4 +1,5 @@
 use bevy_ecs::component::Component;
+use bevy_ecs::resource::Resource;
 use rand::{Rng, seq::SliceRandom};
 use std::collections::{HashMap, HashSet};
 
@@ -44,6 +45,7 @@ pub enum TileKind {
     Goal,
     Wall,
     Obstacle,
+    DynamicSolid,
 }
 
 type ExitPoint = ((isize, isize), Dir);
@@ -100,6 +102,7 @@ impl ChunkTemplate {
                     'S' => Some(TileKind::Stone),
                     'G' => Some(TileKind::Goal),
                     'O' => Some(TileKind::Obstacle),
+                    '?' => Some(TileKind::DynamicSolid),
                     _ => None,
                 };
                 let Some(kind) = kind else {
@@ -156,6 +159,10 @@ pub struct ChunkGrammarConfig {
     #[serde(default)]
     pub stone_type: StoneType,
     pub dig_limit: Option<u32>,
+    #[serde(default)]
+    pub dynamic_max: u32,
+    #[serde(default)]
+    pub dynamic_min: u32,
     pub adjustments: Option<Adjustments>,
     start_chunks: Vec<ChunkTemplate>,
     middle_chunks: Vec<ChunkTemplate>,
@@ -207,6 +214,8 @@ pub fn generate_map_from_config(config: ChunkGrammarConfig) -> Map {
         map_size: placed_chunk_layout.map_size,
         stone_type: config.stone_type,
         dig_limit: config.dig_limit,
+        dynamic_max: config.dynamic_max,
+        dynamic_min: config.dynamic_min,
         boundary_margin: placed_chunk_layout.boundary_margin,
         margin_tiles: placed_chunk_layout.margin_tiles,
     };
@@ -356,6 +365,7 @@ fn build_tile_char_map(map: &Map) -> HashMap<(isize, isize), char> {
             TileKind::Goal => 'G',
             TileKind::Wall => '#',
             TileKind::Obstacle => 'O',
+            TileKind::DynamicSolid => '?',
         };
         char_map.insert((x, y), ch);
     }
@@ -450,13 +460,15 @@ impl PlacedChunkLayout {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Resource)]
 pub struct Map {
     pub placed_chunks: Vec<PlacedChunk>,
     pub adjustment: Option<Adjustments>,
     pub map_size: (isize, isize),
     pub stone_type: StoneType,
     pub dig_limit: Option<u32>,
+    pub dynamic_max: u32,
+    pub dynamic_min: u32,
     pub boundary_margin: (isize, isize),
     margin_tiles: Vec<Tile>,
 }
@@ -485,6 +497,8 @@ impl Map {
         mut placed_chunks: Vec<PlacedChunk>,
         stone_type: StoneType,
         dig_limit: Option<u32>,
+        dynamic_max: u32,
+        dynamic_min: u32,
         adjustment: Option<Adjustments>,
         boundary_margin: (isize, isize),
     ) -> Self {
@@ -505,6 +519,8 @@ impl Map {
             map_size: (MAP_SIZE.0, MAP_SIZE.1),
             stone_type,
             dig_limit,
+            dynamic_max,
+            dynamic_min,
             boundary_margin,
             margin_tiles: build_margin_tiles(boundary_margin),
         }
