@@ -548,6 +548,35 @@ impl Map {
         (x, y)
     }
 
+    pub fn tile_positions_multiple(&self, kind: TileKind) -> Vec<(f32, f32)> {
+        let positions = self.tile_positions(kind);
+
+        if kind == TileKind::Stone
+            && let Some(adjustment) = &self.adjustment
+            && let stone_adjustments = &adjustment.stones
+            && !stone_adjustments.is_empty()
+        {
+            return positions
+                .iter()
+                .zip(stone_adjustments.iter())
+                .map(|(position, adj)| {
+                    let x = position.0 as f32 + adj.0;
+                    let y = position.1 as f32 + adj.1;
+                    println!(
+                        "Adjusting stone position from ({}, {}) by ({}, {})",
+                        position.0, position.1, adj.0, adj.1
+                    );
+                    (x, y)
+                })
+                .collect();
+        }
+
+        positions
+            .iter()
+            .map(|position| (position.0 as f32, position.1 as f32))
+            .collect()
+    }
+
     pub fn tile_positions(&self, kind: TileKind) -> Vec<(isize, isize)> {
         let mut positions = Vec::new();
         for chunk in &self.placed_chunks {

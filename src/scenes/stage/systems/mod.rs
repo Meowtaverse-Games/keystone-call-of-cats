@@ -186,17 +186,23 @@ fn populate_stage_contents(
         viewport.scale,
     );
 
-    let stone_position = map.tile_position(TileKind::Stone);
-    stone::spawn_stone(
-        commands,
-        stage_root,
-        asset_server,
-        atlas_layouts,
-        tile_position_to_world(stone_position, real_tile_size, viewport_size, scale, 0.0),
-        map.stone_type,
-        map.dig_limit,
-        stone::STONE_STEP_DISTANCE,
-    );
+    let stone_positions = map.tile_positions_multiple(TileKind::Stone);
+
+    for stone_pos in stone_positions {
+        let world_pos =
+            tile_position_to_world(stone_pos, real_tile_size, viewport_size, scale, 0.0);
+
+        stone::spawn_stone(
+            commands,
+            stage_root,
+            asset_server,
+            atlas_layouts,
+            world_pos,
+            map.stone_type,
+            map.dig_limit,
+            stone::STONE_STEP_DISTANCE,
+        );
+    }
 
     map.tile_positions(TileKind::Obstacle)
         .iter()
