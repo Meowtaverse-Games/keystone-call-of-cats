@@ -399,10 +399,10 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
 
                                 match script_executor.compile_step(
                                     language,
-                                    &editor.buffer,
+                                    vec![editor.buffer.clone(), editor.buffer.clone()],
                                     allowed_commands,
                                 ) {
-                                    Ok(program) => {
+                                    Ok(programs) => {
                                         info!("Starting script execution:\n{}", editor.buffer);
 
                                         // Persist script on run
@@ -417,7 +417,8 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                                             .write(StoneCommandMessage { commands: vec![] });
 
                                         editor.active_programs.clear();
-                                        editor.active_programs.push(Some(program));
+                                        editor.active_programs =
+                                            programs.into_iter().map(Some).collect();
                                         editor.last_run_feedback = Some(tr(
                                             &localization,
                                             "stage-ui-feedback-step-started",
