@@ -370,7 +370,7 @@ pub fn setup(mut commands: Commands, mut params: StageSetupParams) {
             editor.pending_player_reset = false;
             editor.stage_cleared = false;
             editor.stage_clear_popup_open = false;
-            editor.active_program = None;
+            editor.active_programs.clear();
             if let Some(code) = &saved_code {
                 editor.buffer = code.clone();
             } else {

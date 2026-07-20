@@ -120,7 +120,7 @@ pub struct ScriptEditorState {
     pub last_action: Option<EditorMenuAction>,
     pub last_action_context: bool,
     pub last_run_feedback: Option<String>,
-    pub active_program: Option<Box<dyn ScriptProgram>>,
+    pub active_programs: Vec<Option<Box<dyn ScriptProgram>>>,
     pub controls_enabled: bool,
     pub pending_player_reset: bool,
     pub stage_cleared: bool,
@@ -137,7 +137,7 @@ impl Default for ScriptEditorState {
             last_action: None,
             last_action_context: false,
             last_run_feedback: None,
-            active_program: None,
+            active_programs: Vec::new(),
             controls_enabled: false,
             pending_player_reset: false,
             stage_cleared: false,
@@ -416,7 +416,8 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                                         stone_writer
                                             .write(StoneCommandMessage { commands: vec![] });
 
-                                        editor.active_program = Some(program);
+                                        editor.active_programs.clear();
+                                        editor.active_programs.push(Some(program));
                                         editor.last_run_feedback = Some(tr(
                                             &localization,
                                             "stage-ui-feedback-step-started",
@@ -427,7 +428,7 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                                         editor.stage_clear_popup_open = false;
                                     }
                                     Err(err) => {
-                                        editor.active_program = None;
+                                        editor.active_programs.clear();
                                         editor.last_run_feedback =
                                             Some(script_error_message(&localization, &err));
                                         info!("Script compilation error: {}", err);
@@ -693,11 +694,11 @@ pub fn tick_script_program(
     spatial: SpatialQuery,
 ) {
     if !editor.controls_enabled {
-        editor.active_program = None;
+        editor.active_programs.clear();
         return;
     }
 
-    let Some(program) = editor.active_program.as_mut() else {
+    let Some(Some(program)) = editor.active_programs.get_mut(0) else {
         return;
     };
 
