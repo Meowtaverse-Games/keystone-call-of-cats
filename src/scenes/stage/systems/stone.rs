@@ -6,7 +6,9 @@ use bevy::prelude::*;
 use super::{StageAudioHandles, StageAudioState, ui::ScriptEditorState};
 use crate::{
     resources::{chunk_grammar_map::TileKind, settings::GameSettings},
-    scenes::stage::components::{DigLimit, Player, StageTile, StoneRune, StoneSpawnState},
+    scenes::stage::components::{
+        DigLimit, Player, StageTile, StoneIndex, StoneRune, StoneSpawnState,
+    },
     util::script_types::{MoveDirection, ScriptCommand},
 };
 
@@ -17,6 +19,7 @@ pub struct StoneCommandMessage {
 
 #[derive(Message, Clone)]
 pub struct StoneAppendCommandMessage {
+    pub stone_index: usize,
     pub command: ScriptCommand,
 }
 
@@ -92,6 +95,7 @@ pub fn spawn_stone(
     stone_type: StoneType,
     dig_limit: Option<u32>,
     step_size: f32,
+    index: usize,
 ) {
     let texture = asset_server.load(STONE_ATLAS_PATH);
     let layout = layouts.add(TextureAtlasLayout::from_grid(
@@ -120,6 +124,7 @@ pub fn spawn_stone(
     commands.entity(stage_root).with_children(|parent| {
         parent.spawn((
             StoneRune,
+            StoneIndex(index),
             Sprite::from_atlas_image(texture, atlas),
             Transform::from_xyz(object_x, object_y, 1.0).with_scale(Vec3::splat(STONE_SCALE)),
             StoneSpawnState {
@@ -179,17 +184,16 @@ pub fn handle_stone_messages(
 
 pub fn handle_stone_append_messages(
     mut reader: MessageReader<StoneAppendCommandMessage>,
-    mut query: Query<&mut StoneCommandState, With<StoneRune>>,
+    mut query: Query<(&StoneIndex, &mut StoneCommandState), With<StoneRune>>,
 ) {
-    let Some(mut state) = query.iter_mut().next() else {
-        return;
-    };
-
     for msg in reader.read() {
-        state.queue.push_back(msg.command.clone());
-        if matches!(msg.command, ScriptCommand::Move(_)) {
-            // Move コマンドの直後に Sleep を追加することで障害物を貫通する問題を解消する
-            state.queue.push_back(ScriptCommand::Sleep(0.0001));
+        for (stone_idx, mut state) in query.iter_mut() {
+            if stone_idx.0 == msg.stone_index {
+                state.queue.push_back(msg.command.clone());
+                if matches!(msg.command, ScriptCommand::Move(_)) {
+                    state.queue.push_back(ScriptCommand::Sleep(0.0001));
+                }
+            }
         }
     }
 }

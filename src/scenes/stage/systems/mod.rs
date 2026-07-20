@@ -188,7 +188,7 @@ fn populate_stage_contents(
 
     let stone_positions = map.tile_positions_multiple(TileKind::Stone);
 
-    for stone_pos in stone_positions {
+    for (index, stone_pos) in stone_positions.into_iter().enumerate() {
         let world_pos =
             tile_position_to_world(stone_pos, real_tile_size, viewport_size, scale, 0.0);
 
@@ -201,6 +201,7 @@ fn populate_stage_contents(
             map.stone_type,
             map.dig_limit,
             stone::STONE_STEP_DISTANCE,
+            index,
         );
     }
 

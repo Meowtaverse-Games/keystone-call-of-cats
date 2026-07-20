@@ -687,7 +687,7 @@ pub fn tick_script_program(
     mut editor: ResMut<ScriptEditorState>,
     mut append_writer: MessageWriter<StoneAppendCommandMessage>,
     players: Query<(Entity, &CollidingEntities), With<Player>>,
-    stone_query: Query<(Entity, &GlobalTransform, &StoneType), With<StoneRune>>,
+    stone_query: Query<(Entity, &GlobalTransform, &StoneIndex, &StoneType), With<StoneRune>>,
     stone_states: Query<&StoneCommandState, With<StoneRune>>,
     tiles: Query<(), With<StageTile>>,
     spatial: SpatialQuery,
@@ -701,7 +701,7 @@ pub fn tick_script_program(
         return;
     };
 
-    let Some((stone_entity, stone_transform, _)) = stone_query.iter().next() else {
+    let Some((stone_entity, stone_transform, _, _)) = stone_query.iter().next() else {
         return;
     };
 
@@ -782,9 +782,12 @@ pub fn tick_script_program(
     }
 
     if let Some(command) = program.next(&state) {
-        append_writer.write(StoneAppendCommandMessage {
-            command: command.clone(),
-        });
+        for (_, _, stone_index, _) in stone_query.iter() {
+            append_writer.write(StoneAppendCommandMessage {
+                stone_index: stone_index.0,
+                command: command.clone(),
+            });
+        }
     } else {
         // // Program exhausted: stop execution.
         // info!("Script program completed");
