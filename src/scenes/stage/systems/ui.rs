@@ -399,7 +399,11 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
 
                                 match script_executor.compile_step(
                                     language,
-                                    vec![editor.buffer.clone(), editor.buffer.clone()],
+                                    vec![
+                                        format! {"move up\n{}",editor.buffer.clone()},
+                                        editor.buffer.clone(),
+                                        format! {"move down\n{}",editor.buffer.clone()},
+                                    ],
                                     allowed_commands,
                                 ) {
                                     Ok(programs) => {
@@ -699,102 +703,73 @@ pub fn tick_script_program(
         return;
     }
 
-    let Some(Some(program)) = editor.active_programs.get_mut(0) else {
-        return;
-    };
+    for (stone_entity, stone_transform, stone_index, _) in stone_query.iter() {
+        let idx = stone_index.0;
 
-    let Some((stone_entity, stone_transform, _, _)) = stone_query.iter().next() else {
-        return;
-    };
+        let Some(Some(program)) = editor.active_programs.get_mut(idx) else {
+            continue;
+        };
 
-    if let Ok(stone_state) = stone_states.get(stone_entity)
-        && stone_state.is_busy()
-    {
-        // Wait until the stone finishes its current action to avoid
-        // queueing stale commands based on old touch state.
-        return;
-    }
+        if let Ok(stone_state) = stone_states.get(stone_entity)
+            && stone_state.is_busy()
+        {
+            continue;
+        }
 
-    // Optimization: check player touch first.
-    // User requested "only move when touching".
-    let player_touched = is_player_touching_stone(&players, stone_entity);
+        let player_touched = is_player_touching_stone(&players, stone_entity);
 
-    // Reverted optimization: The strict check prevented non-touch scripts from running.
-    // Instead we will handle "double move" via a cooldown in stone.rs.
-
-    let mut state = ScriptState::default();
-    state.insert(
-        PLAYER_TOUCHED_STATE_KEY.to_string(),
-        ScriptStateValue::Bool(player_touched),
-    );
-    state.insert(
-        RAND_STATE_KEY.to_string(),
-        ScriptStateValue::Float(rand::rng().random_range(0.0..1.0)),
-    );
-
-    // Calculate surrounding state using shape cast
-    // We check if the stone can move one full step without hitting a wall
-    let directions = [
-        ("up", Vec2::Y),
-        ("down", Vec2::NEG_Y),
-        ("left", Vec2::NEG_X),
-        ("right", Vec2::X),
-    ];
-    let stone_scale = stone_transform.scale().x;
-
-    // Get step_size from stone state if available, or use default
-    let step_size = stone_states
-        .get(stone_entity)
-        .map(|s| s.step_size)
-        .unwrap_or(super::stone::STONE_STEP_DISTANCE);
-
-    // Check distance = stone collider radius + a small margin
-    // This detects if the stone's edge is already touching or very close to a wall
-    let collider_radius = super::stone::STONE_COLLIDER_RADIUS * stone_scale;
-    let check_dist = step_size * stone_scale; // Check for one full step distance
-    let origin = stone_transform.translation().truncate();
-    // Collect player entities to exclude from collision detection
-    let player_entities: Vec<Entity> = players.iter().map(|(e, _)| e).collect();
-    let mut excluded_entities = vec![stone_entity];
-    excluded_entities.extend(player_entities);
-    let filter =
-        SpatialQueryFilter::from_mask(LayerMask::ALL).with_excluded_entities(excluded_entities);
-    // Shape cast with a circle matching the stone's collider size
-    let cast_shape = Collider::circle(collider_radius);
-    let cast_config = ShapeCastConfig::from_max_distance(check_dist);
-
-    for (name, dir) in directions {
-        let ray_dir = Dir2::new(dir).expect("Invalid direction");
-        // Use shape cast to check if stone can move one step without collision
-        let hit = spatial.cast_shape(&cast_shape, origin, 0.0, ray_dir, &cast_config, &filter);
-        let is_blocked = hit.is_some_and(|h| tiles.get(h.entity).is_ok());
+        let mut state = ScriptState::default();
         state.insert(
-            format!("is-empty-{}", name),
-            ScriptStateValue::Bool(!is_blocked),
+            PLAYER_TOUCHED_STATE_KEY.to_string(),
+            ScriptStateValue::Bool(player_touched),
         );
-        info!(
-            "is-empty-{}: {} (origin={:?}, radius={}, step={}, hit={:?})",
-            name,
-            !is_blocked,
-            origin,
-            collider_radius,
-            check_dist,
-            hit.map(|h| (h.distance, h.entity))
+        state.insert(
+            RAND_STATE_KEY.to_string(),
+            ScriptStateValue::Float(rand::rng().random_range(0.0..1.0)),
         );
-    }
 
-    if let Some(command) = program.next(&state) {
-        for (_, _, stone_index, _) in stone_query.iter() {
+        let directions = [
+            ("up", Vec2::Y),
+            ("down", Vec2::NEG_Y),
+            ("left", Vec2::NEG_X),
+            ("right", Vec2::X),
+        ];
+        let stone_scale = stone_transform.scale().x;
+
+        let step_size = stone_states
+            .get(stone_entity)
+            .map(|s| s.step_size)
+            .unwrap_or(super::stone::STONE_STEP_DISTANCE);
+
+        let collider_radius = super::stone::STONE_COLLIDER_RADIUS * stone_scale;
+        let check_dist = step_size * stone_scale;
+        let origin = stone_transform.translation().truncate();
+
+        let player_entities: Vec<Entity> = players.iter().map(|(e, _)| e).collect();
+        let mut excluded_entities = vec![stone_entity];
+        excluded_entities.extend(player_entities);
+        let filter =
+            SpatialQueryFilter::from_mask(LayerMask::ALL).with_excluded_entities(excluded_entities);
+
+        let cast_shape = Collider::circle(collider_radius);
+        let cast_config = ShapeCastConfig::from_max_distance(check_dist);
+
+        for (name, dir) in directions {
+            let ray_dir = Dir2::new(dir).expect("Invalid direction");
+            let hit = spatial.cast_shape(&cast_shape, origin, 0.0, ray_dir, &cast_config, &filter);
+            let is_blocked = hit.is_some_and(|h| tiles.get(h.entity).is_ok());
+            state.insert(
+                format!("is-empty-{}", name),
+                ScriptStateValue::Bool(!is_blocked),
+            );
+        }
+
+        if let Some(command) = program.next(&state) {
             append_writer.write(StoneAppendCommandMessage {
-                stone_index: stone_index.0,
+                stone_index: idx,
                 command: command.clone(),
             });
         }
-    } else {
-        // // Program exhausted: stop execution.
-        // info!("Script program completed");
-        // editor.controls_enabled = false;
-        // editor.active_program = None;
     }
 }
 

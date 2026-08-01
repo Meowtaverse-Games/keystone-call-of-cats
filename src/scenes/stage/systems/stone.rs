@@ -501,6 +501,7 @@ type StoneResetQuery<'w, 's> = Query<
     ),
     With<StoneRune>,
 >;
+
 pub fn reset_stone_position(
     mut commands: Commands,
     editor_state: Res<ScriptEditorState>,
@@ -514,8 +515,8 @@ pub fn reset_stone_position(
 
     stone_moved_writer.write(StoneTickMessage);
 
-    if let Ok((mut transform, mut state, mut motion, mut velocity, spawn, mut dig_limit)) =
-        query.single_mut()
+    for (mut transform, mut state, mut motion, mut velocity, spawn, mut dig_limit) in
+        query.iter_mut()
     {
         transform.translation = spawn.translation;
         transform.scale = Vec3::splat(spawn.scale);
@@ -528,9 +529,9 @@ pub fn reset_stone_position(
         velocity.0 = Vec2::ZERO;
 
         dig_limit.0 = spawn.dig_limit;
-
-        audio_state.stop_push_loop(&mut commands);
     }
+
+    audio_state.stop_push_loop(&mut commands);
 }
 
 #[allow(clippy::type_complexity)]
