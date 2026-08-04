@@ -372,10 +372,10 @@ pub fn setup(mut commands: Commands, mut params: StageSetupParams) {
             editor.stage_clear_popup_open = false;
             editor.active_programs.clear();
             if let Some(code) = &saved_code {
-                //TODO saved_code 複数ストーン対応
-                editor.buffers[0] = code.clone();
+                //TODO 複数ストーン対応
+                editor.buffers = vec![code.clone(); 10];
             } else {
-                editor.buffers[0].clear();
+                editor.buffers = vec![String::new(); 10];
             }
         }
         None => ui::init_editor_state(&mut commands, current_stage_id, saved_code),
@@ -600,10 +600,10 @@ pub fn reload_stage_if_needed(mut commands: Commands, mut params: StageReloadPar
         editor.set_tutorial_for_stage(stage_id);
         editor.set_command_help_for_stage(stage_id);
         if let Some(code) = &saved_code {
-            //TODO saved_code複数ストーン対応
-            editor.buffers[0] = code.clone();
+            //TODO 複数ストーン対応
+            editor.buffers = vec![code.clone(); 10];
         } else {
-            editor.buffers[0].clear();
+            editor.buffers = vec![String::new(); 10];
         }
         editor.last_run_feedback = Some(tr_with_args(
             &params.localization,

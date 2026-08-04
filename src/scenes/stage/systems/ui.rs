@@ -212,9 +212,10 @@ impl EditorMenuAction {
 }
 
 pub fn init_editor_state(commands: &mut Commands, stage_id: StageId, saved_code: Option<String>) {
+    let code = saved_code.unwrap_or_default();
     let mut editor_state = ScriptEditorState {
         //TODO ストーンの数を使ってバッファを作る
-        buffers: vec![saved_code.unwrap_or_default()],
+        buffers: vec![code; 10],
         ..default()
     };
     editor_state.set_tutorial_for_stage(stage_id);
@@ -403,11 +404,7 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                                 match script_executor.compile_step(
                                     language,
                                     //TODO ストーンのIDに合わせてそれぞれ渡す
-                                    vec![
-                                        format! {"move up\n{}",editor.buffers[0].clone()},
-                                        editor.buffers[0].clone(),
-                                        format! {"move down\n{}",editor.buffers[0].clone()},
-                                    ],
+                                    editor.buffers.clone(),
                                     allowed_commands,
                                 ) {
                                     Ok(programs) => {
