@@ -116,7 +116,8 @@ fn scaled_panel_font_size(base: f32, offset: f32) -> f32 {
 
 #[derive(Resource)]
 pub struct ScriptEditorState {
-    pub buffer: String,
+    pub buffers: Vec<String>,
+    pub selected_idx: usize,
     pub last_action: Option<EditorMenuAction>,
     pub last_action_context: bool,
     pub last_run_feedback: Option<String>,
@@ -133,7 +134,8 @@ pub struct ScriptEditorState {
 impl Default for ScriptEditorState {
     fn default() -> Self {
         Self {
-            buffer: String::new(),
+            buffers: Vec::new(),
+            selected_idx: 0,
             last_action: None,
             last_action_context: false,
             last_run_feedback: None,
@@ -211,7 +213,8 @@ impl EditorMenuAction {
 
 pub fn init_editor_state(commands: &mut Commands, stage_id: StageId, saved_code: Option<String>) {
     let mut editor_state = ScriptEditorState {
-        buffer: saved_code.unwrap_or_default(),
+        //TODO ストーンの数を使ってバッファを作る
+        buffers: vec![saved_code.unwrap_or_default()],
         ..default()
     };
     editor_state.set_tutorial_for_stage(stage_id);
@@ -399,15 +402,16 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
 
                                 match script_executor.compile_step(
                                     language,
+                                    //TODO ストーンのIDに合わせてそれぞれ渡す
                                     vec![
-                                        format! {"move up\n{}",editor.buffer.clone()},
-                                        editor.buffer.clone(),
-                                        format! {"move down\n{}",editor.buffer.clone()},
+                                        format! {"move up\n{}",editor.buffers[0].clone()},
+                                        editor.buffers[0].clone(),
+                                        format! {"move down\n{}",editor.buffers[0].clone()},
                                     ],
                                     allowed_commands,
                                 ) {
                                     Ok(programs) => {
-                                        info!("Starting script execution:\n{}", editor.buffer);
+                                        info!("Starting script execution:\n{:?}", editor.buffers);
 
                                         // Persist script on run
                                         if let Err(err) =
@@ -502,6 +506,7 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                 let editing_locked = editor.controls_enabled;
 
                 let mut text_edit_response = None;
+                let idx = editor.selected_idx;
 
                 egui::ScrollArea::vertical()
                     .max_height(text_height)
@@ -509,7 +514,7 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                         text_edit_response = Some(
                             ui.add_sized(
                                 egui::Vec2::new(available_size.x, text_height),
-                                egui::TextEdit::multiline(&mut editor.buffer)
+                                egui::TextEdit::multiline(&mut editor.buffers[idx])
                                     .code_editor()
                                     .font(FontSelection::FontId(FontId::new(font_size, Monospace)))
                                     .interactive(!editing_locked)
@@ -520,7 +525,7 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
 
                 if text_edit_response.is_some_and(|r| r.changed()) {
                     // Prevent non-ASCII input (e.g. Japanese) as requested.
-                    editor.buffer.retain(|c| c.is_ascii());
+                    editor.buffers[idx].retain(|c| c.is_ascii());
 
                     info!("Script editor buffer changed");
                     editor.controls_enabled = false;
@@ -528,11 +533,14 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                     editor.stage_clear_popup_open = false;
                     let stage_id = progression.current_stage_id();
                     let current = stage_scripts.stage_code(settings.script_language, stage_id);
-                    if current.map(|c| c != editor.buffer.as_str()).unwrap_or(true) {
+                    if current
+                        .map(|c| c != editor.buffers[idx].as_str())
+                        .unwrap_or(true)
+                    {
                         stage_scripts.set_stage_code(
                             settings.script_language,
                             stage_id,
-                            editor.buffer.clone(),
+                            editor.buffers[idx].clone(),
                         );
                     }
                 }
