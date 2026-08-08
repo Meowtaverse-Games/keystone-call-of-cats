@@ -354,6 +354,51 @@ pub fn tick_pending_tutorial(
     commands.remove_resource::<PendingTutorial>();
 }
 
+pub fn resize_editor_buffers_system(
+    stone_query: Query<&StoneIndex>,
+    editor_state_opt: Option<ResMut<ScriptEditorState>>,
+    progression: Res<StageProgressionState>,
+    settings: Res<GameSettings>,
+    stage_scripts: Option<Res<StageScripts>>,
+) {
+    let Some(mut editor_state) = editor_state_opt else {
+        return;
+    };
+
+    let stone_count = stone_query.iter().count();
+    if stone_count == 0 {
+        return;
+    }
+
+    if editor_state.buffers.len() == stone_count {
+        return;
+    }
+
+    let current_stage_id = progression.current_stage_id();
+    let current_lang = settings.script_language;
+    let saved_code = stage_scripts
+        .as_ref()
+        .and_then(|scripts| scripts.stage_code(current_lang, current_stage_id))
+        .map(|s| s.to_string());
+
+    // let mut new_buffers = vec![String::new(); stone_count];
+
+    // if let Some(code) = saved_code {
+    //     if !new_buffers.is_empty() {
+    //         new_buffers[0] = code;
+    //     }
+    // }
+    let new_buffers = if let Some(code) = saved_code {
+        vec![code; stone_count]
+    } else {
+        vec![String::new(); stone_count]
+    };
+
+    editor_state.buffers = new_buffers;
+    editor_state.active_programs = Vec::new();
+    editor_state.selected_idx = 0;
+}
+
 pub fn setup(mut commands: Commands, mut params: StageSetupParams) {
     let current_stage_id = params.progression.current_stage_id();
     let current_lang = params.settings.script_language;
@@ -371,12 +416,7 @@ pub fn setup(mut commands: Commands, mut params: StageSetupParams) {
             editor.stage_cleared = false;
             editor.stage_clear_popup_open = false;
             editor.active_programs.clear();
-            if let Some(code) = &saved_code {
-                //TODO 複数ストーン対応
-                editor.buffers = vec![code.clone(); 10];
-            } else {
-                editor.buffers = vec![String::new(); 10];
-            }
+            editor.buffers.clear();
         }
         None => ui::init_editor_state(&mut commands, current_stage_id, saved_code),
     }
@@ -599,12 +639,7 @@ pub fn reload_stage_if_needed(mut commands: Commands, mut params: StageReloadPar
         editor.stage_cleared = false;
         editor.set_tutorial_for_stage(stage_id);
         editor.set_command_help_for_stage(stage_id);
-        if let Some(code) = &saved_code {
-            //TODO 複数ストーン対応
-            editor.buffers = vec![code.clone(); 10];
-        } else {
-            editor.buffers = vec![String::new(); 10];
-        }
+        editor.buffers.clear();
         editor.last_run_feedback = Some(tr_with_args(
             &params.localization,
             "stage-ui-feedback-start",

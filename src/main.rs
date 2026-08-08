@@ -25,7 +25,7 @@ mod systems;
 mod util;
 
 use crate::resources::stage_catalog::StageId;
-use crate::scenes::stage::systems::update_dynamic_solid;
+use crate::scenes::stage::systems::{resize_editor_buffers_system, setup, update_dynamic_solid};
 use crate::{
     config::*,
     plugins::*,
@@ -134,6 +134,7 @@ fn main() {
         .add_plugins(EguiPlugin::default())
         .add_plugins(ScenesPlugin)
         .add_systems(Update, update_dynamic_solid)
+        .add_systems(Update, resize_editor_buffers_system.after(setup))
         .insert_resource(launch_profile)
         .init_resource::<resources::stone_type::StoneCapabilities>()
         .init_state::<GameState>()

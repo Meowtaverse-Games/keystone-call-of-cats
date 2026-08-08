@@ -212,12 +212,8 @@ impl EditorMenuAction {
 }
 
 pub fn init_editor_state(commands: &mut Commands, stage_id: StageId, saved_code: Option<String>) {
-    let code = saved_code.unwrap_or_default();
-    let mut editor_state = ScriptEditorState {
-        //TODO ストーンの数を使ってバッファを作る
-        buffers: vec![code; 10],
-        ..default()
-    };
+    let _code = saved_code.unwrap_or_default();
+    let mut editor_state = ScriptEditorState::default();
     editor_state.set_tutorial_for_stage(stage_id);
     editor_state.set_command_help_for_stage(stage_id);
     commands.insert_resource(editor_state);
