@@ -532,6 +532,28 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                 let mut text_edit_response = None;
                 let idx = editor.selected_idx;
 
+                let stone_count = editor.buffers.len();
+
+                if editor.selected_idx >= editor.buffers.len() {
+                    editor.selected_idx = 0;
+                }
+
+                if stone_count != 1 {
+                    ui.horizontal(|ui| {
+                        for idx in 0..stone_count {
+                            let button_text = if editor.selected_idx == idx {
+                                format!("[Stone {}]", idx + 1)
+                            } else {
+                                format!("Stone {}", idx + 1)
+                            };
+
+                            if ui.button(button_text).clicked() {
+                                editor.selected_idx = idx;
+                            }
+                        }
+                    });
+                }
+
                 egui::ScrollArea::vertical()
                     .max_height(text_height)
                     .show(ui, |ui| {
