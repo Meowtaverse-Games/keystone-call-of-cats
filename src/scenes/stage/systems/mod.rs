@@ -308,11 +308,9 @@ pub struct StageSetupParams<'w, 's> {
     window_query: Query<'w, 's, &'static Window, With<PrimaryWindow>>,
     progression: ResMut<'w, StageProgressionState>,
     editor_state: Option<ResMut<'w, ScriptEditorState>>,
-    stage_scripts: Option<Res<'w, StageScripts>>,
     audio_handles: Option<Res<'w, StageAudioHandles>>,
     audio_state: Option<ResMut<'w, StageAudioState>>,
     localization: Res<'w, Localization>,
-    settings: Res<'w, GameSettings>,
 }
 
 #[derive(Resource)]
@@ -388,6 +386,7 @@ pub fn resize_editor_buffers_system(
     //         new_buffers[0] = code;
     //     }
     // }
+    // TODO : saved_codeの複数コードへの対応
     let new_buffers = if let Some(code) = saved_code {
         vec![code; stone_count]
     } else {
@@ -401,12 +400,6 @@ pub fn resize_editor_buffers_system(
 
 pub fn setup(mut commands: Commands, mut params: StageSetupParams) {
     let current_stage_id = params.progression.current_stage_id();
-    let current_lang = params.settings.script_language;
-    let saved_code = params
-        .stage_scripts
-        .as_ref()
-        .and_then(|scripts| scripts.stage_code(current_lang, current_stage_id))
-        .map(|s| s.to_string());
     match params.editor_state.as_deref_mut() {
         Some(editor) => {
             editor.set_tutorial_for_stage(current_stage_id);
@@ -418,7 +411,7 @@ pub fn setup(mut commands: Commands, mut params: StageSetupParams) {
             editor.active_programs.clear();
             editor.buffers.clear();
         }
-        None => ui::init_editor_state(&mut commands, current_stage_id, saved_code),
+        None => ui::init_editor_state(&mut commands, current_stage_id),
     }
 
     if params.audio_handles.is_none() {
@@ -569,7 +562,6 @@ pub struct StageReloadParams<'w, 's> {
     localization: Res<'w, Localization>,
     audio_state: Option<ResMut<'w, StageAudioState>>,
     stage_scripts: Option<Res<'w, StageScripts>>,
-    settings: Res<'w, GameSettings>,
 }
 
 pub fn reload_stage_if_needed(mut commands: Commands, mut params: StageReloadParams) {
@@ -584,12 +576,6 @@ pub fn reload_stage_if_needed(mut commands: Commands, mut params: StageReloadPar
         .map(|stage| localized_stage_name(&params.localization, stage.id, &stage.title))
         .unwrap_or_else(|| format!("STAGE-{}", stage_id.0));
     let current_map = params.progression.current_map();
-    let lang = params.settings.script_language;
-    let saved_code = params
-        .stage_scripts
-        .as_ref()
-        .and_then(|scripts| scripts.stage_code(lang, stage_id))
-        .map(|s| s.to_string());
 
     if let (Some(scripts), Some(storage)) = (params.stage_scripts.as_ref(), params.storage.as_ref())
         && scripts.is_changed()

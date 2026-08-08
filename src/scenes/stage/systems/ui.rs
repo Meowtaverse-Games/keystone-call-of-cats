@@ -211,8 +211,7 @@ impl EditorMenuAction {
     }
 }
 
-pub fn init_editor_state(commands: &mut Commands, stage_id: StageId, saved_code: Option<String>) {
-    let _code = saved_code.unwrap_or_default();
+pub fn init_editor_state(commands: &mut Commands, stage_id: StageId) {
     let mut editor_state = ScriptEditorState::default();
     editor_state.set_tutorial_for_stage(stage_id);
     editor_state.set_command_help_for_stage(stage_id);
