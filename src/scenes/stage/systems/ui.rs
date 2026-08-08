@@ -234,8 +234,17 @@ pub struct StageUIParams<'w, 's> {
     progression: Res<'w, StageProgressionState>,
     tutorial_overlays: Query<'w, 's, Entity, With<StageTutorialOverlay>>,
     stone_capabilities: Res<'w, StoneCapabilities>,
-    stone_query:
-        Query<'w, 's, (Entity, &'static GlobalTransform, &'static StoneType), With<StoneRune>>,
+    stone_query: Query<
+        'w,
+        's,
+        (
+            Entity,
+            &'static GlobalTransform,
+            &'static StoneType,
+            &'static StoneIndex,
+        ),
+        With<StoneRune>,
+    >,
     file_storage: Res<'w, FileStorageResource>,
 }
 
@@ -387,38 +396,61 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                             } else {
                                 hide_tutorial_overlays(&mut commands, &tutorial_overlays);
                                 let language = settings.script_language;
-                                let stone_type = stone_query
+
+                                let mut stones_info: Vec<(usize, StoneType)> = stone_query
                                     .iter()
-                                    .next()
-                                    .map(|(_, _, type_)| *type_)
-                                    .unwrap_or(StoneType::Type1); // Correctly query StoneType
+                                    .map(|(_, _, type_, stone_idx)| (stone_idx.0, *type_)) // ★stone_idxからインデックスを取得
+                                    .collect();
 
-                                let allowed_commands =
-                                    stone_capabilities.get_capabilities(stone_type);
+                                stones_info.sort_by_key(|(idx, _)| *idx);
 
-                                match script_executor.compile_step(
-                                    language,
-                                    //TODO ストーンのIDに合わせてそれぞれ渡す
-                                    editor.buffers.clone(),
-                                    allowed_commands,
-                                ) {
-                                    Ok(programs) => {
-                                        info!("Starting script execution:\n{:?}", editor.buffers);
+                                let mut all_programs = Vec::new();
+                                let mut compile_error = None;
 
-                                        // Persist script on run
+                                for (idx, stone_type) in stones_info {
+                                    let allowed_commands =
+                                        stone_capabilities.get_capabilities(stone_type);
+
+                                    let current_stone_code =
+                                        editor.buffers.get(idx).cloned().unwrap_or_default();
+
+                                    match script_executor.compile_step(
+                                        language,
+                                        vec![current_stone_code],
+                                        allowed_commands,
+                                    ) {
+                                        Ok(mut single_programs) => {
+                                            if let Some(p) = single_programs.pop() {
+                                                all_programs.push(Some(p));
+                                            } else {
+                                                all_programs.push(None);
+                                            }
+                                        }
+                                        Err(err) => {
+                                            compile_error = Some(err);
+                                            break;
+                                        }
+                                    }
+                                }
+
+                                match compile_error {
+                                    None => {
+                                        info!(
+                                            "Starting script execution for all stones:\n{:?}",
+                                            editor.buffers
+                                        );
+
                                         if let Err(err) =
                                             stage_scripts.persist(file_storage.backend().as_ref())
                                         {
                                             warn!("Failed to persist stage scripts on run: {err}");
                                         }
 
-                                        // Clear any existing queue on the Stone
                                         stone_writer
                                             .write(StoneCommandMessage { commands: vec![] });
 
-                                        editor.active_programs.clear();
-                                        editor.active_programs =
-                                            programs.into_iter().map(Some).collect();
+                                        editor.active_programs = all_programs;
+
                                         editor.last_run_feedback = Some(tr(
                                             &localization,
                                             "stage-ui-feedback-step-started",
@@ -428,7 +460,7 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                                         editor.stage_cleared = false;
                                         editor.stage_clear_popup_open = false;
                                     }
-                                    Err(err) => {
+                                    Some(err) => {
                                         editor.active_programs.clear();
                                         editor.last_run_feedback =
                                             Some(script_error_message(&localization, &err));

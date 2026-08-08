@@ -395,7 +395,6 @@ pub fn resize_editor_buffers_system(
 
     editor_state.buffers = new_buffers;
     editor_state.active_programs = Vec::new();
-    editor_state.selected_idx = 0;
 }
 
 pub fn setup(mut commands: Commands, mut params: StageSetupParams) {
