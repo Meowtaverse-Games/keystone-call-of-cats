@@ -27,9 +27,11 @@ docker run --rm --platform linux/amd64 \
     export CC_aarch64_linux_android="$ndk_bin/aarch64-linux-android31-clang"
     export CXX_aarch64_linux_android="$ndk_bin/aarch64-linux-android31-clang++"
     export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$CC_aarch64_linux_android"
+    export AR_aarch64_linux_android="$ndk_bin/llvm-ar"
     export CC_x86_64_linux_android="$ndk_bin/x86_64-linux-android31-clang"
     export CXX_x86_64_linux_android="$ndk_bin/x86_64-linux-android31-clang++"
     export CARGO_TARGET_X86_64_LINUX_ANDROID_LINKER="$CC_x86_64_linux_android"
+    export AR_x86_64_linux_android="$ndk_bin/llvm-ar"
     cargo build --lib --target aarch64-linux-android
     cargo build --lib --target x86_64-linux-android
     gradle --no-daemon -p android assembleDebug
