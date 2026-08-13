@@ -20,7 +20,7 @@ docker run --rm \
   --env CARGO_HOME=/cargo \
   --env CARGO_NET_GIT_FETCH_WITH_CLI=true \
   "$image" \
-  bash -lc '
+  bash -c '
     set -euo pipefail
     ndk_bin="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin"
     export CC_aarch64_linux_android="$ndk_bin/aarch64-linux-android31-clang"
