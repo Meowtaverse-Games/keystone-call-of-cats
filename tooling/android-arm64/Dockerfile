@@ -8,6 +8,7 @@ ARG GRADLE_VERSION=8.10.2
 
 ENV ANDROID_HOME=/opt/android-sdk \
     ANDROID_NDK_HOME=/opt/android-sdk/ndk/${ANDROID_NDK_VERSION} \
+    DEBIAN_FRONTEND=noninteractive \
     PATH=/opt/android-sdk/cmdline-tools/latest/bin:/opt/gradle/bin:${PATH}
 
 RUN apt-get update \
