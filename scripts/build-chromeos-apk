@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+image="${KEYSTONE_ANDROID_IMAGE:-keystone-cc-android-builder}"
+workspace="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+if [[ "$(uname -m)" == "aarch64" || "$(uname -m)" == "arm64" ]]; then
+  # Android's NDK host tools are x86_64 Linux binaries. Register binfmt once
+  # when this script is used on an ARM64 build host.
+  docker run --privileged --rm tonistiigi/binfmt --install amd64
+fi
+
+if ! docker image inspect "$image" >/dev/null 2>&1; then
+  docker build --platform linux/amd64 -t "$image" -f "$workspace/tooling/android-arm64/Dockerfile" "$workspace"
+fi
+
+docker run --rm --platform linux/amd64 \
+  --volume "$workspace:/workspace" \
+  --volume keystone-cc-android-cargo:/cargo \
+  --env CARGO_HOME=/cargo \
+  --env CARGO_NET_GIT_FETCH_WITH_CLI=true \
+  "$image" \
+  bash -lc '
+    set -euo pipefail
+    ndk_bin="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin"
+    export CC_aarch64_linux_android="$ndk_bin/aarch64-linux-android31-clang"
+    export CXX_aarch64_linux_android="$ndk_bin/aarch64-linux-android31-clang++"
+    export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$CC_aarch64_linux_android"
+    export CC_x86_64_linux_android="$ndk_bin/x86_64-linux-android31-clang"
+    export CXX_x86_64_linux_android="$ndk_bin/x86_64-linux-android31-clang++"
+    export CARGO_TARGET_X86_64_LINUX_ANDROID_LINKER="$CC_x86_64_linux_android"
+    cargo build --lib --target aarch64-linux-android
+    cargo build --lib --target x86_64-linux-android
+    gradle --no-daemon -p android assembleDebug
+    mkdir -p dist/chromeos
+    cp android/app/build/outputs/apk/debug/app-debug.apk dist/chromeos/keystone-cc-debug.apk
+    sha256sum dist/chromeos/keystone-cc-debug.apk > dist/chromeos/keystone-cc-debug.apk.sha256
+  '

@@ -1,0 +1,30 @@
+name: ChromeOS Android APK
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          token: ${{ secrets.GH_PAT }}
+
+      - name: Build the universal debug APK
+        run: ./scripts/build-chromeos-apk
+
+      - name: Verify APK native libraries and assets
+        run: |
+          unzip -l dist/chromeos/keystone-cc-debug.apk | grep -E 'lib/(arm64-v8a|x86_64)/libkeystone_cc.so'
+          unzip -l dist/chromeos/keystone-cc-debug.apk | grep 'assets/images/'
+          sha256sum --check dist/chromeos/keystone-cc-debug.apk.sha256
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: keystone-cc-chromeos-debug-apk
+          path: dist/chromeos/
+          if-no-files-found: error

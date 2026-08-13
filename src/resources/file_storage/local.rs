@@ -20,6 +20,16 @@ impl LocalFileStorage {
 
     /// 既定の保存先ディレクトリを返す（OS別）
     pub fn default_base_dir() -> PathBuf {
+        // Android: app-private storage survives process restarts and is removed
+        // automatically when the user uninstalls the application.
+        #[cfg(target_os = "android")]
+        {
+            if let Some(app) = bevy::android::ANDROID_APP.get()
+                && let Some(data_dir) = app.internal_data_path()
+            {
+                return data_dir.join("KeystoneCC");
+            }
+        }
         // macOS
         #[cfg(target_os = "macos")]
         {
