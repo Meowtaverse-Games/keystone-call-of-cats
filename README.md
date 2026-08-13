@@ -26,7 +26,7 @@ Notes:
 
 ## ChromeOS (Android APK)
 
-`scripts/build-chromeos-apk` creates a debug-signed universal APK for Android-enabled Chromebooks. It uses Docker because the Android SDK/NDK command-line tools are x86_64 binaries; on this ARM64 build host Docker runs them through binfmt.
+`scripts/build-chromeos-apk` creates a debug-signed universal APK for Android-enabled Chromebooks. It uses Docker because the Android SDK/NDK command-line tools are x86_64 binaries; on this ARM64 build host the script registers binfmt for those tools.
 
 ```sh
 ./scripts/build-chromeos-apk

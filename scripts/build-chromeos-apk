@@ -11,10 +11,10 @@ if [[ "$(uname -m)" == "aarch64" || "$(uname -m)" == "arm64" ]]; then
 fi
 
 if ! docker image inspect "$image" >/dev/null 2>&1; then
-  docker build --platform linux/amd64 -t "$image" -f "$workspace/tooling/android-arm64/Dockerfile" "$workspace"
+  docker build -t "$image" -f "$workspace/tooling/android-arm64/Dockerfile" "$workspace"
 fi
 
-docker run --rm --platform linux/amd64 \
+docker run --rm \
   --volume "$workspace:/workspace" \
   --volume keystone-cc-android-cargo:/cargo \
   --env CARGO_HOME=/cargo \

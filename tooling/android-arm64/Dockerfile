@@ -1,6 +1,7 @@
-# Android SDK/NDK tools are distributed for x86_64 Linux. Docker therefore runs
-# this image as linux/amd64; Docker Desktop/binfmt handles it on ARM64 hosts.
-FROM --platform=linux/amd64 rust:1.90.0-bookworm
+# Android SDK/NDK tools are distributed for x86_64 Linux. On ARM64 hosts the
+# build script registers binfmt so those individual tools can still run, while
+# Rust, Java, and Gradle remain native for substantially faster builds.
+FROM rust:1.90.0-bookworm
 
 ARG ANDROID_CMDLINE_TOOLS_VERSION=13114758
 ARG ANDROID_NDK_VERSION=27.2.12479018
