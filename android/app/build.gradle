@@ -62,8 +62,8 @@ android {
 tasks.register("copyRustJniLibs") {
     doLast {
         def libraries = [
-            "arm64-v8a": file("../../../target/aarch64-linux-android/debug/libkeystone_cc.so"),
-            "x86_64"   : file("../../../target/x86_64-linux-android/debug/libkeystone_cc.so"),
+            "arm64-v8a": file("../../target/aarch64-linux-android/debug/libkeystone_cc.so"),
+            "x86_64"   : file("../../target/x86_64-linux-android/debug/libkeystone_cc.so"),
         ]
         libraries.each { abi, source ->
             if (!source.isFile()) {
