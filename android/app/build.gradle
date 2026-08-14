@@ -61,9 +61,10 @@ android {
 
 tasks.register("copyRustJniLibs") {
     doLast {
+        def rustTargetDir = providers.gradleProperty("rustTargetDir").getOrElse("../../target")
         def libraries = [
-            "arm64-v8a": file("../../target/aarch64-linux-android/debug/libkeystone_cc.so"),
-            "x86_64"   : file("../../target/x86_64-linux-android/debug/libkeystone_cc.so"),
+            "arm64-v8a": file("${rustTargetDir}/aarch64-linux-android/debug/libkeystone_cc.so"),
+            "x86_64"   : file("${rustTargetDir}/x86_64-linux-android/debug/libkeystone_cc.so"),
         ]
         libraries.each { abi, source ->
             if (!source.isFile()) {
@@ -82,5 +83,6 @@ tasks.named("preBuild").configure {
 }
 
 dependencies {
+    implementation "androidx.core:core:1.13.1"
     implementation "androidx.games:games-activity:2.0.2"
 }

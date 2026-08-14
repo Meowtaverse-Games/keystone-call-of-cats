@@ -331,7 +331,7 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
         .frame(egui::Frame {
             fill: egui::Color32::from_rgb(0xe0, 0xe1, 0xe4),
             inner_margin: egui::Margin::same(5),
-            stroke: egui::Stroke::new(1.0, egui::Color32::from_rgb(100, 100, 150)),
+            stroke: egui::Stroke::new(1.0_f32, egui::Color32::from_rgb(100, 100, 150)),
             ..Default::default()
         })
         .show(ctx, |ui| {
@@ -554,7 +554,7 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
 
                                 egui::Frame::group(ui.style())
                                     .fill(egui::Color32::from_black_alpha(200))
-                                    .stroke(egui::Stroke::new(1.0, egui::Color32::from_gray(80)))
+                                    .stroke(egui::Stroke::new(1.0_f32, egui::Color32::from_gray(80)))
                                     .inner_margin(egui::Margin::symmetric(12, 10))
                                     .show(ui, |ui| {
                                         ui.set_min_height(content_height);

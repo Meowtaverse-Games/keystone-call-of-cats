@@ -34,7 +34,7 @@ docker run --rm --platform linux/amd64 \
     export AR_x86_64_linux_android="$ndk_bin/llvm-ar"
     cargo build --lib --target aarch64-linux-android
     cargo build --lib --target x86_64-linux-android
-    gradle --no-daemon -p android assembleDebug
+    gradle --no-daemon -p android -PrustTargetDir="$PWD/target" assembleDebug
     mkdir -p dist/chromeos
     cp android/app/build/outputs/apk/debug/app-debug.apk dist/chromeos/keystone-cc-debug.apk
     sha256sum dist/chromeos/keystone-cc-debug.apk > dist/chromeos/keystone-cc-debug.apk.sha256
