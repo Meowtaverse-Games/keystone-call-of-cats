@@ -5,6 +5,7 @@ plugins {
 android {
     namespace "com.meowtaversegames.keystonecc"
     compileSdk 35
+    ndkVersion "27.2.12479018"
 
     defaultConfig {
         applicationId "com.meowtaversegames.keystonecc"
@@ -59,7 +60,6 @@ android {
 }
 
 tasks.register("copyRustJniLibs") {
-    dependsOn("externalNativeBuildDebug")
     doLast {
         def libraries = [
             "arm64-v8a": file("../../../target/aarch64-linux-android/debug/libkeystone_cc.so"),
