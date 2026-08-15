@@ -28,7 +28,7 @@ pub struct StoneTickMessage;
 
 #[derive(Component)]
 pub(crate) struct StoneCommandState {
-    queue: VecDeque<ScriptCommand>,
+    pub queue: VecDeque<ScriptCommand>,
     current: Option<StoneAction>,
     cooldown: Timer,
     pub step_size: f32, // Dynamic step size based on map scale

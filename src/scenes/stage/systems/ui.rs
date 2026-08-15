@@ -768,7 +768,7 @@ pub fn tick_script_program(
         };
 
         if let Ok(stone_state) = stone_states.get(stone_entity)
-            && stone_state.is_busy()
+            && (stone_state.is_busy() || !stone_state.queue.is_empty())
         {
             continue;
         }

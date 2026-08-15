@@ -99,29 +99,31 @@ impl ScriptStepper for KeystoneScriptExecutor {
         source: &str,
         _allowed_commands: Option<&HashSet<String>>,
     ) -> Result<Box<dyn ScriptProgram>, ScriptExecutionError> {
-        let api_dyn = Arc::new(self.api.clone()) as Arc<dyn ExternalApi + Send + Sync>;
-        let res = eval(source, api_dyn);
-        match res {
-            Ok(iter) => {
-                let max_step = 100000;
-                let mut step = 0;
-                let preflight = iter.clone();
-                for res in preflight {
-                    step += 1;
-                    if max_step < step {
-                        break;
-                    }
-                    if let Err(e) = res {
-                        return Err(map_error(e));
-                    }
-                }
-                Ok(Box::new(KeystoneScriptProgram::spawn(
-                    iter,
-                    self.api.clone(),
-                )))
+        let mut preflight_api_inner = self.api.clone();
+        preflight_api_inner.shared_signals =
+            Arc::new(std::sync::Mutex::new(std::collections::HashSet::new()));
+        let preflight_api_dyn = Arc::new(preflight_api_inner) as Arc<dyn ExternalApi + Send + Sync>;
+
+        let preflight_iter = eval(source, preflight_api_dyn).map_err(|e| map_error(e))?;
+
+        let max_step = 100000;
+        let mut step = 0;
+        for res in preflight_iter {
+            step += 1;
+            if max_step < step {
+                break;
             }
-            Err(err) => Err(map_error(err)),
+            if let Err(e) = res {
+                return Err(map_error(e));
+            }
         }
+        let real_api_dyn = Arc::new(self.api.clone()) as Arc<dyn ExternalApi + Send + Sync>;
+        let real_iter = eval(source, real_api_dyn).map_err(|e| map_error(e))?;
+
+        Ok(Box::new(KeystoneScriptProgram::spawn(
+            real_iter,
+            self.api.clone(),
+        )))
     }
 }
 
@@ -141,7 +143,9 @@ impl KeystoneScriptProgram {
         let (resume_tx, resume_rx) = mpsc::sync_channel::<()>(0);
 
         std::thread::spawn(move || {
-            for event in iter {
+            let mut iter = iter;
+
+            loop {
                 if stop_flag_inner.load(Ordering::SeqCst) {
                     break;
                 }
@@ -150,10 +154,16 @@ impl KeystoneScriptProgram {
                     break;
                 }
 
-                let command = map_event(event.expect("script error"));
-
-                if tx.send(command).is_err() {
-                    break;
+                match iter.next() {
+                    Some(event) => {
+                        let command = map_event(event.expect("script error"));
+                        if tx.send(command).is_err() {
+                            break;
+                        }
+                    }
+                    None => {
+                        break;
+                    }
                 }
             }
             let _ = tx.send(None);
