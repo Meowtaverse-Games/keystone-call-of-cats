@@ -1,0 +1,89 @@
+plugins {
+    id "com.android.application"
+}
+
+android {
+    namespace "com.meowtaversegames.keystonecc"
+    compileSdk 35
+    ndkVersion "27.2.12479018"
+
+    defaultConfig {
+        applicationId "com.meowtaversegames.keystonecc"
+        minSdk 31
+        targetSdk 35
+        versionCode 1
+        versionName "0.1.0"
+
+        // GameActivity loads the Rust cdylib and requires the shared C++ runtime.
+        externalNativeBuild {
+            cmake {
+                arguments "-DANDROID_STL=c++_shared"
+            }
+        }
+        ndk {
+            abiFilters "arm64-v8a", "x86_64"
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path "CMakeLists.txt"
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    sourceSets {
+        main {
+            // Bevy reads these through Android's AssetManager at runtime.
+            assets.srcDirs += files("../../assets")
+            jniLibs.srcDirs += files("$buildDir/generated/rustJniLibs")
+        }
+    }
+
+    packaging {
+        jniLibs {
+            // CMake only exists to package libc++_shared.so.
+            excludes += ["lib/*/libdummy.so"]
+        }
+    }
+}
+
+tasks.register("copyRustJniLibs") {
+    doLast {
+        def rustTargetDir = providers.gradleProperty("rustTargetDir").getOrElse("../../target")
+        def libraries = [
+            "arm64-v8a": file("${rustTargetDir}/aarch64-linux-android/debug/libkeystone_cc.so"),
+            "x86_64"   : file("${rustTargetDir}/x86_64-linux-android/debug/libkeystone_cc.so"),
+        ]
+        libraries.each { abi, source ->
+            if (!source.isFile()) {
+                throw new GradleException("Rust library for ${abi} is missing: ${source}")
+            }
+            copy {
+                from(source)
+                into("$buildDir/generated/rustJniLibs/${abi}")
+            }
+        }
+    }
+}
+
+tasks.named("preBuild").configure {
+    dependsOn("copyRustJniLibs")
+}
+
+dependencies {
+    implementation "androidx.appcompat:appcompat:1.6.1"
+    implementation "androidx.core:core:1.13.1"
+    implementation "androidx.games:games-activity:2.0.2"
+}

@@ -5,3 +5,4 @@ client_secret.json
 .clj-kondo
 /target
 tools/**/target
+/dist/
