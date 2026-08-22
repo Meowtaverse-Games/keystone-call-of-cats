@@ -395,6 +395,48 @@ pub fn resize_editor_buffers_system(
     editor_state.active_programs = Vec::new();
 }
 
+pub fn flash_selected_stone_system(
+    editor_state_opt: Option<Res<ScriptEditorState>>,
+    time: Res<Time>,
+    mut stone_query: Query<(&StoneIndex, &mut Sprite)>,
+) {
+    let Some(editor_state) = editor_state_opt else {
+        return;
+    };
+
+    let is_running = editor_state
+        .active_programs
+        .iter()
+        .any(|prog| prog.is_some());
+
+    let stone_count = stone_query.iter().count();
+
+    if is_running || stone_count == 1 {
+        for (_, mut sprite) in stone_query.iter_mut() {
+            sprite.color = Color::WHITE;
+        }
+        return;
+    }
+
+    let selected = editor_state.selected_idx;
+
+    let speed = 6.0;
+    let pulse = (time.elapsed_secs() * speed).sin() * 0.4 + 0.6;
+
+    for (stone_index, mut sprite) in stone_query.iter_mut() {
+        if stone_index.0 == selected {
+            sprite.color = Color::LinearRgba(LinearRgba {
+                red: pulse,
+                green: pulse,
+                blue: pulse,
+                alpha: 1.0,
+            });
+        } else {
+            sprite.color = Color::WHITE;
+        }
+    }
+}
+
 pub fn setup(mut commands: Commands, mut params: StageSetupParams) {
     let current_stage_id = params.progression.current_stage_id();
     match params.editor_state.as_deref_mut() {
