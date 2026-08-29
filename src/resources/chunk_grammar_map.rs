@@ -556,7 +556,7 @@ impl Map {
             && let stone_adjustments = &adjustment.stones
             && !stone_adjustments.is_empty()
         {
-            return apply_stone_adjustments(positions, stone_adjustments);
+            return apply_stone_adjustments(&positions, stone_adjustments);
         }
 
         positions
