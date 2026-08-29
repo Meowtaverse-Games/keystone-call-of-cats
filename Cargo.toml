@@ -23,6 +23,10 @@ unic-langid = { version = "0.9.4", features = ["macros"] }
 keystone-lang = { git="https://github.com/Meowtaverse-Games/keystone-lang.git" }
 bevy_embedded_assets = "0.15.0"
 
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+# Required by keystone-lang's rand 0.10 dependency on wasm32-unknown-unknown.
+getrandom = { version = "0.4", features = ["wasm_js"] }
+
 [features]
 default = ["experimental"]
 steam = ["dep:steamworks"]

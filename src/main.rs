@@ -67,21 +67,22 @@ fn main() {
 
     let mut app = App::new();
 
-    let storage = resources::file_storage::LocalFileStorage::default_dir();
-    let mut settings = GameSettings::load_or_default(&storage);
+    let storage = resources::file_storage::default_storage();
+    let mut settings = GameSettings::load_or_default(storage.as_ref());
 
     let locale_id = if let Some(saved_locale) = &settings.locale {
         saved_locale.parse().unwrap_or_else(|_| langid!("en-US"))
     } else {
         let determined = determine_initial_locale();
         settings.locale = Some(determined.to_string());
-        if let Err(e) = settings.persist(&storage) {
+        if let Err(e) = settings.persist(storage.as_ref()) {
             warn!("Failed to persist determined locale: {}", e);
         }
         determined
     };
 
     app.insert_resource(Locale::new(locale_id).with_default(langid!("en-US")))
+        .insert_resource(resources::file_storage::FileStorageResource::new(storage))
         .insert_resource(launch_profile.clone())
         .add_systems(
             OnEnter(GameState::Reloading),
