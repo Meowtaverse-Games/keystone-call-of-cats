@@ -364,8 +364,10 @@ pub fn update_stone_behavior(
                         let ray_dir = Dir2::new(dir).unwrap_or(Dir2::X);
                         let origin = global_transform.translation().truncate();
                         let check_dist = STONE_COLLIDER_RADIUS * world_scale + 2.0;
+                        let mut excluded_entities = vec![entity];
+                        excluded_entities.extend(players.iter());
                         let filter = SpatialQueryFilter::from_mask(LayerMask::ALL)
-                            .with_excluded_entities([entity]);
+                            .with_excluded_entities(excluded_entities);
 
                         // Use shape cast with a circle matching the stone's collider
                         let cast_shape = Collider::circle(STONE_COLLIDER_RADIUS * world_scale);
