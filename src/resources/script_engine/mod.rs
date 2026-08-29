@@ -68,12 +68,30 @@ impl ScriptExecutor {
     pub fn compile_step(
         &self,
         language: Language,
-        source: &str,
+        sources: Vec<String>,
         allowed_commands: Option<&std::collections::HashSet<String>>,
-    ) -> Result<Box<dyn ScriptProgram>, ScriptExecutionError> {
+    ) -> Result<Vec<Box<dyn ScriptProgram>>, ScriptExecutionError> {
         match language {
-            Language::Rhai => self.stepper.compile_step(source, allowed_commands),
-            Language::Keystone => self.ks_stepper.compile_step(source, allowed_commands),
+            Language::Rhai => {
+                let mut compiled_programs = Vec::new();
+
+                for source in sources {
+                    let program = self.stepper.compile_step(&source, allowed_commands)?;
+                    compiled_programs.push(program);
+                }
+
+                Ok(compiled_programs)
+            }
+            Language::Keystone => {
+                let mut compiled_programs = Vec::new();
+
+                for source in sources {
+                    let program = self.ks_stepper.compile_step(&source, allowed_commands)?;
+                    compiled_programs.push(program);
+                }
+
+                Ok(compiled_programs)
+            }
         }
     }
 }

@@ -186,17 +186,24 @@ fn populate_stage_contents(
         viewport.scale,
     );
 
-    let stone_position = map.tile_position(TileKind::Stone);
-    stone::spawn_stone(
-        commands,
-        stage_root,
-        asset_server,
-        atlas_layouts,
-        tile_position_to_world(stone_position, real_tile_size, viewport_size, scale, 0.0),
-        map.stone_type,
-        map.dig_limit,
-        stone::STONE_STEP_DISTANCE,
-    );
+    let stone_positions = map.tile_positions_multiple(TileKind::Stone);
+
+    for (index, stone_pos) in stone_positions.into_iter().enumerate() {
+        let world_pos =
+            tile_position_to_world(stone_pos, real_tile_size, viewport_size, scale, 0.0);
+
+        stone::spawn_stone(
+            commands,
+            stage_root,
+            asset_server,
+            atlas_layouts,
+            world_pos,
+            map.stone_type,
+            map.dig_limit,
+            stone::STONE_STEP_DISTANCE,
+            index,
+        );
+    }
 
     map.tile_positions(TileKind::Obstacle)
         .iter()
@@ -301,11 +308,9 @@ pub struct StageSetupParams<'w, 's> {
     window_query: Query<'w, 's, &'static Window, With<PrimaryWindow>>,
     progression: ResMut<'w, StageProgressionState>,
     editor_state: Option<ResMut<'w, ScriptEditorState>>,
-    stage_scripts: Option<Res<'w, StageScripts>>,
     audio_handles: Option<Res<'w, StageAudioHandles>>,
     audio_state: Option<ResMut<'w, StageAudioState>>,
     localization: Res<'w, Localization>,
-    settings: Res<'w, GameSettings>,
 }
 
 #[derive(Resource)]
@@ -347,14 +352,80 @@ pub fn tick_pending_tutorial(
     commands.remove_resource::<PendingTutorial>();
 }
 
+pub fn resize_editor_buffers_system(
+    stone_query: Query<&StoneIndex>,
+    editor_state_opt: Option<ResMut<ScriptEditorState>>,
+    progression: Res<StageProgressionState>,
+    settings: Res<GameSettings>,
+    stage_scripts: Option<Res<StageScripts>>,
+) {
+    let Some(mut editor_state) = editor_state_opt else {
+        return;
+    };
+
+    let stone_count = stone_query.iter().count();
+    if stone_count == 0 {
+        return;
+    }
+
+    if editor_state.buffers.len() == stone_count {
+        return;
+    }
+
+    let current_stage_id = progression.current_stage_id();
+    let current_lang = settings.script_language;
+    let saved_codes = stage_scripts
+        .as_ref()
+        .and_then(|scripts| scripts.stage_codes(current_lang, current_stage_id))
+        .map(|slice| slice.to_vec());
+
+    editor_state.resize_buffers(stone_count, saved_codes.as_deref());
+}
+
+pub fn flash_selected_stone_system(
+    editor_state_opt: Option<Res<ScriptEditorState>>,
+    time: Res<Time>,
+    mut stone_query: Query<(&StoneIndex, &mut Sprite)>,
+) {
+    let Some(editor_state) = editor_state_opt else {
+        return;
+    };
+
+    let is_running = editor_state
+        .active_programs
+        .iter()
+        .any(|prog| prog.is_some());
+
+    let stone_count = stone_query.iter().count();
+
+    if is_running || stone_count == 1 {
+        for (_, mut sprite) in stone_query.iter_mut() {
+            sprite.color = Color::WHITE;
+        }
+        return;
+    }
+
+    let selected = editor_state.selected_idx;
+
+    let speed = 6.0;
+    let pulse = (time.elapsed_secs() * speed).sin() * 0.4 + 0.6;
+
+    for (stone_index, mut sprite) in stone_query.iter_mut() {
+        if stone_index.0 == selected {
+            sprite.color = Color::LinearRgba(LinearRgba {
+                red: pulse,
+                green: pulse,
+                blue: pulse,
+                alpha: 1.0,
+            });
+        } else {
+            sprite.color = Color::WHITE;
+        }
+    }
+}
+
 pub fn setup(mut commands: Commands, mut params: StageSetupParams) {
     let current_stage_id = params.progression.current_stage_id();
-    let current_lang = params.settings.script_language;
-    let saved_code = params
-        .stage_scripts
-        .as_ref()
-        .and_then(|scripts| scripts.stage_code(current_lang, current_stage_id))
-        .map(|s| s.to_string());
     match params.editor_state.as_deref_mut() {
         Some(editor) => {
             editor.set_tutorial_for_stage(current_stage_id);
@@ -363,14 +434,10 @@ pub fn setup(mut commands: Commands, mut params: StageSetupParams) {
             editor.pending_player_reset = false;
             editor.stage_cleared = false;
             editor.stage_clear_popup_open = false;
-            editor.active_program = None;
-            if let Some(code) = &saved_code {
-                editor.buffer = code.clone();
-            } else {
-                editor.buffer.clear();
-            }
+            editor.active_programs.clear();
+            editor.buffers.clear();
         }
-        None => ui::init_editor_state(&mut commands, current_stage_id, saved_code),
+        None => ui::init_editor_state(&mut commands, current_stage_id),
     }
 
     if params.audio_handles.is_none() {
@@ -521,7 +588,6 @@ pub struct StageReloadParams<'w, 's> {
     localization: Res<'w, Localization>,
     audio_state: Option<ResMut<'w, StageAudioState>>,
     stage_scripts: Option<Res<'w, StageScripts>>,
-    settings: Res<'w, GameSettings>,
 }
 
 pub fn reload_stage_if_needed(mut commands: Commands, mut params: StageReloadParams) {
@@ -536,12 +602,6 @@ pub fn reload_stage_if_needed(mut commands: Commands, mut params: StageReloadPar
         .map(|stage| localized_stage_name(&params.localization, stage.id, &stage.title))
         .unwrap_or_else(|| format!("STAGE-{}", stage_id.0));
     let current_map = params.progression.current_map();
-    let lang = params.settings.script_language;
-    let saved_code = params
-        .stage_scripts
-        .as_ref()
-        .and_then(|scripts| scripts.stage_code(lang, stage_id))
-        .map(|s| s.to_string());
 
     if let (Some(scripts), Some(storage)) = (params.stage_scripts.as_ref(), params.storage.as_ref())
         && scripts.is_changed()
@@ -591,11 +651,7 @@ pub fn reload_stage_if_needed(mut commands: Commands, mut params: StageReloadPar
         editor.stage_cleared = false;
         editor.set_tutorial_for_stage(stage_id);
         editor.set_command_help_for_stage(stage_id);
-        if let Some(code) = &saved_code {
-            editor.buffer = code.clone();
-        } else {
-            editor.buffer.clear();
-        }
+        editor.buffers.clear();
         editor.last_run_feedback = Some(tr_with_args(
             &params.localization,
             "stage-ui-feedback-start",

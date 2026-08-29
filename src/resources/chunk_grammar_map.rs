@@ -548,6 +548,23 @@ impl Map {
         (x, y)
     }
 
+    pub fn tile_positions_multiple(&self, kind: TileKind) -> Vec<(f32, f32)> {
+        let positions = self.tile_positions(kind);
+
+        if kind == TileKind::Stone
+            && let Some(adjustment) = &self.adjustment
+            && let stone_adjustments = &adjustment.stones
+            && !stone_adjustments.is_empty()
+        {
+            return apply_stone_adjustments(&positions, stone_adjustments);
+        }
+
+        positions
+            .iter()
+            .map(|position| (position.0 as f32, position.1 as f32))
+            .collect()
+    }
+
     pub fn tile_positions(&self, kind: TileKind) -> Vec<(isize, isize)> {
         let mut positions = Vec::new();
         for chunk in &self.placed_chunks {
@@ -588,6 +605,41 @@ impl Map {
                     .iter()
                     .map(|tile| ((tile.x, tile.y), tile.kind))
             }))
+    }
+}
+
+fn apply_stone_adjustments(
+    positions: &[(isize, isize)],
+    adjustments: &[(f32, f32)],
+) -> Vec<(f32, f32)> {
+    positions
+        .iter()
+        .enumerate()
+        .map(|(index, position)| {
+            let adjustment = adjustments.get(index).copied().unwrap_or((0.0, 0.0));
+            let x = position.0 as f32 + adjustment.0;
+            let y = position.1 as f32 + adjustment.1;
+            println!(
+                "Adjusting stone position from ({}, {}) by ({}, {})",
+                position.0, position.1, adjustment.0, adjustment.1
+            );
+            (x, y)
+        })
+        .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::apply_stone_adjustments;
+
+    #[test]
+    fn missing_stone_adjustments_do_not_drop_positions() {
+        let positions = [(1, 2), (3, 4), (5, 6)];
+
+        assert_eq!(
+            apply_stone_adjustments(&positions, &[(0.5, -1.0)]),
+            vec![(1.5, 1.0), (3.0, 4.0), (5.0, 6.0)]
+        );
     }
 }
 
