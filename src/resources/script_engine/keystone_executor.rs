@@ -104,7 +104,7 @@ impl ScriptStepper for KeystoneScriptExecutor {
             Arc::new(std::sync::Mutex::new(std::collections::HashSet::new()));
         let preflight_api_dyn = Arc::new(preflight_api_inner) as Arc<dyn ExternalApi + Send + Sync>;
 
-        let preflight_iter = eval(source, preflight_api_dyn).map_err(|e| map_error(e))?;
+        let preflight_iter = eval(source, preflight_api_dyn).map_err(map_error)?;
 
         let max_step = 100000;
         let mut step = 0;
@@ -118,7 +118,7 @@ impl ScriptStepper for KeystoneScriptExecutor {
             }
         }
         let real_api_dyn = Arc::new(self.api.clone()) as Arc<dyn ExternalApi + Send + Sync>;
-        let real_iter = eval(source, real_api_dyn).map_err(|e| map_error(e))?;
+        let real_iter = eval(source, real_api_dyn).map_err(map_error)?;
 
         Ok(Box::new(KeystoneScriptProgram::spawn(
             real_iter,

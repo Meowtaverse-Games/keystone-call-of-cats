@@ -247,7 +247,7 @@ fn volume_slider(ui: &mut egui::Ui, label: String, value: &mut f32) -> bool {
     painter.circle_stroke(
         knob_center,
         knob_radius,
-        egui::Stroke::new(3.0, SLIDER_KNOB_RING),
+        egui::Stroke::new(3.0_f32, SLIDER_KNOB_RING),
     );
 
     ui.add_space(16.0);

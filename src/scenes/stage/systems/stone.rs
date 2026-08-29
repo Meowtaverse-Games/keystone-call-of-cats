@@ -223,6 +223,7 @@ pub fn update_stone_behavior(
     settings: Res<GameSettings>,
     launch_profile: Res<crate::resources::launch_profile::LaunchProfile>,
     tiles: Query<(), With<StageTile>>,
+    stones: Query<(), With<StoneRune>>,
     tile_kinds: Query<&TileKind>,
     mut gizmos: Gizmos,
     mut query: StoneBehaviorQuery,
@@ -273,7 +274,7 @@ pub fn update_stone_behavior(
                     let path_blocked = if let Some(hit) =
                         spatial.cast_ray(origin, ray_dir, check_dist, true, &filter)
                     {
-                        tiles.get(hit.entity).is_ok()
+                        tiles.get(hit.entity).is_ok() || stones.get(hit.entity).is_ok()
                     } else {
                         false
                     };

@@ -374,25 +374,12 @@ pub fn resize_editor_buffers_system(
 
     let current_stage_id = progression.current_stage_id();
     let current_lang = settings.script_language;
-    let saved_codes: Option<Vec<String>> = stage_scripts
+    let saved_codes = stage_scripts
         .as_ref()
         .and_then(|scripts| scripts.stage_codes(current_lang, current_stage_id))
         .map(|slice| slice.to_vec());
 
-    let mut new_buffers = vec![String::new(); stone_count];
-
-    if let Some(codes) = saved_codes {
-        for i in 0..stone_count {
-            if let Some(code) = codes.get(i) {
-                new_buffers[i] = code.clone();
-            } else {
-                new_buffers[i] = String::new();
-            }
-        }
-    }
-
-    editor_state.buffers = new_buffers;
-    editor_state.active_programs = Vec::new();
+    editor_state.resize_buffers(stone_count, saved_codes.as_deref());
 }
 
 pub fn flash_selected_stone_system(
