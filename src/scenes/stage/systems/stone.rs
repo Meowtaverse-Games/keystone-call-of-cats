@@ -223,6 +223,8 @@ pub fn update_stone_behavior(
     settings: Res<GameSettings>,
     launch_profile: Res<crate::resources::launch_profile::LaunchProfile>,
     tiles: Query<(), With<StageTile>>,
+    stones: Query<(), With<StoneRune>>,
+    players: Query<Entity, With<Player>>,
     tile_kinds: Query<&TileKind>,
     mut gizmos: Gizmos,
     mut query: StoneBehaviorQuery,
@@ -267,13 +269,18 @@ pub fn update_stone_behavior(
                     let ray_dir = Dir2::new(dir).unwrap_or(Dir2::X);
                     let origin = global_transform.translation().truncate();
                     let check_dist = STONE_RAYCAST_DISTANCE * global_transform.scale().x;
+                    let mut excluded_entities = vec![entity];
+                    excluded_entities.extend(players.iter());
                     let filter = SpatialQueryFilter::from_mask(LayerMask::ALL)
-                        .with_excluded_entities([entity]);
+                        .with_excluded_entities(excluded_entities);
 
                     let path_blocked = if let Some(hit) =
                         spatial.cast_ray(origin, ray_dir, check_dist, true, &filter)
                     {
-                        tiles.get(hit.entity).is_ok()
+                        is_blocking_hit(
+                            tiles.get(hit.entity).is_ok(),
+                            stones.get(hit.entity).is_ok(),
+                        )
                     } else {
                         false
                     };
@@ -357,8 +364,10 @@ pub fn update_stone_behavior(
                         let ray_dir = Dir2::new(dir).unwrap_or(Dir2::X);
                         let origin = global_transform.translation().truncate();
                         let check_dist = STONE_COLLIDER_RADIUS * world_scale + 2.0;
+                        let mut excluded_entities = vec![entity];
+                        excluded_entities.extend(players.iter());
                         let filter = SpatialQueryFilter::from_mask(LayerMask::ALL)
-                            .with_excluded_entities([entity]);
+                            .with_excluded_entities(excluded_entities);
 
                         // Use shape cast with a circle matching the stone's collider
                         let cast_shape = Collider::circle(STONE_COLLIDER_RADIUS * world_scale);
@@ -394,7 +403,12 @@ pub fn update_stone_behavior(
                             gizmos.line_2d(origin, end, color);
                         }
 
-                        hit.is_some_and(|h| tiles.get(h.entity).is_ok())
+                        hit.is_some_and(|h| {
+                            is_blocking_hit(
+                                tiles.get(h.entity).is_ok(),
+                                stones.get(h.entity).is_ok(),
+                            )
+                        })
                     } else {
                         false
                     };
@@ -485,6 +499,23 @@ fn direction_to_vec(direction: MoveDirection) -> Vec2 {
         MoveDirection::Right => Vec2::X,
         MoveDirection::Top => Vec2::Y,
         MoveDirection::Down => Vec2::NEG_Y,
+    }
+}
+
+fn is_blocking_hit(is_tile: bool, is_stone: bool) -> bool {
+    is_tile || is_stone
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_blocking_hit;
+
+    #[test]
+    fn tiles_and_other_stones_block_movement() {
+        assert!(is_blocking_hit(true, false));
+        assert!(is_blocking_hit(false, true));
+        assert!(is_blocking_hit(true, true));
+        assert!(!is_blocking_hit(false, false));
     }
 }
 

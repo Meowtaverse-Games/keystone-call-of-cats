@@ -152,6 +152,28 @@ impl Default for ScriptEditorState {
 }
 
 impl ScriptEditorState {
+    /// Replaces buffers for the spawned stones and keeps the selected stone valid.
+    pub(crate) fn resize_buffers(&mut self, stone_count: usize, saved_codes: Option<&[String]>) {
+        self.buffers = (0..stone_count)
+            .map(|index| {
+                saved_codes
+                    .and_then(|codes| codes.get(index))
+                    .cloned()
+                    .unwrap_or_default()
+            })
+            .collect();
+        self.active_programs.clear();
+        self.normalize_selected_idx();
+    }
+
+    pub(crate) fn normalize_selected_idx(&mut self) {
+        if self.buffers.is_empty() {
+            self.selected_idx = 0;
+        } else {
+            self.selected_idx = self.selected_idx.min(self.buffers.len() - 1);
+        }
+    }
+
     fn apply_action(&mut self, action: EditorMenuAction, context: bool) {
         self.last_action = Some(action);
         self.last_action_context = context;
@@ -339,7 +361,7 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
         .frame(egui::Frame {
             fill: egui::Color32::from_rgb(0xe0, 0xe1, 0xe4),
             inner_margin: egui::Margin::same(5),
-            stroke: egui::Stroke::new(1.0, egui::Color32::from_rgb(100, 100, 150)),
+            stroke: egui::Stroke::new(1.0_f32, egui::Color32::from_rgb(100, 100, 150)),
             ..Default::default()
         })
         .show(ctx, |ui| {
@@ -530,13 +552,9 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                 let editing_locked = editor.controls_enabled;
 
                 let mut text_edit_response = None;
-                let idx = editor.selected_idx;
-
                 let stone_count = editor.buffers.len();
-
-                if editor.selected_idx >= editor.buffers.len() {
-                    editor.selected_idx = 0;
-                }
+                editor.normalize_selected_idx();
+                let idx = editor.selected_idx;
 
                 if stone_count != 1 {
                     ui.horizontal(|ui| {
@@ -554,20 +572,24 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                     });
                 }
 
-                egui::ScrollArea::vertical()
-                    .max_height(text_height)
-                    .show(ui, |ui| {
-                        text_edit_response = Some(
-                            ui.add_sized(
-                                egui::Vec2::new(available_size.x, text_height),
-                                egui::TextEdit::multiline(&mut editor.buffers[idx])
-                                    .code_editor()
-                                    .font(FontSelection::FontId(FontId::new(font_size, Monospace)))
-                                    .interactive(!editing_locked)
-                                    .desired_width(f32::INFINITY),
-                            ),
-                        );
-                    });
+                if let Some(buffer) = editor.buffers.get_mut(idx) {
+                    egui::ScrollArea::vertical()
+                        .max_height(text_height)
+                        .show(ui, |ui| {
+                            text_edit_response = Some(
+                                ui.add_sized(
+                                    egui::Vec2::new(available_size.x, text_height),
+                                    egui::TextEdit::multiline(buffer)
+                                        .code_editor()
+                                        .font(FontSelection::FontId(FontId::new(
+                                            font_size, Monospace,
+                                        )))
+                                        .interactive(!editing_locked)
+                                        .desired_width(f32::INFINITY),
+                                ),
+                            );
+                        });
+                }
 
                 if text_edit_response.is_some_and(|r| r.changed()) {
                     editor.buffers[idx].retain(|c| c.is_ascii());
@@ -617,7 +639,10 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
 
                                 egui::Frame::group(ui.style())
                                     .fill(egui::Color32::from_black_alpha(200))
-                                    .stroke(egui::Stroke::new(1.0, egui::Color32::from_gray(80)))
+                                    .stroke(egui::Stroke::new(
+                                        1.0_f32,
+                                        egui::Color32::from_gray(80),
+                                    ))
                                     .inner_margin(egui::Margin::symmetric(12, 10))
                                     .show(ui, |ui| {
                                         ui.set_min_height(content_height);
@@ -753,6 +778,7 @@ pub fn tick_script_program(
     stone_query: Query<(Entity, &GlobalTransform, &StoneIndex, &StoneType), With<StoneRune>>,
     stone_states: Query<&StoneCommandState, With<StoneRune>>,
     tiles: Query<(), With<StageTile>>,
+    stones: Query<(), With<StoneRune>>,
     spatial: SpatialQuery,
 ) {
     if !editor.controls_enabled {
@@ -814,7 +840,8 @@ pub fn tick_script_program(
         for (name, dir) in directions {
             let ray_dir = Dir2::new(dir).expect("Invalid direction");
             let hit = spatial.cast_shape(&cast_shape, origin, 0.0, ray_dir, &cast_config, &filter);
-            let is_blocked = hit.is_some_and(|h| tiles.get(h.entity).is_ok());
+            let is_blocked =
+                hit.is_some_and(|h| tiles.get(h.entity).is_ok() || stones.get(h.entity).is_ok());
             state.insert(
                 format!("is-empty-{}", name),
                 ScriptStateValue::Bool(!is_blocked),
@@ -1171,5 +1198,41 @@ pub fn handle_tutorial_overlay_input(
         } else {
             commands.entity(entity).try_despawn();
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ScriptEditorState;
+
+    #[test]
+    fn resize_buffers_preserves_saved_codes_and_normalizes_selection() {
+        let mut editor = ScriptEditorState {
+            selected_idx: 2,
+            ..Default::default()
+        };
+        let saved = ["first".to_string()];
+
+        editor.resize_buffers(3, Some(&saved));
+
+        assert_eq!(editor.buffers, ["first", "", ""]);
+        assert_eq!(editor.selected_idx, 2);
+
+        editor.resize_buffers(1, Some(&saved));
+
+        assert_eq!(editor.buffers, ["first"]);
+        assert_eq!(editor.selected_idx, 0);
+    }
+
+    #[test]
+    fn normalize_selected_idx_handles_empty_buffers() {
+        let mut editor = ScriptEditorState {
+            selected_idx: 4,
+            ..Default::default()
+        };
+
+        editor.normalize_selected_idx();
+
+        assert_eq!(editor.selected_idx, 0);
     }
 }

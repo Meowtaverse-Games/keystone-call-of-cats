@@ -8,12 +8,13 @@ use serde::{Deserialize, Deserializer, Serialize};
 use std::collections::HashMap;
 
 pub const STAGE_SCRIPTS_FILE: &str = "stage_scripts.ron";
+type StageCodeMap = HashMap<Language, HashMap<StageId, Vec<String>>>;
 
 /// Stores the latest editor script per stage.
 #[derive(Resource, Debug, Clone, Serialize, Deserialize, Default)]
 pub struct StageScripts {
     #[serde(deserialize_with = "deserialize_scripts_compat")]
-    scripts: HashMap<Language, HashMap<StageId, Vec<String>>>,
+    scripts: StageCodeMap,
 }
 
 impl StageScripts {
@@ -58,9 +59,7 @@ impl StageScripts {
     }
 }
 
-fn deserialize_scripts_compat<'de, D>(
-    deserializer: D,
-) -> Result<HashMap<Language, HashMap<StageId, Vec<String>>>, D::Error>
+fn deserialize_scripts_compat<'de, D>(deserializer: D) -> Result<StageCodeMap, D::Error>
 where
     D: Deserializer<'de>,
 {
