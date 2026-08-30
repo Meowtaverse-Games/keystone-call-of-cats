@@ -205,6 +205,7 @@ pub fn setup(
         spawn_stage_cards(parent, &entries, &font, &localization);
         spawn_bottom_bar(parent, &font, &page_text);
     });
+    info!("Stage selection UI spawned: {} entries", entries.len());
 }
 
 pub fn cleanup(

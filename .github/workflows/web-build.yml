@@ -100,6 +100,9 @@ jobs:
             --headless=new \
             --no-sandbox \
             --disable-dev-shm-usage \
+            --disable-background-timer-throttling \
+            --disable-renderer-backgrounding \
+            --disable-backgrounding-occluded-windows \
             --use-gl=angle \
             --use-angle=swiftshader \
             --enable-unsafe-swiftshader \
@@ -108,7 +111,7 @@ jobs:
             --log-level=0 \
             --window-size=1280,720 \
             --run-all-compositor-stages-before-draw \
-            --virtual-time-budget=14000 \
+            --virtual-time-budget=16000 \
             --screenshot=/tmp/keystone-web-browser.png \
             --dump-dom \
             http://127.0.0.1:8080/ \
@@ -159,7 +162,7 @@ jobs:
           retention-days: 3
 
       - name: Upload web bundle
-        if: success()
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: keystone-cc-web
