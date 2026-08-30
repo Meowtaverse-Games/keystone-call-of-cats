@@ -51,8 +51,9 @@ Known web limitations:
 - Steam integration is not supported by the web build.
 - Script execution currently uses native worker threads, so running user
   scripts in the browser is not supported yet.
-- The WebAssembly build intentionally includes Bevy's 2D feature set only;
-  desktop builds retain their existing full Bevy feature set.
+- The WebAssembly build intentionally includes only the Bevy renderer, window,
+  and audio features used by this 2D game; desktop builds retain their existing
+  full Bevy feature set.
 
 Notes:
 - Transparent window behavior is primarily tuned for macOS/Linux. On Windows, transparency or reveal effects may differ.
