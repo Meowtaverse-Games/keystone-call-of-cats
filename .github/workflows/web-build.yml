@@ -93,6 +93,8 @@ jobs:
           trap 'kill "$server_pid"' EXIT
           sleep 1
 
+          # Asset completion can occur near the 10-second mark; retain two
+          # seconds for the boot timer without a long redraw loop.
           set +e
           timeout 180s google-chrome \
             --headless=new \
@@ -105,8 +107,6 @@ jobs:
             --enable-logging=stderr \
             --log-level=0 \
             --window-size=1280,720 \
-            # Asset completion can occur near the 10-second mark; retain two
-            # seconds for the boot timer without a long redraw loop.
             --virtual-time-budget=12000 \
             --screenshot=/tmp/keystone-web-browser.png \
             --dump-dom \
