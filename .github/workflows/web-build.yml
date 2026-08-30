@@ -104,23 +104,37 @@ jobs:
             --enable-logging=stderr \
             --log-level=0 \
             --window-size=1280,720 \
-            --virtual-time-budget=10000 \
+            # Bevy initializes assets after the browser starts; 10 seconds can
+            # elapse before its 2.4-second boot timer begins.
+            --virtual-time-budget=20000 \
             --screenshot=/tmp/keystone-web-browser.png \
             --dump-dom \
             http://127.0.0.1:8080/ \
             >/tmp/keystone-web-browser-dom.html 2>/tmp/keystone-web-browser-stderr.log
 
-          grep -q '<canvas' /tmp/keystone-web-browser-dom.html
-          grep -q 'Boot timer finished' /tmp/keystone-web-browser-stderr.log
           if grep -Eq 'panicked at|Uncaught RuntimeError|RuntimeError: unreachable' /tmp/keystone-web-browser-stderr.log; then
             echo 'Browser runtime panic detected:' >&2
             grep -E 'panicked at|Uncaught RuntimeError|RuntimeError: unreachable' /tmp/keystone-web-browser-stderr.log >&2
             exit 1
           fi
+          if ! grep -q '<canvas' /tmp/keystone-web-browser-dom.html; then
+            echo 'Browser smoke did not create a canvas:' >&2
+            tail -80 /tmp/keystone-web-browser-dom.html >&2
+            exit 1
+          fi
+          if ! grep -q 'Boot timer finished' /tmp/keystone-web-browser-stderr.log; then
+            echo 'Browser smoke did not finish the boot timer:' >&2
+            tail -120 /tmp/keystone-web-browser-stderr.log >&2
+            exit 1
+          fi
 
           test -s /tmp/keystone-web-browser.png
           mean="$(identify -format '%[fx:mean]' /tmp/keystone-web-browser.png)"
-          awk -v mean="$mean" 'BEGIN { exit !(mean > 0.001) }'
+          if ! awk -v mean="$mean" 'BEGIN { exit !(mean > 0.001) }'; then
+            echo "Browser screenshot is effectively black (mean: $mean)" >&2
+            exit 1
+          fi
+          echo "Browser screenshot mean: $mean"
 
       - name: Upload browser smoke evidence
         if: failure()
