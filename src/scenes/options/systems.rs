@@ -432,7 +432,7 @@ pub fn update_localization(
 fn rebuild_localization(
     locale_assets: &LocaleAssets,
     localization_builder: &LocalizationBuilder,
-    locale: &Locale,
+    #[cfg(target_arch = "wasm32")] locale: &Locale,
     #[cfg(target_arch = "wasm32")] bundle_assets: &Assets<BundleAsset>,
 ) -> Option<Localization> {
     #[cfg(not(target_arch = "wasm32"))]

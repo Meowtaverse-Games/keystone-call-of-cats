@@ -149,7 +149,7 @@ pub fn update(
 
     let mut localization_ready = localization.is_some();
     if !localization_ready
-        && let Some(locale_assets) = locale_assets
+        && let Some(locale_assets) = locale_assets.as_ref()
         && locale_assets.is_loaded(&asset_server)
     {
         if let Some(localization_resource) = build_localization(
@@ -166,7 +166,7 @@ pub fn update(
             error!("Loaded locale bundles are unavailable; waiting for localization assets");
         }
     } else if !localization_ready
-        && let Some(locale_assets) = locale_assets
+        && let Some(locale_assets) = locale_assets.as_ref()
         && locale_assets.has_failed(&asset_server)
         && !*localization_failure_reported
     {
