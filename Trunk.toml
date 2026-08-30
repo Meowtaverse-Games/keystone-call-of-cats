@@ -1,6 +1,2 @@
 [build]
 dist = "dist"
-
-[[copy]]
-source = "assets"
-target = "assets"
