@@ -93,7 +93,8 @@ jobs:
           trap 'kill "$server_pid"' EXIT
           sleep 1
 
-          google-chrome \
+          set +e
+          timeout 180s google-chrome \
             --headless=new \
             --no-sandbox \
             --disable-dev-shm-usage \
@@ -104,13 +105,25 @@ jobs:
             --enable-logging=stderr \
             --log-level=0 \
             --window-size=1280,720 \
-            # Bevy initializes assets after the browser starts; 10 seconds can
-            # elapse before its 2.4-second boot timer begins.
-            --virtual-time-budget=20000 \
+            # Asset completion can occur near the 10-second mark; retain two
+            # seconds for the boot timer without a long redraw loop.
+            --virtual-time-budget=12000 \
             --screenshot=/tmp/keystone-web-browser.png \
             --dump-dom \
             http://127.0.0.1:8080/ \
             >/tmp/keystone-web-browser-dom.html 2>/tmp/keystone-web-browser-stderr.log
+          chrome_status=$?
+          set -e
+          if [ "$chrome_status" -eq 124 ]; then
+            echo 'Browser smoke exceeded the 180-second real-time limit.' >&2
+            tail -120 /tmp/keystone-web-browser-stderr.log >&2 || true
+            exit 1
+          fi
+          if [ "$chrome_status" -ne 0 ]; then
+            echo "Browser smoke exited with status $chrome_status." >&2
+            tail -120 /tmp/keystone-web-browser-stderr.log >&2 || true
+            exit "$chrome_status"
+          fi
 
           if grep -Eq 'panicked at|Uncaught RuntimeError|RuntimeError: unreachable' /tmp/keystone-web-browser-stderr.log; then
             echo 'Browser runtime panic detected:' >&2
