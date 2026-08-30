@@ -74,7 +74,10 @@ pub fn setup(
         asset_server.load("locales/zh-Hans/main.ftl.ron"),
     ]));
 
-    let mills = if !launch_profile.skip_boot && launch_profile.stage_id.is_none() {
+    let mills = if !launch_profile.skip_boot
+        && launch_profile.stage_id.is_none()
+        && !cfg!(target_arch = "wasm32")
+    {
         2400
     } else {
         0
