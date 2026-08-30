@@ -57,17 +57,28 @@ jobs:
           test -f dist/index.html
           js_file="$(find dist -maxdepth 1 -type f -name '*.js' -print -quit)"
           wasm_file="$(find dist -maxdepth 1 -type f -name '*.wasm' -print -quit)"
-          asset_file="$(find dist/assets -type f -print -quit)"
           test -n "$js_file"
           test -n "$wasm_file"
-          test -n "$asset_file"
+          test -f dist/assets/audio/bgm.wav
+          test -f dist/assets/images/logo_with_black.png
+          test -f dist/assets/fonts/PixelMplus12-Regular.ttf
+          test -f dist/assets/locales/en-US/main.ftl
+          test -f dist/assets/stages/stage-1.ron
 
           python3 -m http.server 8080 --directory dist >/tmp/keystone-web-http.log 2>&1 &
           server_pid=$!
           trap 'kill "$server_pid"' EXIT
           sleep 1
 
-          for file in "index.html" "${js_file#dist/}" "${wasm_file#dist/}" "${asset_file#dist/}"; do
+          for file in \
+            "index.html" \
+            "${js_file#dist/}" \
+            "${wasm_file#dist/}" \
+            "assets/audio/bgm.wav" \
+            "assets/images/logo_with_black.png" \
+            "assets/fonts/PixelMplus12-Regular.ttf" \
+            "assets/locales/en-US/main.ftl" \
+            "assets/stages/stage-1.ron"; do
             python3 -c 'import sys, urllib.request; urllib.request.urlopen("http://127.0.0.1:8080/" + sys.argv[1]).read(1)' "$file"
           done
 
