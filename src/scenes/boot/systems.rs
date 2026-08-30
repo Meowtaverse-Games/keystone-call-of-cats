@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 use bevy_egui::EguiContexts;
 #[cfg(target_arch = "wasm32")]
@@ -29,6 +30,17 @@ pub struct BootTimer {
 }
 
 use crate::resources::locale_resources::LocaleAssets;
+
+#[derive(SystemParam)]
+pub(crate) struct LocaleLoading<'w> {
+    assets: Option<Res<'w, LocaleAssets>>,
+    #[cfg(not(target_arch = "wasm32"))]
+    builder: LocalizationBuilder<'w>,
+    #[cfg(target_arch = "wasm32")]
+    locale: Res<'w, Locale>,
+    #[cfg(target_arch = "wasm32")]
+    bundles: Res<'w, Assets<BundleAsset>>,
+}
 
 pub fn setup(
     asset_server: Res<AssetServer>,
@@ -129,10 +141,7 @@ pub fn update(
     mut next_state: ResMut<NextState<GameState>>,
     mut boot_ui: Query<(&BootRoot, &mut Transform)>,
     asset_server: Res<AssetServer>,
-    localization_builder: LocalizationBuilder,
-    locale_assets: Option<Res<LocaleAssets>>,
-    #[cfg(target_arch = "wasm32")] locale: Res<Locale>,
-    #[cfg(target_arch = "wasm32")] bundle_assets: Res<Assets<BundleAsset>>,
+    locale_loading: LocaleLoading,
     localization: Option<Res<Localization>>,
     launch_profile: Res<LaunchProfile>,
     stage_catalog: Res<StageCatalog>,
@@ -149,16 +158,17 @@ pub fn update(
 
     let mut localization_ready = localization.is_some();
     if !localization_ready
-        && let Some(locale_assets) = locale_assets.as_ref()
+        && let Some(locale_assets) = locale_loading.assets.as_ref()
         && locale_assets.is_loaded(&asset_server)
     {
         if let Some(localization_resource) = build_localization(
             locale_assets,
-            &localization_builder,
+            #[cfg(not(target_arch = "wasm32"))]
+            &locale_loading.builder,
             #[cfg(target_arch = "wasm32")]
-            &locale,
+            &locale_loading.locale,
             #[cfg(target_arch = "wasm32")]
-            &bundle_assets,
+            &locale_loading.bundles,
         ) {
             commands.insert_resource(localization_resource);
             localization_ready = true;
@@ -166,7 +176,7 @@ pub fn update(
             error!("Loaded locale bundles are unavailable; waiting for localization assets");
         }
     } else if !localization_ready
-        && let Some(locale_assets) = locale_assets.as_ref()
+        && let Some(locale_assets) = locale_loading.assets.as_ref()
         && locale_assets.has_failed(&asset_server)
         && !*localization_failure_reported
     {
@@ -199,7 +209,7 @@ pub fn update(
 
 fn build_localization(
     locale_assets: &LocaleAssets,
-    localization_builder: &LocalizationBuilder,
+    #[cfg(not(target_arch = "wasm32"))] localization_builder: &LocalizationBuilder,
     #[cfg(target_arch = "wasm32")] locale: &Locale,
     #[cfg(target_arch = "wasm32")] bundle_assets: &Assets<BundleAsset>,
 ) -> Option<Localization> {

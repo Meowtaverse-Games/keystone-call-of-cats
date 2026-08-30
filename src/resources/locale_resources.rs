@@ -1,4 +1,6 @@
-use bevy::{asset::LoadedFolder, prelude::*};
+#[cfg(not(target_arch = "wasm32"))]
+use bevy::asset::LoadedFolder;
+use bevy::prelude::*;
 #[cfg(any(target_arch = "wasm32", test))]
 use bevy_fluent::Locale;
 #[cfg(any(target_arch = "wasm32", test))]
@@ -9,6 +11,7 @@ use bevy_fluent::BundleAsset;
 
 #[derive(Resource)]
 pub enum LocaleAssets {
+    #[cfg(not(target_arch = "wasm32"))]
     Native(Handle<LoadedFolder>),
     #[cfg(target_arch = "wasm32")]
     Web([Handle<BundleAsset>; 3]),
@@ -17,6 +20,7 @@ pub enum LocaleAssets {
 impl LocaleAssets {
     pub fn is_loaded(&self, asset_server: &AssetServer) -> bool {
         match self {
+            #[cfg(not(target_arch = "wasm32"))]
             Self::Native(folder) => matches!(
                 asset_server.get_load_state(folder),
                 Some(bevy::asset::LoadState::Loaded)
@@ -33,6 +37,7 @@ impl LocaleAssets {
 
     pub fn has_failed(&self, asset_server: &AssetServer) -> bool {
         match self {
+            #[cfg(not(target_arch = "wasm32"))]
             Self::Native(folder) => matches!(
                 asset_server.get_load_state(folder),
                 Some(bevy::asset::LoadState::Failed(_))
@@ -47,18 +52,16 @@ impl LocaleAssets {
         }
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn native_folder(&self) -> Option<&Handle<LoadedFolder>> {
         match self {
             Self::Native(folder) => Some(folder),
-            #[cfg(target_arch = "wasm32")]
-            Self::Web(_) => None,
         }
     }
 
     #[cfg(target_arch = "wasm32")]
     pub fn web_bundles(&self) -> Option<&[Handle<BundleAsset>; 3]> {
         match self {
-            Self::Native(_) => None,
             Self::Web(bundles) => Some(bundles),
         }
     }

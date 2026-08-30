@@ -6,7 +6,9 @@ use bevy_egui::{
 };
 #[cfg(target_arch = "wasm32")]
 use bevy_fluent::BundleAsset;
-use bevy_fluent::prelude::{Locale, Localization, LocalizationBuilder};
+#[cfg(not(target_arch = "wasm32"))]
+use bevy_fluent::prelude::LocalizationBuilder;
+use bevy_fluent::prelude::{Locale, Localization};
 
 use crate::{
     resources::asset_store::AssetStore,
@@ -394,7 +396,7 @@ fn locale_selector(
 
 pub fn update_localization(
     mut commands: Commands,
-    localization_builder: LocalizationBuilder,
+    #[cfg(not(target_arch = "wasm32"))] localization_builder: LocalizationBuilder,
     locale_assets: Res<LocaleAssets>,
     locale: Res<Locale>,
     #[cfg(target_arch = "wasm32")] bundle_assets: Res<Assets<BundleAsset>>,
@@ -407,6 +409,7 @@ pub fn update_localization(
     if locale.is_changed() {
         let localization = rebuild_localization(
             &locale_assets,
+            #[cfg(not(target_arch = "wasm32"))]
             &localization_builder,
             #[cfg(target_arch = "wasm32")]
             &locale,
@@ -432,7 +435,7 @@ pub fn update_localization(
 
 fn rebuild_localization(
     locale_assets: &LocaleAssets,
-    localization_builder: &LocalizationBuilder,
+    #[cfg(not(target_arch = "wasm32"))] localization_builder: &LocalizationBuilder,
     #[cfg(target_arch = "wasm32")] locale: &Locale,
     #[cfg(target_arch = "wasm32")] bundle_assets: &Assets<BundleAsset>,
 ) -> Option<Localization> {
