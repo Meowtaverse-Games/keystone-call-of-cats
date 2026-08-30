@@ -18,20 +18,13 @@ pub enum LocaleAssets {
 }
 
 impl LocaleAssets {
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn is_loaded(&self, asset_server: &AssetServer) -> bool {
         match self {
-            #[cfg(not(target_arch = "wasm32"))]
             Self::Native(folder) => matches!(
                 asset_server.get_load_state(folder),
                 Some(bevy::asset::LoadState::Loaded)
             ),
-            #[cfg(target_arch = "wasm32")]
-            Self::Web(bundles) => bundles.iter().all(|bundle| {
-                matches!(
-                    asset_server.get_load_state(bundle),
-                    Some(bevy::asset::LoadState::Loaded)
-                )
-            }),
         }
     }
 

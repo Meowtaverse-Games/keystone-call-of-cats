@@ -159,22 +159,20 @@ pub fn update(
     let mut localization_ready = localization.is_some();
     if !localization_ready
         && let Some(locale_assets) = locale_loading.assets.as_ref()
-        && locale_assets.is_loaded(&asset_server)
-    {
-        if let Some(localization_resource) = build_localization(
+        && let Some(localization_resource) = try_build_localization(
             locale_assets,
+            #[cfg(not(target_arch = "wasm32"))]
+            &asset_server,
             #[cfg(not(target_arch = "wasm32"))]
             &locale_loading.builder,
             #[cfg(target_arch = "wasm32")]
             &locale_loading.locale,
             #[cfg(target_arch = "wasm32")]
             &locale_loading.bundles,
-        ) {
-            commands.insert_resource(localization_resource);
-            localization_ready = true;
-        } else {
-            error!("Loaded locale bundles are unavailable; waiting for localization assets");
-        }
+        )
+    {
+        commands.insert_resource(localization_resource);
+        localization_ready = true;
     } else if !localization_ready
         && let Some(locale_assets) = locale_loading.assets.as_ref()
         && locale_assets.has_failed(&asset_server)
@@ -207,20 +205,21 @@ pub fn update(
     }
 }
 
-fn build_localization(
+fn try_build_localization(
     locale_assets: &LocaleAssets,
+    #[cfg(not(target_arch = "wasm32"))] asset_server: &AssetServer,
     #[cfg(not(target_arch = "wasm32"))] localization_builder: &LocalizationBuilder,
     #[cfg(target_arch = "wasm32")] locale: &Locale,
     #[cfg(target_arch = "wasm32")] bundle_assets: &Assets<BundleAsset>,
 ) -> Option<Localization> {
     #[cfg(not(target_arch = "wasm32"))]
-    return Some(
+    return locale_assets.is_loaded(asset_server).then(|| {
         localization_builder.build(
             locale_assets
                 .native_folder()
                 .expect("native localization assets must be a folder"),
-        ),
-    );
+        )
+    });
 
     #[cfg(target_arch = "wasm32")]
     return crate::resources::locale_resources::build_web_localization(
