@@ -60,10 +60,17 @@ jobs:
           free -h
 
       - name: Build WebAssembly bundle
+        shell: bash
         env:
           # wasm-ld's documented --threads=1 avoids concurrent linker memory spikes.
           RUSTFLAGS: -C link-arg=--threads=1
-        run: ./scripts/build_web.sh
+        run: |
+          set +e
+          ./scripts/build_web.sh
+          build_status=$?
+          free -h
+          test -r /sys/fs/cgroup/memory.events && cat /sys/fs/cgroup/memory.events
+          exit "$build_status"
 
       - name: Verify bundle files and HTTP delivery
         shell: bash
