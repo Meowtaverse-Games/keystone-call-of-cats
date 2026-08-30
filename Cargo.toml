@@ -53,3 +53,11 @@ codegen-units = 1
 strip = true
 # strip = false
 # debug = true
+
+# WebAssembly linking is substantially more memory-intensive with the native
+# release profile's whole-program LTO. Keep that profile untouched for desktop
+# releases, while making the browser bundle reproducible on standard runners.
+[profile.web-release]
+inherits = "release"
+lto = false
+codegen-units = 16

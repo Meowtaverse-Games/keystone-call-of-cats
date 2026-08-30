@@ -1,0 +1,78 @@
+name: Web Build
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: web-build-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-web:
+    name: Build WebAssembly bundle
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          token: ${{ secrets.GH_PAT }}
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache Cargo downloads
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: web-cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            web-cargo-${{ runner.os }}-
+
+      - name: Install Trunk
+        run: cargo install trunk --version 0.21.14 --locked
+
+      - name: Build WebAssembly bundle
+        run: ./scripts/build_web.sh
+
+      - name: Verify bundle files and HTTP delivery
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f dist/index.html
+          js_file="$(find dist -maxdepth 1 -type f -name '*.js' -print -quit)"
+          wasm_file="$(find dist -maxdepth 1 -type f -name '*.wasm' -print -quit)"
+          asset_file="$(find dist/assets -type f -print -quit)"
+          test -n "$js_file"
+          test -n "$wasm_file"
+          test -n "$asset_file"
+
+          python3 -m http.server 8080 --directory dist >/tmp/keystone-web-http.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid"' EXIT
+          sleep 1
+
+          for file in "index.html" "${js_file#dist/}" "${wasm_file#dist/}" "${asset_file#dist/}"; do
+            python3 -c 'import sys, urllib.request; urllib.request.urlopen("http://127.0.0.1:8080/" + sys.argv[1]).read(1)' "$file"
+          done
+
+      - name: Upload web bundle
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: keystone-cc-web
+          path: dist/
+          if-no-files-found: error
+          retention-days: 3

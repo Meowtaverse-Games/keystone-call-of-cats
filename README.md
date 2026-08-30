@@ -27,7 +27,7 @@ The game can be bundled for browsers as a WebAssembly build. Install the
 
 ```sh
 rustup target add wasm32-unknown-unknown
-cargo install trunk --locked
+cargo install trunk --version 0.21.14 --locked
 ```
 
 Build the distributable files (HTML, JavaScript glue, WebAssembly, and runtime
@@ -41,7 +41,7 @@ The resulting `dist/` directory is intentionally ignored by Git. Serve it over
 HTTP rather than opening `index.html` directly, for example:
 
 ```sh
-trunk serve --release
+trunk serve --cargo-profile web-release
 ```
 
 Known web limitations:
