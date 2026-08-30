@@ -47,6 +47,18 @@ jobs:
       - name: Install Trunk
         run: cargo install trunk --version 0.21.14 --locked
 
+      - name: Add temporary link swap
+        shell: bash
+        run: |
+          set -euo pipefail
+          available_mb="$(df --output=avail -m / | tail -n 1 | tr -d ' ')"
+          test "$available_mb" -ge 10240
+          sudo fallocate -l 8G /swapfile
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
+          free -h
+
       - name: Build WebAssembly bundle
         run: ./scripts/build_web.sh
 
@@ -79,3 +91,10 @@ jobs:
           path: dist/
           if-no-files-found: error
           retention-days: 3
+
+      - name: Remove temporary link swap
+        if: always()
+        shell: bash
+        run: |
+          sudo swapoff /swapfile || true
+          sudo rm -f /swapfile
