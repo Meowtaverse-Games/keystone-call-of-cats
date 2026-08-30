@@ -93,8 +93,8 @@ jobs:
           trap 'kill "$server_pid"' EXIT
           sleep 1
 
-          # Asset completion can occur near the 10-second mark; retain two
-          # seconds for the boot timer without a long redraw loop.
+          # Leave a post-transition render frame after assets load and the
+          # Web boot state advances to stage selection.
           set +e
           timeout 180s google-chrome \
             --headless=new \
@@ -107,7 +107,8 @@ jobs:
             --enable-logging=stderr \
             --log-level=0 \
             --window-size=1280,720 \
-            --virtual-time-budget=12000 \
+            --run-all-compositor-stages-before-draw \
+            --virtual-time-budget=14000 \
             --screenshot=/tmp/keystone-web-browser.png \
             --dump-dom \
             http://127.0.0.1:8080/ \
@@ -142,12 +143,7 @@ jobs:
           fi
 
           test -s /tmp/keystone-web-browser.png
-          mean="$(identify -format '%[fx:mean]' /tmp/keystone-web-browser.png)"
-          if ! awk -v mean="$mean" 'BEGIN { exit !(mean > 0.001) }'; then
-            echo "Browser screenshot is effectively black (mean: $mean)" >&2
-            exit 1
-          fi
-          echo "Browser screenshot mean: $mean"
+          python3 scripts/check_png_not_black.py /tmp/keystone-web-browser.png
 
       - name: Upload browser smoke evidence
         if: always()
