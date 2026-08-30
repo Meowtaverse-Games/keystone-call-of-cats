@@ -47,36 +47,8 @@ jobs:
       - name: Install Trunk
         run: cargo install trunk --version 0.21.14 --locked
 
-      - name: Add temporary link swap
-        shell: bash
-        run: |
-          set -euo pipefail
-          available_mb="$(df --output=avail -m / | tail -n 1 | tr -d ' ')"
-          test "$available_mb" -ge 10240
-          sudo fallocate -l 8G /mnt/keystone-cc-link.swap
-          sudo chmod 600 /mnt/keystone-cc-link.swap
-          sudo mkswap /mnt/keystone-cc-link.swap
-          sudo swapon /mnt/keystone-cc-link.swap
-          free -h
-          for file in memory.events memory.current memory.peak memory.swap.current memory.swap.peak; do
-            if test -r "/sys/fs/cgroup/$file"; then
-              printf '%s: ' "$file"
-              cat "/sys/fs/cgroup/$file"
-            fi
-          done | tee /tmp/keystone-cgroup-before.log
-
       - name: Build WebAssembly bundle
-        shell: bash
-        env:
-          # wasm-ld's documented --threads=1 avoids concurrent linker memory spikes.
-          RUSTFLAGS: -C link-arg=--threads=1
-        run: |
-          set +e
-          ./scripts/build_web.sh
-          build_status=$?
-          free -h
-          test -r /sys/fs/cgroup/memory.events && cat /sys/fs/cgroup/memory.events
-          exit "$build_status"
+        run: ./scripts/build_web.sh
 
       - name: Verify bundle files and HTTP delivery
         shell: bash
@@ -107,26 +79,3 @@ jobs:
           path: dist/
           if-no-files-found: error
           retention-days: 3
-
-      - name: Report linker memory
-        if: always()
-        shell: bash
-        run: |
-          echo 'Cgroup baseline:'
-          cat /tmp/keystone-cgroup-before.log || true
-          echo 'Cgroup after build:'
-          for file in memory.events memory.current memory.peak memory.swap.current memory.swap.peak; do
-            if test -r "/sys/fs/cgroup/$file"; then
-              printf '%s: ' "$file"
-              cat "/sys/fs/cgroup/$file"
-            fi
-          done
-          free -h
-          df -h /
-
-      - name: Remove temporary link swap
-        if: always()
-        shell: bash
-        run: |
-          sudo swapoff /mnt/keystone-cc-link.swap || true
-          sudo rm -f /mnt/keystone-cc-link.swap
