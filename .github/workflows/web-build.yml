@@ -53,10 +53,10 @@ jobs:
           set -euo pipefail
           available_mb="$(df --output=avail -m / | tail -n 1 | tr -d ' ')"
           test "$available_mb" -ge 10240
-          sudo fallocate -l 8G /swapfile
-          sudo chmod 600 /swapfile
-          sudo mkswap /swapfile
-          sudo swapon /swapfile
+          sudo fallocate -l 8G /mnt/keystone-cc-link.swap
+          sudo chmod 600 /mnt/keystone-cc-link.swap
+          sudo mkswap /mnt/keystone-cc-link.swap
+          sudo swapon /mnt/keystone-cc-link.swap
           free -h
 
       - name: Build WebAssembly bundle
@@ -96,5 +96,5 @@ jobs:
         if: always()
         shell: bash
         run: |
-          sudo swapoff /swapfile || true
-          sudo rm -f /swapfile
+          sudo swapoff /mnt/keystone-cc-link.swap || true
+          sudo rm -f /mnt/keystone-cc-link.swap
