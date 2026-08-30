@@ -1,9 +1,11 @@
-use crate::resources::locale_resources::LocaleFolder;
+use crate::resources::locale_resources::LocaleAssets;
 use bevy::{input::ButtonInput, prelude::*};
 use bevy_egui::{
     EguiContexts,
     egui::{self, Color32, Frame, Id, LayerId, Margin, Order, RichText, Sense, Vec2},
 };
+#[cfg(target_arch = "wasm32")]
+use bevy_fluent::BundleAsset;
 use bevy_fluent::prelude::{Locale, Localization, LocalizationBuilder};
 
 use crate::{
@@ -393,8 +395,9 @@ fn locale_selector(
 pub fn update_localization(
     mut commands: Commands,
     localization_builder: LocalizationBuilder,
-    locale_folder: Res<LocaleFolder>,
+    locale_assets: Res<LocaleAssets>,
     locale: Res<Locale>,
+    #[cfg(target_arch = "wasm32")] bundle_assets: Res<Assets<BundleAsset>>,
     state: Res<State<crate::resources::game_state::GameState>>,
     mut next_state: ResMut<NextState<crate::resources::game_state::GameState>>,
     mut contexts: EguiContexts,
@@ -402,7 +405,17 @@ pub fn update_localization(
     fonts: Res<Assets<Font>>,
 ) {
     if locale.is_changed() {
-        let localization = localization_builder.build(&locale_folder.0);
+        let localization = rebuild_localization(
+            &locale_assets,
+            &localization_builder,
+            &locale,
+            #[cfg(target_arch = "wasm32")]
+            &bundle_assets,
+        );
+        let Some(localization) = localization else {
+            error!("Locale bundles are unavailable; keeping the current localization");
+            return;
+        };
         commands.insert_resource(localization);
 
         // Update font
@@ -414,4 +427,29 @@ pub fn update_localization(
             next_state.set(crate::resources::game_state::GameState::Reloading);
         }
     }
+}
+
+fn rebuild_localization(
+    locale_assets: &LocaleAssets,
+    localization_builder: &LocalizationBuilder,
+    locale: &Locale,
+    #[cfg(target_arch = "wasm32")] bundle_assets: &Assets<BundleAsset>,
+) -> Option<Localization> {
+    #[cfg(not(target_arch = "wasm32"))]
+    return Some(
+        localization_builder.build(
+            locale_assets
+                .native_folder()
+                .expect("native localization assets must be a folder"),
+        ),
+    );
+
+    #[cfg(target_arch = "wasm32")]
+    return crate::resources::locale_resources::build_web_localization(
+        locale,
+        locale_assets
+            .web_bundles()
+            .expect("web localization assets must be bundles"),
+        bundle_assets,
+    );
 }

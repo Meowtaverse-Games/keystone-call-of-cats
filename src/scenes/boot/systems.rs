@@ -1,7 +1,9 @@
 use std::time::Duration;
 
-use bevy::{asset::LoadState, prelude::*};
+use bevy::prelude::*;
 use bevy_egui::EguiContexts;
+#[cfg(target_arch = "wasm32")]
+use bevy_fluent::BundleAsset;
 use bevy_fluent::prelude::*;
 
 use crate::util::font::apply_font_for_locale;
@@ -26,7 +28,7 @@ pub struct BootTimer {
     timer: Timer,
 }
 
-use crate::resources::locale_resources::LocaleFolder;
+use crate::resources::locale_resources::LocaleAssets;
 
 pub fn setup(
     asset_server: Res<AssetServer>,
@@ -50,8 +52,15 @@ pub fn setup(
         Transform::default().with_scale(Vec3::splat(scaled_viewport.scale)),
     ));
 
-    let locale_folder = asset_server.load_folder("locales");
-    commands.insert_resource(LocaleFolder(locale_folder));
+    #[cfg(not(target_arch = "wasm32"))]
+    commands.insert_resource(LocaleAssets::Native(asset_server.load_folder("locales")));
+
+    #[cfg(target_arch = "wasm32")]
+    commands.insert_resource(LocaleAssets::Web([
+        asset_server.load("locales/en-US/main.ftl.ron"),
+        asset_server.load("locales/ja-JP/main.ftl.ron"),
+        asset_server.load("locales/zh-Hans/main.ftl.ron"),
+    ]));
 
     let mills = if !launch_profile.skip_boot && launch_profile.stage_id.is_none() {
         2400
@@ -113,6 +122,7 @@ pub fn update(
     mut commands: Commands,
     mut reader: MessageReader<AssetGroupLoaded>,
     mut loaded: Local<Loaded>,
+    mut localization_failure_reported: Local<bool>,
     mut boot_timer: ResMut<BootTimer>,
     time: Res<Time>,
     scaled_viewport: ResMut<ScaledViewport>,
@@ -120,7 +130,9 @@ pub fn update(
     mut boot_ui: Query<(&BootRoot, &mut Transform)>,
     asset_server: Res<AssetServer>,
     localization_builder: LocalizationBuilder,
-    localization_folder: Option<Res<LocaleFolder>>,
+    locale_assets: Option<Res<LocaleAssets>>,
+    #[cfg(target_arch = "wasm32")] locale: Res<Locale>,
+    #[cfg(target_arch = "wasm32")] bundle_assets: Res<Assets<BundleAsset>>,
     localization: Option<Res<Localization>>,
     launch_profile: Res<LaunchProfile>,
     stage_catalog: Res<StageCatalog>,
@@ -137,16 +149,29 @@ pub fn update(
 
     let mut localization_ready = localization.is_some();
     if !localization_ready
-        && let Some(folder) = localization_folder
-        && matches!(
-            asset_server.get_load_state(&folder.0),
-            Some(LoadState::Loaded)
-        )
+        && let Some(locale_assets) = locale_assets
+        && locale_assets.is_loaded(&asset_server)
     {
-        let localization_resource = localization_builder.build(&folder.0);
-        commands.insert_resource(localization_resource);
-        // commands.remove_resource::<LocaleFolder>();
-        localization_ready = true;
+        if let Some(localization_resource) = build_localization(
+            &locale_assets,
+            &localization_builder,
+            #[cfg(target_arch = "wasm32")]
+            &locale,
+            #[cfg(target_arch = "wasm32")]
+            &bundle_assets,
+        ) {
+            commands.insert_resource(localization_resource);
+            localization_ready = true;
+        } else {
+            error!("Loaded locale bundles are unavailable; waiting for localization assets");
+        }
+    } else if !localization_ready
+        && let Some(locale_assets) = locale_assets
+        && locale_assets.has_failed(&asset_server)
+        && !*localization_failure_reported
+    {
+        error!("Locale assets failed to load; startup will not continue without localization");
+        *localization_failure_reported = true;
     }
 
     boot_timer.timer.tick(time.delta());
@@ -170,6 +195,31 @@ pub fn update(
         }
         next_state.set(target_state);
     }
+}
+
+fn build_localization(
+    locale_assets: &LocaleAssets,
+    localization_builder: &LocalizationBuilder,
+    #[cfg(target_arch = "wasm32")] locale: &Locale,
+    #[cfg(target_arch = "wasm32")] bundle_assets: &Assets<BundleAsset>,
+) -> Option<Localization> {
+    #[cfg(not(target_arch = "wasm32"))]
+    return Some(
+        localization_builder.build(
+            locale_assets
+                .native_folder()
+                .expect("native localization assets must be a folder"),
+        ),
+    );
+
+    #[cfg(target_arch = "wasm32")]
+    return crate::resources::locale_resources::build_web_localization(
+        locale,
+        locale_assets
+            .web_bundles()
+            .expect("web localization assets must be bundles"),
+        bundle_assets,
+    );
 }
 
 pub fn cleanup(mut commands: Commands, query: Query<Entity, With<BootRoot>>) {

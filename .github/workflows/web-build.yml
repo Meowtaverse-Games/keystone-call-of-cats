@@ -63,6 +63,7 @@ jobs:
           test -f dist/assets/images/logo_with_black.png
           test -f dist/assets/fonts/PixelMplus12-Regular.ttf
           test -f dist/assets/locales/en-US/main.ftl
+          test -f dist/assets/locales/en-US/main.ftl.ron
           test -f dist/assets/stages/stage-1.ron
 
           python3 -m http.server 8080 --directory dist >/tmp/keystone-web-http.log 2>&1 &
@@ -78,9 +79,61 @@ jobs:
             "assets/images/logo_with_black.png" \
             "assets/fonts/PixelMplus12-Regular.ttf" \
             "assets/locales/en-US/main.ftl" \
+            "assets/locales/en-US/main.ftl.ron" \
             "assets/stages/stage-1.ron"; do
             python3 -c 'import sys, urllib.request; urllib.request.urlopen("http://127.0.0.1:8080/" + sys.argv[1]).read(1)' "$file"
           done
+
+      - name: Smoke test browser runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m http.server 8080 --directory dist >/tmp/keystone-web-http.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid"' EXIT
+          sleep 1
+
+          google-chrome \
+            --headless=new \
+            --no-sandbox \
+            --disable-dev-shm-usage \
+            --use-gl=angle \
+            --use-angle=swiftshader \
+            --enable-unsafe-swiftshader \
+            --ignore-gpu-blocklist \
+            --enable-logging=stderr \
+            --log-level=0 \
+            --window-size=1280,720 \
+            --virtual-time-budget=10000 \
+            --screenshot=/tmp/keystone-web-browser.png \
+            --dump-dom \
+            http://127.0.0.1:8080/ \
+            >/tmp/keystone-web-browser-dom.html 2>/tmp/keystone-web-browser-stderr.log
+
+          grep -q '<canvas' /tmp/keystone-web-browser-dom.html
+          grep -q 'Boot timer finished' /tmp/keystone-web-browser-stderr.log
+          if grep -Eq 'panicked at|Uncaught RuntimeError|RuntimeError: unreachable' /tmp/keystone-web-browser-stderr.log; then
+            echo 'Browser runtime panic detected:' >&2
+            grep -E 'panicked at|Uncaught RuntimeError|RuntimeError: unreachable' /tmp/keystone-web-browser-stderr.log >&2
+            exit 1
+          fi
+
+          test -s /tmp/keystone-web-browser.png
+          mean="$(identify -format '%[fx:mean]' /tmp/keystone-web-browser.png)"
+          awk -v mean="$mean" 'BEGIN { exit !(mean > 0.001) }'
+
+      - name: Upload browser smoke evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: keystone-cc-web-browser-smoke
+          path: |
+            /tmp/keystone-web-browser.png
+            /tmp/keystone-web-browser-dom.html
+            /tmp/keystone-web-browser-stderr.log
+            /tmp/keystone-web-http.log
+          if-no-files-found: warn
+          retention-days: 3
 
       - name: Upload web bundle
         if: success()
