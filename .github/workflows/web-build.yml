@@ -58,6 +58,12 @@ jobs:
           sudo mkswap /mnt/keystone-cc-link.swap
           sudo swapon /mnt/keystone-cc-link.swap
           free -h
+          for file in memory.events memory.current memory.peak memory.swap.current memory.swap.peak; do
+            if test -r "/sys/fs/cgroup/$file"; then
+              printf '%s: ' "$file"
+              cat "/sys/fs/cgroup/$file"
+            fi
+          done | tee /tmp/keystone-cgroup-before.log
 
       - name: Build WebAssembly bundle
         shell: bash
@@ -101,6 +107,22 @@ jobs:
           path: dist/
           if-no-files-found: error
           retention-days: 3
+
+      - name: Report linker memory
+        if: always()
+        shell: bash
+        run: |
+          echo 'Cgroup baseline:'
+          cat /tmp/keystone-cgroup-before.log || true
+          echo 'Cgroup after build:'
+          for file in memory.events memory.current memory.peak memory.swap.current memory.swap.peak; do
+            if test -r "/sys/fs/cgroup/$file"; then
+              printf '%s: ' "$file"
+              cat "/sys/fs/cgroup/$file"
+            fi
+          done
+          free -h
+          df -h /
 
       - name: Remove temporary link swap
         if: always()
