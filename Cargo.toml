@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 bevy_ecs = "0.18.1"
+bevy_state = "0.18.1"
 bevy_asset_loader = "0.25.0"
 bevy_render = "0.18.1"
 bevy_camera = "0.18.1"
@@ -27,7 +28,6 @@ bevy_embedded_assets = "0.15.0"
 # memory during Wasm linking. Keep the UI API and renderer used by the game.
 bevy = { version = "0.18.1", default-features = false, features = ["default_app", "bevy_state", "bevy_winit", "webgl2", "default_font", "2d_bevy_render", "ui_api", "ui_bevy_render", "audio", "wav"] }
 bevy_egui = { version = "0.39.0", default-features = false, features = ["default_fonts", "render"] }
-bevy_state = "0.18.1"
 # Required by keystone-lang's rand 0.10 dependency on wasm32-unknown-unknown.
 getrandom = { version = "0.4", features = ["wasm_js"] }
 # Required by rhai's wasm32 dependency to provide `Instant::now` through the browser.
