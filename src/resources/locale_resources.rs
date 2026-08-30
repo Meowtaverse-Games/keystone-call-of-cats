@@ -1,5 +1,7 @@
 use bevy::{asset::LoadedFolder, prelude::*};
+#[cfg(any(target_arch = "wasm32", test))]
 use bevy_fluent::Locale;
+#[cfg(any(target_arch = "wasm32", test))]
 use unic_langid::LanguageIdentifier;
 
 #[cfg(target_arch = "wasm32")]
@@ -62,6 +64,7 @@ impl LocaleAssets {
     }
 }
 
+#[cfg(any(target_arch = "wasm32", test))]
 pub fn locale_order(locale: &Locale, available: &[LanguageIdentifier]) -> Vec<usize> {
     locale
         .fallback_chain(available.iter())

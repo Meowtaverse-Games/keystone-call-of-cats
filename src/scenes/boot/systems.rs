@@ -153,7 +153,7 @@ pub fn update(
         && locale_assets.is_loaded(&asset_server)
     {
         if let Some(localization_resource) = build_localization(
-            &locale_assets,
+            locale_assets,
             &localization_builder,
             #[cfg(target_arch = "wasm32")]
             &locale,

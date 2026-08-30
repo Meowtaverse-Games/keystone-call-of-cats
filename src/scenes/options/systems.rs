@@ -408,6 +408,7 @@ pub fn update_localization(
         let localization = rebuild_localization(
             &locale_assets,
             &localization_builder,
+            #[cfg(target_arch = "wasm32")]
             &locale,
             #[cfg(target_arch = "wasm32")]
             &bundle_assets,
