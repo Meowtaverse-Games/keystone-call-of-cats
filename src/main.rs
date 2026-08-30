@@ -82,7 +82,6 @@ fn main() {
     };
 
     app.insert_resource(Locale::new(locale_id).with_default(langid!("en-US")))
-        .insert_resource(resources::file_storage::FileStorageResource::new(storage))
         .insert_resource(launch_profile.clone())
         .add_systems(
             OnEnter(GameState::Reloading),
@@ -90,6 +89,13 @@ fn main() {
                 next_state.set(GameState::SelectStage);
             },
         );
+
+    // The browser needs this same in-memory backend for the initial settings
+    // read and the later stage resources. Native builds deliberately leave
+    // storage selection to `setup_stage_resources`, so Steam Cloud can win
+    // when it is available.
+    #[cfg(target_arch = "wasm32")]
+    app.insert_resource(resources::file_storage::FileStorageResource::new(storage));
 
     #[cfg(target_os = "windows")]
     app.add_plugins(EmbeddedAssetPlugin {
