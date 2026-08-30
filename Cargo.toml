@@ -67,4 +67,5 @@ strip = true
 [profile.web-release]
 inherits = "release"
 lto = false
-codegen-units = 16
+opt-level = "z"
+codegen-units = 1

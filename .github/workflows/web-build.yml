@@ -19,6 +19,9 @@ jobs:
     name: Build WebAssembly bundle
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    env:
+      # Keep peak memory below the 16 GB available on standard hosted runners.
+      CARGO_BUILD_JOBS: 1
 
     steps:
       - uses: actions/checkout@v4
