@@ -353,20 +353,24 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
         ((min_width + max_width) * 0.5).clamp(min_width, max_width)
     };
 
-    let left =
-        egui::Area::new(Id::new("stage-left"))
-            .fixed_pos(ctx.content_rect().left_top())
-            .default_width(default_width)
-            .order(egui::Order::Foreground)
-            .show(ctx, |ui| {
-                egui::Frame {
-                    fill: egui::Color32::from_rgb(0xe0, 0xe1, 0xe4),
-                    inner_margin: egui::Margin::same(5),
-                    stroke: egui::Stroke::new(1.0_f32, egui::Color32::from_rgb(100, 100, 150)),
-                    ..Default::default()
-                }
+    let left = egui::Area::new(Id::new("stage-left"))
+        .fixed_pos(ctx.content_rect().left_top())
+        .default_width(default_width)
+        .order(egui::Order::Foreground)
+        .show(ctx, |ui| {
+            egui::Resize::default()
+                .default_width(default_width)
+                .min_width(min_width)
+                .max_width(max_width)
                 .show(ui, |ui| {
-                    ui.vertical(|ui| {
+                    egui::Frame {
+                        fill: egui::Color32::from_rgb(0xe0, 0xe1, 0xe4),
+                        inner_margin: egui::Margin::same(5),
+                        stroke: egui::Stroke::new(1.0_f32, egui::Color32::from_rgb(100, 100, 150)),
+                        ..Default::default()
+                    }
+                    .show(ui, |ui| {
+                        ui.vertical(|ui| {
                 let back_label = tr(&localization, "stage-ui-back-to-title");
                 if ui.button(back_label.as_str()).clicked() {
                     play_ui_click(&mut commands, &audio, &settings);
@@ -690,8 +694,9 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                     }
                 }
             });
+                    })
                 })
-            });
+        });
     let left = left.response.rect.width().clamp(min_width, max_width);
 
     if editor.stage_clear_popup_open {
