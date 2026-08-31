@@ -67,15 +67,15 @@ fn main() {
 
     let mut app = App::new();
 
-    let storage = resources::file_storage::LocalFileStorage::default_dir();
-    let mut settings = GameSettings::load_or_default(&storage);
+    let storage = resources::file_storage::default_storage();
+    let mut settings = GameSettings::load_or_default(storage.as_ref());
 
     let locale_id = if let Some(saved_locale) = &settings.locale {
         saved_locale.parse().unwrap_or_else(|_| langid!("en-US"))
     } else {
         let determined = determine_initial_locale();
         settings.locale = Some(determined.to_string());
-        if let Err(e) = settings.persist(&storage) {
+        if let Err(e) = settings.persist(storage.as_ref()) {
             warn!("Failed to persist determined locale: {}", e);
         }
         determined
@@ -89,6 +89,13 @@ fn main() {
                 next_state.set(GameState::SelectStage);
             },
         );
+
+    // The browser needs this same in-memory backend for the initial settings
+    // read and the later stage resources. Native builds deliberately leave
+    // storage selection to `setup_stage_resources`, so Steam Cloud can win
+    // when it is available.
+    #[cfg(target_arch = "wasm32")]
+    app.insert_resource(resources::file_storage::FileStorageResource::new(storage));
 
     #[cfg(target_os = "windows")]
     app.add_plugins(EmbeddedAssetPlugin {

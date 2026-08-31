@@ -1,0 +1,171 @@
+name: Web Build
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: web-build-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-web:
+    name: Build WebAssembly bundle
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      # Keep peak memory below the 16 GB available on standard hosted runners.
+      CARGO_BUILD_JOBS: 1
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          token: ${{ secrets.GH_PAT }}
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache Cargo downloads
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: web-cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            web-cargo-${{ runner.os }}-
+
+      - name: Install Trunk
+        run: cargo install trunk --version 0.21.14 --locked
+
+      - name: Build WebAssembly bundle
+        run: ./scripts/build_web.sh
+
+      - name: Verify bundle files and HTTP delivery
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f dist/index.html
+          js_file="$(find dist -maxdepth 1 -type f -name '*.js' -print -quit)"
+          wasm_file="$(find dist -maxdepth 1 -type f -name '*.wasm' -print -quit)"
+          test -n "$js_file"
+          test -n "$wasm_file"
+          test -f dist/assets/audio/bgm.wav
+          test -f dist/assets/images/logo_with_black.png
+          test -f dist/assets/fonts/PixelMplus12-Regular.ttf
+          test -f dist/assets/locales/en-US/main.ftl
+          test -f dist/assets/locales/en-US/main.ftl.ron
+          test -f dist/assets/stages/stage-1.ron
+
+          python3 -m http.server 8080 --directory dist >/tmp/keystone-web-http.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid"' EXIT
+          sleep 1
+
+          for file in \
+            "index.html" \
+            "${js_file#dist/}" \
+            "${wasm_file#dist/}" \
+            "assets/audio/bgm.wav" \
+            "assets/images/logo_with_black.png" \
+            "assets/fonts/PixelMplus12-Regular.ttf" \
+            "assets/locales/en-US/main.ftl" \
+            "assets/locales/en-US/main.ftl.ron" \
+            "assets/stages/stage-1.ron"; do
+            python3 -c 'import sys, urllib.request; urllib.request.urlopen("http://127.0.0.1:8080/" + sys.argv[1]).read(1)' "$file"
+          done
+
+      - name: Smoke test browser runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m http.server 8080 --directory dist >/tmp/keystone-web-http.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid"' EXIT
+          sleep 1
+
+          # Leave a post-transition render frame after assets load and the
+          # Web boot state advances to stage selection.
+          set +e
+          timeout 180s google-chrome \
+            --headless=new \
+            --no-sandbox \
+            --disable-dev-shm-usage \
+            --disable-background-timer-throttling \
+            --disable-renderer-backgrounding \
+            --disable-backgrounding-occluded-windows \
+            --use-gl=angle \
+            --use-angle=swiftshader \
+            --enable-unsafe-swiftshader \
+            --ignore-gpu-blocklist \
+            --enable-logging=stderr \
+            --log-level=0 \
+            --window-size=1280,720 \
+            --run-all-compositor-stages-before-draw \
+            --virtual-time-budget=16000 \
+            --screenshot=/tmp/keystone-web-browser.png \
+            --dump-dom \
+            http://127.0.0.1:8080/ \
+            >/tmp/keystone-web-browser-dom.html 2>/tmp/keystone-web-browser-stderr.log
+          chrome_status=$?
+          set -e
+          if [ "$chrome_status" -eq 124 ]; then
+            echo 'Browser smoke exceeded the 180-second real-time limit.' >&2
+            tail -120 /tmp/keystone-web-browser-stderr.log >&2 || true
+            exit 1
+          fi
+          if [ "$chrome_status" -ne 0 ]; then
+            echo "Browser smoke exited with status $chrome_status." >&2
+            tail -120 /tmp/keystone-web-browser-stderr.log >&2 || true
+            exit "$chrome_status"
+          fi
+
+          if grep -Eq 'panicked at|Uncaught RuntimeError|RuntimeError: unreachable' /tmp/keystone-web-browser-stderr.log; then
+            echo 'Browser runtime panic detected:' >&2
+            grep -E 'panicked at|Uncaught RuntimeError|RuntimeError: unreachable' /tmp/keystone-web-browser-stderr.log >&2
+            exit 1
+          fi
+          if ! grep -q '<canvas' /tmp/keystone-web-browser-dom.html; then
+            echo 'Browser smoke did not create a canvas:' >&2
+            tail -80 /tmp/keystone-web-browser-dom.html >&2
+            exit 1
+          fi
+          if ! grep -q 'Boot timer finished' /tmp/keystone-web-browser-stderr.log; then
+            echo 'Browser smoke did not finish the boot timer:' >&2
+            tail -120 /tmp/keystone-web-browser-stderr.log >&2
+            exit 1
+          fi
+
+          test -s /tmp/keystone-web-browser.png
+          python3 scripts/check_png_not_black.py /tmp/keystone-web-browser.png
+
+      - name: Upload browser smoke evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: keystone-cc-web-browser-smoke
+          path: |
+            /tmp/keystone-web-browser.png
+            /tmp/keystone-web-browser-dom.html
+            /tmp/keystone-web-browser-stderr.log
+            /tmp/keystone-web-http.log
+          if-no-files-found: warn
+          retention-days: 3
+
+      - name: Upload web bundle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: keystone-cc-web
+          path: dist/
+          if-no-files-found: error
+          retention-days: 3
