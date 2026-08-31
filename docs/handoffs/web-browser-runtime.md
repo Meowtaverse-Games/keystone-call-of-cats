@@ -1,202 +1,40 @@
-# Web browser runtime handoff
+# Web browser runtime handoff (2026-08-31)
 
-## Resume objective
+Runtime implementation was verified at `697d0ef` on `feature/web-build-verification`, PR [#72](https://github.com/Meowtaverse-Games/keystone-call-of-cats/pull/72). This document is committed later and is documentation only.
 
-Continue PR [#72](https://github.com/Meowtaverse-Games/keystone-call-of-cats/pull/72)
-on branch `feature/web-build-verification`. Fix the browser-only localization
-startup panic, then add an actual Chromium runtime smoke test to the Web Build
-workflow. Do not merge, deploy, publish Pages, or run the heavy WebAssembly
-bundle locally.
+## Verified browser readiness
 
-The bundle currently builds successfully, but the game does **not** reach a
-usable screen in a browser. PR #72 must not be treated as browser-runtime ready
-until the acceptance criteria below pass.
+- [Web Build #33341697984](https://github.com/Meowtaverse-Games/keystone-call-of-cats/actions/runs/33341697984) passed on standard `ubuntu-latest` in 19m18s; [CI #33341697978](https://github.com/Meowtaverse-Games/keystone-call-of-cats/actions/runs/33341697978) passed fmt and clippy.
+- Artifacts expire 2026-09-02 23:42 UTC: `keystone-cc-web-browser-smoke` (ID 9740980471, 53,357 bytes), `keystone-cc-web` (ID 9740981038, 17,302,634 bytes).
+- Chromium logged `Assets loaded` → `Boot timer finished` → `Playing BGM` → `Stage selection UI spawned 23 entries`, with no panic/unreachable. The 1280×720, 50,873-byte screenshot was visually checked: KEYSTONE + CALL OF CATS, OPTIONS/EXIT, Stage 1–3, PLAY, pager; the stdlib UI contrast check passed.
+- The three explicit locale `.ron`/`.ftl` files and representative audio/image/font/stage assets returned HTTP 200.
 
-## Current repository state
+Native keeps `load_folder`, `LocalizationBuilder`, and its 2400ms delay. Web explicitly loads three bundles and has a 0ms splash. Steam Cloud selection remains unchanged. Startup and stage UI are ready; full Web gameplay parity is not proven.
 
-- Base: `main` at `ad30c5c`
-- Current head before this handoff commit: `8b1b43c`
-- PR: <https://github.com/Meowtaverse-Games/keystone-call-of-cats/pull/72>
-- Last successful Web Build run:
-  <https://github.com/Meowtaverse-Games/keystone-call-of-cats/actions/runs/33300287948>
-- Last successful CI run:
-  <https://github.com/Meowtaverse-Games/keystone-call-of-cats/actions/runs/33300287966>
-- Artifact from that run: `keystone-cc-web`, ID `9728918061`, approximately
-  17.3 MB, three-day retention
-- The Web Build proves compilation, static file layout, HTTP 200 responses, and
-  artifact creation only. It does not currently prove successful app startup.
-- User-owned untracked `.DS_Store` files, `.omc/`, `firebase-debug.log`, and
-  changes inside the `ext-assets` submodule exist in the worktree. Preserve them
-  and never stage them.
+## Manual Chrome blockers
 
-## Actual browser test performed
+Title/stage select works, but a user reported no audio and F3 Run does not start. Do not claim either is fixed.
 
-The artifact was served locally and opened with real headless Chromium using
-SwiftShader WebGL2. No rebuild was performed on this server.
+### P0 audio unlock
 
-Artifact directory used:
+Defaults are master .8/music .7/SFX .9, assets are HTTP 200, and `Playing BGM` is logged, yet Chrome reports AudioContext autoplay rejection. Strongest current hypothesis: cpal 0.15.3 webaudio calls `ctx.resume()` once during startup without a useful gesture-time retry; game click paths only spawn `AudioPlayer` entities. User console evidence is not yet captured, so this is likely, not proven. Add a web-only first pointer/key bridge that resumes the actual cpal context, or redesign output initialization/recreation. Review `played_bgm`: marking it true before real output can block retry. Add click SFX/BGM browser smoke.
 
-```text
-/tmp/keystone-cc-web-artifact-33300287948
-```
+Acceptance: after first gesture BGM and click SFX are audible; no console panic; native audio regression-free.
 
-HTTP server command:
+### P1 F3 Web UX
 
-```sh
-python3 -m http.server 8765 \
-  --bind 127.0.0.1 \
-  --directory /tmp/keystone-cc-web-artifact-33300287948
-```
+README's script limitation is real: UI shows F3 enabled, but Keystone/Rhai uses `std::thread::spawn` plus sync channel, unsupported in wasm. Short term, hide/disable F3 on wasm with an explicit reason. Full solution: P2 cooperative frame-by-frame nonblocking runner, applied to native too for deterministic test/cancel/replay. Web Worker is an alternative but adds COOP/COEP and distribution complexity.
 
-Browser command used on this server:
+Acceptance: clear unsupported F3 UI at minimum; full implementation moves scripts in Web without panic and retains native checks.
 
-```sh
-/home/ubuntu/.cache/ms-playwright/chromium-1228/chrome-linux/chrome \
-  --headless=new \
-  --no-sandbox \
-  --disable-dev-shm-usage \
-  --use-gl=angle \
-  --use-angle=swiftshader \
-  --enable-unsafe-swiftshader \
-  --ignore-gpu-blocklist \
-  --enable-logging=stderr \
-  --log-level=0 \
-  --window-size=1280,720 \
-  --virtual-time-budget=20000 \
-  --screenshot=/tmp/keystone-web-browser.png \
-  --dump-dom \
-  http://127.0.0.1:8765/
-```
+## Proposed, not implemented
 
-Observed before the failure:
+Priority: P0 capability resource for UI/feature gates and audio lifecycle (focus/device loss/resume/retry); P1 OS-thread-independent script runner and explicit boot-readiness state; P2 investigate duplicate StageSelect spawn after initial Locale reload, manifest/explicit-asset determinism, separate browser interaction from native startup smoke, PNG checker tests/name; P3 cache/preinstall Trunk (currently about nine minutes).
 
-- HTML, generated JavaScript, and Wasm returned HTTP 200.
-- A 1280 x 720 canvas was created.
-- Bevy initialized a WebGL2 adapter through SwiftShader.
-- Runtime image, font, and audio requests returned HTTP 200.
-- Stage progress loaded and saved through the Web memory backend.
-- The captured screenshot was entirely black.
+## Next session and boundaries
 
-The local HTTP server was stopped after the test. `/tmp` evidence is ephemeral
-and should not be relied on in a later environment. If the artifact has expired,
-dispatch `.github/workflows/web-build.yml` on this branch and download the new
-`keystone-cc-web` artifact instead of building locally.
+1. Reproduce P0 with real-user console evidence, then audio unlock.
+2. Implement P1 wasm F3 gate.
+3. Deliver P2 cooperative runner incrementally.
 
-## Confirmed runtime blocker
-
-The first material error is:
-
-```text
-Reading directories is not supported with the HttpWasmAssetReader
-```
-
-It comes from the unconditional folder load at
-`src/scenes/boot/systems.rs:53`:
-
-```rust
-let locale_folder = asset_server.load_folder("locales");
-```
-
-Bevy's browser asset reader cannot enumerate a directory. The empty/incomplete
-folder is then passed to `bevy_fluent::LocalizationBuilder::build`. In
-`bevy_fluent 0.14.0`, the builder indexes a locale entry that does not exist,
-which produces:
-
-```text
-panicked at bevy_fluent-0.14.0/src/systems/parameters/mod.rs:50:52:
-no entry found for key
-Uncaught RuntimeError: unreachable
-```
-
-The later `winit` `RefCell already borrowed` panics are secondary fallout from
-the first panic and should not be treated as the root cause.
-
-## Recommended implementation direction
-
-Keep the current native `load_folder("locales")` path unchanged. On
-`wasm32`, explicitly load the three known `BundleAsset` descriptors instead of
-enumerating the directory:
-
-```text
-locales/en-US/main.ftl.ron
-locales/ja-JP/main.ftl.ron
-locales/zh-Hans/main.ftl.ron
-```
-
-Each descriptor already references its relative `main.ftl` and `stages.ftl`
-files, which the asset loader can fetch directly over HTTP.
-
-A likely design is:
-
-1. Replace or extend `LocaleFolder` with a resource that can represent either
-   the native `Handle<LoadedFolder>` or the three Web
-   `Handle<bevy_fluent::BundleAsset>` values.
-2. On Web, wait until every typed bundle handle is loaded.
-3. Construct `Localization` from `Assets<BundleAsset>` in locale fallback order
-   and insert it once. `Locale::fallback_chain`, `Localization::new`, and
-   `Localization::insert` are public APIs. The bundle locale is available
-   through `bevy_fluent::exts::fluent::BundleExt`.
-4. Keep the existing native `LocalizationBuilder::build(&LoadedFolder)` path.
-5. Factor locale selection/construction into a testable helper where practical.
-
-Do not synthesize a successful localization state when bundles failed to load.
-The boot state should wait or report a clear error, not insert an empty
-`Localization` that panics later.
-
-Relevant files:
-
-- `src/scenes/boot/systems.rs`
-- `src/resources/locale_resources.rs`
-- `.github/workflows/web-build.yml`
-- `README.md`, if the known limitations change
-
-## Browser smoke test to add to Actions
-
-Extend the existing Web Build job after the static HTTP checks. Use a real
-Chromium/Google Chrome available on the standard `ubuntu-latest` runner, serve
-`dist/`, allow enough virtual time for the 2.4-second boot timer, and capture
-browser stderr plus a screenshot.
-
-The smoke must fail if the browser log contains any of:
-
-```text
-panicked at
-Uncaught RuntimeError
-RuntimeError: unreachable
-```
-
-It should also require positive evidence that startup progressed beyond
-localization, preferably the existing `Boot timer finished` log and a canvas in
-the DOM. Preserve the screenshot as a short-retention artifact on failure, or
-include it with the existing three-day Web artifact.
-
-These messages were observed and are not by themselves blockers in headless
-Chromium:
-
-- asset watching is unsupported on Web
-- AudioContext requires a user gesture
-- SwiftShader is software rendering
-- GPU preprocessing/OIT/texture binding array capability warnings
-- `.meta` and `/favicon.ico` HTTP 404 responses
-
-Do not use a blanket grep for every `ERROR` or `WARN`; it would reject these
-expected browser/headless conditions.
-
-## Acceptance criteria
-
-- Web localization does not call `AssetServer::load_folder` on `wasm32`.
-- All three locale bundles load by explicit path, with `en-US` fallback intact.
-- The app reaches `Boot timer finished` and the stage selection/title UI in
-  Chromium without `panicked at`, `Uncaught RuntimeError`, or `unreachable`.
-- The browser screenshot is not entirely black and shows the expected first
-  usable screen.
-- Generated JS, Wasm, and representative audio/image/font/locale/stage assets
-  still return HTTP 200.
-- `.github/workflows/web-build.yml` performs the Chromium runtime smoke on the
-  standard free `ubuntu-latest` runner.
-- The Web Build and existing fmt/clippy CI both succeed on the final head.
-- Native localization behavior and the Steam Cloud storage-selection fix from
-  `8b1b43c` remain unchanged.
-- Update PR #72 with the browser evidence and remaining Web limitations.
-- Run the normal Terra implementation and Sol independent review flow. Stop
-  before merge, deployment, release, or Pages publication.
+Avoid heavy local wasm bundles; Actions uses standard hosted runners. Preview URLs are temporary and stop at session end. No merge, deploy, release, or Pages publication occurred. Preserve and never stage/revert user-owned `.DS_Store`, `.omc/`, `firebase-debug.log`, or `ext-assets` dirt.
