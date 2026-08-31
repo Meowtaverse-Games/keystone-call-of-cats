@@ -126,7 +126,6 @@ pub fn check_goal_completion(
         let align_x = goal_pos.translation.x + 4.0;
         let original_memberships = layers.memberships;
         let original_filters = layers.filters;
-
         commands.entity(player_entity).insert((
             CollisionLayers::new(LayerMask::NONE, LayerMask::NONE),
             PlayerGoalDescent {

@@ -15,6 +15,7 @@ use std::{
 #[derive(Clone, Default)]
 struct StandardApi {
     inner: Arc<Mutex<ScriptState>>,
+    shared_signals: Arc<Mutex<HashSet<String>>>,
 }
 
 impl ExternalApi for StandardApi {
@@ -30,6 +31,20 @@ impl ExternalApi for StandardApi {
         let key = format!("is-empty-{}", dir_to_str(dir));
         let state = self.inner.lock().unwrap();
         state.get(&key).and_then(|v| v.as_bool()).unwrap_or(false)
+    }
+
+    fn send_signal(&self, channel: &str) {
+        if let Ok(mut g) = self.shared_signals.lock() {
+            g.insert(channel.to_owned());
+        }
+    }
+
+    fn receive_signal(&self, channel: &str) -> bool {
+        if let Ok(mut g) = self.shared_signals.lock() {
+            g.remove(channel)
+        } else {
+            false
+        }
     }
 }
 
@@ -48,16 +63,20 @@ pub struct KeystoneScriptExecutor {
 }
 
 impl KeystoneScriptExecutor {
-    fn new(api: StandardApi) -> Self {
-        Self { api }
+    pub fn new(inner_state: ScriptState, shared_signals: Arc<Mutex<HashSet<String>>>) -> Self {
+        Self {
+            api: StandardApi {
+                inner: Arc::new(Mutex::new(inner_state)),
+                shared_signals,
+            },
+        }
     }
 }
 
 impl Default for KeystoneScriptExecutor {
     fn default() -> Self {
-        Self::new(StandardApi {
-            inner: Arc::new(Mutex::new(ScriptState::default())),
-        })
+        let isolated_signals = Arc::new(Mutex::new(HashSet::new()));
+        Self::new(ScriptState::default(), isolated_signals)
     }
 }
 
@@ -80,29 +99,31 @@ impl ScriptStepper for KeystoneScriptExecutor {
         source: &str,
         _allowed_commands: Option<&HashSet<String>>,
     ) -> Result<Box<dyn ScriptProgram>, ScriptExecutionError> {
-        let api_dyn = Arc::new(self.api.clone()) as Arc<dyn ExternalApi + Send + Sync>;
-        let res = eval(source, api_dyn);
-        match res {
-            Ok(iter) => {
-                let max_step = 100000;
-                let mut step = 0;
-                let preflight = iter.clone();
-                for res in preflight {
-                    step += 1;
-                    if max_step < step {
-                        break;
-                    }
-                    if let Err(e) = res {
-                        return Err(map_error(e));
-                    }
-                }
-                Ok(Box::new(KeystoneScriptProgram::spawn(
-                    iter,
-                    self.api.clone(),
-                )))
+        let mut preflight_api_inner = self.api.clone();
+        preflight_api_inner.shared_signals =
+            Arc::new(std::sync::Mutex::new(std::collections::HashSet::new()));
+        let preflight_api_dyn = Arc::new(preflight_api_inner) as Arc<dyn ExternalApi + Send + Sync>;
+
+        let preflight_iter = eval(source, preflight_api_dyn).map_err(map_error)?;
+
+        let max_step = 100000;
+        let mut step = 0;
+        for res in preflight_iter {
+            step += 1;
+            if max_step < step {
+                break;
             }
-            Err(err) => Err(map_error(err)),
+            if let Err(e) = res {
+                return Err(map_error(e));
+            }
         }
+        let real_api_dyn = Arc::new(self.api.clone()) as Arc<dyn ExternalApi + Send + Sync>;
+        let real_iter = eval(source, real_api_dyn).map_err(map_error)?;
+
+        Ok(Box::new(KeystoneScriptProgram::spawn(
+            real_iter,
+            self.api.clone(),
+        )))
     }
 }
 
@@ -122,7 +143,9 @@ impl KeystoneScriptProgram {
         let (resume_tx, resume_rx) = mpsc::sync_channel::<()>(0);
 
         std::thread::spawn(move || {
-            for event in iter {
+            let mut iter = iter;
+
+            loop {
                 if stop_flag_inner.load(Ordering::SeqCst) {
                     break;
                 }
@@ -131,10 +154,16 @@ impl KeystoneScriptProgram {
                     break;
                 }
 
-                let command = map_event(event.expect("script error"));
-
-                if tx.send(command).is_err() {
-                    break;
+                match iter.next() {
+                    Some(event) => {
+                        let command = map_event(event.expect("script error"));
+                        if tx.send(command).is_err() {
+                            break;
+                        }
+                    }
+                    None => {
+                        break;
+                    }
                 }
             }
             let _ = tx.send(None);

@@ -116,11 +116,12 @@ fn scaled_panel_font_size(base: f32, offset: f32) -> f32 {
 
 #[derive(Resource)]
 pub struct ScriptEditorState {
-    pub buffer: String,
+    pub buffers: Vec<String>,
+    pub selected_idx: usize,
     pub last_action: Option<EditorMenuAction>,
     pub last_action_context: bool,
     pub last_run_feedback: Option<String>,
-    pub active_program: Option<Box<dyn ScriptProgram>>,
+    pub active_programs: Vec<Option<Box<dyn ScriptProgram>>>,
     pub controls_enabled: bool,
     pub pending_player_reset: bool,
     pub stage_cleared: bool,
@@ -133,11 +134,12 @@ pub struct ScriptEditorState {
 impl Default for ScriptEditorState {
     fn default() -> Self {
         Self {
-            buffer: String::new(),
+            buffers: Vec::new(),
+            selected_idx: 0,
             last_action: None,
             last_action_context: false,
             last_run_feedback: None,
-            active_program: None,
+            active_programs: Vec::new(),
             controls_enabled: false,
             pending_player_reset: false,
             stage_cleared: false,
@@ -150,6 +152,28 @@ impl Default for ScriptEditorState {
 }
 
 impl ScriptEditorState {
+    /// Replaces buffers for the spawned stones and keeps the selected stone valid.
+    pub(crate) fn resize_buffers(&mut self, stone_count: usize, saved_codes: Option<&[String]>) {
+        self.buffers = (0..stone_count)
+            .map(|index| {
+                saved_codes
+                    .and_then(|codes| codes.get(index))
+                    .cloned()
+                    .unwrap_or_default()
+            })
+            .collect();
+        self.active_programs.clear();
+        self.normalize_selected_idx();
+    }
+
+    pub(crate) fn normalize_selected_idx(&mut self) {
+        if self.buffers.is_empty() {
+            self.selected_idx = 0;
+        } else {
+            self.selected_idx = self.selected_idx.min(self.buffers.len() - 1);
+        }
+    }
+
     fn apply_action(&mut self, action: EditorMenuAction, context: bool) {
         self.last_action = Some(action);
         self.last_action_context = context;
@@ -209,11 +233,8 @@ impl EditorMenuAction {
     }
 }
 
-pub fn init_editor_state(commands: &mut Commands, stage_id: StageId, saved_code: Option<String>) {
-    let mut editor_state = ScriptEditorState {
-        buffer: saved_code.unwrap_or_default(),
-        ..default()
-    };
+pub fn init_editor_state(commands: &mut Commands, stage_id: StageId) {
+    let mut editor_state = ScriptEditorState::default();
     editor_state.set_tutorial_for_stage(stage_id);
     editor_state.set_command_help_for_stage(stage_id);
     commands.insert_resource(editor_state);
@@ -235,8 +256,17 @@ pub struct StageUIParams<'w, 's> {
     progression: Res<'w, StageProgressionState>,
     tutorial_overlays: Query<'w, 's, Entity, With<StageTutorialOverlay>>,
     stone_capabilities: Res<'w, StoneCapabilities>,
-    stone_query:
-        Query<'w, 's, (Entity, &'static GlobalTransform, &'static StoneType), With<StoneRune>>,
+    stone_query: Query<
+        'w,
+        's,
+        (
+            Entity,
+            &'static GlobalTransform,
+            &'static StoneType,
+            &'static StoneIndex,
+        ),
+        With<StoneRune>,
+    >,
     file_storage: Res<'w, FileStorageResource>,
 }
 
@@ -278,7 +308,7 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
 
     let screen_width = ctx.input(|input| input.content_rect().width());
 
-    let mut style = (*ctx.style()).clone();
+    let mut style = (*ctx.global_style()).clone();
     if !*not_first {
         style.text_styles.iter().for_each(|s| {
             info!("Text style: {:?} => {:?}", s.0, s.1);
@@ -308,7 +338,7 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
         ),
     ]
     .into();
-    ctx.set_style(style);
+    ctx.set_global_style(style);
 
     let (min_width, max_width) = if screen_width.is_finite() && screen_width > 0.0 {
         (screen_width * 0.125, screen_width * 0.5)
@@ -323,19 +353,20 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
         ((min_width + max_width) * 0.5).clamp(min_width, max_width)
     };
 
-    let left = egui::SidePanel::left("stage-left")
-        .resizable(true)
-        .default_width(default_width)
-        .min_width(min_width)
-        .max_width(max_width)
-        .frame(egui::Frame {
-            fill: egui::Color32::from_rgb(0xe0, 0xe1, 0xe4),
-            inner_margin: egui::Margin::same(5),
-            stroke: egui::Stroke::new(1.0, egui::Color32::from_rgb(100, 100, 150)),
-            ..Default::default()
-        })
-        .show(ctx, |ui| {
-            ui.vertical(|ui| {
+    let left =
+        egui::Area::new(Id::new("stage-left"))
+            .fixed_pos(ctx.content_rect().left_top())
+            .default_width(default_width)
+            .order(egui::Order::Foreground)
+            .show(ctx, |ui| {
+                egui::Frame {
+                    fill: egui::Color32::from_rgb(0xe0, 0xe1, 0xe4),
+                    inner_margin: egui::Margin::same(5),
+                    stroke: egui::Stroke::new(1.0_f32, egui::Color32::from_rgb(100, 100, 150)),
+                    ..Default::default()
+                }
+                .show(ui, |ui| {
+                    ui.vertical(|ui| {
                 let back_label = tr(&localization, "stage-ui-back-to-title");
                 if ui.button(back_label.as_str()).clicked() {
                     play_ui_click(&mut commands, &audio, &settings);
@@ -388,35 +419,61 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                             } else {
                                 hide_tutorial_overlays(&mut commands, &tutorial_overlays);
                                 let language = settings.script_language;
-                                let stone_type = stone_query
+
+                                let mut stones_info: Vec<(usize, StoneType)> = stone_query
                                     .iter()
-                                    .next()
-                                    .map(|(_, _, type_)| *type_)
-                                    .unwrap_or(StoneType::Type1); // Correctly query StoneType
+                                    .map(|(_, _, type_, stone_idx)| (stone_idx.0, *type_)) // ★stone_idxからインデックスを取得
+                                    .collect();
 
-                                let allowed_commands =
-                                    stone_capabilities.get_capabilities(stone_type);
+                                stones_info.sort_by_key(|(idx, _)| *idx);
 
-                                match script_executor.compile_step(
-                                    language,
-                                    &editor.buffer,
-                                    allowed_commands,
-                                ) {
-                                    Ok(program) => {
-                                        info!("Starting script execution:\n{}", editor.buffer);
+                                let mut all_programs = Vec::new();
+                                let mut compile_error = None;
 
-                                        // Persist script on run
+                                for (idx, stone_type) in stones_info {
+                                    let allowed_commands =
+                                        stone_capabilities.get_capabilities(stone_type);
+
+                                    let current_stone_code =
+                                        editor.buffers.get(idx).cloned().unwrap_or_default();
+
+                                    match script_executor.compile_step(
+                                        language,
+                                        vec![current_stone_code],
+                                        allowed_commands,
+                                    ) {
+                                        Ok(mut single_programs) => {
+                                            if let Some(p) = single_programs.pop() {
+                                                all_programs.push(Some(p));
+                                            } else {
+                                                all_programs.push(None);
+                                            }
+                                        }
+                                        Err(err) => {
+                                            compile_error = Some(err);
+                                            break;
+                                        }
+                                    }
+                                }
+
+                                match compile_error {
+                                    None => {
+                                        info!(
+                                            "Starting script execution for all stones:\n{:?}",
+                                            editor.buffers
+                                        );
+
                                         if let Err(err) =
                                             stage_scripts.persist(file_storage.backend().as_ref())
                                         {
                                             warn!("Failed to persist stage scripts on run: {err}");
                                         }
 
-                                        // Clear any existing queue on the Stone
                                         stone_writer
                                             .write(StoneCommandMessage { commands: vec![] });
 
-                                        editor.active_program = Some(program);
+                                        editor.active_programs = all_programs;
+
                                         editor.last_run_feedback = Some(tr(
                                             &localization,
                                             "stage-ui-feedback-step-started",
@@ -426,8 +483,8 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                                         editor.stage_cleared = false;
                                         editor.stage_clear_popup_open = false;
                                     }
-                                    Err(err) => {
-                                        editor.active_program = None;
+                                    Some(err) => {
+                                        editor.active_programs.clear();
                                         editor.last_run_feedback =
                                             Some(script_error_message(&localization, &err));
                                         info!("Script compilation error: {}", err);
@@ -496,37 +553,66 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                 let editing_locked = editor.controls_enabled;
 
                 let mut text_edit_response = None;
+                let stone_count = editor.buffers.len();
+                editor.normalize_selected_idx();
+                let idx = editor.selected_idx;
 
-                egui::ScrollArea::vertical()
-                    .max_height(text_height)
-                    .show(ui, |ui| {
-                        text_edit_response = Some(
-                            ui.add_sized(
-                                egui::Vec2::new(available_size.x, text_height),
-                                egui::TextEdit::multiline(&mut editor.buffer)
-                                    .code_editor()
-                                    .font(FontSelection::FontId(FontId::new(font_size, Monospace)))
-                                    .interactive(!editing_locked)
-                                    .desired_width(f32::INFINITY),
-                            ),
-                        );
+                if stone_count != 1 {
+                    ui.horizontal(|ui| {
+                        for idx in 0..stone_count {
+                            let button_text = if editor.selected_idx == idx {
+                                format!("[Stone {}]", idx + 1)
+                            } else {
+                                format!("Stone {}", idx + 1)
+                            };
+
+                            if ui.button(button_text).clicked() {
+                                editor.selected_idx = idx;
+                            }
+                        }
                     });
+                }
+
+                if let Some(buffer) = editor.buffers.get_mut(idx) {
+                    egui::ScrollArea::vertical()
+                        .max_height(text_height)
+                        .show(ui, |ui| {
+                            text_edit_response = Some(
+                                ui.add_sized(
+                                    egui::Vec2::new(available_size.x, text_height),
+                                    egui::TextEdit::multiline(buffer)
+                                        .code_editor()
+                                        .font(FontSelection::FontId(FontId::new(
+                                            font_size, Monospace,
+                                        )))
+                                        .interactive(!editing_locked)
+                                        .desired_width(f32::INFINITY),
+                                ),
+                            );
+                        });
+                }
 
                 if text_edit_response.is_some_and(|r| r.changed()) {
-                    // Prevent non-ASCII input (e.g. Japanese) as requested.
-                    editor.buffer.retain(|c| c.is_ascii());
+                    editor.buffers[idx].retain(|c| c.is_ascii());
 
                     info!("Script editor buffer changed");
                     editor.controls_enabled = false;
                     editor.stage_cleared = false;
                     editor.stage_clear_popup_open = false;
+
                     let stage_id = progression.current_stage_id();
-                    let current = stage_scripts.stage_code(settings.script_language, stage_id);
-                    if current.map(|c| c != editor.buffer.as_str()).unwrap_or(true) {
-                        stage_scripts.set_stage_code(
+
+                    let current_codes =
+                        stage_scripts.stage_codes(settings.script_language, stage_id);
+
+                    if current_codes
+                        .map(|codes| codes != editor.buffers.as_slice())
+                        .unwrap_or(true)
+                    {
+                        stage_scripts.set_stage_codes(
                             settings.script_language,
                             stage_id,
-                            editor.buffer.clone(),
+                            editor.buffers.clone(),
                         );
                     }
                 }
@@ -554,7 +640,10 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
 
                                 egui::Frame::group(ui.style())
                                     .fill(egui::Color32::from_black_alpha(200))
-                                    .stroke(egui::Stroke::new(1.0, egui::Color32::from_gray(80)))
+                                    .stroke(egui::Stroke::new(
+                                        1.0_f32,
+                                        egui::Color32::from_gray(80),
+                                    ))
                                     .inner_margin(egui::Margin::symmetric(12, 10))
                                     .show(ui, |ui| {
                                         ui.set_min_height(content_height);
@@ -601,11 +690,9 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                     }
                 }
             });
-        })
-        .response
-        .rect
-        .width()
-        .clamp(min_width, max_width);
+                })
+            });
+    let left = left.response.rect.width().clamp(min_width, max_width);
 
     if editor.stage_clear_popup_open {
         let mut popup_open = editor.stage_clear_popup_open;
@@ -687,109 +774,85 @@ pub fn tick_script_program(
     mut editor: ResMut<ScriptEditorState>,
     mut append_writer: MessageWriter<StoneAppendCommandMessage>,
     players: Query<(Entity, &CollidingEntities), With<Player>>,
-    stone_query: Query<(Entity, &GlobalTransform, &StoneType), With<StoneRune>>,
+    stone_query: Query<(Entity, &GlobalTransform, &StoneIndex, &StoneType), With<StoneRune>>,
     stone_states: Query<&StoneCommandState, With<StoneRune>>,
     tiles: Query<(), With<StageTile>>,
+    stones: Query<(), With<StoneRune>>,
     spatial: SpatialQuery,
 ) {
     if !editor.controls_enabled {
-        editor.active_program = None;
+        editor.active_programs.clear();
         return;
     }
 
-    let Some(program) = editor.active_program.as_mut() else {
-        return;
-    };
+    for (stone_entity, stone_transform, stone_index, _) in stone_query.iter() {
+        let idx = stone_index.0;
 
-    let Some((stone_entity, stone_transform, _)) = stone_query.iter().next() else {
-        return;
-    };
+        let Some(Some(program)) = editor.active_programs.get_mut(idx) else {
+            continue;
+        };
 
-    if let Ok(stone_state) = stone_states.get(stone_entity)
-        && stone_state.is_busy()
-    {
-        // Wait until the stone finishes its current action to avoid
-        // queueing stale commands based on old touch state.
-        return;
-    }
+        if let Ok(stone_state) = stone_states.get(stone_entity)
+            && (stone_state.is_busy() || !stone_state.queue.is_empty())
+        {
+            continue;
+        }
 
-    // Optimization: check player touch first.
-    // User requested "only move when touching".
-    let player_touched = is_player_touching_stone(&players, stone_entity);
+        let player_touched = is_player_touching_stone(&players, stone_entity);
 
-    // Reverted optimization: The strict check prevented non-touch scripts from running.
-    // Instead we will handle "double move" via a cooldown in stone.rs.
-
-    let mut state = ScriptState::default();
-    state.insert(
-        PLAYER_TOUCHED_STATE_KEY.to_string(),
-        ScriptStateValue::Bool(player_touched),
-    );
-    state.insert(
-        RAND_STATE_KEY.to_string(),
-        ScriptStateValue::Float(rand::rng().random_range(0.0..1.0)),
-    );
-
-    // Calculate surrounding state using shape cast
-    // We check if the stone can move one full step without hitting a wall
-    let directions = [
-        ("up", Vec2::Y),
-        ("down", Vec2::NEG_Y),
-        ("left", Vec2::NEG_X),
-        ("right", Vec2::X),
-    ];
-    let stone_scale = stone_transform.scale().x;
-
-    // Get step_size from stone state if available, or use default
-    let step_size = stone_states
-        .get(stone_entity)
-        .map(|s| s.step_size)
-        .unwrap_or(super::stone::STONE_STEP_DISTANCE);
-
-    // Check distance = stone collider radius + a small margin
-    // This detects if the stone's edge is already touching or very close to a wall
-    let collider_radius = super::stone::STONE_COLLIDER_RADIUS * stone_scale;
-    let check_dist = step_size * stone_scale; // Check for one full step distance
-    let origin = stone_transform.translation().truncate();
-    // Collect player entities to exclude from collision detection
-    let player_entities: Vec<Entity> = players.iter().map(|(e, _)| e).collect();
-    let mut excluded_entities = vec![stone_entity];
-    excluded_entities.extend(player_entities);
-    let filter =
-        SpatialQueryFilter::from_mask(LayerMask::ALL).with_excluded_entities(excluded_entities);
-    // Shape cast with a circle matching the stone's collider size
-    let cast_shape = Collider::circle(collider_radius);
-    let cast_config = ShapeCastConfig::from_max_distance(check_dist);
-
-    for (name, dir) in directions {
-        let ray_dir = Dir2::new(dir).expect("Invalid direction");
-        // Use shape cast to check if stone can move one step without collision
-        let hit = spatial.cast_shape(&cast_shape, origin, 0.0, ray_dir, &cast_config, &filter);
-        let is_blocked = hit.is_some_and(|h| tiles.get(h.entity).is_ok());
+        let mut state = ScriptState::default();
         state.insert(
-            format!("is-empty-{}", name),
-            ScriptStateValue::Bool(!is_blocked),
+            PLAYER_TOUCHED_STATE_KEY.to_string(),
+            ScriptStateValue::Bool(player_touched),
         );
-        info!(
-            "is-empty-{}: {} (origin={:?}, radius={}, step={}, hit={:?})",
-            name,
-            !is_blocked,
-            origin,
-            collider_radius,
-            check_dist,
-            hit.map(|h| (h.distance, h.entity))
+        state.insert(
+            RAND_STATE_KEY.to_string(),
+            ScriptStateValue::Float(rand::rng().random_range(0.0..1.0)),
         );
-    }
 
-    if let Some(command) = program.next(&state) {
-        append_writer.write(StoneAppendCommandMessage {
-            command: command.clone(),
-        });
-    } else {
-        // // Program exhausted: stop execution.
-        // info!("Script program completed");
-        // editor.controls_enabled = false;
-        // editor.active_program = None;
+        let directions = [
+            ("up", Vec2::Y),
+            ("down", Vec2::NEG_Y),
+            ("left", Vec2::NEG_X),
+            ("right", Vec2::X),
+        ];
+        let stone_scale = stone_transform.scale().x;
+
+        let step_size = stone_states
+            .get(stone_entity)
+            .map(|s| s.step_size)
+            .unwrap_or(super::stone::STONE_STEP_DISTANCE);
+
+        let collider_radius = super::stone::STONE_COLLIDER_RADIUS * stone_scale;
+        let check_dist = step_size * stone_scale;
+        let origin = stone_transform.translation().truncate();
+
+        let player_entities: Vec<Entity> = players.iter().map(|(e, _)| e).collect();
+        let mut excluded_entities = vec![stone_entity];
+        excluded_entities.extend(player_entities);
+        let filter =
+            SpatialQueryFilter::from_mask(LayerMask::ALL).with_excluded_entities(excluded_entities);
+
+        let cast_shape = Collider::circle(collider_radius);
+        let cast_config = ShapeCastConfig::from_max_distance(check_dist);
+
+        for (name, dir) in directions {
+            let ray_dir = Dir2::new(dir).expect("Invalid direction");
+            let hit = spatial.cast_shape(&cast_shape, origin, 0.0, ray_dir, &cast_config, &filter);
+            let is_blocked =
+                hit.is_some_and(|h| tiles.get(h.entity).is_ok() || stones.get(h.entity).is_ok());
+            state.insert(
+                format!("is-empty-{}", name),
+                ScriptStateValue::Bool(!is_blocked),
+            );
+        }
+
+        if let Some(command) = program.next(&state) {
+            append_writer.write(StoneAppendCommandMessage {
+                stone_index: idx,
+                command: command.clone(),
+            });
+        }
     }
 }
 
@@ -993,8 +1056,8 @@ pub fn spawn_tutorial_overlay(
                             },
                             Text::new(body_value),
                             TextFont {
-                                font: font.clone(),
-                                font_size: 20.0,
+                                font: FontSource::Handle(font.clone()),
+                                font_size: FontSize::Px(20.0),
                                 ..default()
                             },
                             TextLayout::new(Justify::Left, LineBreak::WordBoundary),
@@ -1011,8 +1074,8 @@ pub fn spawn_tutorial_overlay(
                         },
                         Text::new(hint.clone()),
                         TextFont {
-                            font: font.clone(),
-                            font_size: 20.0,
+                            font: FontSource::Handle(font.clone()),
+                            font_size: FontSize::Px(20.0),
                             ..default()
                         },
                         TextLayout::new(Justify::Right, LineBreak::WordBoundary),
@@ -1031,6 +1094,70 @@ pub fn spawn_tutorial_overlay(
                 body_entity,
             });
     }
+}
+
+pub fn spawn_tutorial_start_hint(
+    commands: &mut Commands,
+    asset_store: &AssetStore,
+    localization: &Localization,
+    letterbox_offsets: &LetterboxOffsets,
+) {
+    let Some(font) = asset_store.font(FontKey::Default) else {
+        warn!("Tutorial start hint: default font is missing");
+        return;
+    };
+
+    let hint_text = tr(localization, "stage-ui-tutorial-start-hint");
+
+    let overlay_entity = commands
+        .spawn((
+            Node {
+                width: Val::Percent(100.0),
+                height: Val::Percent(100.0),
+                position_type: PositionType::Absolute,
+                padding: UiRect {
+                    left: Val::Px(letterbox_offsets.left + 20.0),
+                    right: Val::Px(letterbox_offsets.right + 20.0),
+                    top: Val::Px(0.0),
+                    bottom: Val::Px(30.0),
+                },
+                justify_content: JustifyContent::FlexEnd,
+                align_items: AlignItems::FlexEnd,
+                ..default()
+            },
+            ZIndex(5),
+            StageTutorialOverlay,
+        ))
+        .with_children(|parent| {
+            parent
+                .spawn((
+                    Node {
+                        padding: UiRect::axes(Val::Px(16.0), Val::Px(10.0)),
+                        ..default()
+                    },
+                    BackgroundColor(Color::srgba(0.04, 0.04, 0.04, 0.75)),
+                ))
+                .with_children(|panel| {
+                    panel.spawn((
+                        Node { ..default() },
+                        Text::new(hint_text),
+                        TextFont {
+                            font: FontSource::Handle(font.clone()),
+                            font_size: FontSize::Px(18.0),
+                            ..default()
+                        },
+                        TextColor(Color::srgb(0.95, 0.95, 0.95)),
+                    ));
+                });
+        })
+        .id();
+    commands
+        .entity(overlay_entity)
+        .insert(TutorialOverlayPanel {
+            chunks: Vec::new(),
+            current_chunk: 0,
+            body_entity: Entity::PLACEHOLDER,
+        });
 }
 
 pub fn handle_tutorial_overlay_input(
@@ -1070,5 +1197,41 @@ pub fn handle_tutorial_overlay_input(
         } else {
             commands.entity(entity).try_despawn();
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ScriptEditorState;
+
+    #[test]
+    fn resize_buffers_preserves_saved_codes_and_normalizes_selection() {
+        let mut editor = ScriptEditorState {
+            selected_idx: 2,
+            ..Default::default()
+        };
+        let saved = ["first".to_string()];
+
+        editor.resize_buffers(3, Some(&saved));
+
+        assert_eq!(editor.buffers, ["first", "", ""]);
+        assert_eq!(editor.selected_idx, 2);
+
+        editor.resize_buffers(1, Some(&saved));
+
+        assert_eq!(editor.buffers, ["first"]);
+        assert_eq!(editor.selected_idx, 0);
+    }
+
+    #[test]
+    fn normalize_selected_idx_handles_empty_buffers() {
+        let mut editor = ScriptEditorState {
+            selected_idx: 4,
+            ..Default::default()
+        };
+
+        editor.normalize_selected_idx();
+
+        assert_eq!(editor.selected_idx, 0);
     }
 }

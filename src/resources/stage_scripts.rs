@@ -4,15 +4,17 @@ use crate::resources::{
     stage_catalog::StageId,
 };
 use bevy::prelude::{Resource, info, warn};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use std::collections::HashMap;
 
 pub const STAGE_SCRIPTS_FILE: &str = "stage_scripts.ron";
+type StageCodeMap = HashMap<Language, HashMap<StageId, Vec<String>>>;
 
 /// Stores the latest editor script per stage.
 #[derive(Resource, Debug, Clone, Serialize, Deserialize, Default)]
 pub struct StageScripts {
-    scripts: HashMap<Language, HashMap<StageId, String>>,
+    #[serde(deserialize_with = "deserialize_scripts_compat")]
+    scripts: StageCodeMap,
 }
 
 impl StageScripts {
@@ -42,11 +44,46 @@ impl StageScripts {
             })
     }
 
-    pub fn stage_code(&self, lang: Language, stage_id: StageId) -> Option<&str> {
-        self.scripts.get(&lang)?.get(&stage_id).map(String::as_str)
+    pub fn stage_codes(&self, lang: Language, stage_id: StageId) -> Option<&[String]> {
+        self.scripts
+            .get(&lang)?
+            .get(&stage_id)
+            .map(|v| v.as_slice())
     }
 
-    pub fn set_stage_code(&mut self, lang: Language, stage_id: StageId, code: String) {
-        self.scripts.entry(lang).or_default().insert(stage_id, code);
+    pub fn set_stage_codes(&mut self, lang: Language, stage_id: StageId, codes: Vec<String>) {
+        self.scripts
+            .entry(lang)
+            .or_default()
+            .insert(stage_id, codes);
     }
+}
+
+fn deserialize_scripts_compat<'de, D>(deserializer: D) -> Result<StageCodeMap, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum StringOrVec {
+        Single(String),
+        Multiple(Vec<String>),
+    }
+
+    let raw: HashMap<Language, HashMap<StageId, StringOrVec>> = HashMap::deserialize(deserializer)?;
+    let mut result = HashMap::new();
+
+    for (lang, stages) in raw {
+        let mut stage_map = HashMap::new();
+        for (stage_id, value) in stages {
+            let vec_value = match value {
+                StringOrVec::Single(s) => vec![s],
+                StringOrVec::Multiple(v) => v,
+            };
+            stage_map.insert(stage_id, vec_value);
+        }
+        result.insert(lang, stage_map);
+    }
+
+    Ok(result)
 }

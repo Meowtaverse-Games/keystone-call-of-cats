@@ -22,6 +22,9 @@ pub struct DugTile {
 pub struct StoneRune;
 
 #[derive(Component)]
+pub struct StoneIndex(pub usize);
+
+#[derive(Component)]
 pub struct DigLimit(pub Option<u32>);
 
 #[derive(Component)]

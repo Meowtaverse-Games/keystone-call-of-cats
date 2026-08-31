@@ -53,6 +53,7 @@ stage-ui-feedback-complete = 全てのステージをクリアしました！
 stage-ui-tutorial-controls-hint = F1で実行、F2/F3で文字サイズ変更、矢印キーで移動、スペースでジャンプ。
 stage-ui-tutorial-ok = 了解!
 stage-ui-tutorial-next-hint = ［Enter］で次を表示
+stage-ui-tutorial-start-hint = [Enter] でチュートリアルを表示
 stage-ui-clear-window-title = ステージクリア!
 stage-ui-clear-heading = ゴールに到達しました。
 stage-ui-clear-body = 次の挑戦へ進む前に少し休憩しましょう。

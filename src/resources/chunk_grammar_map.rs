@@ -1,4 +1,4 @@
-use bevy_ecs::component::Component;
+use bevy_ecs::{component::Component, resource::Resource};
 use rand::{Rng, RngExt, seq::SliceRandom};
 use std::collections::{HashMap, HashSet};
 
@@ -44,6 +44,7 @@ pub enum TileKind {
     Goal,
     Wall,
     Obstacle,
+    DynamicSolid,
 }
 
 type ExitPoint = ((isize, isize), Dir);
@@ -100,6 +101,7 @@ impl ChunkTemplate {
                     'S' => Some(TileKind::Stone),
                     'G' => Some(TileKind::Goal),
                     'O' => Some(TileKind::Obstacle),
+                    '?' => Some(TileKind::DynamicSolid),
                     _ => None,
                 };
                 let Some(kind) = kind else {
@@ -156,6 +158,10 @@ pub struct ChunkGrammarConfig {
     #[serde(default)]
     pub stone_type: StoneType,
     pub dig_limit: Option<u32>,
+    #[serde(default)]
+    pub dynamic_max: u32,
+    #[serde(default)]
+    pub dynamic_min: u32,
     pub adjustments: Option<Adjustments>,
     start_chunks: Vec<ChunkTemplate>,
     middle_chunks: Vec<ChunkTemplate>,
@@ -207,6 +213,8 @@ pub fn generate_map_from_config(config: ChunkGrammarConfig) -> Map {
         map_size: placed_chunk_layout.map_size,
         stone_type: config.stone_type,
         dig_limit: config.dig_limit,
+        dynamic_max: config.dynamic_max,
+        dynamic_min: config.dynamic_min,
         boundary_margin: placed_chunk_layout.boundary_margin,
         margin_tiles: placed_chunk_layout.margin_tiles,
     };
@@ -356,6 +364,7 @@ fn build_tile_char_map(map: &Map) -> HashMap<(isize, isize), char> {
             TileKind::Goal => 'G',
             TileKind::Wall => '#',
             TileKind::Obstacle => 'O',
+            TileKind::DynamicSolid => '?',
         };
         char_map.insert((x, y), ch);
     }
@@ -450,13 +459,15 @@ impl PlacedChunkLayout {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Resource)]
 pub struct Map {
     pub placed_chunks: Vec<PlacedChunk>,
     pub adjustment: Option<Adjustments>,
     pub map_size: (isize, isize),
     pub stone_type: StoneType,
     pub dig_limit: Option<u32>,
+    pub dynamic_max: u32,
+    pub dynamic_min: u32,
     pub boundary_margin: (isize, isize),
     margin_tiles: Vec<Tile>,
 }
@@ -485,6 +496,8 @@ impl Map {
         mut placed_chunks: Vec<PlacedChunk>,
         stone_type: StoneType,
         dig_limit: Option<u32>,
+        dynamic_max: u32,
+        dynamic_min: u32,
         adjustment: Option<Adjustments>,
         boundary_margin: (isize, isize),
     ) -> Self {
@@ -505,6 +518,8 @@ impl Map {
             map_size: (MAP_SIZE.0, MAP_SIZE.1),
             stone_type,
             dig_limit,
+            dynamic_max,
+            dynamic_min,
             boundary_margin,
             margin_tiles: build_margin_tiles(boundary_margin),
         }
@@ -530,6 +545,23 @@ impl Map {
         }
 
         (x, y)
+    }
+
+    pub fn tile_positions_multiple(&self, kind: TileKind) -> Vec<(f32, f32)> {
+        let positions = self.tile_positions(kind);
+
+        if kind == TileKind::Stone
+            && let Some(adjustment) = &self.adjustment
+            && let stone_adjustments = &adjustment.stones
+            && !stone_adjustments.is_empty()
+        {
+            return apply_stone_adjustments(&positions, stone_adjustments);
+        }
+
+        positions
+            .iter()
+            .map(|position| (position.0 as f32, position.1 as f32))
+            .collect()
     }
 
     pub fn tile_positions(&self, kind: TileKind) -> Vec<(isize, isize)> {
@@ -572,6 +604,41 @@ impl Map {
                     .iter()
                     .map(|tile| ((tile.x, tile.y), tile.kind))
             }))
+    }
+}
+
+fn apply_stone_adjustments(
+    positions: &[(isize, isize)],
+    adjustments: &[(f32, f32)],
+) -> Vec<(f32, f32)> {
+    positions
+        .iter()
+        .enumerate()
+        .map(|(index, position)| {
+            let adjustment = adjustments.get(index).copied().unwrap_or((0.0, 0.0));
+            let x = position.0 as f32 + adjustment.0;
+            let y = position.1 as f32 + adjustment.1;
+            println!(
+                "Adjusting stone position from ({}, {}) by ({}, {})",
+                position.0, position.1, adjustment.0, adjustment.1
+            );
+            (x, y)
+        })
+        .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::apply_stone_adjustments;
+
+    #[test]
+    fn missing_stone_adjustments_do_not_drop_positions() {
+        let positions = [(1, 2), (3, 4), (5, 6)];
+
+        assert_eq!(
+            apply_stone_adjustments(&positions, &[(0.5, -1.0)]),
+            vec![(1.5, 1.0), (3.0, 4.0), (5.0, 6.0)]
+        );
     }
 }
 
