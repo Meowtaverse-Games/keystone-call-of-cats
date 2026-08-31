@@ -627,21 +627,6 @@ fn apply_stone_adjustments(
         .collect()
 }
 
-#[cfg(test)]
-mod tests {
-    use super::apply_stone_adjustments;
-
-    #[test]
-    fn missing_stone_adjustments_do_not_drop_positions() {
-        let positions = [(1, 2), (3, 4), (5, 6)];
-
-        assert_eq!(
-            apply_stone_adjustments(&positions, &[(0.5, -1.0)]),
-            vec![(1.5, 1.0), (3.0, 4.0), (5.0, 6.0)]
-        );
-    }
-}
-
 fn build_margin_tiles(margin: (isize, isize)) -> Vec<Tile> {
     let mut tiles = Vec::new();
     for x in 0..MAP_SIZE.0 {
@@ -891,5 +876,20 @@ pub fn print_ascii_map(map: &Map) {
             print!("{ch}");
         }
         println!();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::apply_stone_adjustments;
+
+    #[test]
+    fn missing_stone_adjustments_do_not_drop_positions() {
+        let positions = [(1, 2), (3, 4), (5, 6)];
+
+        assert_eq!(
+            apply_stone_adjustments(&positions, &[(0.5, -1.0)]),
+            vec![(1.5, 1.0), (3.0, 4.0), (5.0, 6.0)]
+        );
     }
 }
