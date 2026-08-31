@@ -16,7 +16,7 @@ Keystone: Call of Cats invites you to guide curious cats and stones toward a sha
 
 ## How To Run
 
-- Prerequisites: Rust toolchain (stable, ≥ 1.85 for the 2024 edition) via `rustup`.
+- Prerequisites: Rust toolchain (stable, ≥ 1.95 for the current dependency set) via `rustup`.
 - Run (debug): `cargo run`
 - Run (optimized): `cargo run --release`
 

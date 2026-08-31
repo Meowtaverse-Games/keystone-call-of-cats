@@ -3,7 +3,7 @@
 Guidance for Claude Code (and other coding agents) working in this repo.
 
 ## Project Overview
-Keystone: Call of Cats — a 2D puzzle game where the player guides cats and stones using a small in-game scripting language. Built on Bevy 0.17 + Avian2D, scripting via Rhai and `keystone-lang`, i18n via `bevy_fluent`. Distributed on itch.io and (optionally) Steam.
+Keystone: Call of Cats — a 2D puzzle game where the player guides cats and stones using a small in-game scripting language. Built on Bevy 0.19 + Avian2D 0.7, scripting via Rhai and `keystone-lang`, i18n via `bevy_fluent`. Distributed on itch.io and (optionally) Steam.
 
 ## Common Commands
 - Build: `cargo build`
@@ -36,7 +36,7 @@ Keystone: Call of Cats — a 2D puzzle game where the player guides cats and sto
 - [ext-assets/](ext-assets/) — Source files for assets before import/optimization
 
 ## Conventions
-- Rust **2024 edition** (requires Rust ≥ 1.85).
+- Rust **2024 edition** (requires Rust ≥ 1.95 for the current dependency set).
 - Clippy override: `too-many-arguments-threshold = 9` ([clippy.toml](clippy.toml)).
 - Asset hot-reload is enabled (`watch_for_changes_override: Some(true)` in `main.rs`); editing files under `assets/` while the game is running picks up changes.
 - The primary window is created with `visible: false`. Visibility is toggled later by `VisibilityPlugin` — don't "fix" the hidden-on-launch behavior.
@@ -51,8 +51,6 @@ Keystone: Call of Cats — a 2D puzzle game where the player guides cats and sto
 
 ## Watch Out
 - [client_secret.json](client_secret.json) at the repo root is the OAuth installed-app credential for `ftl_sheet_exporter`. The cached user token (`tools/ftl_sheet_exporter/.oauth_tokens.json`) must NOT be committed.
-- The README's "Notes" section ("Transparent window … typing prints characters …") is stale leftover from an early prototype — ignore it. The current game has nothing to do with text input or window transparency.
-- The README describes `tools/` as "sprite sheet exporter" — the actual tool is `ftl_sheet_exporter` (Fluent translation sync). If you update the README, fix this.
 
 ## Git Workflow
 - Default branch: `main`. Feature branches use `feature/*` or `fix/*`.

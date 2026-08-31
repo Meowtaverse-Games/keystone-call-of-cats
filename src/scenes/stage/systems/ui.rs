@@ -353,16 +353,23 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
         ((min_width + max_width) * 0.5).clamp(min_width, max_width)
     };
 
+    let content_rect = ctx.content_rect();
+    let content_height = content_rect.height();
     let left = egui::Area::new(Id::new("stage-left"))
-        .fixed_pos(ctx.content_rect().left_top())
-        .default_width(default_width)
+        .fixed_pos(content_rect.left_top())
+        .default_size(egui::Vec2::new(default_width, content_height))
         .order(egui::Order::Foreground)
         .show(ctx, |ui| {
             egui::Resize::default()
                 .default_width(default_width)
                 .min_width(min_width)
                 .max_width(max_width)
+                .default_height(content_height)
+                .min_height(content_height)
+                .max_height(content_height)
+                .resizable([true, false])
                 .show(ui, |ui| {
+                    ui.set_min_height(content_height);
                     egui::Frame {
                         fill: egui::Color32::from_rgb(0xe0, 0xe1, 0xe4),
                         inner_margin: egui::Margin::same(5),
