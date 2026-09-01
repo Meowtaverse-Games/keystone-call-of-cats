@@ -36,7 +36,7 @@ use crate::{
         },
     },
 };
-use rand::Rng;
+use rand::RngExt;
 
 #[derive(Clone, Debug)]
 pub struct TutorialDialog {
@@ -308,7 +308,7 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
 
     let screen_width = ctx.input(|input| input.content_rect().width());
 
-    let mut style = (*ctx.style()).clone();
+    let mut style = (*ctx.global_style()).clone();
     if !*not_first {
         style.text_styles.iter().for_each(|s| {
             info!("Text style: {:?} => {:?}", s.0, s.1);
@@ -338,7 +338,7 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
         ),
     ]
     .into();
-    ctx.set_style(style);
+    ctx.set_global_style(style);
 
     let (min_width, max_width) = if screen_width.is_finite() && screen_width > 0.0 {
         (screen_width * 0.125, screen_width * 0.5)
@@ -353,19 +353,31 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
         ((min_width + max_width) * 0.5).clamp(min_width, max_width)
     };
 
-    let left = egui::SidePanel::left("stage-left")
-        .resizable(true)
-        .default_width(default_width)
-        .min_width(min_width)
-        .max_width(max_width)
-        .frame(egui::Frame {
-            fill: egui::Color32::from_rgb(0xe0, 0xe1, 0xe4),
-            inner_margin: egui::Margin::same(5),
-            stroke: egui::Stroke::new(1.0_f32, egui::Color32::from_rgb(100, 100, 150)),
-            ..Default::default()
-        })
+    let content_rect = ctx.content_rect();
+    let content_height = content_rect.height();
+    let left = egui::Area::new(Id::new("stage-left"))
+        .fixed_pos(content_rect.left_top())
+        .default_size(egui::Vec2::new(default_width, content_height))
+        .order(egui::Order::Foreground)
         .show(ctx, |ui| {
-            ui.vertical(|ui| {
+            egui::Resize::default()
+                .default_width(default_width)
+                .min_width(min_width)
+                .max_width(max_width)
+                .default_height(content_height)
+                .min_height(content_height)
+                .max_height(content_height)
+                .resizable([true, false])
+                .show(ui, |ui| {
+                    ui.set_min_height(content_height);
+                    egui::Frame {
+                        fill: egui::Color32::from_rgb(0xe0, 0xe1, 0xe4),
+                        inner_margin: egui::Margin::same(5),
+                        stroke: egui::Stroke::new(1.0_f32, egui::Color32::from_rgb(100, 100, 150)),
+                        ..Default::default()
+                    }
+                    .show(ui, |ui| {
+                        ui.vertical(|ui| {
                 let back_label = tr(&localization, "stage-ui-back-to-title");
                 if ui.button(back_label.as_str()).clicked() {
                     play_ui_click(&mut commands, &audio, &settings);
@@ -689,11 +701,10 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                     }
                 }
             });
-        })
-        .response
-        .rect
-        .width()
-        .clamp(min_width, max_width);
+                    })
+                })
+        });
+    let left = left.response.rect.width().clamp(min_width, max_width);
 
     if editor.stage_clear_popup_open {
         let mut popup_open = editor.stage_clear_popup_open;
@@ -1057,8 +1068,8 @@ pub fn spawn_tutorial_overlay(
                             },
                             Text::new(body_value),
                             TextFont {
-                                font: font.clone(),
-                                font_size: 20.0,
+                                font: FontSource::Handle(font.clone()),
+                                font_size: FontSize::Px(20.0),
                                 ..default()
                             },
                             TextLayout::new(Justify::Left, LineBreak::WordBoundary),
@@ -1075,8 +1086,8 @@ pub fn spawn_tutorial_overlay(
                         },
                         Text::new(hint.clone()),
                         TextFont {
-                            font: font.clone(),
-                            font_size: 20.0,
+                            font: FontSource::Handle(font.clone()),
+                            font_size: FontSize::Px(20.0),
                             ..default()
                         },
                         TextLayout::new(Justify::Right, LineBreak::WordBoundary),
@@ -1143,8 +1154,8 @@ pub fn spawn_tutorial_start_hint(
                         Node { ..default() },
                         Text::new(hint_text),
                         TextFont {
-                            font: font.clone(),
-                            font_size: 18.0,
+                            font: FontSource::Handle(font.clone()),
+                            font_size: FontSize::Px(18.0),
                             ..default()
                         },
                         TextColor(Color::srgb(0.95, 0.95, 0.95)),

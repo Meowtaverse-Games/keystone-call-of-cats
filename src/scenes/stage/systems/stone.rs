@@ -506,19 +506,6 @@ fn is_blocking_hit(is_tile: bool, is_stone: bool) -> bool {
     is_tile || is_stone
 }
 
-#[cfg(test)]
-mod tests {
-    use super::is_blocking_hit;
-
-    #[test]
-    fn tiles_and_other_stones_block_movement() {
-        assert!(is_blocking_hit(true, false));
-        assert!(is_blocking_hit(false, true));
-        assert!(is_blocking_hit(true, true));
-        assert!(!is_blocking_hit(false, false));
-    }
-}
-
 type StoneResetQuery<'w, 's> = Query<
     'w,
     's,
@@ -699,5 +686,18 @@ pub fn carry_riders_with_stone(
                 command_state.queue.clear();
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_blocking_hit;
+
+    #[test]
+    fn tiles_and_other_stones_block_movement() {
+        assert!(is_blocking_hit(true, false));
+        assert!(is_blocking_hit(false, true));
+        assert!(is_blocking_hit(true, true));
+        assert!(!is_blocking_hit(false, false));
     }
 }

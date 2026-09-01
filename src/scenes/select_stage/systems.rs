@@ -488,8 +488,8 @@ fn spawn_experimental_label(
             badge
                 .spawn(Text::new(label))
                 .insert(TextFont {
-                    font: font.clone(),
-                    font_size: 22.0,
+                    font: FontSource::Handle(font.clone()),
+                    font_size: FontSize::Px(22.0),
                     ..default()
                 })
                 .insert(TextColor(secondary_text_color()));
@@ -526,8 +526,8 @@ fn spawn_hero_copy(
                     },
                     Text::new(inline_title.clone()),
                     TextFont {
-                        font: display_font.clone(),
-                        font_size: 56.0,
+                        font: FontSource::Handle(display_font.clone()),
+                        font_size: FontSize::Px(56.0),
                         ..default()
                     },
                     TextColor(hero_shadow_color()),
@@ -536,8 +536,8 @@ fn spawn_hero_copy(
                 stack.spawn((
                     Text::new(inline_title),
                     TextFont {
-                        font: display_font.clone(),
-                        font_size: 56.0,
+                        font: FontSource::Handle(display_font.clone()),
+                        font_size: FontSize::Px(56.0),
                         ..default()
                     },
                     TextColor(hero_title_color()),
@@ -599,16 +599,16 @@ fn spawn_stat_card(
         .with_children(|card| {
             card.spawn(Text::new(label))
                 .insert(TextFont {
-                    font: font.clone(),
-                    font_size: 16.0,
+                    font: FontSource::Handle(font.clone()),
+                    font_size: FontSize::Px(16.0),
                     ..default()
                 })
                 .insert(TextColor(secondary_text_color()));
 
             card.spawn(Text::new(value))
                 .insert(TextFont {
-                    font: font.clone(),
-                    font_size: 32.0,
+                    font: FontSource::Handle(font.clone()),
+                    font_size: FontSize::Px(32.0),
                     ..default()
                 })
                 .insert(TextColor(primary_text_color()));
@@ -645,8 +645,8 @@ fn spawn_back_button(
             let label = tr(localization, "stage-select-back");
             btn.spawn(Text::new(label))
                 .insert(TextFont {
-                    font: font.clone(),
-                    font_size: 24.0,
+                    font: FontSource::Handle(font.clone()),
+                    font_size: FontSize::Px(24.0),
                     ..default()
                 })
                 .insert(TextColor(primary_text_color()));
@@ -683,8 +683,8 @@ fn spawn_options_button(
             let label = tr(localization, "stage-select-options");
             btn.spawn(Text::new(label))
                 .insert(TextFont {
-                    font: font.clone(),
-                    font_size: 24.0,
+                    font: FontSource::Handle(font.clone()),
+                    font_size: FontSize::Px(24.0),
                     ..default()
                 })
                 .insert(TextColor(primary_text_color()));
@@ -758,8 +758,8 @@ fn spawn_stage_cards(
                         header
                             .spawn(Text::new(stage_header))
                             .insert(TextFont {
-                                font: font.clone(),
-                                font_size: 18.0,
+                                font: FontSource::Handle(font.clone()),
+                                font_size: FontSize::Px(18.0),
                                 ..default()
                             })
                             .insert(TextColor(secondary_text_color()));
@@ -770,8 +770,8 @@ fn spawn_stage_cards(
                     let stage_title = entry.localized_title(localization);
                     card.spawn(Text::new(stage_title))
                         .insert(TextFont {
-                            font: font.clone(),
-                            font_size: 32.0,
+                            font: FontSource::Handle(font.clone()),
+                            font_size: FontSize::Px(32.0),
                             ..default()
                         })
                         .insert(TextColor(primary_text_color()));
@@ -817,8 +817,8 @@ fn spawn_stage_chip(
         .with_children(|chip| {
             chip.spawn(Text::new(label.to_string()))
                 .insert(TextFont {
-                    font: font.clone(),
-                    font_size: 14.0,
+                    font: FontSource::Handle(font.clone()),
+                    font_size: FontSize::Px(14.0),
                     ..default()
                 })
                 .insert(TextColor(primary_text_color()));
@@ -865,8 +865,8 @@ fn spawn_play_button(
         .with_children(|btn| {
             btn.spawn(Text::new(label.to_string()))
                 .insert(TextFont {
-                    font: font.clone(),
-                    font_size: 24.0,
+                    font: FontSource::Handle(font.clone()),
+                    font_size: FontSize::Px(24.0),
                     ..default()
                 })
                 .insert(TextColor(primary_text_color()));
@@ -899,8 +899,8 @@ fn spawn_bottom_bar(parent: &mut ChildSpawnerCommands, font: &Handle<Font>, init
                 StagePageIndicator,
                 Text::new(initial_value),
                 TextFont {
-                    font: font.clone(),
-                    font_size: 28.0,
+                    font: FontSource::Handle(font.clone()),
+                    font_size: FontSize::Px(28.0),
                     ..default()
                 },
                 TextColor(primary_text_color()),
@@ -938,8 +938,8 @@ fn spawn_nav_button(
         .with_children(|btn| {
             btn.spawn(Text::new(label))
                 .insert(TextFont {
-                    font: font.clone(),
-                    font_size: 24.0,
+                    font: FontSource::Handle(font.clone()),
+                    font_size: FontSize::Px(24.0),
                     ..default()
                 })
                 .insert(TextColor(primary_text_color()));

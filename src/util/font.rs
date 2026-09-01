@@ -17,7 +17,7 @@ pub fn apply_font_for_locale(
     if locale_code == "zh-Hans" {
         if let Some(handle) = asset_store.font(FontKey::Chinese) {
             if let Some(font) = fonts.get(&handle) {
-                font_data = Some(egui::FontData::from_owned(font.data.as_ref().clone()).into());
+                font_data = Some(egui::FontData::from_owned(font.data.as_ref().to_vec()).into());
             } else {
                 warn!("Chinese font handle found but data not loaded");
             }
@@ -30,7 +30,7 @@ pub fn apply_font_for_locale(
     if font_data.is_none() {
         if let Some(handle) = asset_store.font(FontKey::Default) {
             if let Some(font) = fonts.get(&handle) {
-                font_data = Some(egui::FontData::from_owned(font.data.as_ref().clone()).into());
+                font_data = Some(egui::FontData::from_owned(font.data.as_ref().to_vec()).into());
             } else {
                 warn!("Default font handle found but data not loaded");
             }

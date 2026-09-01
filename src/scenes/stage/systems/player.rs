@@ -273,7 +273,6 @@ type PlayerGoalDescentComponents<'w> = (
     &'w mut Transform,
     &'w mut LinearVelocity,
     &'w mut PlayerMotion,
-    &'w CollisionLayers,
     &'w mut GravityScale,
     &'w PlayerGoalDescent,
 );
@@ -316,14 +315,12 @@ pub fn drive_player_goal_descent(
     mut query: Query<PlayerGoalDescentComponents<'_>, With<Player>>,
     mut count: Local<u32>,
 ) {
-    let Some((entity, mut transform, mut velocity, mut motion, _, mut gravity_scale, descent)) =
+    let Some((entity, mut transform, mut velocity, mut motion, mut gravity_scale, descent)) =
         query.iter_mut().next()
     else {
         return;
     };
 
-    let new_layers = CollisionLayers::new(LayerMask::NONE, LayerMask::NONE);
-    commands.entity(entity).insert(new_layers);
     motion.is_moving = false;
     motion.is_jumping = false;
     motion.is_climbing = true;
@@ -348,9 +345,12 @@ pub fn drive_player_goal_descent(
 
     transform.translation.y = descent.target_y;
     motion.is_climbing = false;
-    let restored_layers =
-        CollisionLayers::new(descent.original_memberships, descent.original_filters);
-    commands.entity(entity).insert(restored_layers);
     gravity_scale.0 = descent.original_gravity;
-    commands.entity(entity).remove::<PlayerGoalDescent>();
+    commands
+        .entity(entity)
+        .insert(CollisionLayers::new(
+            descent.original_memberships,
+            descent.original_filters,
+        ))
+        .remove::<PlayerGoalDescent>();
 }
