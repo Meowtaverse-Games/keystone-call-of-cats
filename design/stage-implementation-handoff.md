@@ -1,6 +1,6 @@
 # Stage implementation handoff — fixed 20-stage release
 
-- 更新日: 2026-09-04
+- 更新日: 2026-09-05
 - 作業ブランチ: `feature/20-stage-release-handoff`
 - 起点: `main` / `e49b1df`
 
@@ -50,12 +50,13 @@ Stage 13〜16、20は、`keystone-lang`に`place`がないため`.ks`ではな�
 
 ## 実装進捗スナップショット
 
-2026-09-04時点:
+2026-09-05時点:
 
 - 製品カタログと`assets/stages/list.ron`はStage 1〜20へ整合済み。
 - 既存能力で解けるStage 1〜12・17〜19は固定設計RONを`assets/stages/`へ昇格済み。製品RONを使うCLI正解検証も成功済み。
 - Stage 13〜20のRONはカタログからロード可能。ただし13〜16・20は`place`未実装のため製品クリア未達。
-- 次の実装対象はWP2の`keystone-lang`への`place`追加。
+- `keystone-lang`の`feature/place-command`（`fe41c163`）で`place <direction>`と`Place(Direction)`を実装し、全65テスト成功。`keystone_cc`側も同SHAへ依存を固定済み。
+- 次の実装対象はWP3の製品側`place`基盤。言語ブランチのレビューとmainへのマージは未実施。
 - 全面のBevy物理・UI確認は別環境で未実施。
 
 ## 4. 現在の製品コードとの差分
@@ -72,13 +73,14 @@ Stage 21〜23は一覧から削除済み。データ面の次の差分は`place_
 ### `place`
 
 - `src/resources/stone_type.rs`に`Type4`はあるが、能力登録がコメントアウトされている。
-- `src/util/script_types.rs`の`ScriptCommand`は`Move / Sleep / Dig`だけ。
-- `src/resources/script_engine/keystone_executor.rs`は`keystone_lang::Event`を`Move / Sleep / Dig`へ変換している。
+- `keystone-lang`側には`place <direction>`と`Place(Direction)`を追加済み。
+- `src/util/script_types.rs`の`ScriptCommand`はまだ`Move / Sleep / Dig`だけ。
+- `src/resources/script_engine/keystone_executor.rs`はまだ`keystone_lang::Event`を`Move / Sleep / Dig`だけへ変換している。
 - `src/scenes/stage/systems/stone.rs`の実行アクションにも配置処理はない。
 - `ChunkGrammarConfig`、`Map`、石スポーン状態は`dig_limit`だけを持ち、`place_limit`を持たない。
 - CLIの`tools/stage_sim`には設計検証用の配置処理がある。
 
-`place`の言語構文とイベント追加は外部依存`keystone-lang`側の変更が先に必要になる。依存は現在Gitリビジョン`057ca26c...`を参照している。
+外部依存`keystone-lang`は`feature/place-command`のGitリビジョン`fe41c163e2795f5a39173517d1f441be5efbfc73`へ固定済み。製品側の能力制限、`up`から`MoveDirection::Top`への変換、配置処理はWP3で実装する。
 
 ### 複数石
 
@@ -118,6 +120,8 @@ Stage 21〜23は一覧から削除済み。データ面の次の差分は`place_
 ### WP2 — `keystone-lang`への`place`追加
 
 対象リポジトリ: `Meowtaverse-Games/keystone-lang`
+
+進捗: 実装・単体テスト・ブランチ公開・依存固定まで完了。レビューとmainへのマージ待ち。
 
 作業:
 
