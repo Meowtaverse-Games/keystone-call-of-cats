@@ -21,7 +21,7 @@
 ./design/verify-all.sh
 ```
 
-製品カタログの1〜20、製品RONの解析、昇格済みStage 1〜4と設計正本の一致を軽量確認できます。
+製品カタログの1〜20、製品RONの解析、昇格済みStage 1〜8と設計正本の一致を軽量確認できます。
 
 ```bash
 ./design/verify-product-stage-catalog.sh
