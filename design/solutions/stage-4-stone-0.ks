@@ -1,0 +1,15 @@
+move up
+move up
+move up
+move up
+move up
+move right
+move right
+move right
+move right
+move right
+move down
+move down
+move down
+move down
+move down

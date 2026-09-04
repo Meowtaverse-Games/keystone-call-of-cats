@@ -1,0 +1,2 @@
+dig down
+move down

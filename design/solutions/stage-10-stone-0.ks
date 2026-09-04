@@ -1,0 +1,14 @@
+move right
+dig right
+move right
+move right
+move right
+dig right
+move right
+move right
+move right
+dig right
+move right
+move right
+move right
+move right
