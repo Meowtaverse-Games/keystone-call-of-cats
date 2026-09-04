@@ -48,6 +48,16 @@ CLIで解法成立を確認した固定20面を、Keystone: Call of Catsの製�
 
 Stage 13〜16、20は、`keystone-lang`に`place`がないため`.ks`ではなくCLI操作計画で検証している。これは製品実装済みという意味ではない。
 
+## 実装進捗スナップショット
+
+2026-09-04時点:
+
+- 製品カタログと`assets/stages/list.ron`はStage 1〜20へ整合済み。
+- Stage 1〜4は固定設計RONを`assets/stages/`へ昇格済み。製品RONを使うCLI正解検証も成功済み。
+- Stage 13〜20のRONはカタログからロード可能。ただし13〜16・20は`place`未実装のため製品クリア未達。
+- Stage 5〜12の製品RONは旧版のまま。次の昇格対象はStage 5〜8。
+- 全面のBevy物理・UI確認は別環境で未実施。
+
 ## 4. 現在の製品コードとの差分
 
 ### ステージ登録
@@ -232,6 +242,7 @@ Stage 13〜16、20は、`keystone-lang`に`place`がないため`.ks`ではな�
 ```bash
 cargo test --manifest-path tools/stage_sim/Cargo.toml
 ./design/verify-all.sh
+./design/verify-product-stage-catalog.sh
 cargo fmt --all -- --check
 ```
 
