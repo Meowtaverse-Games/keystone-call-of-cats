@@ -53,9 +53,9 @@ Stage 13〜16、20は、`keystone-lang`に`place`がないため`.ks`ではな�
 2026-09-04時点:
 
 - 製品カタログと`assets/stages/list.ron`はStage 1〜20へ整合済み。
-- Stage 1〜8は固定設計RONを`assets/stages/`へ昇格済み。製品RONを使うCLI正解検証も成功済み。
+- 既存能力で解けるStage 1〜12・17〜19は固定設計RONを`assets/stages/`へ昇格済み。製品RONを使うCLI正解検証も成功済み。
 - Stage 13〜20のRONはカタログからロード可能。ただし13〜16・20は`place`未実装のため製品クリア未達。
-- Stage 9〜12の製品RONは旧版のまま。次の昇格対象はStage 9〜12。
+- 次の実装対象はWP2の`keystone-lang`への`place`追加。
 - 全面のBevy物理・UI確認は別環境で未実施。
 
 ## 4. 現在の製品コードとの差分
@@ -63,11 +63,11 @@ Stage 13〜16、20は、`keystone-lang`に`place`がないため`.ks`ではな�
 ### ステージ登録
 
 - `assets/stages/`、`StageMeta::load_map`、`assets/stages/list.ron`はStage 1〜20へ整合済み。
-- Stage 1〜8は固定設計RONへ昇格済み。Stage 9〜12だけが旧製品RONのまま。
+- Stage 1〜12・17〜19は固定設計RONへ昇格済み。
 - Stage 13〜20は固定設計RONを配置済み。ただし13〜16・20は`place`実装後に製品クリア確認が必要。
 - `design/stages/`にはCLI検証済みの固定Stage 1〜20があり、製品RON昇格時の正本とする。
 
-残るStage 9〜12も旧RONを個別修正せず、設計RONを`assets/stages/`へそのまま昇格する。Stage 21〜23は一覧から削除済み。
+Stage 21〜23は一覧から削除済み。データ面の次の差分は`place_limit`追加後にStage 13〜16・20へ上限値を反映すること。
 
 ### `place`
 
