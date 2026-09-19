@@ -25,7 +25,7 @@ function Refresh-ToolPath {
 }
 
 function Invoke-Native {
-    param([Parameter(Mandatory)][string]$FilePath, [string[]]$Arguments = @())
+    param([Parameter(Mandatory)][string]$FilePath, [string[]]$Arguments = @(), [string]$WorkingDirectory)
 
     # Process avoids Windows PowerShell 5.1 treating normal native stderr as a
     # terminating error when $ErrorActionPreference is Stop.
@@ -36,6 +36,7 @@ function Invoke-Native {
     $startInfo.RedirectStandardError = $true
     $startInfo.StandardOutputEncoding = [Text.Encoding]::UTF8
     $startInfo.StandardErrorEncoding = [Text.Encoding]::UTF8
+    if ($WorkingDirectory) { $startInfo.WorkingDirectory = $WorkingDirectory }
     # ArgumentList is unavailable in the .NET Framework used by Windows
     # PowerShell 5.1. Quote the small command lines used by these scripts.
     $quotedArguments = foreach ($argument in $Arguments) {
@@ -49,12 +50,28 @@ function Invoke-Native {
     $process = New-Object System.Diagnostics.Process
     $process.StartInfo = $startInfo
     if (-not $process.Start()) { throw "Could not start $FilePath." }
-    $stdout = $process.StandardOutput.ReadToEnd()
-    $stderr = $process.StandardError.ReadToEnd()
+    # Read both streams while the child is alive. This keeps first-run Cargo
+    # progress visible and prevents either redirected pipe from filling up.
+    $stdoutTask = $process.StandardOutput.ReadLineAsync(); $stderrTask = $process.StandardError.ReadLineAsync()
+    $stdoutDone = $false; $stderrDone = $false
+    while (-not ($process.HasExited -and $stdoutDone -and $stderrDone)) {
+        if (-not $stdoutDone -and $stdoutTask.IsCompleted) {
+            $line = $stdoutTask.GetAwaiter().GetResult()
+            if ($null -eq $line) { $stdoutDone = $true } else { Write-Output $line; $stdoutTask = $process.StandardOutput.ReadLineAsync() }
+        }
+        if (-not $stderrDone -and $stderrTask.IsCompleted) {
+            $line = $stderrTask.GetAwaiter().GetResult()
+            if ($null -eq $line) { $stderrDone = $true } else { Write-Output $line; $stderrTask = $process.StandardError.ReadLineAsync() }
+        }
+        if (-not (($stdoutTask.IsCompleted -or $stdoutDone) -and ($stderrTask.IsCompleted -or $stderrDone))) { [Threading.Thread]::Sleep(25) }
+    }
     $process.WaitForExit()
-    if ($stdout) { Write-Output $stdout.TrimEnd() }
-    if ($stderr) { Write-Output $stderr.TrimEnd() }
     if ($process.ExitCode -ne 0) { throw "$FilePath failed (exit $($process.ExitCode))." }
+}
+
+function Test-InstalledWindowsSdk {
+    param([string]$SdkRoot = (Join-Path ${env:ProgramFiles(x86)} 'Windows Kits\10'))
+    return (Test-Path -LiteralPath (Join-Path $SdkRoot 'Lib') -PathType Container)
 }
 
 function Find-CppInstallation {
@@ -85,11 +102,16 @@ function Invoke-SetupWindows {
     Refresh-ToolPath
     if (-not (Get-Command git.exe -ErrorAction SilentlyContinue)) { Install-WingetPackage 'Git.Git' }
 
-    if (-not (Find-CppInstallation)) {
+    $cppInstallation = Find-CppInstallation
+    if (-not $cppInstallation) {
         if ($CheckOnly) { throw 'MSVC C++ Build Tools are missing. Run setup again without -CheckOnly.' }
         Write-Host 'Installing Visual Studio Build Tools requires a UAC confirmation. A reboot may be requested; this script never reboots Windows.'
         Install-WingetPackage 'Microsoft.VisualStudio.2022.BuildTools' '--wait --passive --norestart --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended'
-        if (-not (Find-CppInstallation)) { throw 'MSVC C++ Build Tools are not ready. Restart Windows if requested, then rerun setup.' }
+        $cppInstallation = Find-CppInstallation
+        if (-not $cppInstallation) { throw 'MSVC C++ Build Tools are not ready. Restart Windows if requested, then rerun setup.' }
+    }
+    if (-not (Test-InstalledWindowsSdk)) {
+        throw 'Windows SDK is missing. In Visual Studio Installer choose Modify for Build Tools, add "Desktop development with C++" and a Windows 10/11 SDK, then rerun setup.'
     }
 
     if (-not (Get-Command rustup.exe -ErrorAction SilentlyContinue)) { Install-WingetPackage 'Rustlang.Rustup' }

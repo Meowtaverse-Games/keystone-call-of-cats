@@ -22,7 +22,7 @@ function Get-AssetStatePath {
 function Get-AssetFingerprint {
     param([Parameter(Mandatory)][string]$Path)
     if (-not (Test-Path -LiteralPath $Path -PathType Container)) { return $null }
-    $lines = foreach ($file in Get-ChildItem -LiteralPath $Path -File -Recurse | Sort-Object FullName) {
+    $lines = foreach ($file in Get-ChildItem -LiteralPath $Path -File -Recurse -Force | Sort-Object FullName) {
         $relative = $file.FullName.Substring($Path.Length).TrimStart('\', '/')
         "$relative|$((Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash)"
     }
@@ -43,7 +43,7 @@ function Copy-VerifiedAssets {
         if (-not (Test-Path -LiteralPath $source -PathType Container)) { throw "Missing submodule assets: ext-assets/$name. Run: git submodule update --init --recursive" }
         if (Test-AssetPlaceholder $destination $name) {
             Remove-Item -LiteralPath $destination -Force
-            Copy-Item -LiteralPath $source -Destination $destination -Recurse
+            Copy-Item -LiteralPath $source -Destination $destination -Recurse -Force
             Write-Host "Prepared assets/$name from ext-assets/$name."
         } elseif (-not (Test-Path -LiteralPath $destination -PathType Container)) {
             throw "Unexpected assets/$name. Restore the tracked placeholder with Git, or create a verified asset directory."
@@ -55,7 +55,7 @@ function Copy-VerifiedAssets {
             if ($sourceFingerprint -ne $destinationFingerprint) {
                 if ($old -and $old.destination -eq $destinationFingerprint) {
                     Remove-Item -LiteralPath $destination -Recurse -Force
-                    Copy-Item -LiteralPath $source -Destination $destination -Recurse
+                    Copy-Item -LiteralPath $source -Destination $destination -Recurse -Force
                     Write-Host "Refreshed assets/$name after a source asset change."
                 } else { throw "assets/$name differs from ext-assets/$name and was not overwritten. Preserve or reconcile local asset edits, then rerun." }
             }
@@ -73,7 +73,14 @@ function Invoke-RunWindows {
     $rustup = Get-Command rustup.exe -ErrorAction SilentlyContinue
     if (-not $rustup) { throw "rustup.exe is not on PATH. Run scripts/setup-windows.ps1, or set CARGO_HOME. Expected: $(Get-CargoBin)" }
     $toolchain = 'stable-x86_64-pc-windows-msvc'
-    Invoke-Native $rustup.Source @('run', $toolchain, 'cargo', '--version')
+    $git = Get-Command git.exe -ErrorAction SilentlyContinue
+    if (-not $git) { throw 'git.exe is not on PATH. Run scripts/setup-windows.ps1 again.' }
+    $commit = Invoke-Native $git.Source @('rev-parse', 'HEAD') -WorkingDirectory $repoRoot
+    $dirty = Invoke-Native $git.Source @('status', '--short') -WorkingDirectory $repoRoot
+    Write-Host "Repository: $repoRoot"
+    Write-Host "Commit: $commit"
+    if ($dirty) { Write-Host "Working tree changes:`n$dirty" } else { Write-Host 'Working tree: clean' }
+    Invoke-Native $rustup.Source @('run', $toolchain, 'cargo', '--version') -WorkingDirectory $repoRoot
     Copy-VerifiedAssets $repoRoot (Get-AssetStatePath $repoRoot)
     $cargoArgs = @('run', '--locked')
     if ($BuildOnly) { $cargoArgs[0] = 'build' }
@@ -81,7 +88,7 @@ function Invoke-RunWindows {
     if ($UseDefaultFeatures -and $Features) { throw 'Use either -UseDefaultFeatures or -Features, not both.' }
     if ($Features) { $cargoArgs += @('--no-default-features', '--features', $Features) } elseif (-not $UseDefaultFeatures) { $cargoArgs += '--no-default-features' }
     Write-Host "Command: rustup run $toolchain cargo $($cargoArgs -join ' ')"
-    Invoke-Native $rustup.Source (@('run', $toolchain, 'cargo') + $cargoArgs)
+    Invoke-Native $rustup.Source (@('run', $toolchain, 'cargo') + $cargoArgs) -WorkingDirectory $repoRoot
 }
 
 if ($MyInvocation.InvocationName -ne '.') {

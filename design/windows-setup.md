@@ -18,6 +18,8 @@ The script reuses installed Git, MSVC Build Tools, and rustup where available. I
 installs missing dependencies through WinGet, asks Windows for elevation when Build
 Tools requires it, and does not reboot or relax the machine execution policy. If an
 installer requests a reboot, restart Windows and run the same command again.
+Open a new PowerShell before cloning so a Git installation's persistent PATH change is
+available to that terminal.
 
 `-CheckOnly` does not install or update dependencies. It verifies Rust 1.95 or newer,
 the MSVC Rust toolchain, Git, Cargo, and a tiny native Rust compile. `-SkipSmokeTest`

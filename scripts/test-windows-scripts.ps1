@@ -11,6 +11,13 @@ try {
     $failed = $false
     try { Invoke-Native '/bin/sh' @('-c', 'exit 9') } catch { $failed = $true }
     if (-not $failed) { throw 'Native nonzero exits must throw.' }
+    $workingDirectory = Join-Path $temp 'native-cwd'; New-Item -ItemType Directory -Path $workingDirectory | Out-Null
+    if ((Invoke-Native '/bin/sh' @('-c', 'pwd') -WorkingDirectory $workingDirectory).Trim() -ne $workingDirectory) { throw 'Native commands must use their explicit working directory.' }
+    $largeOutput = Invoke-Native '/bin/sh' @('-c', 'i=0; while [ $i -lt 20000 ]; do printf x 1>&2; i=$((i+1)); done; printf done')
+    if (($largeOutput -join '') -notmatch 'done') { throw 'Native stdout/stderr must be drained without deadlock.' }
+    $sdkRoot = Join-Path $temp 'sdk'; if (Test-InstalledWindowsSdk $sdkRoot) { throw 'Missing SDK must be detected.' }
+    New-Item -ItemType Directory -Path (Join-Path $sdkRoot 'Lib') -Force | Out-Null
+    if (-not (Test-InstalledWindowsSdk $sdkRoot)) { throw 'Present SDK must be detected.' }
     New-Item -ItemType Directory -Path (Join-Path $temp 'assets'), (Join-Path $temp 'ext-assets/fonts'), (Join-Path $temp 'ext-assets/images') -Force | Out-Null
     Set-Content (Join-Path $temp 'assets/fonts') '../ext-assets/fonts'; Set-Content (Join-Path $temp 'assets/images') '../ext-assets/images'
     Set-Content (Join-Path $temp 'ext-assets/fonts/a.txt') 'first'; Set-Content (Join-Path $temp 'ext-assets/images/a.txt') 'first'
@@ -19,7 +26,7 @@ try {
     Copy-VerifiedAssets $temp $state
     Set-Content (Join-Path $temp 'ext-assets/fonts/a.txt') 'second'; Copy-VerifiedAssets $temp $state
     if ((Get-Content (Join-Path $temp 'assets/fonts/a.txt') -Raw).Trim() -ne 'second') { throw 'Unchanged copied assets were not refreshed.' }
-    Set-Content (Join-Path $temp 'assets/fonts/a.txt') 'local'; Set-Content (Join-Path $temp 'ext-assets/fonts/a.txt') 'third'
+    Set-Content (Join-Path $temp 'assets/fonts/.hidden.txt') 'local hidden'; Set-Content (Join-Path $temp 'ext-assets/fonts/.hidden.txt') 'source hidden'
     $protected = $false
     try { Copy-VerifiedAssets $temp $state } catch { $protected = $_.Exception.Message -match 'not overwritten' }
     if (-not $protected) { throw 'Local asset edits must be protected.' }

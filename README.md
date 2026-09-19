@@ -38,7 +38,8 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup-windows.
 
 Clone with submodules after setup. Private submodule access may require normal GitHub
 authentication. Select the branch you want to test; no branch or commit is pinned by
-these instructions.
+these instructions. Open a new PowerShell after the setup command finishes before
+cloning, so Git's persistent PATH change is available to the new terminal.
 
 ```powershell
 git clone --recurse-submodules https://github.com/Meowtaverse-Games/keystone-call-of-cats.git
