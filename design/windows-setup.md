@@ -22,7 +22,8 @@ Open a new PowerShell before cloning so a Git installation's persistent PATH cha
 available to that terminal.
 
 `-CheckOnly` does not install or update dependencies. It verifies Rust 1.95 or newer,
-the MSVC Rust toolchain, Git, Cargo, and a tiny native Rust compile. `-SkipSmokeTest`
+the MSVC Rust toolchain, Git, Cargo, and a complete same-version x64 Windows SDK
+(`kernel32.lib` and `ucrt.lib`), plus a tiny native Rust compile. `-SkipSmokeTest`
 omits only that tiny compile. This is a compiler check, not a Bevy build.
 
 ## Clone and RUN

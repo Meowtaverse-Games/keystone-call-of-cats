@@ -15,9 +15,26 @@ try {
     if ((Invoke-Native '/bin/sh' @('-c', 'pwd') -WorkingDirectory $workingDirectory).Trim() -ne $workingDirectory) { throw 'Native commands must use their explicit working directory.' }
     $largeOutput = Invoke-Native '/bin/sh' @('-c', 'i=0; while [ $i -lt 20000 ]; do printf x 1>&2; i=$((i+1)); done; printf done')
     if (($largeOutput -join '') -notmatch 'done') { throw 'Native stdout/stderr must be drained without deadlock.' }
+    function Add-SdkLibrary {
+        param([string]$Version, [string]$RelativePath)
+        $path = Join-Path $sdkRoot "Lib/$Version/$RelativePath"
+        New-Item -ItemType Directory -Path (Split-Path $path -Parent) -Force | Out-Null
+        Set-Content -LiteralPath $path -Value 'library'
+    }
     $sdkRoot = Join-Path $temp 'sdk'; if (Test-InstalledWindowsSdk $sdkRoot) { throw 'Missing SDK must be detected.' }
     New-Item -ItemType Directory -Path (Join-Path $sdkRoot 'Lib') -Force | Out-Null
-    if (-not (Test-InstalledWindowsSdk $sdkRoot)) { throw 'Present SDK must be detected.' }
+    if (Test-InstalledWindowsSdk $sdkRoot) { throw 'An empty SDK Lib directory must not count.' }
+    Add-SdkLibrary '10.0.1.0' 'ucrt/x64/ucrt.lib'
+    if (Test-InstalledWindowsSdk $sdkRoot) { throw 'A UCRT-only SDK version must not count.' }
+    Add-SdkLibrary '10.0.2.0' 'um/x64/kernel32.lib'
+    if (Test-InstalledWindowsSdk $sdkRoot) { throw 'A kernel32-only SDK version must not count.' }
+    Add-SdkLibrary '10.0.3.0' 'um/x86/kernel32.lib'; Add-SdkLibrary '10.0.3.0' 'ucrt/x86/ucrt.lib'
+    if (Test-InstalledWindowsSdk $sdkRoot) { throw 'An x86-only SDK version must not count.' }
+    New-Item -ItemType Directory -Path (Join-Path $sdkRoot 'Lib/10.0.4.0/um/x64/kernel32.lib') -Force | Out-Null
+    Add-SdkLibrary '10.0.4.0' 'ucrt/x64/ucrt.lib'
+    if (Test-InstalledWindowsSdk $sdkRoot) { throw 'A directory placeholder must not count as kernel32.lib.' }
+    Add-SdkLibrary '10.0.5.0' 'um/x64/kernel32.lib'; Add-SdkLibrary '10.0.5.0' 'ucrt/x64/ucrt.lib'
+    if (-not (Test-InstalledWindowsSdk $sdkRoot)) { throw 'A complete same-version x64 SDK must be detected.' }
     New-Item -ItemType Directory -Path (Join-Path $temp 'assets'), (Join-Path $temp 'ext-assets/fonts'), (Join-Path $temp 'ext-assets/images') -Force | Out-Null
     Set-Content (Join-Path $temp 'assets/fonts') '../ext-assets/fonts'; Set-Content (Join-Path $temp 'assets/images') '../ext-assets/images'
     Set-Content (Join-Path $temp 'ext-assets/fonts/a.txt') 'first'; Set-Content (Join-Path $temp 'ext-assets/images/a.txt') 'first'

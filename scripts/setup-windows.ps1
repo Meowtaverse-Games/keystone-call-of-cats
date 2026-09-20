@@ -71,7 +71,14 @@ function Invoke-Native {
 
 function Test-InstalledWindowsSdk {
     param([string]$SdkRoot = (Join-Path ${env:ProgramFiles(x86)} 'Windows Kits\10'))
-    return (Test-Path -LiteralPath (Join-Path $SdkRoot 'Lib') -PathType Container)
+    $libRoot = Join-Path $SdkRoot 'Lib'
+    if (-not (Test-Path -LiteralPath $libRoot -PathType Container)) { return $false }
+    foreach ($version in Get-ChildItem -LiteralPath $libRoot -Directory -Force) {
+        $kernel32 = Join-Path $version.FullName 'um\x64\kernel32.lib'
+        $ucrt = Join-Path $version.FullName 'ucrt\x64\ucrt.lib'
+        if ((Test-Path -LiteralPath $kernel32 -PathType Leaf) -and (Test-Path -LiteralPath $ucrt -PathType Leaf)) { return $true }
+    }
+    return $false
 }
 
 function Find-CppInstallation {
@@ -111,7 +118,7 @@ function Invoke-SetupWindows {
         if (-not $cppInstallation) { throw 'MSVC C++ Build Tools are not ready. Restart Windows if requested, then rerun setup.' }
     }
     if (-not (Test-InstalledWindowsSdk)) {
-        throw 'Windows SDK is missing. In Visual Studio Installer choose Modify for Build Tools, add "Desktop development with C++" and a Windows 10/11 SDK, then rerun setup.'
+        throw 'A complete x64 Windows SDK is missing (kernel32.lib and ucrt.lib must be in the same SDK version). In Visual Studio Installer choose Modify for Build Tools, add "Desktop development with C++" and a Windows 10/11 SDK, then rerun setup.'
     }
 
     if (-not (Get-Command rustup.exe -ErrorAction SilentlyContinue)) { Install-WingetPackage 'Rustlang.Rustup' }
