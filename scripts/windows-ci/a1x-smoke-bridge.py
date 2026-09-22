@@ -15,7 +15,6 @@ def ensure_run(repo, run_id, expected_sha):
     if run.get('repository', {}).get('full_name') != repo: raise ValueError('run repository mismatch')
     if run.get('path') != WORKFLOW: raise ValueError('run is not Windows verification workflow')
     if run.get('conclusion') != 'success': raise ValueError('run did not succeed')
-    if run.get('head_sha') != expected_sha: raise ValueError('run SHA does not match --expected-sha')
     return run
 
 def queue_json(queue, *args): return json.loads(call(sys.executable, str(queue), *args).stdout)
@@ -40,13 +39,17 @@ def validate_download(root):
             if total > 512 * 1024 * 1024: raise ValueError('artifact exceeds A1X queue limit')
 
 def stage_artifact(repo, run_id, sha, staging):
-    artifact_name = f'windows-verification-{sha}'
     artifacts = gh_json('api', f'repos/{repo}/actions/runs/{run_id}/artifacts').get('artifacts', [])
-    if not any(a.get('name') == artifact_name and not a.get('expired') for a in artifacts):
+    matching = [a for a in artifacts if a.get('name', '').startswith('windows-verification-') and not a.get('expired')]
+    if len(matching) != 1:
         raise ValueError('expected Windows verification artifact was not found')
+    artifact_name = matching[0]['name']
     downloaded = staging / 'download'; downloaded.mkdir()
     call('gh', 'run', 'download', str(run_id), '-n', artifact_name, '-D', str(downloaded), '-R', repo)
     validate_download(downloaded)
+    metadata = next(downloaded.rglob('build-metadata.json'), None)
+    if metadata is None or json.loads(metadata.read_text()).get('source_sha') != sha:
+        raise ValueError('artifact metadata SHA does not match --expected-sha')
     binary = next(downloaded.rglob('keystone-cc.exe'), None)
     if binary is None: raise ValueError('artifact contains no keystone-cc.exe')
     artifact = staging / 'payload' / 'artifact'; artifact.mkdir(parents=True)
@@ -57,7 +60,9 @@ def stage_artifact(repo, run_id, sha, staging):
 
 def verify_result(job, output):
     directory = Path(job['directory']); report = json.loads((directory/'result.json').read_text())
-    archive = directory/'result.zip'; digest = hashlib.file_digest(archive.open('rb'),'sha256').hexdigest()
+    archive = directory/'result.zip'
+    with archive.open('rb') as handle:
+        digest = hashlib.file_digest(handle,'sha256').hexdigest()
     if report.get('id') != job.get('id') or report.get('state') != 'succeeded' or report.get('sha256') != digest:
         raise ValueError('queue result identity or archive hash mismatch')
     if output:

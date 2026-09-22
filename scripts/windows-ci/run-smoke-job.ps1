@@ -26,9 +26,9 @@ $executablePath = if ($payload.executable_path) {
     Join-Path $artifactDir 'keystone-cc.exe'
 }
 $timeoutSeconds = if ($payload.timeout_seconds) { [int]$payload.timeout_seconds } else { 120 }
-$outputPath = [string]$env:SASARA_JOB_OUTPUT
-$outputDirectory = Split-Path -Parent $outputPath
+$outputDirectory = [string]$env:SASARA_JOB_OUTPUT
 New-Item -ItemType Directory -Path $outputDirectory -Force | Out-Null
+$outputPath = Join-Path $outputDirectory 'result.json'
 
 $reportPath = Join-Path $outputDirectory 'smoke-result.json'
 $saveDir = Join-Path $outputDirectory 'smoke-save'

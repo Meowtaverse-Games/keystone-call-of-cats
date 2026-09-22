@@ -39,6 +39,6 @@ python3 scripts/windows-ci/a1x-smoke-bridge.py --repo OWNER/REPOSITORY \
   --queue-script /path/to/windows-jobs.py --output /safe/output/result.zip
 ```
 
-It verifies the exact workflow, repository, successful conclusion, SHA, named
-artifact, active A1X worker, and queue result archive hash before reporting
+It verifies the exact workflow, repository, successful conclusion, artifact
+metadata SHA, active A1X worker, and queue result archive hash before reporting
 success. The `--output` path is the only place it copies the returned archive.

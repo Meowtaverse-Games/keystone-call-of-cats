@@ -31,11 +31,12 @@ $reportDirectory = Split-Path -Parent $ReportPath
 if ($reportDirectory) { New-Item -ItemType Directory -Path $reportDirectory -Force | Out-Null }
 New-Item -ItemType Directory -Path $SaveDir -Force | Out-Null
 if (-not $LogPath) { $LogPath = Join-Path $reportDirectory 'smoke.log' }
+$errorLogPath = "$LogPath.stderr"
 
 $env:KEYSTONE_CI_SAVE_DIR = $SaveDir
 $arguments = "--ci-smoke --ci-smoke-report `"$ReportPath`""
 $process = Start-Process -FilePath $ExecutablePath -ArgumentList $arguments -PassThru -NoNewWindow `
-    -RedirectStandardOutput $LogPath -RedirectStandardError $LogPath
+    -RedirectStandardOutput $LogPath -RedirectStandardError $errorLogPath
 
 try {
     if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
