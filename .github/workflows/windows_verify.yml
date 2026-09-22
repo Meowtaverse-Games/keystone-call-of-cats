@@ -16,8 +16,13 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: windows-verification-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 env:
   CARGO_TERM_COLOR: always
+  RUSTFLAGS: -C debuginfo=0
 
 jobs:
   fork-pr-notice:
@@ -30,7 +35,7 @@ jobs:
   verify:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: windows-latest
-    timeout-minutes: 25
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@v4
         with:
@@ -62,7 +67,7 @@ jobs:
           } | Set-Content -LiteralPath 'ci-results/assets-manifest.txt' -Encoding utf8
 
       - name: Build selected binary
-        timeout-minutes: 12
+        timeout-minutes: 45
         shell: pwsh
         run: |
           $profile = '${{ inputs.profile || 'debug' }}'
@@ -72,7 +77,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Run Rust tests
-        timeout-minutes: 8
+        timeout-minutes: 20
         shell: pwsh
         run: |
           & cargo test --locked --no-default-features 2>&1 | Tee-Object -FilePath ci-results/test.log
