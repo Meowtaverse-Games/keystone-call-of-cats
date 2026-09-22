@@ -1,0 +1,100 @@
+name: Windows verification
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: Build profile
+        required: false
+        default: debug
+        type: choice
+        options: [debug, release]
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  fork-pr-notice:
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Explain protected asset verification
+        run: echo "Windows verification requires the private ext-assets submodule and is skipped for fork pull requests." >> "$GITHUB_STEP_SUMMARY"
+
+  verify:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          token: ${{ secrets.GH_PAT }}
+          persist-credentials: false
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          target: x86_64-pc-windows-msvc
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+
+      - name: Materialize asset placeholders
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          foreach ($asset in 'fonts', 'images') {
+            $destination = Join-Path 'assets' $asset
+            if (Test-Path -LiteralPath $destination) { Remove-Item -LiteralPath $destination -Force -Recurse }
+            Copy-Item -LiteralPath (Join-Path 'ext-assets' $asset) -Destination $destination -Recurse
+          }
+          New-Item -ItemType Directory -Path 'ci-results' -Force | Out-Null
+          Get-ChildItem -LiteralPath assets -Recurse -File | ForEach-Object {
+            "{0}`t{1}" -f $_.FullName.Substring($PWD.Path.Length + 1), $_.Length
+          } | Set-Content -LiteralPath 'ci-results/assets-manifest.txt' -Encoding utf8
+
+      - name: Build selected binary
+        timeout-minutes: 12
+        shell: pwsh
+        run: |
+          $profile = '${{ inputs.profile || 'debug' }}'
+          $args = @('build', '--locked', '--no-default-features')
+          if ($profile -eq 'release') { $args += '--release' }
+          & cargo @args 2>&1 | Tee-Object -FilePath ci-results/build.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Run Rust tests
+        timeout-minutes: 8
+        shell: pwsh
+        run: |
+          & cargo test --locked --no-default-features 2>&1 | Tee-Object -FilePath ci-results/test.log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Write build metadata
+        if: always()
+        shell: pwsh
+        run: |
+          $profile = '${{ inputs.profile || 'debug' }}'
+          @{ source_sha = '${{ github.sha }}'; profile = $profile; features = 'no-default-features'; runner = 'windows-latest' } |
+            ConvertTo-Json | Set-Content -LiteralPath ci-results/build-metadata.json -Encoding utf8
+          $binary = if ($profile -eq 'release') { 'target/release/keystone-cc.exe' } else { 'target/debug/keystone-cc.exe' }
+          if (Test-Path $binary) { Copy-Item $binary ci-results/keystone-cc.exe }
+
+      - name: Upload Windows verification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-verification-${{ github.sha }}
+          if-no-files-found: warn
+          path: |
+            ci-results/keystone-cc.exe
+            ci-results/
+            assets/

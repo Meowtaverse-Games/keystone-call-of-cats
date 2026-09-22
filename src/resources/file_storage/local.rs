@@ -55,6 +55,13 @@ impl LocalFileStorage {
         Self::new(Self::default_base_dir())
     }
 
+    /// Returns the explicitly requested CI save directory. Keeping this lookup
+    /// here makes the override available to every local storage user while
+    /// leaving ordinary launches on their normal OS-specific location.
+    pub fn ci_smoke_dir() -> Option<Self> {
+        std::env::var_os("KEYSTONE_CI_SAVE_DIR").map(Self::new)
+    }
+
     fn path_for(&self, name: &str) -> PathBuf {
         self.base_dir.join(name)
     }
