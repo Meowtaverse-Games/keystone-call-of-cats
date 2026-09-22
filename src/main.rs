@@ -179,12 +179,12 @@ pub(crate) fn write_ci_smoke_report_and_exit(
     let source_sha = env::var("GITHUB_SHA").unwrap_or_else(|_| "local".to_string());
     let report = format!(
         concat!(
-            "{\n",
+            "{{\n",
             "  \"status\": \"ready\",\n",
             "  \"state\": \"SelectStage\",\n",
             "  \"assets_ready\": true,\n",
             "  \"source_sha\": \"{}\"\n",
-            "}\n"
+            "}}\n"
         ),
         source_sha.replace('"', "")
     );
