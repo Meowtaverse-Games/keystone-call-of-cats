@@ -23,4 +23,12 @@ class BridgeTests(unittest.TestCase):
    d=Path(temp); (d/'result.zip').write_bytes(b'x')
    (d/'result.json').write_text(json.dumps({'id':'job','state':'failed','sha256':hashlib.sha256(b'x').hexdigest()}))
    with self.assertRaises(ValueError): b.verify_result({'id':'job','directory':str(d)},None)
+ def test_queued_timeout_cancels_and_never_succeeds(self):
+  calls=[]; original=b.queue_json
+  b.queue_json=lambda queue,*args: calls.append(args) or {'state':'queued'}
+  try:
+   with self.assertRaises(TimeoutError):
+    b.await_completion('queue','job',0,None,now=lambda:1,pause=lambda _:None)
+   self.assertIn(('cancel','job'),calls)
+  finally: b.queue_json=original
 if __name__=='__main__': unittest.main()

@@ -68,6 +68,20 @@ def verify_result(job, output):
     if output:
         output.parent.mkdir(parents=True, exist_ok=True); shutil.copy2(archive, output)
 
+def await_completion(queue, job_id, deadline, output, now=time.time, pause=time.sleep):
+    while now() < deadline:
+        current = queue_json(queue, 'show', job_id)
+        if current.get('state') in ('succeeded', 'failed', 'timed_out'):
+            if current['state'] != 'succeeded': raise RuntimeError(f"A1X job {current['state']}")
+            verify_result(current, output)
+            return current
+        pause(5)
+    current = queue_json(queue, 'show', job_id)
+    if current.get('state') == 'queued':
+        try: queue_json(queue, 'cancel', job_id)
+        except subprocess.CalledProcessError: pass
+    raise TimeoutError(f"A1X job remains {current.get('state')}; it was not reported successful")
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--run-id', required=True); p.add_argument('--expected-sha', required=True)
@@ -83,19 +97,8 @@ def main():
         shutil.copy2(Path(__file__).with_name('invoke-smoke.ps1'),payload/'invoke-smoke.ps1')
         (payload/'smoke-job.json').write_text(json.dumps({'artifact_dir':'artifact','executable_path':'artifact/keystone-cc.exe','timeout_seconds':180}))
         job=queue_json(a.queue_script,'submit','--script',str(script),'--payload',str(payload),'--device','a1x','--timeout','180','--title',f'keystone smoke {a.expected_sha}')
-        deadline=time.time()+a.wait_seconds
-        while time.time()<deadline:
-            current=queue_json(a.queue_script,'show',job['id'])
-            if current.get('state') in ('succeeded','failed','timed_out'):
-                if current['state'] != 'succeeded': raise RuntimeError(f"A1X job {current['state']}")
-                verify_result(current, a.output)
-                print(json.dumps(current)); return
-            time.sleep(5)
-        current=queue_json(a.queue_script,'show',job['id'])
-        if current.get('state') == 'queued':
-            try: queue_json(a.queue_script,'cancel',job['id'])
-            except subprocess.CalledProcessError: pass
-        raise TimeoutError(f"A1X job remains {current.get('state')}; it was not reported successful")
+        current = await_completion(a.queue_script, job['id'], time.time()+a.wait_seconds, a.output)
+        print(json.dumps(current)); return
 if __name__=='__main__':
     try: main()
     except (ValueError, RuntimeError, TimeoutError, subprocess.CalledProcessError) as e:
