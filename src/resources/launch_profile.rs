@@ -133,6 +133,8 @@ impl LaunchProfile {
 
 #[cfg(test)]
 mod tests {
+    use std::path::PathBuf;
+
     use super::LaunchProfile;
 
     #[test]
@@ -147,7 +149,7 @@ mod tests {
         let profile = LaunchProfile::from_args(&args);
 
         assert!(profile.ci_smoke_enabled());
-        assert_eq!(profile.ci_smoke_report.unwrap(), "result.json".into());
+        assert_eq!(profile.ci_smoke_report.unwrap(), PathBuf::from("result.json"));
     }
 
     #[test]
