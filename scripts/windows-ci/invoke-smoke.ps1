@@ -32,11 +32,13 @@ if ($reportDirectory) { New-Item -ItemType Directory -Path $reportDirectory -For
 New-Item -ItemType Directory -Path $SaveDir -Force | Out-Null
 if (-not $LogPath) { $LogPath = Join-Path $reportDirectory 'smoke.log' }
 $errorLogPath = "$LogPath.stderr"
+Remove-Item -LiteralPath $ReportPath -Force -ErrorAction SilentlyContinue
 
 $env:KEYSTONE_CI_SAVE_DIR = $SaveDir
 $arguments = "--ci-smoke --ci-smoke-report `"$ReportPath`""
 $process = Start-Process -FilePath $ExecutablePath -ArgumentList $arguments -PassThru -NoNewWindow `
     -RedirectStandardOutput $LogPath -RedirectStandardError $errorLogPath
+$null = $process.Handle
 
 try {
     if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {

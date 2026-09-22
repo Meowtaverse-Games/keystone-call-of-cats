@@ -149,4 +149,19 @@ mod tests {
         assert!(profile.ci_smoke_enabled());
         assert_eq!(profile.ci_smoke_report.unwrap(), "result.json".into());
     }
+
+    #[test]
+    fn report_without_smoke_flag_does_not_enable_smoke() {
+        let args = vec![
+            "keystone-cc".to_string(),
+            "--ci-smoke-report=x.json".to_string(),
+        ];
+        assert!(!LaunchProfile::from_args(&args).ci_smoke_enabled());
+    }
+
+    #[test]
+    fn smoke_flag_without_report_does_not_enable_smoke() {
+        let args = vec!["keystone-cc".to_string(), "--ci-smoke".to_string()];
+        assert!(!LaunchProfile::from_args(&args).ci_smoke_enabled());
+    }
 }

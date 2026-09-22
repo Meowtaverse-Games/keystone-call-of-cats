@@ -98,9 +98,6 @@ fn main() {
 
     app.insert_resource(Locale::new(locale_id).with_default(langid!("en-US")))
         .insert_resource(launch_profile.clone())
-        .insert_resource(resources::file_storage::FileStorageResource::new(Arc::new(
-            storage.clone(),
-        )))
         .add_systems(
             OnEnter(GameState::Reloading),
             |mut next_state: ResMut<NextState<GameState>>| {
@@ -161,8 +158,20 @@ fn main() {
         )
         .insert_resource(launch_profile)
         .init_resource::<resources::stone_type::StoneCapabilities>()
-        .init_state::<GameState>()
-        .run();
+        .init_state::<GameState>();
+
+    // Only CI smoke supplies a storage backend. Normal Steam launches must let
+    // StagePlugin choose Steam Cloud when it is available.
+    if launch_profile.ci_smoke_enabled() {
+        app.insert_resource(resources::file_storage::FileStorageResource::new(Arc::new(
+            storage,
+        )));
+    }
+
+    let exit = app.run();
+    if exit.is_error() {
+        std::process::exit(1);
+    }
 }
 
 /// The CI launch check succeeds only after the boot scene loaded its asset group
@@ -172,6 +181,9 @@ pub(crate) fn write_ci_smoke_report_and_exit(
     launch_profile: Res<LaunchProfile>,
     mut app_exit: MessageWriter<AppExit>,
 ) {
+    if !launch_profile.ci_smoke_enabled() {
+        return;
+    }
     let Some(report_path) = &launch_profile.ci_smoke_report else {
         return;
     };
