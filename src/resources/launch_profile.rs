@@ -149,7 +149,10 @@ mod tests {
         let profile = LaunchProfile::from_args(&args);
 
         assert!(profile.ci_smoke_enabled());
-        assert_eq!(profile.ci_smoke_report.unwrap(), PathBuf::from("result.json"));
+        assert_eq!(
+            profile.ci_smoke_report.unwrap(),
+            PathBuf::from("result.json")
+        );
     }
 
     #[test]
