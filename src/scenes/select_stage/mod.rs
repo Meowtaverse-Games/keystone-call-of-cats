@@ -18,7 +18,11 @@ impl Plugin for StageSelectPlugin {
         app.init_resource::<OptionsOverlayState>()
             .add_systems(
                 OnEnter(GameState::SelectStage),
-                (systems::setup, systems::setup_bgm),
+                (
+                    systems::setup,
+                    systems::setup_bgm,
+                    crate::write_ci_smoke_report_and_exit,
+                ),
             )
             .add_systems(
                 Update,

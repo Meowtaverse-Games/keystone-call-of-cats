@@ -1,7 +1,7 @@
 // Hide console window on Windows release builds
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::env;
+use std::{env, fs, sync::Arc};
 
 use bevy::asset::AssetPlugin;
 use bevy::{camera::ScalingMode, prelude::*, render::view::ColorGrading};
@@ -67,7 +67,22 @@ fn main() {
 
     let mut app = App::new();
 
-    let storage = resources::file_storage::LocalFileStorage::default_dir();
+    if launch_profile.ci_smoke_requested && !launch_profile.ci_smoke_enabled() {
+        eprintln!("--ci-smoke requires --ci-smoke-report <path>");
+        std::process::exit(2);
+    }
+
+    let storage = if launch_profile.ci_smoke_enabled() {
+        match resources::file_storage::LocalFileStorage::ci_smoke_dir() {
+            Some(storage) => storage,
+            None => {
+                eprintln!("--ci-smoke-report requires KEYSTONE_CI_SAVE_DIR");
+                std::process::exit(2);
+            }
+        }
+    } else {
+        resources::file_storage::LocalFileStorage::default_dir()
+    };
     let mut settings = GameSettings::load_or_default(&storage);
 
     let locale_id = if let Some(saved_locale) = &settings.locale {
@@ -81,8 +96,11 @@ fn main() {
         determined
     };
 
+    let render_physics = launch_profile.render_physics;
+    let ci_smoke_enabled = launch_profile.ci_smoke_enabled();
+
     app.insert_resource(Locale::new(locale_id).with_default(langid!("en-US")))
-        .insert_resource(launch_profile.clone())
+        .insert_resource(launch_profile)
         .add_systems(
             OnEnter(GameState::Reloading),
             |mut next_state: ResMut<NextState<GameState>>| {
@@ -119,7 +137,7 @@ fn main() {
         FluentPlugin,
     ));
 
-    if launch_profile.render_physics {
+    if render_physics {
         app.add_plugins(PhysicsDebugPlugin);
     }
 
@@ -141,10 +159,65 @@ fn main() {
             Update,
             flash_selected_stone_system.run_if(in_state(GameState::Stage)),
         )
-        .insert_resource(launch_profile)
         .init_resource::<resources::stone_type::StoneCapabilities>()
-        .init_state::<GameState>()
-        .run();
+        .init_state::<GameState>();
+
+    // Only CI smoke supplies a storage backend. Normal Steam launches must let
+    // StagePlugin choose Steam Cloud when it is available.
+    if ci_smoke_enabled {
+        app.insert_resource(resources::file_storage::FileStorageResource::new(Arc::new(
+            storage,
+        )));
+    }
+
+    let exit = app.run();
+    if exit.is_error() {
+        std::process::exit(1);
+    }
+}
+
+/// The CI launch check succeeds only after the boot scene loaded its asset group
+/// and transitioned into SelectStage. It intentionally does not claim that a
+/// rendered frame was presented.
+pub(crate) fn write_ci_smoke_report_and_exit(
+    launch_profile: Res<LaunchProfile>,
+    mut app_exit: MessageWriter<AppExit>,
+) {
+    if !launch_profile.ci_smoke_enabled() {
+        return;
+    }
+    let Some(report_path) = &launch_profile.ci_smoke_report else {
+        return;
+    };
+
+    let source_sha = env::var("GITHUB_SHA").unwrap_or_else(|_| "local".to_string());
+    let report = format!(
+        concat!(
+            "{{\n",
+            "  \"status\": \"ready\",\n",
+            "  \"state\": \"SelectStage\",\n",
+            "  \"assets_ready\": true,\n",
+            "  \"source_sha\": \"{}\"\n",
+            "}}\n"
+        ),
+        source_sha.replace('"', "")
+    );
+
+    let result = report_path
+        .parent()
+        .map_or(Ok(()), fs::create_dir_all)
+        .and_then(|_| fs::write(report_path, report));
+    if let Err(error) = result {
+        error!(
+            "Failed to write CI smoke report {}: {error}",
+            report_path.display()
+        );
+        app_exit.write(AppExit::error());
+        return;
+    }
+
+    info!("CI smoke ready: assets loaded and SelectStage entered");
+    app_exit.write(AppExit::Success);
 }
 
 fn determine_initial_locale() -> unic_langid::LanguageIdentifier {
