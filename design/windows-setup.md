@@ -24,7 +24,9 @@ available to that terminal.
 `-CheckOnly` does not install or update dependencies. It verifies Rust 1.95 or newer,
 the MSVC Rust toolchain, Git, Cargo, and a complete same-version x64 Windows SDK
 (`kernel32.lib` and `ucrt.lib`), plus a tiny native Rust compile. `-SkipSmokeTest`
-omits only that tiny compile. This is a compiler check, not a Bevy build.
+omits only that tiny compile. This is a compiler check, not a Bevy build. The setup
+script writes directly to the invoking terminal; `run-windows.ps1` records repeatable
+development-run transcripts under `%LOCALAPPDATA%\KeystoneCC`.
 
 ## Clone and RUN
 
