@@ -62,6 +62,20 @@ only when it still matches that recorded copy; if source and destination differ 
 local edits or an unknown previous copy, it stops without deleting anything. Resolve
 the asset difference manually before retrying.
 
-No Windows game build or runtime validation has been performed by this documentation
-change. Do not use the manually-dispatched Windows CI as a local test: it includes an
-itch.io publish job.
+## CI, publishing, and local development
+
+These local scripts prepare a developer machine and run the current checkout. They do
+not replace either GitHub workflow:
+
+- `.github/workflows/windows_verify.yml` is the trusted-repository Windows verification
+  workflow. It builds, runs the Rust test suite, and uploads verification artifacts;
+  it does not publish a game or start an A1X machine. Fork pull requests are skipped
+  because their private asset submodule cannot receive credentials. The merged workflow
+  has passed its 11 Rust tests on Windows.
+- `.github/workflows/windows_build.yml` is a manually dispatched distribution workflow
+  that includes itch.io publishing. Do not use it as a development or smoke-test command.
+- `setup-windows.ps1` and `run-windows.ps1` are for local Windows development only.
+
+The normal game UI has also been started successfully on A1X through the separate,
+owner-invoked artifact smoke path. That validation is not a rendered-frame assertion,
+and neither local script contacts or controls A1X.

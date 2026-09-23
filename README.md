@@ -69,6 +69,20 @@ local asset edits stop the run with an instruction instead of being overwritten.
 by these Windows scripts; keep using `scripts/build_macos.sh` for its existing flow.
 See [design/windows-setup.md](design/windows-setup.md) for the fuller Windows notes.
 
+### Windows CI and publishing
+
+Local development is separate from GitHub Actions. `windows_verify.yml` validates
+trusted repository changes on GitHub-hosted Windows with a build, Rust tests, and
+artifacts; it does not publish or control A1X. The merged workflow has passed 11 Rust
+tests on Windows. Fork pull requests skip this verification because the private asset
+submodule cannot receive credentials.
+
+`windows_build.yml` is a manually dispatched distribution workflow that includes
+itch.io publishing, so it is not a local development or smoke-test command. A separate
+owner-invoked A1X artifact smoke has confirmed normal UI startup. It confirms asset
+readiness and `SelectStage`, not a rendered frame; neither Windows local script starts
+or controls A1X.
+
 ### Localization
 The game ships with `en-US`, `ja-JP`, and `zh-Hans` locales under `assets/locales/`. The initial locale is picked from `ITCHIO_OFFICIAL_LOCALE`, then `LANG`, falling back to `en-US`. The user's choice is persisted in the game settings file.
 
