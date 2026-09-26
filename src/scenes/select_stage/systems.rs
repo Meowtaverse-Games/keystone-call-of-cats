@@ -38,6 +38,19 @@ pub struct StageTouchInputState {
     active_touch: Option<u64>,
 }
 
+type StageTouchButtonComponents<'w> = (
+    Entity,
+    &'w ComputedNode,
+    &'w UiGlobalTransform,
+    &'w mut Interaction,
+);
+type StageTouchButtonFilter = Or<(
+    With<StageBackButton>,
+    With<StageOptionsButton>,
+    With<StagePageButton>,
+    With<StagePlayButton>,
+)>;
+
 impl StageSelectState {
     pub fn new(total_entries: usize, cards_per_page: usize) -> Self {
         Self {
@@ -353,15 +366,7 @@ pub fn route_touch_to_stage_button(
     windows: Query<&Window, With<PrimaryWindow>>,
     options: Res<OptionsOverlayState>,
     mut touch_state: ResMut<StageTouchInputState>,
-    mut buttons: Query<
-        (Entity, &ComputedNode, &UiGlobalTransform, &mut Interaction),
-        Or<(
-            With<StageBackButton>,
-            With<StageOptionsButton>,
-            With<StagePageButton>,
-            With<StagePlayButton>,
-        )>,
-    >,
+    mut buttons: Query<StageTouchButtonComponents<'_>, StageTouchButtonFilter>,
 ) {
     if options.open {
         clear_stage_button_interactions(&mut buttons);
@@ -416,15 +421,7 @@ pub fn route_touch_to_stage_button(
 }
 
 fn clear_stage_button_interactions(
-    buttons: &mut Query<
-        (Entity, &ComputedNode, &UiGlobalTransform, &mut Interaction),
-        Or<(
-            With<StageBackButton>,
-            With<StageOptionsButton>,
-            With<StagePageButton>,
-            With<StagePlayButton>,
-        )>,
-    >,
+    buttons: &mut Query<StageTouchButtonComponents<'_>, StageTouchButtonFilter>,
 ) {
     for (_, _, _, mut interaction) in buttons.iter_mut() {
         if *interaction != Interaction::None {
