@@ -23,8 +23,8 @@ use crate::{
 };
 
 const CARDS_PER_PAGE: usize = 3;
-const CARD_WIDTH: f32 = 360.0;
-const CARD_GAP: f32 = 32.0;
+const ROOT_HORIZONTAL_PADDING: f32 = 48.0;
+const CARD_GAP: f32 = 16.0;
 
 #[derive(Resource)]
 pub struct StageSelectState {
@@ -191,7 +191,7 @@ pub fn setup(
                 flex_direction: FlexDirection::Column,
                 justify_content: JustifyContent::SpaceBetween,
                 align_items: AlignItems::Stretch,
-                padding: UiRect::axes(Val::Px(48.0), Val::Px(32.0)),
+                padding: UiRect::axes(Val::Px(ROOT_HORIZONTAL_PADDING), Val::Px(32.0)),
                 // row_gap: Val::Px(SECTION_SPACING * 1.25),
                 ..default()
             },
@@ -417,7 +417,7 @@ fn spawn_hero_section(
     parent
         .spawn(Node {
             width: Val::Percent(100.0),
-            height: Val::Percent(100.0),
+            // Keep the header content-sized so the card grid and page controls retain space.
             flex_direction: FlexDirection::Column,
             row_gap: Val::Px(20.0),
             ..default()
@@ -704,7 +704,7 @@ fn spawn_stage_cards(
         .spawn(Node {
             width: Val::Percent(100.0),
             flex_grow: 1.0,
-            flex_wrap: FlexWrap::Wrap,
+            flex_wrap: FlexWrap::NoWrap,
             row_gap: Val::Px(CARD_GAP),
             column_gap: Val::Px(CARD_GAP),
             justify_content: JustifyContent::FlexStart,
@@ -720,7 +720,9 @@ fn spawn_stage_cards(
                 grid.spawn((
                     StageCard { index },
                     Node {
-                        width: Val::Px(CARD_WIDTH),
+                        // Equal flex shares keep all cards from the current page in one row.
+                        width: Val::Px(0.0),
+                        min_width: Val::Px(0.0),
                         flex_grow: 1.0,
                         flex_direction: FlexDirection::Column,
                         row_gap: Val::Px(16.0),
@@ -1036,6 +1038,25 @@ fn accent_pressed_color() -> Color {
 
 fn disabled_accent_color() -> Color {
     Color::srgba(0.5, 0.52, 0.59, 0.7)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const MINIMUM_DESKTOP_VIEWPORT_WIDTH: f32 = 960.0;
+
+    #[test]
+    fn minimum_desktop_viewport_assigns_each_card_a_positive_flex_share() {
+        let available_width = MINIMUM_DESKTOP_VIEWPORT_WIDTH - ROOT_HORIZONTAL_PADDING * 2.0;
+        let card_width = (available_width - CARD_GAP * (CARDS_PER_PAGE.saturating_sub(1)) as f32)
+            / CARDS_PER_PAGE as f32;
+
+        assert!(
+            card_width >= 260.0,
+            "each stage card must retain a usable flex share within the minimum desktop viewport"
+        );
+    }
 }
 
 fn subtle_button_color(alpha: f32) -> Color {
