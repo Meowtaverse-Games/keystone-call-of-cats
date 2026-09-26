@@ -1,4 +1,4 @@
-use bevy::{app::AppExit, prelude::*, ui::BorderRadius};
+use bevy::{app::AppExit, prelude::*, ui::BorderRadius, window::PrimaryWindow};
 use bevy_ecs::hierarchy::ChildSpawnerCommands;
 use bevy_fluent::prelude::{Locale, Localization};
 
@@ -31,6 +31,11 @@ pub struct StageSelectState {
     current_page: usize,
     cards_per_page: usize,
     total_entries: usize,
+}
+
+#[derive(Resource, Default)]
+pub struct StageTouchInputState {
+    active_touch: Option<u64>,
 }
 
 impl StageSelectState {
@@ -334,6 +339,94 @@ pub fn handle_keyboard_navigation(
 
     if keys.just_pressed(KeyCode::Escape) {
         exit_events.write(AppExit::Success);
+    }
+}
+
+/// Routes touch starts using their own coordinates instead of a potentially stale mouse cursor.
+///
+/// Bevy's standard UI focus system falls back to touch coordinates only when no cursor position
+/// is available. On a touchscreen PC, a cursor can remain at an unrelated location after mouse
+/// use. Normalizing the interaction after focus has run keeps the existing button handlers and
+/// mouse behavior intact while ensuring one stage-select action receives the touch.
+pub fn route_touch_to_stage_button(
+    touches: Res<Touches>,
+    windows: Query<&Window, With<PrimaryWindow>>,
+    options: Res<OptionsOverlayState>,
+    mut touch_state: ResMut<StageTouchInputState>,
+    mut buttons: Query<
+        (Entity, &ComputedNode, &UiGlobalTransform, &mut Interaction),
+        Or<(
+            With<StageBackButton>,
+            With<StageOptionsButton>,
+            With<StagePageButton>,
+            With<StagePlayButton>,
+        )>,
+    >,
+) {
+    if options.open {
+        clear_stage_button_interactions(&mut buttons);
+        touch_state.active_touch = None;
+        return;
+    }
+
+    if let Some(active_touch) = touch_state.active_touch {
+        clear_stage_button_interactions(&mut buttons);
+        if touches.just_released(active_touch) || touches.just_canceled(active_touch) {
+            touch_state.active_touch = None;
+        }
+        return;
+    }
+
+    if !touches.any_just_pressed() {
+        if touches.any_just_canceled() {
+            clear_stage_button_interactions(&mut buttons);
+        }
+        return;
+    }
+
+    let Ok(window) = windows.single() else {
+        return;
+    };
+    let Some(touch) = touches.iter_just_pressed().min_by_key(|touch| touch.id()) else {
+        return;
+    };
+
+    // Touch positions are logical pixels; computed UI positions are physical pixels.
+    let touch_position = touch.position() * window.scale_factor();
+    let mut target = None;
+
+    for (entity, node, transform, mut interaction) in &mut buttons {
+        if target.is_none() && node.contains_point(*transform, touch_position) {
+            target = Some(entity);
+        }
+        if *interaction != Interaction::None {
+            *interaction = Interaction::None;
+        }
+    }
+
+    if let Some(entity) = target
+        && let Ok((_, _, _, mut interaction)) = buttons.get_mut(entity)
+    {
+        *interaction = Interaction::Pressed;
+        touch_state.active_touch = Some(touch.id());
+    }
+}
+
+fn clear_stage_button_interactions(
+    buttons: &mut Query<
+        (Entity, &ComputedNode, &UiGlobalTransform, &mut Interaction),
+        Or<(
+            With<StageBackButton>,
+            With<StageOptionsButton>,
+            With<StagePageButton>,
+            With<StagePlayButton>,
+        )>,
+    >,
+) {
+    for (_, _, _, mut interaction) in buttons.iter_mut() {
+        if *interaction != Interaction::None {
+            *interaction = Interaction::None;
+        }
     }
 }
 
@@ -1043,6 +1136,13 @@ fn disabled_accent_color() -> Color {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bevy::{
+        input::{
+            InputPlugin,
+            touch::{TouchInput, TouchPhase},
+        },
+        window::WindowResolution,
+    };
 
     const MINIMUM_DESKTOP_VIEWPORT_WIDTH: f32 = 960.0;
 
@@ -1055,6 +1155,199 @@ mod tests {
         assert!(
             card_width >= 260.0,
             "each stage card must retain a usable flex share within the minimum desktop viewport"
+        );
+    }
+
+    fn touch_input(window: Entity, id: u64, phase: TouchPhase, position: Vec2) -> TouchInput {
+        TouchInput {
+            phase,
+            position,
+            window,
+            force: None,
+            id,
+        }
+    }
+
+    fn button_node(center: Vec2) -> (ComputedNode, UiGlobalTransform, Interaction) {
+        let mut node = ComputedNode::default();
+        node.size = Vec2::splat(100.0);
+        (
+            node,
+            UiGlobalTransform::from_translation(center),
+            Interaction::None,
+        )
+    }
+
+    #[test]
+    fn touch_uses_its_scaled_position_instead_of_a_stale_button_interaction() {
+        let mut app = App::new();
+        app.add_plugins(InputPlugin)
+            .init_resource::<OptionsOverlayState>()
+            .init_resource::<StageTouchInputState>()
+            .add_systems(Update, route_touch_to_stage_button);
+
+        let window = app
+            .world_mut()
+            .spawn((
+                PrimaryWindow,
+                Window {
+                    resolution: WindowResolution::new(1920, 1200).with_scale_factor_override(1.75),
+                    ..default()
+                },
+            ))
+            .id();
+        let target = app
+            .world_mut()
+            .spawn((
+                StagePageButton { delta: 1 },
+                button_node(Vec2::new(350.0, 175.0)),
+            ))
+            .id();
+        let stale = app
+            .world_mut()
+            .spawn((
+                StagePageButton { delta: -1 },
+                button_node(Vec2::new(50.0, 50.0)),
+            ))
+            .id();
+        *app.world_mut().get_mut::<Interaction>(stale).unwrap() = Interaction::Pressed;
+
+        app.world_mut().write_message(touch_input(
+            window,
+            1,
+            TouchPhase::Started,
+            Vec2::new(200.0, 100.0),
+        ));
+        app.update();
+
+        assert_eq!(
+            *app.world().get::<Interaction>(target).unwrap(),
+            Interaction::Pressed
+        );
+        assert_eq!(
+            *app.world().get::<Interaction>(stale).unwrap(),
+            Interaction::None
+        );
+    }
+
+    #[test]
+    fn released_or_canceled_touch_clears_the_captured_button() {
+        let mut app = App::new();
+        app.add_plugins(InputPlugin)
+            .init_resource::<OptionsOverlayState>()
+            .init_resource::<StageTouchInputState>()
+            .add_systems(Update, route_touch_to_stage_button);
+
+        let window = app
+            .world_mut()
+            .spawn((PrimaryWindow, Window::default()))
+            .id();
+        let button = app
+            .world_mut()
+            .spawn((StagePageButton { delta: 1 }, button_node(Vec2::ZERO)))
+            .id();
+
+        for phase in [
+            TouchPhase::Started,
+            TouchPhase::Ended,
+            TouchPhase::Started,
+            TouchPhase::Canceled,
+        ] {
+            app.world_mut()
+                .write_message(touch_input(window, 1, phase, Vec2::ZERO));
+            app.update();
+            if matches!(phase, TouchPhase::Started) {
+                assert_eq!(
+                    *app.world().get::<Interaction>(button).unwrap(),
+                    Interaction::Pressed
+                );
+                continue;
+            }
+            assert_eq!(
+                *app.world().get::<Interaction>(button).unwrap(),
+                Interaction::None
+            );
+        }
+    }
+
+    #[test]
+    fn first_touch_is_captured_and_later_touches_do_not_press_another_button() {
+        let mut app = App::new();
+        app.add_plugins(InputPlugin)
+            .init_resource::<OptionsOverlayState>()
+            .init_resource::<StageTouchInputState>()
+            .add_systems(Update, route_touch_to_stage_button);
+
+        let window = app
+            .world_mut()
+            .spawn((PrimaryWindow, Window::default()))
+            .id();
+        let first = app
+            .world_mut()
+            .spawn((
+                StagePageButton { delta: -1 },
+                button_node(Vec2::new(100.0, 0.0)),
+            ))
+            .id();
+        let second = app
+            .world_mut()
+            .spawn((
+                StagePageButton { delta: 1 },
+                button_node(Vec2::new(-100.0, 0.0)),
+            ))
+            .id();
+
+        app.world_mut().write_message(touch_input(
+            window,
+            1,
+            TouchPhase::Started,
+            Vec2::new(100.0, 0.0),
+        ));
+        app.world_mut().write_message(touch_input(
+            window,
+            2,
+            TouchPhase::Started,
+            Vec2::new(-100.0, 0.0),
+        ));
+        app.update();
+
+        assert_eq!(
+            *app.world().get::<Interaction>(first).unwrap(),
+            Interaction::Pressed
+        );
+        assert_eq!(
+            *app.world().get::<Interaction>(second).unwrap(),
+            Interaction::None
+        );
+    }
+
+    #[test]
+    fn options_overlay_blocks_stage_button_touches() {
+        let mut app = App::new();
+        app.add_plugins(InputPlugin)
+            .insert_resource(OptionsOverlayState {
+                open: true,
+                ..default()
+            })
+            .init_resource::<StageTouchInputState>()
+            .add_systems(Update, route_touch_to_stage_button);
+
+        let window = app
+            .world_mut()
+            .spawn((PrimaryWindow, Window::default()))
+            .id();
+        let button = app
+            .world_mut()
+            .spawn((StagePageButton { delta: 1 }, button_node(Vec2::ZERO)))
+            .id();
+
+        app.world_mut()
+            .write_message(touch_input(window, 1, TouchPhase::Started, Vec2::ZERO));
+        app.update();
+
+        assert_eq!(
+            *app.world().get::<Interaction>(button).unwrap(),
+            Interaction::None
         );
     }
 }
