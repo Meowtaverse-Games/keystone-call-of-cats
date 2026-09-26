@@ -29,23 +29,27 @@ pub fn setup_stage_resources(
 
     let storage_backend: Arc<dyn FileStorage + Send + Sync>;
 
-    #[cfg(feature = "steam")]
-    {
-        storage_backend = if let Some(client) = steam_client {
-            let rs = client.remote_storage();
-            if rs.is_cloud_enabled_for_app() && rs.is_cloud_enabled_for_account() {
-                Arc::new(SteamCloudFileStorage::new(&client))
+    if let Some(storage) = existing_storage.as_deref() {
+        storage_backend = storage_backend_from_existing(storage);
+    } else {
+        #[cfg(feature = "steam")]
+        {
+            storage_backend = if let Some(client) = steam_client {
+                let rs = client.remote_storage();
+                if rs.is_cloud_enabled_for_app() && rs.is_cloud_enabled_for_account() {
+                    Arc::new(SteamCloudFileStorage::new(&client))
+                } else {
+                    Arc::new(LocalFileStorage::default_dir())
+                }
             } else {
                 Arc::new(LocalFileStorage::default_dir())
-            }
-        } else {
-            Arc::new(LocalFileStorage::default_dir())
-        };
-    }
+            };
+        }
 
-    #[cfg(not(feature = "steam"))]
-    {
-        storage_backend = Arc::new(LocalFileStorage::default_dir());
+        #[cfg(not(feature = "steam"))]
+        {
+            storage_backend = Arc::new(LocalFileStorage::default_dir());
+        }
     }
 
     if existing_storage.is_none() {
@@ -66,5 +70,41 @@ pub fn setup_stage_resources(
         let progress =
             StageProgress::load_or_default(&stage_catalog_usecase, storage_backend.as_ref());
         commands.insert_resource(progress);
+    }
+}
+
+fn storage_backend_from_existing(
+    storage: &FileStorageResource,
+) -> Arc<dyn FileStorage + Send + Sync> {
+    storage.backend()
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{fs, sync::Arc};
+
+    use crate::resources::file_storage::{FileStorage, FileStorageResource, LocalFileStorage};
+
+    use super::storage_backend_from_existing;
+
+    #[test]
+    fn supplied_storage_is_used_instead_of_a_separate_default_directory() {
+        let root =
+            std::env::temp_dir().join(format!("keystone-storage-test-{}", std::process::id()));
+        let normal = LocalFileStorage::new(root.join("normal"));
+        let isolated = LocalFileStorage::new(root.join("isolated"));
+        normal
+            .save("stage_scripts.ron", b"real-user-sentinel")
+            .unwrap();
+
+        let supplied = FileStorageResource::new(Arc::new(isolated));
+        let selected = storage_backend_from_existing(&supplied);
+
+        assert_eq!(selected.load("stage_scripts.ron").unwrap(), None);
+        assert_eq!(
+            normal.load("stage_scripts.ron").unwrap(),
+            Some(b"real-user-sentinel".to_vec())
+        );
+        fs::remove_dir_all(root).unwrap();
     }
 }
