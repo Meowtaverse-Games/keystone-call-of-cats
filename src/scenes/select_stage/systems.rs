@@ -376,13 +376,14 @@ pub fn route_touch_to_stage_button(
 
     if let Some(active_touch) = touch_state.active_touch {
         clear_stage_button_interactions(&mut buttons);
-        if touches.just_released(active_touch)
+        let touch_finished = touches.just_released(active_touch)
             || touches.just_canceled(active_touch)
-            || touches.get_pressed(active_touch).is_none()
-        {
+            || touches.get_pressed(active_touch).is_none();
+        if touch_finished {
             touch_state.active_touch = None;
+        } else {
+            return;
         }
-        return;
     }
 
     if !touches.any_just_pressed() {
@@ -1255,7 +1256,7 @@ mod tests {
     }
 
     #[test]
-    fn missing_captured_touch_does_not_block_the_next_stage_select_tap() {
+    fn missing_captured_touch_allows_a_new_tap_in_the_same_frame() {
         let mut app = App::new();
         app.add_plugins(InputPlugin)
             .init_resource::<OptionsOverlayState>()
@@ -1275,17 +1276,74 @@ mod tests {
             .active_touch = Some(99);
 
         // The touch ended while another game state was active, so it is absent here.
-        app.update();
-        assert_eq!(
-            app.world().resource::<StageTouchInputState>().active_touch,
-            None
-        );
-
         app.world_mut()
             .write_message(touch_input(window, 1, TouchPhase::Started, Vec2::ZERO));
         app.update();
         assert_eq!(
             *app.world().get::<Interaction>(button).unwrap(),
+            Interaction::Pressed
+        );
+    }
+
+    #[test]
+    fn released_touch_allows_the_next_tap_in_the_same_frame() {
+        let mut app = App::new();
+        app.add_plugins(InputPlugin)
+            .init_resource::<OptionsOverlayState>()
+            .init_resource::<StageTouchInputState>()
+            .add_systems(Update, route_touch_to_stage_button);
+
+        let window = app
+            .world_mut()
+            .spawn((PrimaryWindow, Window::default()))
+            .id();
+        let first = app
+            .world_mut()
+            .spawn((
+                StagePageButton { delta: -1 },
+                button_node(Vec2::new(-100.0, 0.0)),
+            ))
+            .id();
+        let second = app
+            .world_mut()
+            .spawn((
+                StagePageButton { delta: 1 },
+                button_node(Vec2::new(100.0, 0.0)),
+            ))
+            .id();
+
+        app.world_mut().write_message(touch_input(
+            window,
+            1,
+            TouchPhase::Started,
+            Vec2::new(-100.0, 0.0),
+        ));
+        app.update();
+        assert_eq!(
+            *app.world().get::<Interaction>(first).unwrap(),
+            Interaction::Pressed
+        );
+
+        app.world_mut().write_message(touch_input(
+            window,
+            1,
+            TouchPhase::Ended,
+            Vec2::new(-100.0, 0.0),
+        ));
+        app.world_mut().write_message(touch_input(
+            window,
+            2,
+            TouchPhase::Started,
+            Vec2::new(100.0, 0.0),
+        ));
+        app.update();
+
+        assert_eq!(
+            *app.world().get::<Interaction>(first).unwrap(),
+            Interaction::None
+        );
+        assert_eq!(
+            *app.world().get::<Interaction>(second).unwrap(),
             Interaction::Pressed
         );
     }
