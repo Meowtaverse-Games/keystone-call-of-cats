@@ -16,6 +16,7 @@ pub struct StageSelectPlugin;
 impl Plugin for StageSelectPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<OptionsOverlayState>()
+            .init_resource::<systems::StageTouchInputState>()
             .add_systems(
                 OnEnter(GameState::SelectStage),
                 (
@@ -28,6 +29,11 @@ impl Plugin for StageSelectPlugin {
                 Update,
                 (
                     handle_overlay_input,
+                    systems::route_touch_to_stage_button
+                        .before(systems::handle_back_button)
+                        .before(systems::handle_options_button)
+                        .before(systems::handle_nav_buttons)
+                        .before(systems::handle_play_buttons),
                     systems::handle_back_button,
                     systems::handle_options_button,
                     systems::handle_nav_buttons,
