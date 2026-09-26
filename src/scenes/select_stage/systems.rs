@@ -371,7 +371,10 @@ pub fn route_touch_to_stage_button(
 
     if let Some(active_touch) = touch_state.active_touch {
         clear_stage_button_interactions(&mut buttons);
-        if touches.just_released(active_touch) || touches.just_canceled(active_touch) {
+        if touches.just_released(active_touch)
+            || touches.just_canceled(active_touch)
+            || touches.get_pressed(active_touch).is_none()
+        {
             touch_state.active_touch = None;
         }
         return;
@@ -1268,6 +1271,42 @@ mod tests {
                 Interaction::None
             );
         }
+    }
+
+    #[test]
+    fn missing_captured_touch_does_not_block_the_next_stage_select_tap() {
+        let mut app = App::new();
+        app.add_plugins(InputPlugin)
+            .init_resource::<OptionsOverlayState>()
+            .init_resource::<StageTouchInputState>()
+            .add_systems(Update, route_touch_to_stage_button);
+
+        let window = app
+            .world_mut()
+            .spawn((PrimaryWindow, Window::default()))
+            .id();
+        let button = app
+            .world_mut()
+            .spawn((StagePageButton { delta: 1 }, button_node(Vec2::ZERO)))
+            .id();
+        app.world_mut()
+            .resource_mut::<StageTouchInputState>()
+            .active_touch = Some(99);
+
+        // The touch ended while another game state was active, so it is absent here.
+        app.update();
+        assert_eq!(
+            app.world().resource::<StageTouchInputState>().active_touch,
+            None
+        );
+
+        app.world_mut()
+            .write_message(touch_input(window, 1, TouchPhase::Started, Vec2::ZERO));
+        app.update();
+        assert_eq!(
+            *app.world().get::<Interaction>(button).unwrap(),
+            Interaction::Pressed
+        );
     }
 
     #[test]
