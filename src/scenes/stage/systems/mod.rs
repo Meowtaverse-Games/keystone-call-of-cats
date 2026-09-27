@@ -1,6 +1,7 @@
 mod audio;
 mod goal;
 mod obstacle;
+mod place;
 mod player;
 mod schedule;
 mod stone;
@@ -36,11 +37,12 @@ use audio::{StageAudioHandles, StageAudioState};
 
 pub use goal::check_goal_completion;
 pub use obstacle::*;
+pub use place::{PlaceState, StageGridMetrics, reset_placed_tiles, resolve_place_requests};
 pub use player::*;
 pub use stone::{
-    StoneAppendCommandMessage, StoneCommandMessage, StoneTickMessage, carry_riders_with_stone,
-    handle_stone_append_messages, handle_stone_messages, reset_stone_position,
-    update_stone_behavior,
+    StoneAppendCommandMessage, StoneCommandMessage, StonePlaceRequestMessage, StoneTickMessage,
+    carry_riders_with_stone, handle_stone_append_messages, handle_stone_messages,
+    reset_stone_position, update_stone_behavior,
 };
 use ui::{ScriptEditorState, StageTutorialOverlay};
 pub use ui::{handle_tutorial_overlay_input, tick_script_program, ui};
@@ -175,6 +177,14 @@ fn populate_stage_contents(
     let viewport_size = viewport.size;
     let (real_tile_size, scale) =
         tiled_map_assets.scaled_tile_size_and_scale(viewport_size, tile_size);
+    commands.insert_resource(StageGridMetrics {
+        local_tile_size: real_tile_size,
+        viewport_size,
+        sprite_scale: scale,
+        map_size: map.map_size,
+        boundary_margin: map.boundary_margin,
+    });
+    commands.insert_resource(PlaceState::new(map.place_limit));
 
     let player_position = map.tile_position(TileKind::PlayerSpawn);
     info!("Spawning player at tile position {:?}", player_position);
