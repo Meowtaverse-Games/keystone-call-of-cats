@@ -184,9 +184,15 @@ pub fn handle_stone_messages(
 
 pub fn handle_stone_append_messages(
     mut reader: MessageReader<StoneAppendCommandMessage>,
+    editor: Res<ScriptEditorState>,
     mut query: Query<(&StoneIndex, &mut StoneCommandState), With<StoneRune>>,
 ) {
     for msg in reader.read() {
+        // Consume already-emitted commands after a script error. Reset runs after Script in
+        // the current frame, while these messages are read next frame in Input.
+        if !editor.controls_enabled {
+            continue;
+        }
         for (stone_idx, mut state) in query.iter_mut() {
             if stone_idx.0 == msg.stone_index {
                 state.queue.push_back(msg.command.clone());
@@ -691,7 +697,9 @@ pub fn carry_riders_with_stone(
 
 #[cfg(test)]
 mod tests {
-    use super::is_blocking_hit;
+    use super::*;
+    use crate::scenes::stage::systems::ui::ScriptEditorState;
+    use bevy::prelude::{App, Messages, Update};
 
     #[test]
     fn tiles_and_other_stones_block_movement() {
@@ -699,5 +707,30 @@ mod tests {
         assert!(is_blocking_hit(false, true));
         assert!(is_blocking_hit(true, true));
         assert!(!is_blocking_hit(false, false));
+    }
+
+    #[test]
+    fn disabled_script_controls_discard_stale_append_commands_after_reset() {
+        let mut app = App::new();
+        app.init_resource::<ScriptEditorState>()
+            .add_message::<StoneAppendCommandMessage>()
+            .add_systems(Update, handle_stone_append_messages);
+
+        let stone = app
+            .world_mut()
+            .spawn((StoneRune, StoneIndex(0), StoneCommandState::default()))
+            .id();
+        app.world_mut()
+            .resource_mut::<Messages<StoneAppendCommandMessage>>()
+            .write(StoneAppendCommandMessage {
+                stone_index: 0,
+                command: ScriptCommand::Move(MoveDirection::Right),
+            });
+
+        app.update();
+
+        let state = app.world().get::<StoneCommandState>(stone).unwrap();
+        assert!(state.queue.is_empty());
+        assert!(state.current.is_none());
     }
 }

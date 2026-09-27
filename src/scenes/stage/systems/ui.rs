@@ -784,6 +784,7 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
 /// Each frame, pull at most one next command from the active program and append it to the Stone.
 pub fn tick_script_program(
     mut editor: ResMut<ScriptEditorState>,
+    localization: Res<Localization>,
     mut append_writer: MessageWriter<StoneAppendCommandMessage>,
     players: Query<(Entity, &CollidingEntities), With<Player>>,
     stone_query: Query<(Entity, &GlobalTransform, &StoneIndex, &StoneType), With<StoneRune>>,
@@ -796,6 +797,9 @@ pub fn tick_script_program(
         editor.active_programs.clear();
         return;
     }
+
+    let mut runtime_error = None;
+    let mut pending_commands = Vec::new();
 
     for (stone_entity, stone_transform, stone_index, _) in stone_query.iter() {
         let idx = stone_index.0;
@@ -860,12 +864,25 @@ pub fn tick_script_program(
         }
 
         if let Some(command) = program.next(&state) {
-            append_writer.write(StoneAppendCommandMessage {
+            pending_commands.push(StoneAppendCommandMessage {
                 stone_index: idx,
                 command: command.clone(),
             });
+        } else if let Some(error) = program.take_error() {
+            runtime_error = Some(error);
+            break;
         }
     }
+
+    if let Some(error) = runtime_error {
+        editor.last_run_feedback = Some(script_error_message(&localization, &error));
+        editor.controls_enabled = false;
+        editor.active_programs.clear();
+        editor.pending_player_reset = true;
+        return;
+    }
+
+    append_writer.write_batch(pending_commands);
 }
 
 fn is_player_touching_stone(

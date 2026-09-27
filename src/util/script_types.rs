@@ -91,6 +91,11 @@ pub trait ScriptRunner: Send + Sync + 'static {
 pub trait ScriptProgram: Send + Sync + 'static {
     /// Produces the next command, or None if finished.
     fn next(&mut self, state: &ScriptState) -> Option<ScriptCommand>;
+
+    /// Returns and clears a runtime error raised after successful compilation.
+    fn take_error(&mut self) -> Option<ScriptExecutionError> {
+        None
+    }
 }
 
 /// Compiles a script into a step-executable program.

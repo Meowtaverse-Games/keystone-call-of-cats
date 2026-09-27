@@ -107,6 +107,7 @@ const INVALID_MOVE_PREFIX: &str = "__invalid_move__:";
 const INVALID_DIG_PREFIX: &str = "__invalid_dig__:";
 const INVALID_SLEEP_PREFIX: &str = "__invalid_sleep__:";
 const COMMAND_LIMIT_PREFIX: &str = "__command_limit__:";
+const COMMAND_NOT_ALLOWED_PREFIX: &str = "__command_not_allowed__:";
 const STOP_REQUEST_TOKEN: &str = "__stop_requested__";
 
 #[derive(Clone)]
@@ -319,10 +320,7 @@ fn register_commands(
                 record_move(&emitter, MoveDirection::Left)
             });
         } else {
-            engine.register_fn(
-                "move_left",
-                || -> Result<CommandValue, Box<EvalAltResult>> { Ok(CommandValue()) },
-            );
+            engine.register_fn("move_left", || command_not_allowed("move"));
         }
     }
     {
@@ -332,10 +330,7 @@ fn register_commands(
                 record_move(&emitter, MoveDirection::Right)
             });
         } else {
-            engine.register_fn(
-                "move_right",
-                || -> Result<CommandValue, Box<EvalAltResult>> { Ok(CommandValue()) },
-            );
+            engine.register_fn("move_right", || command_not_allowed("move"));
         }
     }
     {
@@ -345,10 +340,7 @@ fn register_commands(
                 record_move(&emitter, MoveDirection::Top)
             });
         } else {
-            engine.register_fn(
-                "move_top",
-                || -> Result<CommandValue, Box<EvalAltResult>> { Ok(CommandValue()) },
-            );
+            engine.register_fn("move_top", || command_not_allowed("move"));
         }
     }
     {
@@ -358,10 +350,7 @@ fn register_commands(
                 record_move(&emitter, MoveDirection::Down)
             });
         } else {
-            engine.register_fn(
-                "move_down",
-                || -> Result<CommandValue, Box<EvalAltResult>> { Ok(CommandValue()) },
-            );
+            engine.register_fn("move_down", || command_not_allowed("move"));
         }
     }
     {
@@ -371,10 +360,7 @@ fn register_commands(
                 move_named(direction, &emitter)
             });
         } else {
-            engine.register_fn(
-                "move",
-                move |_: &str| -> Result<CommandValue, Box<EvalAltResult>> { Ok(CommandValue()) },
-            );
+            engine.register_fn("move", |_: &str| command_not_allowed("move"));
         }
     }
     {
@@ -384,12 +370,7 @@ fn register_commands(
                 sleep_for(duration, &emitter)
             });
         } else {
-            engine.register_fn(
-                "sleep",
-                move |_: RhaiFloat| -> Result<CommandValue, Box<EvalAltResult>> {
-                    Ok(CommandValue())
-                },
-            );
+            engine.register_fn("sleep", |_: RhaiFloat| command_not_allowed("sleep"));
         }
     }
     {
@@ -399,12 +380,7 @@ fn register_commands(
                 sleep_for(duration as RhaiFloat, &emitter)
             });
         } else {
-            engine.register_fn(
-                "sleep",
-                move |_: RhaiInt| -> Result<CommandValue, Box<EvalAltResult>> {
-                    Ok(CommandValue())
-                },
-            );
+            engine.register_fn("sleep", |_: RhaiInt| command_not_allowed("sleep"));
         }
     }
     {
@@ -412,7 +388,7 @@ fn register_commands(
         if allowed_commands.is_none_or(|s| s.contains("is_touched")) {
             engine.register_fn("is_touched", move || state.touched());
         } else {
-            engine.register_fn("is_touched", move || -> bool { false });
+            engine.register_fn("is_touched", || sensor_not_allowed("is_touched"));
         }
     }
     {
@@ -420,10 +396,7 @@ fn register_commands(
         if allowed_commands.is_none_or(|s| s.contains("dig")) {
             engine.register_fn("dig", move |direction: &str| dig_named(direction, &emitter));
         } else {
-            engine.register_fn(
-                "dig",
-                move |_: &str| -> Result<CommandValue, Box<EvalAltResult>> { Ok(CommandValue()) },
-            );
+            engine.register_fn("dig", |_: &str| command_not_allowed("dig"));
         }
     }
     {
@@ -439,9 +412,27 @@ fn register_commands(
                     .unwrap_or(false)
             });
         } else {
-            engine.register_fn("is_empty", move |_: &str| -> bool { false });
+            engine.register_fn("is_empty", |_: &str| sensor_not_allowed("is_empty"));
         }
     }
+}
+
+fn command_not_allowed(command: &str) -> Result<CommandValue, Box<EvalAltResult>> {
+    command_not_allowed_error(command)
+}
+
+fn sensor_not_allowed(command: &str) -> Result<bool, Box<EvalAltResult>> {
+    command_not_allowed_error(command)
+}
+
+fn command_not_allowed_error<T>(command: &str) -> Result<T, Box<EvalAltResult>> {
+    // A regular runtime error can be caught by a script. Capabilities are an execution
+    // boundary, so use Rhai's uncatchable termination error instead.
+    Err(EvalAltResult::ErrorTerminated(
+        format!("{COMMAND_NOT_ALLOWED_PREFIX}{command}").into(),
+        Position::NONE,
+    )
+    .into())
 }
 
 fn record_dig(
@@ -509,6 +500,16 @@ fn sleep_for(
 
 fn map_engine_error(error: EvalAltResult) -> ScriptExecutionError {
     match error {
+        EvalAltResult::ErrorTerminated(value, _) => {
+            let message = value.to_string();
+            if let Some(command) = message.strip_prefix(COMMAND_NOT_ALLOWED_PREFIX) {
+                ScriptExecutionError::InvalidCommand(format!(
+                    "Command '{command}' is not allowed for this stone."
+                ))
+            } else {
+                ScriptExecutionError::Engine("Script terminated".to_string())
+            }
+        }
         EvalAltResult::ErrorRuntime(value, _) => {
             let message = value.to_string();
             if let Some(direction) = message.strip_prefix(INVALID_MOVE_PREFIX) {
@@ -527,6 +528,10 @@ fn map_engine_error(error: EvalAltResult) -> ScriptExecutionError {
                 ScriptExecutionError::Engine(format!(
                     "Too many commands emitted (>{}). Add yields/sleeps or reduce loop counts.",
                     limit
+                ))
+            } else if let Some(command) = message.strip_prefix(COMMAND_NOT_ALLOWED_PREFIX) {
+                ScriptExecutionError::InvalidCommand(format!(
+                    "Command '{command}' is not allowed for this stone."
                 ))
             } else {
                 ScriptExecutionError::Engine(message)
@@ -555,6 +560,7 @@ struct RhaiScriptProgram {
     handle: Option<JoinHandle<()>>,
     resume_tx: SyncSender<()>,
     shared_state: SharedScriptState,
+    runtime_error: Arc<Mutex<Option<ScriptExecutionError>>>,
 }
 
 impl RhaiScriptProgram {
@@ -567,6 +573,7 @@ impl RhaiScriptProgram {
         let (resume_tx, resume_rx) = mpsc::sync_channel::<()>(RESUME_CHANNEL_SIZE);
         let resume_rx = Arc::new(Mutex::new(resume_rx));
         let shared_state = SharedScriptState::default();
+        let runtime_error = Arc::new(Mutex::new(None));
 
         let mut engine = streaming_engine(&stop_flag);
         let emitter = CommandEmitter::stream(sender, stop_flag.clone(), resume_rx.clone());
@@ -584,6 +591,7 @@ impl RhaiScriptProgram {
         let handle = std::thread::spawn({
             let resume = resume_rx.clone();
             let stop_flag = stop_flag.clone();
+            let runtime_error = runtime_error.clone();
             move || {
                 if wait_for_resume(&resume, &stop_flag).is_err() {
                     return;
@@ -591,7 +599,12 @@ impl RhaiScriptProgram {
 
                 let result = engine.eval_ast::<Dynamic>(&ast);
                 if let Err(err) = result {
-                    eprintln!("Script execution stopped: {}", map_engine_error(*err));
+                    let error = map_engine_error(*err);
+                    if !matches!(error, ScriptExecutionError::Engine(ref message) if message == STOP_REQUEST_TOKEN)
+                        && let Ok(mut stored_error) = runtime_error.lock()
+                    {
+                        *stored_error = Some(error);
+                    }
                 }
             }
         });
@@ -602,6 +615,7 @@ impl RhaiScriptProgram {
             handle: Some(handle),
             resume_tx,
             shared_state,
+            runtime_error,
         })
     }
 
@@ -639,6 +653,13 @@ impl ScriptProgram for RhaiScriptProgram {
             }
         }
     }
+
+    fn take_error(&mut self) -> Option<ScriptExecutionError> {
+        self.runtime_error
+            .lock()
+            .ok()
+            .and_then(|mut runtime_error| runtime_error.take())
+    }
 }
 
 impl Drop for RhaiScriptProgram {
@@ -651,7 +672,72 @@ impl Drop for RhaiScriptProgram {
 mod tests {
     use super::*;
     use crate::util::script_types::MoveDirection;
-    use std::{thread, time::Instant};
+    use std::{collections::HashSet, thread, time::Instant};
+
+    fn allowed(commands: &[&str]) -> HashSet<String> {
+        commands
+            .iter()
+            .map(|command| (*command).to_string())
+            .collect()
+    }
+
+    #[test]
+    fn rejects_commands_and_sensors_outside_the_stone_capabilities() {
+        let executor = RhaiScriptExecutor::new();
+        let type1 = allowed(&["move", "sleep"]);
+
+        for source in [
+            "dig(\"down\");",
+            "if is_touched() { move(\"right\"); }",
+            "if is_empty(\"right\") { move(\"right\"); }",
+            "try { dig(\"down\"); } catch (error) { move(\"right\"); }",
+        ] {
+            assert!(
+                executor.compile_step(source, Some(&type1)).is_err(),
+                "{source} should be rejected instead of silently doing nothing"
+            );
+        }
+    }
+
+    #[test]
+    fn reports_a_runtime_error_when_a_disallowed_branch_becomes_reachable() {
+        let executor = RhaiScriptExecutor::new();
+        let allows_sensor_but_not_dig = allowed(&["move", "sleep", "is_touched"]);
+        let mut program = executor
+            .compile_step(
+                r#"loop { if is_touched() { dig("down"); } }"#,
+                Some(&allows_sensor_but_not_dig),
+            )
+            .expect("an unreachable branch can pass Rhai preflight");
+
+        let mut untouched_state = ScriptState::default();
+        untouched_state.insert(
+            PLAYER_TOUCHED_STATE_KEY.to_string(),
+            ScriptStateValue::Bool(false),
+        );
+        assert!(program.next(&untouched_state).is_none());
+        assert!(program.take_error().is_none());
+
+        let mut touched_state = ScriptState::default();
+        touched_state.insert(
+            PLAYER_TOUCHED_STATE_KEY.to_string(),
+            ScriptStateValue::Bool(true),
+        );
+
+        let deadline = Instant::now() + Duration::from_millis(100);
+        loop {
+            assert!(program.next(&touched_state).is_none());
+            if let Some(ScriptExecutionError::InvalidCommand(message)) = program.take_error() {
+                assert!(message.contains("dig"));
+                break;
+            }
+            assert!(
+                Instant::now() < deadline,
+                "expected a disallowed command error"
+            );
+            thread::yield_now();
+        }
+    }
 
     fn next_command_within(
         program: &mut dyn ScriptProgram,
