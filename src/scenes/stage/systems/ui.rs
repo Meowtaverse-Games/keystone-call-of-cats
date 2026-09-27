@@ -799,6 +799,7 @@ pub fn tick_script_program(
     }
 
     let mut runtime_error = None;
+    let mut pending_commands = Vec::new();
 
     for (stone_entity, stone_transform, stone_index, _) in stone_query.iter() {
         let idx = stone_index.0;
@@ -863,7 +864,7 @@ pub fn tick_script_program(
         }
 
         if let Some(command) = program.next(&state) {
-            append_writer.write(StoneAppendCommandMessage {
+            pending_commands.push(StoneAppendCommandMessage {
                 stone_index: idx,
                 command: command.clone(),
             });
@@ -877,7 +878,11 @@ pub fn tick_script_program(
         editor.last_run_feedback = Some(script_error_message(&localization, &error));
         editor.controls_enabled = false;
         editor.active_programs.clear();
+        editor.pending_player_reset = true;
+        return;
     }
+
+    append_writer.write_batch(pending_commands);
 }
 
 fn is_player_touching_stone(

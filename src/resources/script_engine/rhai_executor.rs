@@ -426,7 +426,9 @@ fn sensor_not_allowed(command: &str) -> Result<bool, Box<EvalAltResult>> {
 }
 
 fn command_not_allowed_error<T>(command: &str) -> Result<T, Box<EvalAltResult>> {
-    Err(EvalAltResult::ErrorRuntime(
+    // A regular runtime error can be caught by a script. Capabilities are an execution
+    // boundary, so use Rhai's uncatchable termination error instead.
+    Err(EvalAltResult::ErrorTerminated(
         format!("{COMMAND_NOT_ALLOWED_PREFIX}{command}").into(),
         Position::NONE,
     )
@@ -498,6 +500,16 @@ fn sleep_for(
 
 fn map_engine_error(error: EvalAltResult) -> ScriptExecutionError {
     match error {
+        EvalAltResult::ErrorTerminated(value, _) => {
+            let message = value.to_string();
+            if let Some(command) = message.strip_prefix(COMMAND_NOT_ALLOWED_PREFIX) {
+                ScriptExecutionError::InvalidCommand(format!(
+                    "Command '{command}' is not allowed for this stone."
+                ))
+            } else {
+                ScriptExecutionError::Engine("Script terminated".to_string())
+            }
+        }
         EvalAltResult::ErrorRuntime(value, _) => {
             let message = value.to_string();
             if let Some(direction) = message.strip_prefix(INVALID_MOVE_PREFIX) {
@@ -678,6 +690,7 @@ mod tests {
             "dig(\"down\");",
             "if is_touched() { move(\"right\"); }",
             "if is_empty(\"right\") { move(\"right\"); }",
+            "try { dig(\"down\"); } catch (error) { move(\"right\"); }",
         ] {
             assert!(
                 executor.compile_step(source, Some(&type1)).is_err(),
