@@ -356,12 +356,15 @@ pub fn drain_external_commands(
                 editor.controls_enabled = false;
                 editor.active_programs.clear();
                 for (_, _, mut state) in &mut stones {
-                    state.queue.clear();
+                    state.clear_commands();
                 }
                 bridge.finish(request.id, control.generation, "complete", None);
             }
             ExternalRequest::Stop => {
                 control.owner = false;
+                for (_, _, mut state) in &mut stones {
+                    state.clear_commands();
+                }
                 for (_, (id, generation)) in control.active.drain() {
                     bridge.finish(id, generation, "rejected", Some("session_stopped".into()));
                 }
@@ -371,9 +374,11 @@ pub fn drain_external_commands(
                 editor.controls_enabled = false;
                 editor.active_programs.clear();
                 editor.pending_player_reset = true;
-                control.active.clear();
+                for (_, (id, generation)) in control.active.drain() {
+                    bridge.finish(id, generation, "rejected", Some("reset".into()));
+                }
                 for (_, _, mut state) in &mut stones {
-                    state.queue.clear();
+                    state.clear_commands();
                 }
                 bridge.finish(request.id, control.generation, "complete", None);
             }

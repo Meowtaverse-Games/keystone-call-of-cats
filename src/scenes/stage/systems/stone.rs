@@ -56,6 +56,13 @@ impl StoneCommandState {
     pub(crate) fn is_busy(&self) -> bool {
         self.current.is_some() || !self.queue.is_empty() || !self.cooldown.is_finished()
     }
+
+    /// Cancels an externally owned action before reset or session stop.
+    pub(crate) fn clear_commands(&mut self) {
+        self.queue.clear();
+        self.current = None;
+        self.cooldown = Timer::from_seconds(0.0, TimerMode::Once);
+    }
 }
 
 #[derive(Component, Default)]
