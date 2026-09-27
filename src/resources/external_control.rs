@@ -578,7 +578,10 @@ mod tests {
     use crate::scenes::stage::components::StoneRune;
     use bevy::prelude::{App, Update};
     fn bridge(capacity: usize) -> ExternalControlBridge {
-        let (ingress, _) = std::sync::mpsc::sync_channel(capacity);
+        let (ingress, receiver) = std::sync::mpsc::sync_channel(capacity);
+        // Keep the consumer endpoint alive: these tests exercise a full queue,
+        // not a disconnected server.
+        std::mem::forget(receiver);
         ExternalControlBridge {
             ingress,
             snapshot: Arc::new(Mutex::new(ControlSnapshot::default())),
@@ -735,6 +738,7 @@ mod tests {
                 },
             )
             .unwrap();
+        app.update();
         app.update();
         bridge.submit(0, ExternalRequest::Stop).unwrap();
         app.update();
