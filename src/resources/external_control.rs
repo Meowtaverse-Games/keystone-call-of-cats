@@ -713,6 +713,17 @@ mod tests {
             )
             .unwrap();
         app.update();
+        assert_eq!(
+            bridge
+                .records
+                .lock()
+                .unwrap()
+                .0
+                .iter()
+                .find(|record| record.id == 2)
+                .map(|record| record.status.as_str()),
+            Some("running")
+        );
         // Messages written by the drain system are consumed by the append
         // system on the following update.
         app.update();

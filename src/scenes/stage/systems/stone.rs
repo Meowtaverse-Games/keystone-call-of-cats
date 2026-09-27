@@ -52,10 +52,12 @@ pub(crate) struct StoneCommandState {
 
 impl Default for StoneCommandState {
     fn default() -> Self {
+        let mut cooldown = Timer::from_seconds(0.0, TimerMode::Once);
+        cooldown.tick(Duration::ZERO);
         Self {
             queue: VecDeque::new(),
             current: None,
-            cooldown: Timer::from_seconds(0.0, TimerMode::Once),
+            cooldown,
             step_size: 32.0,
             external_action_id: None,
         }
@@ -72,6 +74,7 @@ impl StoneCommandState {
         self.queue.clear();
         self.current = None;
         self.cooldown = Timer::from_seconds(0.0, TimerMode::Once);
+        self.cooldown.tick(Duration::ZERO);
     }
 }
 
