@@ -713,6 +713,9 @@ mod tests {
             )
             .unwrap();
         app.update();
+        // Messages written by the drain system are consumed by the append
+        // system on the following update.
+        app.update();
         let world = app.world_mut();
         let mut query = world.query::<(&StoneIndex, &StoneCommandState)>();
         let queues: Vec<_> = query
