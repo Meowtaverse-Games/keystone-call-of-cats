@@ -202,6 +202,14 @@ pub fn reset_placed_tiles(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[derive(Resource, Default)]
+    struct Outcomes(Vec<StoneExternalOutcomeMessage>);
+    fn collect_outcomes(
+        mut reader: MessageReader<StoneExternalOutcomeMessage>,
+        mut outcomes: ResMut<Outcomes>,
+    ) {
+        outcomes.0.extend(reader.read().cloned());
+    }
 
     fn test_metrics() -> StageGridMetrics {
         StageGridMetrics {
@@ -219,6 +227,9 @@ mod tests {
             .insert_resource(test_metrics())
             .insert_resource(PlaceState::new(limit))
             .add_message::<StonePlaceRequestMessage>()
+            .add_message::<StoneExternalOutcomeMessage>()
+            .init_resource::<Outcomes>()
+            .add_systems(Update, collect_outcomes.after(resolve_place_requests))
             .add_systems(Update, resolve_place_requests);
         app
     }
@@ -329,6 +340,77 @@ mod tests {
             Some(root)
         );
         assert_eq!(app.world().resource::<PlaceState>().remaining, Some(0));
+    }
+
+    #[test]
+    fn external_place_reports_complete_only_after_a_successful_commit() {
+        let mut app = placement_app(Some(1));
+        let (_, stone) = spawn_stage_and_stone(&mut app, 0, IVec2::new(2, 2));
+        app.update();
+        app.world_mut()
+            .resource_mut::<Messages<StonePlaceRequestMessage>>()
+            .write(StonePlaceRequestMessage {
+                stone,
+                stone_index: 0,
+                direction: MoveDirection::Right,
+                external_action_id: Some(41),
+            });
+        app.update();
+        assert!(
+            app.world()
+                .resource::<Outcomes>()
+                .0
+                .iter()
+                .any(|outcome| outcome.action_id == 41 && !outcome.blocked)
+        );
+    }
+
+    #[test]
+    fn external_place_reports_blocked_for_occupied_or_exhausted_cells() {
+        let mut app = placement_app(Some(1));
+        let (_, stone) = spawn_stage_and_stone(&mut app, 0, IVec2::new(2, 2));
+        app.update();
+        request_place(&mut app, stone, 0);
+        app.update();
+        app.world_mut()
+            .resource_mut::<Messages<StonePlaceRequestMessage>>()
+            .write(StonePlaceRequestMessage {
+                stone,
+                stone_index: 0,
+                direction: MoveDirection::Right,
+                external_action_id: Some(42),
+            });
+        app.update();
+        assert!(
+            app.world()
+                .resource::<Outcomes>()
+                .0
+                .iter()
+                .any(|outcome| outcome.action_id == 42 && outcome.blocked)
+        );
+    }
+
+    #[test]
+    fn external_place_reports_blocked_when_limit_is_zero() {
+        let mut app = placement_app(Some(0));
+        let (_, stone) = spawn_stage_and_stone(&mut app, 0, IVec2::new(2, 2));
+        app.update();
+        app.world_mut()
+            .resource_mut::<Messages<StonePlaceRequestMessage>>()
+            .write(StonePlaceRequestMessage {
+                stone,
+                stone_index: 0,
+                direction: MoveDirection::Right,
+                external_action_id: Some(43),
+            });
+        app.update();
+        assert!(
+            app.world()
+                .resource::<Outcomes>()
+                .0
+                .iter()
+                .any(|outcome| outcome.action_id == 43 && outcome.blocked)
+        );
     }
 
     #[test]
