@@ -544,6 +544,9 @@ const MAX_EXPR_DEPTH: usize = 64; // max expression depth
 const MAX_CALL_LEVELS: usize = 32; // max call stack depth
 const MAX_COMMANDS: usize = 5_000; // cap recorded commands to prevent OOM
 const STREAM_CHANNEL_SIZE: usize = 1; // backpressure so scripts yield one step at a time
+// A state update may resume only a worker already waiting for that update. Keeping a permit here
+// would let an earlier `is_touched = true` observation emit a move after contact has ended.
+const RESUME_CHANNEL_SIZE: usize = 0;
 
 // --------- Step program implementation ---------
 struct RhaiScriptProgram {
@@ -561,7 +564,7 @@ impl RhaiScriptProgram {
     ) -> Result<Self, ScriptExecutionError> {
         let (sender, receiver) = mpsc::sync_channel::<ScriptCommand>(STREAM_CHANNEL_SIZE);
         let stop_flag = Arc::new(AtomicBool::new(false));
-        let (resume_tx, resume_rx) = mpsc::sync_channel::<()>(1);
+        let (resume_tx, resume_rx) = mpsc::sync_channel::<()>(RESUME_CHANNEL_SIZE);
         let resume_rx = Arc::new(Mutex::new(resume_rx));
         let shared_state = SharedScriptState::default();
 
@@ -648,7 +651,23 @@ impl Drop for RhaiScriptProgram {
 mod tests {
     use super::*;
     use crate::util::script_types::MoveDirection;
-    use std::thread;
+    use std::{thread, time::Instant};
+
+    fn next_command_within(
+        program: &mut dyn ScriptProgram,
+        state: &ScriptState,
+    ) -> Option<ScriptCommand> {
+        let deadline = Instant::now() + Duration::from_millis(100);
+        loop {
+            if let Some(command) = program.next(state) {
+                return Some(command);
+            }
+            if Instant::now() >= deadline {
+                return None;
+            }
+            thread::yield_now();
+        }
+    }
 
     #[test]
     fn touched_reflects_latest_state_between_steps() {
@@ -663,8 +682,8 @@ mod tests {
             ScriptStateValue::Bool(true),
         );
 
-        // First tick should see `touched = true` and emit a move command.
-        let command = program.next(&touched_state);
+        // `next` is a non-blocking poll; wait for the worker to receive this state update.
+        let command = next_command_within(&mut *program, &touched_state);
         match command {
             Some(ScriptCommand::Move(MoveDirection::Down)) => {}
             other => panic!("expected move down, got {other:?}"),
@@ -685,6 +704,42 @@ mod tests {
                 next.is_none(),
                 "touched=false should yield no commands, got {next:?}"
             );
+        }
+    }
+
+    #[test]
+    fn touched_loop_waits_then_moves_right_until_contact_ends() {
+        let executor = RhaiScriptExecutor::new();
+        let mut program = executor
+            .compile_step(r#"loop { if is_touched() { move("right"); } }"#, None)
+            .expect("script should compile");
+
+        let mut untouched_state = ScriptState::default();
+        untouched_state.insert(
+            PLAYER_TOUCHED_STATE_KEY.to_string(),
+            ScriptStateValue::Bool(false),
+        );
+
+        // The worker stays alive while the player takes time to reach the stone.
+        for _ in 0..5 {
+            thread::sleep(Duration::from_millis(2));
+            assert!(program.next(&untouched_state).is_none());
+        }
+
+        let mut touched_state = ScriptState::default();
+        touched_state.insert(
+            PLAYER_TOUCHED_STATE_KEY.to_string(),
+            ScriptStateValue::Bool(true),
+        );
+        assert!(matches!(
+            next_command_within(&mut *program, &touched_state),
+            Some(ScriptCommand::Move(MoveDirection::Right))
+        ));
+
+        // After stepping off, the same running loop must not emit another move.
+        for _ in 0..5 {
+            thread::sleep(Duration::from_millis(2));
+            assert!(program.next(&untouched_state).is_none());
         }
     }
 }
