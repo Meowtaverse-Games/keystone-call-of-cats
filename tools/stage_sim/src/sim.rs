@@ -586,9 +586,9 @@ mod tests {
     }
 
     #[test]
-    fn stage_11_stones_keep_separate_dig_budgets() {
+    fn stones_keep_separate_dig_budgets() {
         let generated = generate(
-            &parse_stage(include_str!("../../../assets/stages/stage-11.ron")).unwrap(),
+            &parse_stage(include_str!("../tests/fixtures/two_stones_scan_order.ron")).unwrap(),
             0,
         )
         .unwrap();

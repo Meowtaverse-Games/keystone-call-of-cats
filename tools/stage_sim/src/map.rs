@@ -624,13 +624,14 @@ mod tests {
     }
 
     #[test]
-    fn preserves_stage_11_stone_order_from_the_ron_chunk() {
+    fn preserves_stone_order_from_the_ron_chunk() {
         let map = generate(
-            &parse_stage(include_str!("../../../assets/stages/stage-11.ron")).unwrap(),
+            &parse_stage(include_str!("../tests/fixtures/two_stones_scan_order.ron")).unwrap(),
             0,
         )
         .unwrap();
 
+        // The upper stone is index 0, just as the product scans each RON row before lower rows.
         assert_eq!(map.positions(TileKind::Stone), vec![(14, 12), (3, 1)]);
     }
 }
