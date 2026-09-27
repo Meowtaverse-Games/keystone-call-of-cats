@@ -93,7 +93,7 @@ pub struct ExternalControlReceiver(pub Receiver<ExternalCommand>);
 pub struct ExternalControlState {
     pub generation: u64,
     pub owner: bool,
-    active: HashMap<usize, (u64, u64)>,
+    active: HashMap<usize, (u64, u64, bool)>,
 }
 impl ExternalControlBridge {
     fn put(&self, r: ActionRecord) {
@@ -365,7 +365,7 @@ pub fn drain_external_commands(
                 for (_, _, mut state) in &mut stones {
                     state.clear_commands();
                 }
-                for (_, (id, generation)) in control.active.drain() {
+                for (_, (id, generation, _)) in control.active.drain() {
                     bridge.finish(id, generation, "rejected", Some("session_stopped".into()));
                 }
                 bridge.finish(request.id, control.generation, "complete", None);
@@ -374,7 +374,7 @@ pub fn drain_external_commands(
                 editor.controls_enabled = false;
                 editor.active_programs.clear();
                 editor.pending_player_reset = true;
-                for (_, (id, generation)) in control.active.drain() {
+                for (_, (id, generation, _)) in control.active.drain() {
                     bridge.finish(id, generation, "rejected", Some("reset".into()));
                 }
                 for (_, _, mut state) in &mut stones {
@@ -431,7 +431,7 @@ pub fn drain_external_commands(
                     });
                     control
                         .active
-                        .insert(stone, (request.id, control.generation));
+                        .insert(stone, (request.id, control.generation, false));
                     bridge.finish(request.id, control.generation, "running", None);
                 }
             }
@@ -440,17 +440,25 @@ pub fn drain_external_commands(
     let done: Vec<_> = control
         .active
         .iter()
-        .filter_map(|(&stone, &(id, generation))| {
+        .filter_map(|(&stone, &(id, generation, started))| {
             stones
                 .iter()
                 .find(|(index, _, _)| index.0 == stone)
-                .filter(|(_, _, state)| !state.is_busy())
+                .filter(|(_, _, state)| started && !state.is_busy())
                 .map(|_| (stone, id, generation))
         })
         .collect();
     for (stone, id, generation) in done {
         control.active.remove(&stone);
         bridge.finish(id, generation, "complete", None);
+    }
+    for (&stone, entry) in &mut control.active {
+        if stones
+            .iter()
+            .any(|(index, _, state)| index.0 == stone && state.is_busy())
+        {
+            entry.2 = true;
+        }
     }
 }
 
@@ -506,7 +514,7 @@ pub fn invalidate_external_generation(
 ) {
     control.generation = control.generation.wrapping_add(1);
     control.owner = false;
-    for (_, (id, generation)) in control.active.drain() {
+    for (_, (id, generation, _)) in control.active.drain() {
         if let Some(bridge) = bridge.as_ref() {
             bridge.finish(id, generation, "rejected", Some("stage_changed".into()));
         }
