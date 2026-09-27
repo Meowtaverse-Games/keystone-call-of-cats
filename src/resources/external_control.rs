@@ -97,7 +97,7 @@ pub struct ExternalControlBridge {
     ids: Arc<AtomicU64>,
 }
 #[derive(Resource)]
-pub struct ExternalControlReceiver(pub Receiver<ExternalCommand>);
+pub struct ExternalControlReceiver(pub Arc<Mutex<Receiver<ExternalCommand>>>);
 #[derive(Resource, Default)]
 pub struct ExternalControlState {
     pub generation: u64,
@@ -340,7 +340,7 @@ pub fn start(
         .map_err(|_| "external control listener did not start".to_string())?;
     Ok(Some((
         bridge,
-        ExternalControlReceiver(rx),
+        ExternalControlReceiver(Arc::new(Mutex::new(rx))),
         ExternalControlServer {
             address,
             shutdown: Some(stop),
@@ -377,7 +377,7 @@ pub fn drain_external_commands(
             );
         }
     }
-    while let Ok(request) = receiver.0.try_recv() {
+    while let Ok(request) = receiver.0.lock().unwrap().try_recv() {
         if request.generation != control.generation {
             bridge.finish(
                 request.id,
@@ -517,9 +517,7 @@ pub fn publish_external_snapshot(
             .iter()
             .any(|(_, collisions)| collisions.contains(entity));
         let empty = |direction: Vec2| {
-            let collider = avian2d::prelude::Collider::circle(
-                crate::scenes::stage::systems::stone::STONE_COLLIDER_RADIUS * transform.scale.x,
-            );
+            let collider = avian2d::prelude::Collider::circle(16.5 * transform.scale.x);
             let hit = spatial.cast_shape(
                 &collider,
                 transform.translation.truncate(),
@@ -592,7 +590,7 @@ mod tests {
         };
         let mut app = App::new();
         app.insert_resource(bridge.clone())
-            .insert_resource(ExternalControlReceiver(receiver))
+            .insert_resource(ExternalControlReceiver(Arc::new(Mutex::new(receiver))))
             .init_resource::<ExternalControlState>()
             .init_resource::<ScriptEditorState>()
             .add_message::<StoneAppendCommandMessage>()

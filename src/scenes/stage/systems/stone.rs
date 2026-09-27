@@ -2,6 +2,7 @@ use std::{collections::VecDeque, time::Duration};
 
 use avian2d::prelude::*;
 use bevy::prelude::*;
+use bevy_ecs::system::SystemParam;
 
 use super::{StageAudioHandles, StageAudioState, ui::ScriptEditorState};
 use crate::{
@@ -247,6 +248,12 @@ type StoneBehaviorQuery<'w, 's> = Query<
     With<StoneRune>,
 >;
 
+#[derive(SystemParam)]
+struct StoneOutput<'w> {
+    place_writer: MessageWriter<'w, StonePlaceRequestMessage>,
+    external_outcomes: MessageWriter<'w, StoneExternalOutcomeMessage>,
+}
+
 #[allow(clippy::type_complexity, clippy::too_many_arguments)]
 pub fn update_stone_behavior(
     mut commands: Commands,
@@ -264,8 +271,7 @@ pub fn update_stone_behavior(
     query_colliders: Query<&Collider>,
     spatial: SpatialQuery,
     mut stone_moved_writer: MessageWriter<StoneTickMessage>,
-    mut place_writer: MessageWriter<StonePlaceRequestMessage>,
-    mut external_outcomes: MessageWriter<StoneExternalOutcomeMessage>,
+    mut output: StoneOutput,
 ) {
     if query.is_empty() {
         audio_state.stop_push_loop(&mut commands);
@@ -508,7 +514,7 @@ pub fn update_stone_behavior(
                     }
                 }
                 StoneAction::Place(direction) => {
-                    place_writer.write(StonePlaceRequestMessage {
+                    output.place_writer.write(StonePlaceRequestMessage {
                         stone: entity,
                         stone_index: stone_index.0,
                         direction: *direction,
@@ -522,7 +528,9 @@ pub fn update_stone_behavior(
             let blocked = matches!(state.current, Some(StoneAction::Blocked(_)));
             state.current = None;
             if let Some(action_id) = state.external_action_id.take() {
-                external_outcomes.write(StoneExternalOutcomeMessage { action_id, blocked });
+                output
+                    .external_outcomes
+                    .write(StoneExternalOutcomeMessage { action_id, blocked });
             }
             // Start cooldown
             state.cooldown = Timer::from_seconds(STONE_ACTION_COOLDOWN, TimerMode::Once);
