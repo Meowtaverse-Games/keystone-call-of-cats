@@ -42,13 +42,34 @@ impl Default for StoneCapabilities {
         type3.insert("dig".to_string());
         map.insert(StoneType::Type3, type3);
 
-        // // Type 4: Move + Touched
-        // let mut type4 = HashSet::new();
-        // type4.insert("move".to_string());
-        // type4.insert("is_touched".to_string());
-        // map.insert(StoneType::Type4, type4);
+        // Type 4: Place is not implemented in the product yet. Keep its existing sensors and
+        // movement explicit so it cannot fall through to the unrestricted `None` behavior.
+        map.insert(StoneType::Type4, type2);
 
         Self { map }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn type4_is_explicitly_limited_until_place_is_implemented() {
+        let capabilities = StoneCapabilities::default();
+        let type4 = capabilities
+            .get_capabilities(StoneType::Type4)
+            .expect("Type4 must not be unrestricted");
+
+        assert_eq!(
+            type4,
+            &HashSet::from([
+                "move".to_string(),
+                "is_touched".to_string(),
+                "is_empty".to_string(),
+            ])
+        );
+        assert!(!type4.contains("place"));
     }
 }
 
