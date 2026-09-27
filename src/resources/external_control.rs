@@ -21,6 +21,10 @@ use axum::{
     routing::{get, post},
 };
 use bevy::prelude::*;
+use hyper_util::{
+    rt::{TokioIo, TokioTimer},
+    service::TowerToHyperService,
+};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, VecDeque},
@@ -32,11 +36,18 @@ use std::{
     },
     thread,
 };
-use tokio::{net::TcpListener, sync::oneshot, time::Duration};
+use tokio::{
+    net::TcpListener,
+    sync::{Semaphore, oneshot},
+    time::Duration,
+};
 use tower_http::{limit::RequestBodyLimitLayer, timeout::TimeoutLayer};
 
 pub const MAX_INGRESS: usize = 64;
 const MAX_RECORDS: usize = 128;
+const MAX_PENDING_RECORDS: usize = MAX_INGRESS;
+const MAX_HTTP_CONNECTIONS: usize = 16;
+const HTTP_CONNECTION_TIMEOUT: Duration = Duration::from_secs(3);
 #[derive(Clone, Debug)]
 pub enum ExternalRequest {
     Start,
@@ -105,6 +116,14 @@ pub struct ExternalControlState {
     active: HashMap<usize, (u64, u64, bool)>,
 }
 impl ExternalControlState {
+    pub(crate) fn owns_action(&self, stone: usize, action_id: u64, generation: u64) -> bool {
+        self.owner
+            && self.generation == generation
+            && self
+                .active
+                .get(&stone)
+                .is_some_and(|active| active.0 == action_id && active.1 == generation)
+    }
     pub(crate) fn cancel_for_human(&mut self, bridge: &ExternalControlBridge) {
         self.owner = false;
         self.generation = self.generation.wrapping_add(1);
@@ -124,12 +143,28 @@ pub(crate) fn stop_for_human(
     editor.pending_player_reset = true;
 }
 impl ExternalControlBridge {
+    fn pending_is_full(&self) -> bool {
+        self.records
+            .lock()
+            .unwrap()
+            .0
+            .iter()
+            .filter(|record| matches!(record.status.as_str(), "queued" | "running"))
+            .count()
+            >= MAX_PENDING_RECORDS
+    }
+
     fn put(&self, r: ActionRecord) {
         let mut q = self.records.lock().unwrap();
         q.0.retain(|v| v.id != r.id);
         q.0.push_back(r);
         while q.0.len() > MAX_RECORDS {
-            q.0.pop_front();
+            let Some(position) = q.0.iter().position(|record| {
+                matches!(record.status.as_str(), "complete" | "blocked" | "rejected")
+            }) else {
+                break;
+            };
+            q.0.remove(position);
         }
     }
     pub fn finish(&self, id: u64, generation: u64, status: &str, detail: Option<String>) {
@@ -141,6 +176,9 @@ impl ExternalControlBridge {
         })
     }
     fn submit(&self, generation: u64, request: ExternalRequest) -> Result<ActionRecord, ApiError> {
+        if self.pending_is_full() {
+            return Err(ApiError(429, "queue_full"));
+        }
         let id = self.ids.fetch_add(1, Ordering::Relaxed);
         let r = ActionRecord {
             id,
@@ -255,7 +293,11 @@ async fn session(
         "reset" => ExternalRequest::Reset,
         _ => return Err(ApiError(404, "unknown_session_action")),
     };
-    let g = s.bridge.snapshot.lock().unwrap().generation;
+    let snapshot = s.bridge.snapshot.lock().unwrap().clone();
+    if matches!(&r, ExternalRequest::Start) && snapshot.active_stage.is_none() {
+        return Err(ApiError(409, "no_active_stage"));
+    }
+    let g = snapshot.generation;
     Ok((StatusCode::ACCEPTED, Json(s.bridge.submit(g, r)?)))
 }
 fn command(b: CommandBody) -> Result<ScriptCommand, ApiError> {
@@ -360,8 +402,36 @@ pub fn start(
                         Duration::from_secs(3),
                     ))
                     .with_state(h);
-                let server = axum::serve(listener, app);
-                tokio::select! {_=server=>{},_=stop_rx=>{}}
+                // A route timeout only starts after Hyper has received a complete request.
+                // Keep each loopback connection bounded as well: this covers slow headers,
+                // incomplete bodies, and peers that stop reading a response. HTTP/1 keepalive
+                // connections are deliberately limited to this short lifetime.
+                let connections = Arc::new(Semaphore::new(MAX_HTTP_CONNECTIONS));
+                let mut stop_rx = stop_rx;
+                loop {
+                    let accepted = tokio::select! {
+                        _ = &mut stop_rx => break,
+                        accepted = listener.accept() => accepted,
+                    };
+                    let Ok((stream, _)) = accepted else {
+                        continue;
+                    };
+                    let Ok(permit) = Arc::clone(&connections).try_acquire_owned() else {
+                        // Drop excess loopback clients immediately rather than retaining
+                        // unbounded tasks or sockets.
+                        drop(stream);
+                        continue;
+                    };
+                    let service = TowerToHyperService::new(app.clone().into_service());
+                    tokio::spawn(async move {
+                        let mut http = hyper::server::conn::http1::Builder::new();
+                        http.timer(TokioTimer::new())
+                            .header_read_timeout(HTTP_CONNECTION_TIMEOUT);
+                        let connection = http.serve_connection(TokioIo::new(stream), service);
+                        let _ = tokio::time::timeout(HTTP_CONNECTION_TIMEOUT, connection).await;
+                        drop(permit);
+                    });
+                }
             });
     });
     let address = bound_rx
@@ -385,7 +455,15 @@ pub fn drain_external_commands(
     mut editor: ResMut<ScriptEditorState>,
     mut append: MessageWriter<StoneAppendCommandMessage>,
     mut outcomes: MessageReader<crate::scenes::stage::systems::StoneExternalOutcomeMessage>,
-    mut stones: Query<(&StoneIndex, &StoneType, &mut StoneCommandState), With<StoneRune>>,
+    mut stones: Query<
+        (
+            &StoneIndex,
+            &StoneType,
+            &mut StoneCommandState,
+            &mut avian2d::prelude::LinearVelocity,
+        ),
+        With<StoneRune>,
+    >,
 ) {
     for outcome in outcomes.read() {
         if let Some((&stone, &(_, generation, _))) = control
@@ -418,6 +496,15 @@ pub fn drain_external_commands(
         }
         match request.request {
             ExternalRequest::Start => {
+                if control.owner {
+                    bridge.finish(
+                        request.id,
+                        control.generation,
+                        "rejected",
+                        Some("external_session_active".into()),
+                    );
+                    continue;
+                }
                 if editor.controls_enabled || !editor.active_programs.is_empty() {
                     bridge.finish(
                         request.id,
@@ -428,17 +515,23 @@ pub fn drain_external_commands(
                     continue;
                 }
                 control.owner = true;
-                editor.controls_enabled = false;
-                for (_, _, mut state) in &mut stones {
+                // The editor flag also gates player movement and goal processing.  No
+                // script can be active here (checked above), so keep those gameplay
+                // controls enabled while external commands own the stones.
+                editor.controls_enabled = true;
+                for (_, _, mut state, mut velocity) in &mut stones {
                     state.clear_commands();
+                    velocity.0 = Vec2::ZERO;
                 }
                 bridge.finish(request.id, control.generation, "complete", None);
             }
             ExternalRequest::Stop => {
                 control.owner = false;
                 control.generation = control.generation.wrapping_add(1);
-                for (_, _, mut state) in &mut stones {
+                editor.pending_player_reset = true;
+                for (_, _, mut state, mut velocity) in &mut stones {
                     state.clear_commands();
+                    velocity.0 = Vec2::ZERO;
                 }
                 for (_, (id, generation, _)) in control.active.drain() {
                     bridge.finish(id, generation, "rejected", Some("session_stopped".into()));
@@ -453,14 +546,15 @@ pub fn drain_external_commands(
                 for (_, (id, generation, _)) in control.active.drain() {
                     bridge.finish(id, generation, "rejected", Some("reset".into()));
                 }
-                for (_, _, mut state) in &mut stones {
+                for (_, _, mut state, mut velocity) in &mut stones {
                     state.clear_commands();
+                    velocity.0 = Vec2::ZERO;
                 }
                 bridge.finish(request.id, request.generation, "complete", None);
             }
             ExternalRequest::Command { stone, command } => {
-                let Some((_, kind, state)) =
-                    stones.iter_mut().find(|(index, _, _)| index.0 == stone)
+                let Some((_, kind, state, _)) =
+                    stones.iter_mut().find(|(index, _, _, _)| index.0 == stone)
                 else {
                     bridge.finish(
                         request.id,
@@ -501,12 +595,13 @@ pub fn drain_external_commands(
                         Some("unsupported_command".into()),
                     );
                 } else {
+                    let generation = control.generation;
                     append.write(StoneAppendCommandMessage {
                         stone_index: stone,
                         command,
                         external_action_id: Some(request.id),
+                        external_generation: Some(generation),
                     });
-                    let generation = control.generation;
                     control
                         .active
                         .insert(stone, (request.id, generation, false));
@@ -528,7 +623,7 @@ pub fn publish_external_snapshot(
             Entity,
             &StoneIndex,
             &StoneType,
-            &Transform,
+            &GlobalTransform,
             &StoneCommandState,
             &DigLimit,
         ),
@@ -558,16 +653,18 @@ pub fn publish_external_snapshot(
             .iter()
             .any(|(_, collisions)| collisions.contains(&entity));
         let empty = |direction: Vec2| {
-            let collider = avian2d::prelude::Collider::circle(16.5 * transform.scale.x);
+            let collider = avian2d::prelude::Collider::circle(16.5 * transform.scale().x);
+            let mut excluded = vec![entity];
+            excluded.extend(players.iter().map(|(player, _)| player));
             let hit = spatial.cast_shape(
                 &collider,
-                transform.translation.truncate(),
+                transform.translation().truncate(),
                 0.0,
                 Dir2::new(direction).unwrap(),
                 &avian2d::prelude::ShapeCastConfig::from_max_distance(
-                    state.step_size * transform.scale.x,
+                    state.step_size * transform.scale().x,
                 ),
-                &avian2d::prelude::SpatialQueryFilter::default().with_excluded_entities([entity]),
+                &avian2d::prelude::SpatialQueryFilter::default().with_excluded_entities(excluded),
             );
             !hit.is_some_and(|hit| {
                 tiles.get(hit.entity).is_ok() || all_stones.get(hit.entity).is_ok()
@@ -576,8 +673,8 @@ pub fn publish_external_snapshot(
         snapshot.stones.push(StoneSnapshot {
             index: index.0,
             capabilities,
-            x: transform.translation.x,
-            y: transform.translation.y,
+            x: transform.translation().x,
+            y: transform.translation().y,
             busy: state.is_busy(),
             queued: state.queue.len(),
             dig_remaining: dig.0,
@@ -598,15 +695,41 @@ pub fn publish_external_snapshot(
 pub fn invalidate_external_generation(
     mut control: ResMut<ExternalControlState>,
     bridge: Option<Res<ExternalControlBridge>>,
+    receiver: Option<Res<ExternalControlReceiver>>,
+) {
+    invalidate_external_state(&mut control, bridge.as_deref(), receiver.as_deref());
+}
+
+pub(crate) fn invalidate_external_state(
+    control: &mut ExternalControlState,
+    bridge: Option<&ExternalControlBridge>,
+    receiver: Option<&ExternalControlReceiver>,
 ) {
     control.generation = control.generation.wrapping_add(1);
     control.owner = false;
-    for (_, (id, generation, _)) in control.active.drain() {
-        if let Some(bridge) = bridge.as_ref() {
+    let cancelled: Vec<_> = control.active.drain().collect();
+    if let Some(bridge) = bridge {
+        for (_, (id, generation, _)) in cancelled {
             bridge.finish(id, generation, "rejected", Some("stage_changed".into()));
         }
+        if let Some(receiver) = receiver {
+            while let Ok(request) = receiver.0.lock().unwrap().try_recv() {
+                bridge.finish(
+                    request.id,
+                    request.generation,
+                    "rejected",
+                    Some("stage_changed".into()),
+                );
+            }
+        }
+        let mut snapshot = bridge.snapshot.lock().unwrap();
+        snapshot.generation = control.generation;
+        snapshot.active_stage = None;
+        snapshot.external_owner = false;
+        snapshot.stones.clear();
     }
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -655,6 +778,7 @@ mod tests {
             StoneIndex(index),
             StoneType::Type1,
             StoneCommandState::default(),
+            avian2d::prelude::LinearVelocity::default(),
         ));
     }
     #[test]
@@ -729,6 +853,24 @@ mod tests {
         bridge.finish(action.id, 3, "blocked", None);
         let record = bridge.records.lock().unwrap().0.front().unwrap().clone();
         assert_eq!(record.status, "blocked");
+    }
+
+    #[test]
+    fn record_flood_keeps_live_actions_and_bounds_pending_actions() {
+        let bridge = bridge(MAX_INGRESS);
+        let live = bridge.submit(3, ExternalRequest::Start).unwrap();
+        for id in 1_000..1_000 + MAX_RECORDS + 10 {
+            bridge.finish(id as u64, 3, "complete", None);
+        }
+        let records = bridge.records.lock().unwrap();
+        assert!(records.0.len() <= MAX_RECORDS);
+        assert!(records.0.iter().any(|record| record.id == live.id));
+        drop(records);
+
+        for _ in 1..MAX_PENDING_RECORDS {
+            bridge.submit(3, ExternalRequest::Stop).unwrap();
+        }
+        assert_eq!(bridge.submit(3, ExternalRequest::Reset).unwrap_err().0, 429);
     }
 
     #[test]
@@ -864,6 +1006,9 @@ mod tests {
             .unwrap();
         app.update();
         app.update();
+        let world = app.world_mut();
+        let mut velocities = world.query::<&mut avian2d::prelude::LinearVelocity>();
+        velocities.single_mut(world).unwrap().0 = Vec2::X;
         bridge.submit(0, ExternalRequest::Stop).unwrap();
         app.update();
         assert!(
@@ -888,6 +1033,118 @@ mod tests {
         let world = app.world_mut();
         let mut query = world.query::<&StoneCommandState>();
         assert!(query.iter(world).all(|state| state.queue.is_empty()));
+        let mut velocities = world.query::<&avian2d::prelude::LinearVelocity>();
+        assert!(
+            velocities
+                .iter(world)
+                .all(|velocity| velocity.0 == Vec2::ZERO)
+        );
+        assert!(world.resource::<ScriptEditorState>().pending_player_reset);
+    }
+
+    #[test]
+    fn command_followed_by_stop_cannot_append_after_cancellation() {
+        let (mut app, bridge) = ecs_app();
+        stone(&mut app, 0);
+        bridge.submit(0, ExternalRequest::Start).unwrap();
+        app.update();
+        bridge
+            .submit(
+                0,
+                ExternalRequest::Command {
+                    stone: 0,
+                    command: ScriptCommand::Move(MoveDirection::Right),
+                },
+            )
+            .unwrap();
+        bridge.submit(0, ExternalRequest::Stop).unwrap();
+        app.update();
+        app.update();
+
+        let world = app.world_mut();
+        let mut query = world.query::<&StoneCommandState>();
+        assert!(query.iter(world).all(|state| state.queue.is_empty()));
+        assert!(!world.resource::<ExternalControlState>().owner);
+    }
+
+    #[test]
+    fn repeated_start_keeps_the_existing_external_session() {
+        let (mut app, bridge) = ecs_app();
+        stone(&mut app, 0);
+        bridge.submit(0, ExternalRequest::Start).unwrap();
+        app.update();
+        let generation = app.world().resource::<ExternalControlState>().generation;
+        bridge.submit(generation, ExternalRequest::Start).unwrap();
+        app.update();
+
+        assert!(app.world().resource::<ExternalControlState>().owner);
+        let record = bridge.records.lock().unwrap().0.back().unwrap().clone();
+        assert_eq!(record.status, "rejected");
+        assert_eq!(record.detail.as_deref(), Some("external_session_active"));
+    }
+
+    #[test]
+    fn invalidation_rejects_active_and_queued_actions_and_clears_snapshot() {
+        let (sender, receiver) = std::sync::mpsc::sync_channel(1);
+        let bridge = bridge(1);
+        bridge.finish(7, 2, "running", None);
+        sender
+            .send(ExternalCommand {
+                id: 8,
+                generation: 2,
+                request: ExternalRequest::Stop,
+            })
+            .unwrap();
+        *bridge.snapshot.lock().unwrap() = ControlSnapshot {
+            generation: 2,
+            active_stage: Some(202),
+            external_owner: true,
+            stones: vec![StoneSnapshot {
+                index: 0,
+                capabilities: vec![],
+                x: 1.0,
+                y: 1.0,
+                busy: true,
+                queued: 0,
+                dig_remaining: None,
+                place_remaining: None,
+                touched: false,
+                is_empty: DirectionalEmpty {
+                    up: true,
+                    down: true,
+                    left: true,
+                    right: true,
+                },
+            }],
+        };
+        let receiver = ExternalControlReceiver(Arc::new(Mutex::new(receiver)));
+        let mut control = ExternalControlState {
+            generation: 2,
+            owner: true,
+            active: HashMap::from([(0, (7, 2, false))]),
+        };
+
+        invalidate_external_state(&mut control, Some(&bridge), Some(&receiver));
+
+        let snapshot = bridge.snapshot.lock().unwrap();
+        assert_eq!(snapshot.generation, 3);
+        assert!(snapshot.active_stage.is_none());
+        assert!(!snapshot.external_owner);
+        assert!(snapshot.stones.is_empty());
+        drop(snapshot);
+        let records = bridge.records.lock().unwrap();
+        assert!(
+            records
+                .0
+                .iter()
+                .any(|record| record.id == 7 && record.detail.as_deref() == Some("stage_changed"))
+        );
+        assert!(
+            records
+                .0
+                .iter()
+                .any(|record| record.id == 8 && record.detail.as_deref() == Some("stage_changed"))
+        );
     }
 
     #[test]
@@ -905,6 +1162,74 @@ mod tests {
             .write_all(b"POST /v1/state HTTP/1.1\r\nHost: localhost\r\nContent-Length: 100\r\n")
             .unwrap();
         // Keep the request body incomplete: server shutdown must still join.
+        server.stop();
+    }
+
+    #[test]
+    fn slow_headers_expire_without_waiting_for_shutdown() {
+        let profile = LaunchProfile {
+            external_control: true,
+            external_control_port: Some(0),
+            external_control_token: Some("test-token".into()),
+            ..Default::default()
+        };
+        let (_, _, server) = start(&profile).unwrap().unwrap();
+        let mut client = std::net::TcpStream::connect(server.address).unwrap();
+        client
+            .set_read_timeout(Some(std::time::Duration::from_secs(5)))
+            .unwrap();
+        use std::io::{Read, Write};
+        client
+            .write_all(b"GET /v1/state HTTP/1.1\r\nHost: localhost\r\n")
+            .unwrap();
+        std::thread::sleep(HTTP_CONNECTION_TIMEOUT + std::time::Duration::from_secs(1));
+        let mut response = [0; 1];
+        assert_eq!(client.read(&mut response).unwrap(), 0);
+        server.stop();
+    }
+
+    #[test]
+    fn unread_response_connection_expires_without_shutdown() {
+        let profile = LaunchProfile {
+            external_control: true,
+            external_control_port: Some(0),
+            external_control_token: Some("test-token".into()),
+            ..Default::default()
+        };
+        let (bridge, _, server) = start(&profile).unwrap().unwrap();
+        // Make the response larger than a socket send buffer so this covers a peer
+        // that stalls while the server is writing, not just a keepalive connection.
+        bridge.snapshot.lock().unwrap().stones = (0..20_000)
+            .map(|index| StoneSnapshot {
+                index,
+                capabilities: vec!["move".into()],
+                x: 0.0,
+                y: 0.0,
+                busy: false,
+                queued: 0,
+                dig_remaining: None,
+                place_remaining: None,
+                touched: false,
+                is_empty: DirectionalEmpty {
+                    up: true,
+                    down: true,
+                    left: true,
+                    right: true,
+                },
+            })
+            .collect();
+        let mut client = std::net::TcpStream::connect(server.address).unwrap();
+        client
+            .set_read_timeout(Some(std::time::Duration::from_secs(5)))
+            .unwrap();
+        use std::io::{Read, Write};
+        client.write_all(
+            b"GET /v1/state HTTP/1.1\r\nHost: localhost\r\nAuthorization: Bearer test-token\r\nConnection: close\r\n\r\n",
+        ).unwrap();
+        std::thread::sleep(HTTP_CONNECTION_TIMEOUT + std::time::Duration::from_secs(1));
+        let mut response = Vec::new();
+        client.read_to_end(&mut response).unwrap();
+        assert!(!response.is_empty());
         server.stop();
     }
 

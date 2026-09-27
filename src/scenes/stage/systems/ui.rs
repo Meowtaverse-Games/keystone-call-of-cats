@@ -917,6 +917,7 @@ pub fn tick_script_program(
                 stone_index: idx,
                 command: command.clone(),
                 external_action_id: None,
+                external_generation: None,
             });
         } else if let Some(error) = program.take_error() {
             runtime_error = Some(error);

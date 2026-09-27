@@ -23,6 +23,7 @@ pub struct StoneAppendCommandMessage {
     pub stone_index: usize,
     pub command: ScriptCommand,
     pub external_action_id: Option<u64>,
+    pub external_generation: Option<u64>,
 }
 
 #[derive(Message, Clone)]
@@ -76,6 +77,7 @@ impl StoneCommandState {
         self.current = None;
         self.cooldown = Timer::from_seconds(0.0, TimerMode::Once);
         self.cooldown.tick(Duration::ZERO);
+        self.external_action_id = None;
     }
 }
 
@@ -97,7 +99,7 @@ enum StoneAction {
     Move(MoveCommandProgress),
     Sleep(Timer),
     Blocked(Timer),
-    Dig(Timer, Entity),
+    Dig(Timer, Entity, bool),
     Place(MoveDirection),
 }
 
@@ -216,12 +218,21 @@ pub fn handle_stone_messages(
 pub fn handle_stone_append_messages(
     mut reader: MessageReader<StoneAppendCommandMessage>,
     editor: Res<ScriptEditorState>,
+    external: Option<Res<crate::resources::external_control::ExternalControlState>>,
     mut query: Query<(&StoneIndex, &mut StoneCommandState), With<StoneRune>>,
 ) {
     for msg in reader.read() {
         // Consume already-emitted commands after a script error. Reset runs after Script in
         // the current frame, while these messages are read next frame in Input.
         if !editor.controls_enabled && msg.external_action_id.is_none() {
+            continue;
+        }
+        if let (Some(action_id), Some(generation)) =
+            (msg.external_action_id, msg.external_generation)
+            && !external
+                .as_ref()
+                .is_some_and(|control| control.owns_action(msg.stone_index, action_id, generation))
+        {
             continue;
         }
         for (stone_idx, mut state) in query.iter_mut() {
@@ -373,6 +384,7 @@ pub fn update_stone_behavior(
                                     StoneAction::Dig(
                                         Timer::from_seconds(0.5, TimerMode::Once),
                                         hit.entity,
+                                        false,
                                     )
                                 }
                             } else {
@@ -489,12 +501,12 @@ pub fn update_stone_behavior(
                         stop_current = true;
                     }
                 }
-                StoneAction::Dig(timer, entity) => {
+                StoneAction::Dig(timer, entity, blocked) => {
                     if timer.tick(time.delta()).is_finished() {
-                        if let Some(count) = dig_limit.0 {
-                            dig_limit.0 = Some(count.saturating_sub(1));
-                        }
                         if let Ok(collider) = query_colliders.get(*entity) {
+                            if let Some(count) = dig_limit.0 {
+                                dig_limit.0 = Some(count.saturating_sub(1));
+                            }
                             commands
                                 .entity(*entity)
                                 .remove::<Collider>()
@@ -503,8 +515,7 @@ pub fn update_stone_behavior(
                                     collider: collider.clone(),
                                 });
                         } else {
-                            // Fallback for non-colliding entities or if query fails (shouldn't happen for tiles)
-                            commands.entity(*entity).despawn();
+                            *blocked = true;
                         }
                         // Play mining sound?
                         velocity.0 = Vec2::ZERO;
@@ -556,7 +567,8 @@ fn action_was_blocked(action: &StoneAction) -> bool {
     match action {
         StoneAction::Move(progress) => progress.blocked,
         StoneAction::Blocked(_) => true,
-        StoneAction::Sleep(_) | StoneAction::Dig(_, _) | StoneAction::Place(_) => false,
+        StoneAction::Sleep(_) | StoneAction::Place(_) => false,
+        StoneAction::Dig(_, _, blocked) => *blocked,
     }
 }
 
@@ -813,6 +825,7 @@ mod tests {
                 stone_index: 0,
                 command: ScriptCommand::Move(MoveDirection::Right),
                 external_action_id: None,
+                external_generation: None,
             });
 
         app.update();
@@ -847,6 +860,7 @@ mod tests {
         assert!(!action_was_blocked(&StoneAction::Dig(
             Timer::from_seconds(0.5, TimerMode::Once),
             Entity::PLACEHOLDER,
+            false,
         )));
         assert!(action_was_blocked(&StoneAction::Blocked(
             Timer::from_seconds(0.1, TimerMode::Once,)

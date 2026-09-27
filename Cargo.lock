@@ -4130,6 +4130,8 @@ dependencies = [
  "bevy_fluent",
  "bevy_render",
  "fluent_content",
+ "hyper",
+ "hyper-util",
  "keystone-lang",
  "rand",
  "rhai",

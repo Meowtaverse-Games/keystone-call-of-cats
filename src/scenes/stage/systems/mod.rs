@@ -112,6 +112,10 @@ impl StageProgressionState {
             false
         }
     }
+
+    pub fn has_pending_reload(&self) -> bool {
+        self.pending_reload
+    }
 }
 
 type StageCleanupFilter = Or<(
@@ -600,11 +604,21 @@ pub struct StageReloadParams<'w, 's> {
     localization: Res<'w, Localization>,
     audio_state: Option<ResMut<'w, StageAudioState>>,
     stage_scripts: Option<Res<'w, StageScripts>>,
+    external_control: Option<ResMut<'w, crate::resources::external_control::ExternalControlState>>,
+    external_bridge: Option<Res<'w, crate::resources::external_control::ExternalControlBridge>>,
+    external_receiver: Option<Res<'w, crate::resources::external_control::ExternalControlReceiver>>,
 }
 
 pub fn reload_stage_if_needed(mut commands: Commands, mut params: StageReloadParams) {
     if !params.progression.take_pending_reload() {
         return;
+    }
+    if let Some(control) = params.external_control.as_deref_mut() {
+        crate::resources::external_control::invalidate_external_state(
+            control,
+            params.external_bridge.as_deref(),
+            params.external_receiver.as_deref(),
+        );
     }
 
     let stage_id = params.progression.current_stage_id();
