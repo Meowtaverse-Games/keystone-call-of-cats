@@ -388,7 +388,7 @@ fn register_commands(
         if allowed_commands.is_none_or(|s| s.contains("is_touched")) {
             engine.register_fn("is_touched", move || state.touched());
         } else {
-            engine.register_fn("is_touched", || command_not_allowed("is_touched"));
+            engine.register_fn("is_touched", || sensor_not_allowed("is_touched"));
         }
     }
     {
@@ -412,12 +412,20 @@ fn register_commands(
                     .unwrap_or(false)
             });
         } else {
-            engine.register_fn("is_empty", |_: &str| command_not_allowed("is_empty"));
+            engine.register_fn("is_empty", |_: &str| sensor_not_allowed("is_empty"));
         }
     }
 }
 
-fn command_not_allowed<T>(command: &str) -> Result<T, Box<EvalAltResult>> {
+fn command_not_allowed(command: &str) -> Result<CommandValue, Box<EvalAltResult>> {
+    command_not_allowed_error(command)
+}
+
+fn sensor_not_allowed(command: &str) -> Result<bool, Box<EvalAltResult>> {
+    command_not_allowed_error(command)
+}
+
+fn command_not_allowed_error<T>(command: &str) -> Result<T, Box<EvalAltResult>> {
     Err(EvalAltResult::ErrorRuntime(
         format!("{COMMAND_NOT_ALLOWED_PREFIX}{command}").into(),
         Position::NONE,
