@@ -699,7 +699,7 @@ pub fn carry_riders_with_stone(
 mod tests {
     use super::*;
     use crate::scenes::stage::systems::ui::ScriptEditorState;
-    use bevy::prelude::*;
+    use bevy::prelude::{App, Messages, Update};
 
     #[test]
     fn tiles_and_other_stones_block_movement() {
@@ -718,7 +718,8 @@ mod tests {
 
         let stone = app
             .world_mut()
-            .spawn((StoneRune, StoneIndex(0), StoneCommandState::default()));
+            .spawn((StoneRune, StoneIndex(0), StoneCommandState::default()))
+            .id();
         app.world_mut()
             .resource_mut::<Messages<StoneAppendCommandMessage>>()
             .write(StoneAppendCommandMessage {
