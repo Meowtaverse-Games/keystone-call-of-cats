@@ -734,7 +734,7 @@ pub(crate) fn invalidate_external_state(
 mod tests {
     use super::*;
     use crate::scenes::stage::components::StoneRune;
-    use bevy::prelude::{App, Messages, Transform, TransformPlugin, Update};
+    use bevy::prelude::{App, Messages, MinimalPlugins, Transform, TransformPlugin, Update};
     use bevy_ecs::system::RunSystemOnce;
     fn bridge(capacity: usize) -> ExternalControlBridge {
         let (ingress, receiver) = std::sync::mpsc::sync_channel(capacity);
@@ -862,7 +862,7 @@ mod tests {
     fn snapshot_uses_parented_world_position_and_ignores_player_as_a_wall() {
         let mut app = App::new();
         app.add_plugins((
-            bevy::app::MinimalPlugins,
+            MinimalPlugins,
             TransformPlugin,
             avian2d::prelude::PhysicsPlugins::default(),
         ))
