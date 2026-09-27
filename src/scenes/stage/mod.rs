@@ -34,7 +34,14 @@ impl Plugin for StageScenePlugin {
                 crate::systems::engine::friction::apply_zero_friction_to_rigid_bodies
                     .after(systems::setup),
             )
-            .add_systems(OnExit(GameState::Stage), systems::cleanup)
+            .add_systems(
+                OnExit(GameState::Stage),
+                (
+                    systems::cleanup,
+                    crate::resources::external_control::invalidate_external_generation
+                        .run_if(resource_exists::<crate::resources::external_control::ExternalControlState>),
+                ),
+            )
             // Input: メッセージの受信、UI入力
             .add_systems(
                 Update,
