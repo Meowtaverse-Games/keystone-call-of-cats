@@ -52,7 +52,7 @@ pub struct World {
     initial: Snapshot,
     player: Position,
     stones: Vec<Position>,
-    dig_remaining: Option<u32>,
+    dig_remaining: Vec<Option<u32>>,
     place_remaining: Option<u32>,
     pub metrics: Metrics,
 }
@@ -62,7 +62,7 @@ struct Snapshot {
     terrain: HashMap<Position, TileKind>,
     player: Position,
     stones: Vec<Position>,
-    dig_remaining: Option<u32>,
+    dig_remaining: Vec<Option<u32>>,
     place_remaining: Option<u32>,
 }
 
@@ -78,12 +78,13 @@ impl World {
         }
         let player = players[0];
         let stones = map.positions(TileKind::Stone);
+        let dig_remaining = vec![map.dig_limit; stones.len()];
         terrain.retain(|_, kind| !matches!(kind, TileKind::Player | TileKind::Stone));
         let initial = Snapshot {
             terrain: terrain.clone(),
             player,
             stones: stones.clone(),
-            dig_remaining: map.dig_limit,
+            dig_remaining: dig_remaining.clone(),
             place_remaining: place_limit,
         };
         Ok(Self {
@@ -92,7 +93,7 @@ impl World {
             initial,
             player,
             stones,
-            dig_remaining: map.dig_limit,
+            dig_remaining,
             place_remaining: place_limit,
             metrics: Metrics::default(),
         })
@@ -102,7 +103,7 @@ impl World {
         self.terrain = self.initial.terrain.clone();
         self.player = self.initial.player;
         self.stones = self.initial.stones.clone();
-        self.dig_remaining = self.initial.dig_remaining;
+        self.dig_remaining = self.initial.dig_remaining.clone();
         self.place_remaining = self.initial.place_remaining;
         self.metrics = Metrics::default();
     }
@@ -174,7 +175,7 @@ impl World {
             "player={:?} stones={:?} dig={} place={} goal={} actions={} blocked={}",
             self.player,
             self.stones,
-            limit_text(self.dig_remaining),
+            stone_limit_text(&self.dig_remaining),
             limit_text(self.place_remaining),
             if self.goal_reached() {
                 "reached"
@@ -373,11 +374,14 @@ impl World {
         let source = self.stone(index)?;
         self.metrics.actions += 1;
         self.metrics.digs += 1;
-        if self.dig_remaining == Some(0) {
+        let Some(dig_remaining) = self.dig_remaining.get_mut(index) else {
+            unreachable!("stone index was validated before its dig budget was read");
+        };
+        if *dig_remaining == Some(0) {
             self.metrics.blocked_actions += 1;
             return Ok("dig blocked: no uses remaining".to_owned());
         }
-        if let Some(value) = &mut self.dig_remaining {
+        if let Some(value) = dig_remaining {
             *value = value.saturating_sub(1);
         }
         let delta = direction.delta();
@@ -520,6 +524,15 @@ fn limit_text(value: Option<u32>) -> String {
         .unwrap_or_else(|| "unlimited".to_owned())
 }
 
+fn stone_limit_text(limits: &[Option<u32>]) -> String {
+    limits
+        .iter()
+        .enumerate()
+        .map(|(index, limit)| format!("{index}:{}", limit_text(*limit)))
+        .collect::<Vec<_>>()
+        .join(",")
+}
+
 pub const HELP: &str = r#"commands:
   show
   status
@@ -570,5 +583,21 @@ mod tests {
         let mut world = world(0, 1);
         assert!(world.execute("s 0 place up").unwrap().contains("placed"));
         assert!(world.execute("s 0 place left").unwrap().contains("no uses"));
+    }
+
+    #[test]
+    fn stage_11_stones_keep_separate_dig_budgets() {
+        let generated = generate(
+            &parse_stage(include_str!("../../../assets/stages/stage-11.ron")).unwrap(),
+            0,
+        )
+        .unwrap();
+        let mut world = World::from_map(&generated, None).unwrap();
+
+        for _ in 0..5 {
+            assert!(!world.execute("s 0 dig down").unwrap().contains("no uses"));
+        }
+        assert!(!world.execute("s 1 dig down").unwrap().contains("no uses"));
+        assert!(world.status().contains("dig=0:0,1:4"));
     }
 }
