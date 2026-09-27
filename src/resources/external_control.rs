@@ -104,6 +104,15 @@ pub struct ExternalControlState {
     pub owner: bool,
     active: HashMap<usize, (u64, u64, bool)>,
 }
+impl ExternalControlState {
+    pub(crate) fn cancel_for_human(&mut self, bridge: &ExternalControlBridge) {
+        self.owner = false;
+        self.generation = self.generation.wrapping_add(1);
+        for (_, (id, generation, _)) in self.active.drain() {
+            bridge.finish(id, generation, "rejected", Some("human_stopped".into()));
+        }
+    }
+}
 impl ExternalControlBridge {
     fn put(&self, r: ActionRecord) {
         let mut q = self.records.lock().unwrap();
@@ -399,9 +408,17 @@ pub fn drain_external_commands(
         }
         match request.request {
             ExternalRequest::Start => {
+                if editor.controls_enabled || !editor.active_programs.is_empty() {
+                    bridge.finish(
+                        request.id,
+                        control.generation,
+                        "rejected",
+                        Some("script_session_active".into()),
+                    );
+                    continue;
+                }
                 control.owner = true;
                 editor.controls_enabled = false;
-                editor.active_programs.clear();
                 for (_, _, mut state) in &mut stones {
                     state.clear_commands();
                 }

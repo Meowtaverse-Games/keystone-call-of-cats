@@ -16,6 +16,7 @@ use crate::{
     resources::{
         asset_store::AssetStore,
         design_resolution::LetterboxOffsets,
+        external_control::{ExternalControlBridge, ExternalControlState},
         file_storage::FileStorageResource,
         game_state::GameState,
         script_engine::{Language, ScriptExecutor},
@@ -246,6 +247,8 @@ pub struct StageUIParams<'w, 's> {
     contexts: EguiContexts<'w, 's>,
     letterbox_offsets: ResMut<'w, LetterboxOffsets>,
     editor: ResMut<'w, ScriptEditorState>,
+    external_control: Option<ResMut<'w, ExternalControlState>>,
+    external_bridge: Option<Res<'w, ExternalControlBridge>>,
     script_executor: Res<'w, ScriptExecutor>,
     localization: Res<'w, Localization>,
     stone_writer: MessageWriter<'w, StoneCommandMessage>,
@@ -277,6 +280,8 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
         mut contexts,
         mut letterbox_offsets,
         mut editor,
+        mut external_control,
+        external_bridge,
         script_executor,
         localization,
         mut stone_writer,
@@ -418,10 +423,22 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                         play_ui_click(&mut commands, &audio, &settings);
                     }
                     let was_running = editor.controls_enabled;
+                    let external_owner = external_control.as_ref().is_some_and(|control| control.owner);
                     let mut action_context_flag = false;
                     match action {
                         EditorMenuAction::RunScript => {
-                            if was_running {
+                            if external_owner {
+                                if let (Some(control), Some(bridge)) =
+                                    (external_control.as_deref_mut(), external_bridge.as_deref())
+                                {
+                                    control.cancel_for_human(bridge);
+                                }
+                                editor.controls_enabled = false;
+                                editor.pending_player_reset = true;
+                                editor.last_run_feedback = Some(tr(&localization, "stage-ui-feedback-stopped"));
+                                editor.stage_cleared = false;
+                                editor.stage_clear_popup_open = false;
+                            } else if was_running {
                                 info!("Stopping script execution");
                                 editor.controls_enabled = false;
                                 editor.pending_player_reset = true;
