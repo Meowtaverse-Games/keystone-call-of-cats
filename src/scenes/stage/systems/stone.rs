@@ -771,7 +771,20 @@ pub fn carry_riders_with_stone(
 mod tests {
     use super::*;
     use crate::scenes::stage::systems::ui::ScriptEditorState;
-    use bevy::prelude::{App, Messages, Update};
+    use bevy::{
+        gizmos::GizmoPlugin,
+        prelude::{App, Messages, Update},
+    };
+
+    #[derive(Resource, Default)]
+    struct ExternalOutcomes(Vec<StoneExternalOutcomeMessage>);
+
+    fn collect_external_outcomes(
+        mut reader: MessageReader<StoneExternalOutcomeMessage>,
+        mut outcomes: ResMut<ExternalOutcomes>,
+    ) {
+        outcomes.0.extend(reader.read().cloned());
+    }
 
     #[test]
     fn tiles_and_other_stones_block_movement() {
@@ -836,5 +849,66 @@ mod tests {
         assert!(action_was_blocked(&StoneAction::Blocked(
             Timer::from_seconds(0.1, TimerMode::Once,)
         )));
+    }
+
+    #[test]
+    fn external_dig_at_zero_limit_reports_blocked_after_execution() {
+        let mut app = App::new();
+        app.add_plugins((
+            MinimalPlugins,
+            TransformPlugin,
+            PhysicsPlugins::default(),
+            GizmoPlugin,
+        ))
+        .insert_resource(StageAudioHandles::new(Handle::default(), Handle::default()))
+        .init_resource::<StageAudioState>()
+        .insert_resource(GameSettings::default())
+        .insert_resource(crate::resources::launch_profile::LaunchProfile::default())
+        .add_message::<StoneTickMessage>()
+        .add_message::<StonePlaceRequestMessage>()
+        .add_message::<StoneExternalOutcomeMessage>()
+        .init_resource::<ExternalOutcomes>()
+        .add_systems(
+            Update,
+            (
+                update_stone_behavior,
+                collect_external_outcomes.after(update_stone_behavior),
+            ),
+        );
+
+        let stone = app
+            .world_mut()
+            .spawn((
+                StoneRune,
+                StoneIndex(0),
+                StoneCommandState {
+                    queue: VecDeque::from([ScriptCommand::Dig(MoveDirection::Right)]),
+                    external_action_id: Some(91),
+                    ..default()
+                },
+                Transform::default(),
+                GlobalTransform::default(),
+                LinearVelocity::default(),
+                StoneMotion::default(),
+                DigLimit(Some(0)),
+            ))
+            .id();
+
+        app.update();
+        assert!(app.world().resource::<ExternalOutcomes>().0.is_empty());
+
+        app.world_mut()
+            .resource_mut::<Time>()
+            .advance_by(Duration::from_millis(100));
+        app.update();
+
+        assert!(
+            app.world()
+                .resource::<ExternalOutcomes>()
+                .0
+                .iter()
+                .any(|outcome| outcome.action_id == 91 && outcome.blocked)
+        );
+        assert_eq!(app.world().get::<DigLimit>(stone), Some(&DigLimit(Some(0))));
     }
 }
