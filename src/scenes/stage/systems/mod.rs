@@ -778,6 +778,9 @@ mod tests {
             title: "Stage 1".into(),
             unlocked: true,
         });
+        let mut external_state = ExternalControlState::default();
+        external_state.generation = 9;
+        external_state.owner = true;
 
         let mut app = App::new();
         app.add_plugins(AssetPlugin::default())
@@ -792,11 +795,7 @@ mod tests {
             .insert_resource(progression)
             .insert_resource(bridge)
             .insert_resource(receiver)
-            .insert_resource(ExternalControlState {
-                generation: 9,
-                owner: true,
-                ..ExternalControlState::default()
-            });
+            .insert_resource(external_state);
 
         app.world_mut()
             .run_system_once(reload_stage_if_needed)
