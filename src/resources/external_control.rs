@@ -732,6 +732,77 @@ mod tests {
     }
 
     #[test]
+    fn active_commands_finish_only_from_explicit_stone_outcomes() {
+        let (mut app, bridge) = ecs_app();
+        let complete = ActionRecord {
+            id: 11,
+            generation: 7,
+            status: "running".into(),
+            detail: None,
+        };
+        let blocked = ActionRecord {
+            id: 12,
+            generation: 7,
+            status: "running".into(),
+            detail: None,
+        };
+        bridge.put(complete.clone());
+        bridge.put(blocked.clone());
+        {
+            let mut control = app.world_mut().resource_mut::<ExternalControlState>();
+            control.active.insert(0, (complete.id, 7, false));
+            control.active.insert(1, (blocked.id, 7, false));
+        }
+
+        app.update();
+        assert_eq!(
+            bridge.records.lock().unwrap().0[0].status,
+            "running",
+            "an idle frame must not infer completion"
+        );
+
+        app.world_mut()
+            .resource_mut::<Messages<crate::scenes::stage::systems::StoneExternalOutcomeMessage>>()
+            .write(crate::scenes::stage::systems::StoneExternalOutcomeMessage {
+                action_id: complete.id,
+                blocked: false,
+            });
+        app.world_mut()
+            .resource_mut::<Messages<crate::scenes::stage::systems::StoneExternalOutcomeMessage>>()
+            .write(crate::scenes::stage::systems::StoneExternalOutcomeMessage {
+                action_id: blocked.id,
+                blocked: true,
+            });
+        app.update();
+
+        let records = bridge.records.lock().unwrap();
+        assert_eq!(
+            records
+                .0
+                .iter()
+                .find(|r| r.id == complete.id)
+                .unwrap()
+                .status,
+            "complete"
+        );
+        assert_eq!(
+            records
+                .0
+                .iter()
+                .find(|r| r.id == blocked.id)
+                .unwrap()
+                .status,
+            "blocked"
+        );
+        assert!(
+            app.world()
+                .resource::<ExternalControlState>()
+                .active
+                .is_empty()
+        );
+    }
+
+    #[test]
     fn two_stones_receive_only_their_own_external_command() {
         let (mut app, bridge) = ecs_app();
         stone(&mut app, 0);

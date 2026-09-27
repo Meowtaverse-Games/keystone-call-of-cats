@@ -90,6 +90,7 @@ struct MoveCommandProgress {
     timer: Timer,
     moved_distance: f32,
     start_position: Vec3, // Position at start of move command
+    blocked: bool,
 }
 
 enum StoneAction {
@@ -343,6 +344,7 @@ pub fn update_stone_behavior(
                             timer: Timer::from_seconds(STONE_MOVE_DURATION, TimerMode::Once),
                             moved_distance: 0.0,
                             start_position: transform.translation,
+                            blocked: false,
                         })
                     }
                 }
@@ -461,6 +463,7 @@ pub fn update_stone_behavior(
                         );
                         velocity.0 = Vec2::ZERO;
                         stop_current = true;
+                        progress.blocked = true;
                         // Revert to last safe position (just before collision)
                         transform.translation = progress.start_position;
                     } else if !is_colliding {
@@ -521,7 +524,7 @@ pub fn update_stone_behavior(
         }
 
         if stop_current {
-            let blocked = matches!(state.current, Some(StoneAction::Blocked(_)));
+            let blocked = state.current.as_ref().is_some_and(action_was_blocked);
             let was_place = matches!(state.current, Some(StoneAction::Place(_)));
             state.current = None;
             if !was_place && let Some(action_id) = state.external_action_id.take() {
@@ -546,6 +549,14 @@ pub fn update_stone_behavior(
         audio_state.ensure_push_loop(&mut commands, &audio_handles, settings.sfx_volume_linear());
     } else {
         audio_state.stop_push_loop(&mut commands);
+    }
+}
+
+fn action_was_blocked(action: &StoneAction) -> bool {
+    match action {
+        StoneAction::Move(progress) => progress.blocked,
+        StoneAction::Blocked(_) => true,
+        StoneAction::Sleep(_) | StoneAction::Dig(_, _) | StoneAction::Place(_) => false,
     }
 }
 
@@ -628,6 +639,7 @@ pub fn carry_riders_with_stone(
         >,
     )>,
     spatial: SpatialQuery,
+    mut external_outcomes: MessageWriter<StoneExternalOutcomeMessage>,
 ) {
     // Collect moving stones first to avoid borrow conflicts (we need to mutate them later if blocked)
     // We store the data needed for the check, plus the Entity ID to look it up again for mutation.
@@ -744,6 +756,12 @@ pub fn carry_riders_with_stone(
                 velocity.0 = Vec2::ZERO;
                 command_state.current = None;
                 command_state.queue.clear();
+                if let Some(action_id) = command_state.external_action_id.take() {
+                    external_outcomes.write(StoneExternalOutcomeMessage {
+                        action_id,
+                        blocked: true,
+                    });
+                }
             }
         }
     }
@@ -787,5 +805,36 @@ mod tests {
         let state = app.world().get::<StoneCommandState>(stone).unwrap();
         assert!(state.queue.is_empty());
         assert!(state.current.is_none());
+    }
+
+    #[test]
+    fn external_outcome_distinguishes_blocked_moves_from_completed_actions() {
+        let completed_move = StoneAction::Move(MoveCommandProgress {
+            velocity: Vec2::X,
+            timer: Timer::from_seconds(1.0, TimerMode::Once),
+            moved_distance: STONE_STEP_DISTANCE,
+            start_position: Vec3::ZERO,
+            blocked: false,
+        });
+        let collision_stopped_move = StoneAction::Move(MoveCommandProgress {
+            velocity: Vec2::X,
+            timer: Timer::from_seconds(1.0, TimerMode::Once),
+            moved_distance: 2.0,
+            start_position: Vec3::ZERO,
+            blocked: true,
+        });
+
+        assert!(!action_was_blocked(&completed_move));
+        assert!(action_was_blocked(&collision_stopped_move));
+        assert!(!action_was_blocked(&StoneAction::Sleep(
+            Timer::from_seconds(0.0, TimerMode::Once,)
+        )));
+        assert!(!action_was_blocked(&StoneAction::Dig(
+            Timer::from_seconds(0.5, TimerMode::Once),
+            Entity::PLACEHOLDER,
+        )));
+        assert!(action_was_blocked(&StoneAction::Blocked(
+            Timer::from_seconds(0.1, TimerMode::Once,)
+        )));
     }
 }
