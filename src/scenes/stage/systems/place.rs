@@ -152,7 +152,13 @@ pub fn resolve_place_requests(
                 Transform::from_xyz(local.x, local.y, -4.0)
                     .with_scale(Vec3::splat(metrics.sprite_scale)),
                 RigidBody::Static,
-                Collider::rectangle(16.0, 16.0),
+                // Keep the collider congruent with the grid cell after the sprite
+                // transform is applied.  A fixed 16px collider becomes wider than
+                // a scaled cell and makes edge-adjacent placements overlap.
+                Collider::rectangle(
+                    metrics.local_tile_size.x / metrics.sprite_scale,
+                    metrics.local_tile_size.y / metrics.sprite_scale,
+                ),
             ));
         });
         state.commit();
@@ -235,7 +241,6 @@ mod tests {
     #[test]
     fn place_limit_consumes_only_successful_commits_and_resets() {
         let mut state = PlaceState::new(Some(1));
-        let cell = IVec2::new(3, 4);
         assert!(state.can_commit());
         state.commit();
         assert_eq!(state.remaining, Some(0));
