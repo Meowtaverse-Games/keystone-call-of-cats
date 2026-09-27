@@ -164,6 +164,7 @@ struct CommandBody {
 struct Error {
     error: &'static str,
 }
+#[derive(Debug)]
 struct ApiError(u16, &'static str);
 impl IntoResponse for ApiError {
     fn into_response(self) -> axum::response::Response {
@@ -521,6 +522,15 @@ pub fn invalidate_external_generation(
 #[cfg(test)]
 mod tests {
     use super::*;
+    fn bridge(capacity: usize) -> ExternalControlBridge {
+        let (ingress, _) = std::sync::mpsc::sync_channel(capacity);
+        ExternalControlBridge {
+            ingress,
+            snapshot: Arc::new(Mutex::new(ControlSnapshot::default())),
+            records: Arc::new(Mutex::new(Records::default())),
+            ids: Arc::new(AtomicU64::new(1)),
+        }
+    }
     #[test]
     fn rejects_nonfinite_duration() {
         assert!(
@@ -532,5 +542,66 @@ mod tests {
             })
             .is_err()
         )
+    }
+
+    #[test]
+    fn rejects_invalid_commands_and_directions() {
+        assert!(
+            command(CommandBody {
+                generation: 0,
+                command: "move".into(),
+                direction: Some("diagonal".into()),
+                duration: None
+            })
+            .is_err()
+        );
+        assert!(
+            command(CommandBody {
+                generation: 0,
+                command: "eval".into(),
+                direction: None,
+                duration: None
+            })
+            .is_err()
+        );
+        assert!(
+            command(CommandBody {
+                generation: 0,
+                command: "sleep".into(),
+                direction: None,
+                duration: Some(61.0)
+            })
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn auth_rejects_missing_token_and_browser_origin() {
+        let state = Http {
+            bridge: bridge(1),
+            token: Arc::from("secret"),
+        };
+        assert!(auth(&HeaderMap::new(), &state).is_err());
+        let mut headers = HeaderMap::new();
+        headers.insert(header::AUTHORIZATION, "Bearer secret".parse().unwrap());
+        headers.insert(header::ORIGIN, "http://localhost".parse().unwrap());
+        assert!(auth(&headers, &state).is_err());
+    }
+
+    #[test]
+    fn ingress_is_bounded_and_records_queue_full() {
+        let bridge = bridge(1);
+        assert!(bridge.submit(1, ExternalRequest::Start).is_ok());
+        let error = bridge.submit(1, ExternalRequest::Stop).unwrap_err();
+        assert_eq!(error.0, 429);
+    }
+
+    #[test]
+    fn record_is_replaced_by_terminal_outcome() {
+        let bridge = bridge(1);
+        let action = bridge.submit(3, ExternalRequest::Start).unwrap();
+        bridge.finish(action.id, 3, "blocked", None);
+        let record = bridge.records.lock().unwrap().0.front().unwrap().clone();
+        assert_eq!(record.status, "blocked");
     }
 }
