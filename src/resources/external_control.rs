@@ -611,7 +611,7 @@ pub fn invalidate_external_generation(
 mod tests {
     use super::*;
     use crate::scenes::stage::components::StoneRune;
-    use bevy::prelude::{App, Update};
+    use bevy::prelude::{App, Messages, Update};
     fn bridge(capacity: usize) -> ExternalControlBridge {
         let (ingress, receiver) = std::sync::mpsc::sync_channel(capacity);
         // Keep the consumer endpoint alive: these tests exercise a full queue,
