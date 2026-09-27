@@ -159,6 +159,8 @@ pub struct ChunkGrammarConfig {
     pub stone_type: StoneType,
     pub dig_limit: Option<u32>,
     #[serde(default)]
+    pub place_limit: Option<u32>,
+    #[serde(default)]
     pub dynamic_max: u32,
     #[serde(default)]
     pub dynamic_min: u32,
@@ -213,6 +215,7 @@ pub fn generate_map_from_config(config: ChunkGrammarConfig) -> Map {
         map_size: placed_chunk_layout.map_size,
         stone_type: config.stone_type,
         dig_limit: config.dig_limit,
+        place_limit: config.place_limit,
         dynamic_max: config.dynamic_max,
         dynamic_min: config.dynamic_min,
         boundary_margin: placed_chunk_layout.boundary_margin,
@@ -466,6 +469,7 @@ pub struct Map {
     pub map_size: (isize, isize),
     pub stone_type: StoneType,
     pub dig_limit: Option<u32>,
+    pub place_limit: Option<u32>,
     pub dynamic_max: u32,
     pub dynamic_min: u32,
     pub boundary_margin: (isize, isize),
@@ -496,6 +500,7 @@ impl Map {
         mut placed_chunks: Vec<PlacedChunk>,
         stone_type: StoneType,
         dig_limit: Option<u32>,
+        place_limit: Option<u32>,
         dynamic_max: u32,
         dynamic_min: u32,
         adjustment: Option<Adjustments>,
@@ -518,6 +523,7 @@ impl Map {
             map_size: (MAP_SIZE.0, MAP_SIZE.1),
             stone_type,
             dig_limit,
+            place_limit,
             dynamic_max,
             dynamic_min,
             boundary_margin,
@@ -881,7 +887,7 @@ pub fn print_ascii_map(map: &Map) {
 
 #[cfg(test)]
 mod tests {
-    use super::apply_stone_adjustments;
+    use super::{ChunkGrammarConfig, apply_stone_adjustments};
 
     #[test]
     fn missing_stone_adjustments_do_not_drop_positions() {
@@ -891,5 +897,22 @@ mod tests {
             apply_stone_adjustments(&positions, &[(0.5, -1.0)]),
             vec![(1.5, 1.0), (3.0, 4.0), (5.0, 6.0)]
         );
+    }
+
+    #[test]
+    fn existing_stage_ron_without_place_limit_remains_compatible() {
+        let config: ChunkGrammarConfig = ron::from_str(
+            r#"(
+                map_size: (30, 20),
+                dig_limit: None,
+                adjustments: None,
+                start_chunks: [],
+                middle_chunks: [],
+                goal_chunks: [],
+            )"#,
+        )
+        .expect("old stage RON should deserialize");
+
+        assert_eq!(config.place_limit, None);
     }
 }

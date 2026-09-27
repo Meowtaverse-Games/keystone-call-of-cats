@@ -400,6 +400,16 @@ fn register_commands(
         }
     }
     {
+        let emitter = emitter.clone();
+        if allowed_commands.is_none_or(|s| s.contains("place")) {
+            engine.register_fn("place", move |direction: &str| {
+                place_named(direction, &emitter)
+            });
+        } else {
+            engine.register_fn("place", |_: &str| command_not_allowed("place"));
+        }
+    }
+    {
         let state = state.clone();
         if allowed_commands.is_none_or(|s| s.contains("is_empty")) {
             engine.register_fn("is_empty", move |direction: &str| {
@@ -450,6 +460,28 @@ fn dig_named(
 ) -> Result<CommandValue, Box<EvalAltResult>> {
     match MoveDirection::from_str(direction) {
         Some(dir) => record_dig(emitter, dir),
+        None => Err(EvalAltResult::ErrorRuntime(
+            format!("{INVALID_DIG_PREFIX}{direction}").into(),
+            Position::NONE,
+        )
+        .into()),
+    }
+}
+
+fn record_place(
+    emitter: &CommandEmitter,
+    direction: MoveDirection,
+) -> Result<CommandValue, Box<EvalAltResult>> {
+    emitter.emit(ScriptCommand::Place(direction))?;
+    Ok(CommandValue())
+}
+
+fn place_named(
+    direction: &str,
+    emitter: &CommandEmitter,
+) -> Result<CommandValue, Box<EvalAltResult>> {
+    match MoveDirection::from_str(direction) {
+        Some(dir) => record_place(emitter, dir),
         None => Err(EvalAltResult::ErrorRuntime(
             format!("{INVALID_DIG_PREFIX}{direction}").into(),
             Position::NONE,
@@ -737,6 +769,21 @@ mod tests {
             );
             thread::yield_now();
         }
+    }
+
+    #[test]
+    fn place_emits_only_when_the_capability_is_allowed() {
+        let executor = RhaiScriptExecutor::new();
+        let type4 = allowed(&["move", "is_touched", "is_empty", "place"]);
+        assert!(matches!(
+            executor.run("place(\"right\");", Some(&type4)),
+            Ok(commands) if matches!(commands.as_slice(), [ScriptCommand::Place(MoveDirection::Right)])
+        ));
+        assert!(
+            executor
+                .compile_step("place(\"right\");", Some(&allowed(&["move"])))
+                .is_err()
+        );
     }
 
     fn next_command_within(

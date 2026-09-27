@@ -26,6 +26,13 @@ pub struct StoneAppendCommandMessage {
 #[derive(Message, Clone)]
 pub struct StoneTickMessage;
 
+#[derive(Message, Clone)]
+pub struct StonePlaceRequestMessage {
+    pub stone: Entity,
+    pub stone_index: usize,
+    pub direction: MoveDirection,
+}
+
 #[derive(Component)]
 pub(crate) struct StoneCommandState {
     pub queue: VecDeque<ScriptCommand>,
@@ -68,6 +75,7 @@ enum StoneAction {
     Move(MoveCommandProgress),
     Sleep(Timer),
     Dig(Timer, Entity),
+    Place(MoveDirection),
 }
 
 const STONE_ATLAS_PATH: &str = "images/spr_allrunes_spritesheet_xx.png";
@@ -209,6 +217,7 @@ type StoneBehaviorQuery<'w, 's> = Query<
     's,
     (
         Entity,
+        &'static StoneIndex,
         &'static mut StoneCommandState,
         &'static mut Transform,
         &'static GlobalTransform,
@@ -237,6 +246,7 @@ pub fn update_stone_behavior(
     query_colliders: Query<&Collider>,
     spatial: SpatialQuery,
     mut stone_moved_writer: MessageWriter<StoneTickMessage>,
+    mut place_writer: MessageWriter<StonePlaceRequestMessage>,
 ) {
     if query.is_empty() {
         audio_state.stop_push_loop(&mut commands);
@@ -247,6 +257,7 @@ pub fn update_stone_behavior(
 
     for (
         entity,
+        stone_index,
         mut state,
         mut transform,
         global_transform,
@@ -350,6 +361,7 @@ pub fn update_stone_behavior(
                         }
                     }
                 },
+                ScriptCommand::Place(direction) => StoneAction::Place(direction),
             });
         }
 
@@ -469,6 +481,14 @@ pub fn update_stone_behavior(
                         velocity.0 = Vec2::ZERO;
                         stop_current = true;
                     }
+                }
+                StoneAction::Place(direction) => {
+                    place_writer.write(StonePlaceRequestMessage {
+                        stone: entity,
+                        stone_index: stone_index.0,
+                        direction: *direction,
+                    });
+                    stop_current = true;
                 }
             }
         }

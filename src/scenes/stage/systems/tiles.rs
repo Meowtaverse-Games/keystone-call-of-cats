@@ -314,7 +314,10 @@ fn spawn_boundary_tile(
 
 pub fn restore_dug_tiles(
     mut commands: Commands,
-    mut query: Query<(Entity, &crate::scenes::stage::components::DugTile)>,
+    mut query: Query<
+        (Entity, &crate::scenes::stage::components::DugTile),
+        Without<super::place::PlacedTile>,
+    >,
     editor_state: Res<crate::scenes::stage::systems::ui::ScriptEditorState>,
 ) {
     if !editor_state.pending_player_reset {

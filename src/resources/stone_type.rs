@@ -42,9 +42,10 @@ impl Default for StoneCapabilities {
         type3.insert("dig".to_string());
         map.insert(StoneType::Type3, type3);
 
-        // Type 4: Place is not implemented in the product yet. Keep its existing sensors and
-        // movement explicit so it cannot fall through to the unrestricted `None` behavior.
-        map.insert(StoneType::Type4, type2);
+        // Type 4: Move + Touched + IsEmpty + Place
+        let mut type4 = type2;
+        type4.insert("place".to_string());
+        map.insert(StoneType::Type4, type4);
 
         Self { map }
     }
@@ -55,7 +56,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn type4_is_explicitly_limited_until_place_is_implemented() {
+    fn type4_has_only_its_explicit_place_capabilities() {
         let capabilities = StoneCapabilities::default();
         let type4 = capabilities
             .get_capabilities(StoneType::Type4)
@@ -67,9 +68,11 @@ mod tests {
                 "move".to_string(),
                 "is_touched".to_string(),
                 "is_empty".to_string(),
+                "place".to_string(),
             ])
         );
-        assert!(!type4.contains("place"));
+        assert!(!type4.contains("dig"));
+        assert!(!type4.contains("sleep"));
     }
 }
 

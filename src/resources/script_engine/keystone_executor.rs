@@ -207,6 +207,7 @@ fn map_event(event: Event) -> Option<ScriptCommand> {
         Event::Move(dir) => Some(ScriptCommand::Move(map_direction(dir)?)),
         Event::Sleep(duration) => Some(ScriptCommand::Sleep(duration)),
         Event::Dig(dir) => Some(ScriptCommand::Dig(map_direction(dir)?)),
+        Event::Place(dir) => Some(ScriptCommand::Place(map_direction(dir)?)),
         _ => None,
     }
 }
@@ -329,6 +330,14 @@ mod tests {
         assert!(matches!(
             result,
             Err(ScriptExecutionError::InvalidCommand(message)) if message.contains("dig")
+        ));
+    }
+
+    #[test]
+    fn maps_place_events_to_place_commands() {
+        assert!(matches!(
+            map_event(Event::Place(Direction::Right)),
+            Some(ScriptCommand::Place(MoveDirection::Right))
         ));
     }
 }
