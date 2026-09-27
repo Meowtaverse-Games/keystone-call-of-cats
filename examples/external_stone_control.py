@@ -10,13 +10,16 @@ def request(path, method="GET", body=None):
         headers={"Authorization": "Bearer " + TOKEN, "Content-Type": "application/json"})
     with urllib.request.urlopen(req, timeout=3) as response: return json.load(response)
 
-state = request("/state")
 request("/session/start", "POST")
-state = request("/state")
-stone = state["stones"][0]["index"]
-action = request(f"/stones/{stone}/commands", "POST", {"generation": state["generation"], "command": "move", "direction": "right"})
-while True:
-    action = request("/actions/" + str(action["id"]))
-    if action["status"] in ("complete", "rejected"):
-        print(action); break
-    time.sleep(0.05)
+try:
+    # Read after start so the generation comes from the active external session.
+    state = request("/state")
+    stone = state["stones"][0]["index"]
+    action = request(f"/stones/{stone}/commands", "POST", {"generation": state["generation"], "command": "move", "direction": "right"})
+    while True:
+        action = request("/actions/" + str(action["id"]))
+        if action["status"] in ("complete", "blocked", "rejected"):
+            print(action); break
+        time.sleep(0.05)
+finally:
+    request("/session/stop", "POST")

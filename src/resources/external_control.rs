@@ -718,12 +718,16 @@ mod tests {
         app.update();
         let world = app.world_mut();
         let mut query = world.query::<(&StoneIndex, &StoneCommandState)>();
-        let queues: Vec<_> = query
+        let mut queues: Vec<_> = query
             .iter(world)
             .map(|(index, state)| (index.0, state.queue.len()))
             .collect();
-        assert!(queues.contains(&(0, 0)));
-        assert!(queues.contains(&(1, 2)));
+        queues.sort();
+        assert_eq!(
+            queues,
+            vec![(0, 0), (1, 2)],
+            "external append must target only stone 1"
+        );
     }
 
     #[test]
