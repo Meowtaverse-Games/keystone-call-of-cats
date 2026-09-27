@@ -862,7 +862,7 @@ mod tests {
             PhysicsPlugins::default(),
             GizmoPlugin,
         ))
-        .insert_resource(Time::default())
+        .insert_resource(Time::<()>::default())
         .insert_resource(StageAudioHandles::new(Handle::default(), Handle::default()))
         .init_resource::<StageAudioState>()
         .insert_resource(GameSettings::default())
@@ -899,7 +899,7 @@ mod tests {
         assert!(app.world().resource::<ExternalOutcomes>().0.is_empty());
 
         app.world_mut()
-            .resource_mut::<Time>()
+            .resource_mut::<Time<()>>()
             .advance_by(Duration::from_millis(100));
         app.world_mut()
             .run_system_once(update_stone_behavior)
