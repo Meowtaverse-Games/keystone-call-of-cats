@@ -329,7 +329,10 @@ pub fn start(
                     .route("/v1/session/{action}", post(session))
                     .route("/v1/stones/{stone}/commands", post(submit))
                     .layer(RequestBodyLimitLayer::new(8192))
-                    .layer(TimeoutLayer::new(Duration::from_secs(3)))
+                    .layer(TimeoutLayer::with_status_code(
+                        StatusCode::REQUEST_TIMEOUT,
+                        Duration::from_secs(3),
+                    ))
                     .with_state(h);
                 let server = axum::serve(listener, app);
                 tokio::select! {_=server=>{},_=stop_rx=>{}}
@@ -522,11 +525,11 @@ pub fn publish_external_snapshot(
                 &collider,
                 transform.translation.truncate(),
                 0.0,
-                avian2d::prelude::Dir2::new(direction).unwrap(),
+                Dir2::new(direction).unwrap(),
                 &avian2d::prelude::ShapeCastConfig::from_max_distance(
                     state.step_size * transform.scale.x,
                 ),
-                &avian2d::prelude::SpatialQueryFilter::default().with_excluded_entities([entity]),
+                &avian2d::prelude::SpatialQueryFilter::default().with_excluded_entities([*entity]),
             );
             !hit.is_some_and(|hit| {
                 tiles.get(hit.entity).is_ok() || all_stones.get(hit.entity).is_ok()
