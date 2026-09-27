@@ -9,6 +9,7 @@ pub enum ScriptCommand {
     Move(MoveDirection),
     Sleep(f32),
     Dig(MoveDirection),
+    Place(MoveDirection),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

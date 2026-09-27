@@ -1,0 +1,240 @@
+use std::collections::HashSet;
+
+use avian2d::prelude::*;
+use bevy::prelude::*;
+
+use crate::{
+    resources::chunk_grammar_map::TileKind,
+    scenes::stage::components::{StageRoot, StageTile, StoneIndex, StoneRune},
+    util::script_types::MoveDirection,
+};
+
+use super::StonePlaceRequestMessage;
+
+#[derive(Component)]
+pub struct PlacedTile;
+
+#[derive(Resource, Clone)]
+pub struct StageGridMetrics {
+    pub local_tile_size: Vec2,
+    pub viewport_size: Vec2,
+    pub sprite_scale: f32,
+    pub map_size: (isize, isize),
+    pub boundary_margin: (isize, isize),
+}
+
+impl StageGridMetrics {
+    pub fn cell_to_local(&self, cell: IVec2) -> Vec2 {
+        Vec2::new(
+            (cell.x as f32 + 0.5) * self.local_tile_size.x - self.viewport_size.x * 0.5,
+            (cell.y as f32 + 0.5) * self.local_tile_size.y - self.viewport_size.y * 0.5,
+        )
+    }
+
+    fn world_to_cell(&self, world: Vec2, root: &GlobalTransform) -> IVec2 {
+        let root_scale = root.scale().truncate();
+        let local = (world - root.translation().truncate()) / root_scale;
+        IVec2::new(
+            ((local.x + self.viewport_size.x * 0.5) / self.local_tile_size.x).floor() as i32,
+            ((local.y + self.viewport_size.y * 0.5) / self.local_tile_size.y).floor() as i32,
+        )
+    }
+
+    fn world_tile_size(&self, root: &GlobalTransform) -> Vec2 {
+        self.local_tile_size * root.scale().truncate()
+    }
+
+    fn is_placeable_cell(&self, cell: IVec2) -> bool {
+        let x = cell.x as isize;
+        let y = cell.y as isize;
+        x >= self.boundary_margin.0
+            && x < self.map_size.0 - self.boundary_margin.0
+            && y >= self.boundary_margin.1
+            && y < self.map_size.1 - self.boundary_margin.1
+    }
+}
+
+#[derive(Resource, Default)]
+pub struct PlaceState {
+    initial_limit: Option<u32>,
+    pub remaining: Option<u32>,
+    placed_cells: HashSet<IVec2>,
+}
+
+impl PlaceState {
+    pub fn new(limit: Option<u32>) -> Self {
+        Self {
+            initial_limit: limit,
+            remaining: limit,
+            placed_cells: HashSet::new(),
+        }
+    }
+
+    fn can_commit(&self, cell: IVec2) -> bool {
+        self.remaining != Some(0) && !self.placed_cells.contains(&cell)
+    }
+
+    fn commit(&mut self, cell: IVec2) {
+        self.placed_cells.insert(cell);
+        if let Some(remaining) = &mut self.remaining {
+            *remaining = remaining.saturating_sub(1);
+        }
+    }
+
+    fn reset(&mut self) {
+        self.remaining = self.initial_limit;
+        self.placed_cells.clear();
+    }
+}
+
+fn direction_to_vec(direction: MoveDirection) -> Vec2 {
+    match direction {
+        MoveDirection::Left => Vec2::NEG_X,
+        MoveDirection::Top => Vec2::Y,
+        MoveDirection::Right => Vec2::X,
+        MoveDirection::Down => Vec2::NEG_Y,
+    }
+}
+
+pub fn resolve_place_requests(
+    mut commands: Commands,
+    mut requests: MessageReader<StonePlaceRequestMessage>,
+    metrics: Option<Res<StageGridMetrics>>,
+    mut state: ResMut<PlaceState>,
+    roots: Query<(Entity, &GlobalTransform), With<StageRoot>>,
+    stones: Query<(&StoneIndex, &GlobalTransform), With<StoneRune>>,
+    spatial: SpatialQuery,
+) {
+    let Some(metrics) = metrics else {
+        return;
+    };
+    let Some((stage_root, root_transform)) = roots.iter().next() else {
+        return;
+    };
+
+    let mut requests: Vec<_> = requests.read().cloned().collect();
+    requests.sort_by_key(|request| request.stone_index);
+
+    for request in requests {
+        let Ok((_, stone_transform)) = stones.get(request.stone) else {
+            continue;
+        };
+        let target_world = stone_transform.translation().truncate()
+            + direction_to_vec(request.direction) * metrics.world_tile_size(root_transform);
+        let cell = metrics.world_to_cell(target_world, root_transform);
+        if !metrics.is_placeable_cell(cell) || !state.can_commit(cell) {
+            continue;
+        }
+
+        let candidate = Collider::rectangle(
+            metrics.world_tile_size(root_transform).x,
+            metrics.world_tile_size(root_transform).y,
+        );
+        let filter = SpatialQueryFilter::default().with_excluded_entities([request.stone]);
+        if !spatial
+            .shape_intersections(&candidate, target_world, 0.0, &filter)
+            .is_empty()
+        {
+            continue;
+        }
+
+        let local = metrics.cell_to_local(cell);
+        commands.entity(stage_root).with_children(|parent| {
+            parent.spawn((
+                PlacedTile,
+                StageTile,
+                TileKind::Solid,
+                Sprite {
+                    color: Color::srgb(0.25, 0.65, 0.92),
+                    custom_size: Some(Vec2::splat(16.0)),
+                    ..default()
+                },
+                Transform::from_xyz(local.x, local.y, -4.0)
+                    .with_scale(Vec3::splat(metrics.sprite_scale)),
+                RigidBody::Static,
+                Collider::rectangle(16.0, 16.0),
+            ));
+        });
+        state.commit(cell);
+    }
+}
+
+pub fn reset_placed_tiles(
+    mut commands: Commands,
+    editor: Res<super::ui::ScriptEditorState>,
+    mut state: ResMut<PlaceState>,
+    placed_tiles: Query<Entity, With<PlacedTile>>,
+) {
+    if !editor.pending_player_reset {
+        return;
+    }
+    for entity in placed_tiles.iter() {
+        commands.entity(entity).try_despawn();
+    }
+    state.reset();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn place_limit_consumes_only_successful_commits_and_resets() {
+        let mut state = PlaceState::new(Some(1));
+        let cell = IVec2::new(3, 4);
+        assert!(state.can_commit(cell));
+        state.commit(cell);
+        assert_eq!(state.remaining, Some(0));
+        assert!(!state.can_commit(cell));
+        assert!(!state.can_commit(IVec2::new(4, 4)));
+        state.reset();
+        assert_eq!(state.remaining, Some(1));
+        assert!(state.can_commit(cell));
+    }
+
+    #[test]
+    fn grid_rejects_boundaries_and_accepts_interior_cells() {
+        let metrics = StageGridMetrics {
+            local_tile_size: Vec2::ONE,
+            viewport_size: Vec2::ZERO,
+            sprite_scale: 1.0,
+            map_size: (10, 8),
+            boundary_margin: (1, 1),
+        };
+        assert!(!metrics.is_placeable_cell(IVec2::new(0, 4)));
+        assert!(!metrics.is_placeable_cell(IVec2::new(9, 4)));
+        assert!(!metrics.is_placeable_cell(IVec2::new(4, 0)));
+        assert!(metrics.is_placeable_cell(IVec2::new(4, 4)));
+    }
+
+    #[test]
+    fn every_place_direction_targets_the_adjacent_cell() {
+        assert_eq!(direction_to_vec(MoveDirection::Left), Vec2::NEG_X);
+        assert_eq!(direction_to_vec(MoveDirection::Top), Vec2::Y);
+        assert_eq!(direction_to_vec(MoveDirection::Right), Vec2::X);
+        assert_eq!(direction_to_vec(MoveDirection::Down), Vec2::NEG_Y);
+    }
+
+    #[test]
+    fn reset_despawns_placed_tiles_and_restores_the_shared_limit() {
+        let mut app = App::new();
+        app.insert_resource(PlaceState {
+            initial_limit: Some(2),
+            remaining: Some(0),
+            placed_cells: HashSet::from([IVec2::new(2, 2), IVec2::new(3, 2)]),
+        })
+        .insert_resource(super::super::ui::ScriptEditorState {
+            pending_player_reset: true,
+            ..default()
+        })
+        .add_systems(Update, reset_placed_tiles);
+
+        let tile = app.world_mut().spawn(PlacedTile).id();
+        app.update();
+
+        assert!(app.world().get_entity(tile).is_err());
+        let state = app.world().resource::<PlaceState>();
+        assert_eq!(state.remaining, Some(2));
+        assert!(state.placed_cells.is_empty());
+    }
+}
