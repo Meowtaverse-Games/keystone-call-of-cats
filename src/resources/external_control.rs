@@ -861,10 +861,14 @@ mod tests {
     #[test]
     fn snapshot_uses_parented_world_position_and_ignores_player_as_a_wall() {
         let mut app = App::new();
-        app.add_plugins((TransformPlugin, avian2d::prelude::PhysicsPlugins::default()))
-            .insert_resource(bridge(MAX_INGRESS))
-            .init_resource::<ExternalControlState>()
-            .init_resource::<StageProgressionState>();
+        app.add_plugins((
+            bevy::app::MinimalPlugins,
+            TransformPlugin,
+            avian2d::prelude::PhysicsPlugins::default(),
+        ))
+        .insert_resource(bridge(MAX_INGRESS))
+        .init_resource::<ExternalControlState>()
+        .init_resource::<StageProgressionState>();
         let root = app
             .world_mut()
             .spawn(Transform::from_xyz(100.0, 200.0, 0.0).with_scale(Vec3::splat(2.0)))
@@ -882,15 +886,32 @@ mod tests {
             ))
             .id();
         app.world_mut().entity_mut(root).add_child(stone);
-        app.world_mut().spawn((
-            Player,
-            Transform::from_xyz(196.0, 200.0, 0.0),
-            GlobalTransform::default(),
-            avian2d::prelude::RigidBody::Static,
-            avian2d::prelude::Collider::circle(16.0),
-            avian2d::prelude::CollidingEntities::default(),
-        ));
+        let player = app
+            .world_mut()
+            .spawn((
+                Player,
+                Transform::from_xyz(196.0, 200.0, 0.0),
+                GlobalTransform::default(),
+                avian2d::prelude::RigidBody::Static,
+                avian2d::prelude::Collider::circle(16.0),
+                avian2d::prelude::CollidingEntities::default(),
+            ))
+            .id();
         app.update();
+        let hit = app
+            .world_mut()
+            .run_system_once(|spatial: avian2d::prelude::SpatialQuery| {
+                spatial.cast_shape(
+                    &avian2d::prelude::Collider::circle(33.0),
+                    Vec2::new(132.0, 200.0),
+                    0.0,
+                    Dir2::X,
+                    &avian2d::prelude::ShapeCastConfig::from_max_distance(64.0),
+                    &avian2d::prelude::SpatialQueryFilter::default(),
+                )
+            })
+            .unwrap();
+        assert_eq!(hit.map(|hit| hit.entity), Some(player));
         app.world_mut()
             .run_system_once(publish_external_snapshot)
             .unwrap();
