@@ -909,6 +909,9 @@ mod tests {
                 .iter()
                 .any(|outcome| outcome.action_id == 91 && outcome.blocked)
         );
-        assert_eq!(app.world().get::<DigLimit>(stone), Some(&DigLimit(Some(0))));
+        assert_eq!(
+            app.world().get::<DigLimit>(stone).map(|limit| limit.0),
+            Some(Some(0))
+        );
     }
 }

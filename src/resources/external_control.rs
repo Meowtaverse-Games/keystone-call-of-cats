@@ -998,10 +998,8 @@ mod tests {
         app.world_mut().insert_resource(editor);
         app.update();
 
-        let record = bridge
-            .records
-            .lock()
-            .unwrap()
+        let records = bridge.records.lock().unwrap();
+        let record = records
             .0
             .iter()
             .find(|record| record.id == command.id)
