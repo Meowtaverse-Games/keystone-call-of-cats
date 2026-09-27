@@ -522,6 +522,8 @@ pub fn invalidate_external_generation(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::scenes::stage::components::StoneRune;
+    use bevy::prelude::{App, Update};
     fn bridge(capacity: usize) -> ExternalControlBridge {
         let (ingress, _) = std::sync::mpsc::sync_channel(capacity);
         ExternalControlBridge {
@@ -530,6 +532,39 @@ mod tests {
             records: Arc::new(Mutex::new(Records::default())),
             ids: Arc::new(AtomicU64::new(1)),
         }
+    }
+    fn ecs_app() -> (App, ExternalControlBridge) {
+        let (ingress, receiver) = std::sync::mpsc::sync_channel(MAX_INGRESS);
+        let bridge = ExternalControlBridge {
+            ingress,
+            snapshot: Arc::new(Mutex::new(ControlSnapshot::default())),
+            records: Arc::new(Mutex::new(Records::default())),
+            ids: Arc::new(AtomicU64::new(1)),
+        };
+        let mut app = App::new();
+        app.insert_resource(bridge.clone())
+            .insert_resource(ExternalControlReceiver(receiver))
+            .init_resource::<ExternalControlState>()
+            .init_resource::<ScriptEditorState>()
+            .add_message::<StoneAppendCommandMessage>()
+            .add_message::<crate::scenes::stage::systems::StoneExternalOutcomeMessage>()
+            .add_systems(
+                Update,
+                (
+                    drain_external_commands,
+                    crate::scenes::stage::systems::handle_stone_append_messages,
+                )
+                    .chain(),
+            );
+        (app, bridge)
+    }
+    fn stone(app: &mut App, index: usize) {
+        app.world_mut().spawn((
+            StoneRune,
+            StoneIndex(index),
+            StoneType::Type1,
+            StoneCommandState::default(),
+        ));
     }
     #[test]
     fn rejects_nonfinite_duration() {
@@ -603,5 +638,86 @@ mod tests {
         bridge.finish(action.id, 3, "blocked", None);
         let record = bridge.records.lock().unwrap().0.front().unwrap().clone();
         assert_eq!(record.status, "blocked");
+    }
+
+    #[test]
+    fn two_stones_receive_only_their_own_external_command() {
+        let (mut app, bridge) = ecs_app();
+        stone(&mut app, 0);
+        stone(&mut app, 1);
+        bridge.submit(0, ExternalRequest::Start).unwrap();
+        app.update();
+        bridge
+            .submit(
+                0,
+                ExternalRequest::Command {
+                    stone: 1,
+                    command: ScriptCommand::Move(MoveDirection::Right),
+                },
+            )
+            .unwrap();
+        app.update();
+        let world = app.world_mut();
+        let mut query = world.query::<(&StoneIndex, &StoneCommandState)>();
+        let queues: Vec<_> = query
+            .iter(world)
+            .map(|(index, state)| (index.0, state.queue.len()))
+            .collect();
+        assert!(queues.contains(&(0, 0)));
+        assert!(queues.contains(&(1, 2)));
+    }
+
+    #[test]
+    fn stop_and_reset_reject_pending_actions_and_clear_stones() {
+        let (mut app, bridge) = ecs_app();
+        stone(&mut app, 0);
+        bridge.submit(0, ExternalRequest::Start).unwrap();
+        app.update();
+        bridge
+            .submit(
+                0,
+                ExternalRequest::Command {
+                    stone: 0,
+                    command: ScriptCommand::Move(MoveDirection::Right),
+                },
+            )
+            .unwrap();
+        app.update();
+        bridge.submit(0, ExternalRequest::Stop).unwrap();
+        app.update();
+        assert!(
+            app.world()
+                .resource::<ExternalControlState>()
+                .active
+                .is_empty()
+        );
+        let status = bridge
+            .records
+            .lock()
+            .unwrap()
+            .0
+            .iter()
+            .find(|r| r.id == 2)
+            .unwrap()
+            .status
+            .clone();
+        assert_eq!(status, "rejected");
+        bridge.submit(0, ExternalRequest::Reset).unwrap();
+        app.update();
+        let world = app.world_mut();
+        let mut query = world.query::<&StoneCommandState>();
+        assert!(query.iter(world).all(|state| state.queue.is_empty()));
+    }
+
+    #[test]
+    fn idle_server_stops_without_waiting_for_a_client() {
+        let profile = LaunchProfile {
+            external_control: true,
+            external_control_port: Some(0),
+            external_control_token: Some("test-token".into()),
+            ..Default::default()
+        };
+        let (_, _, server) = start(&profile).unwrap().unwrap();
+        server.stop();
     }
 }
