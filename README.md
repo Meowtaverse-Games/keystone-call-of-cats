@@ -86,6 +86,10 @@ or controls A1X.
 ### Localization
 The game ships with `en-US`, `ja-JP`, and `zh-Hans` locales under `assets/locales/`. The initial locale is picked from `ITCHIO_OFFICIAL_LOCALE`, then `LANG`, falling back to `en-US`. The user's choice is persisted in the game settings file.
 
+### Stage design simulator
+
+`tools/stage_sim` renders stage RON files as deterministic ASCII maps and runs a Bevy-free grid simulation for player actions, stone programs, digging, and proposed block placement. See `tools/stage_sim/README.md` for commands and model limitations.
+
 ## Code License
 
 - Scope: All source code outside of the `assets/` directory (`src/`, `scripts/`, build files, documentation, etc.)
