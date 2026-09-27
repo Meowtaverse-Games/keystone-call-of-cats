@@ -761,6 +761,7 @@ mod tests {
         external_control::{self, ExternalControlState},
         launch_profile::LaunchProfile,
     };
+    use bevy_ecs::system::RunSystemOnce;
 
     #[test]
     fn reload_system_invalidates_external_ownership_before_rebuilding_the_stage() {

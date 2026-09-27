@@ -734,7 +734,8 @@ pub(crate) fn invalidate_external_state(
 mod tests {
     use super::*;
     use crate::scenes::stage::components::StoneRune;
-    use bevy::prelude::{App, Messages, RunSystemOnce, Transform, TransformPlugin, Update};
+    use bevy::prelude::{App, Messages, Transform, TransformPlugin, Update};
+    use bevy_ecs::system::RunSystemOnce;
     fn bridge(capacity: usize) -> ExternalControlBridge {
         let (ingress, receiver) = std::sync::mpsc::sync_channel(capacity);
         // Keep the consumer endpoint alive: these tests exercise a full queue,
