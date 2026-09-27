@@ -900,7 +900,10 @@ mod tests {
 
         app.world_mut()
             .resource_mut::<Time<()>>()
-            .advance_by(Duration::from_millis(100));
+            // `Timer::from_seconds(0.1)` converts its f32 input to a Duration.
+            // Advance past, rather than exactly to, 100ms so the test is not
+            // sensitive to that conversion's nanosecond rounding.
+            .advance_by(Duration::from_millis(101));
         app.world_mut()
             .run_system_once(update_stone_behavior)
             .unwrap();
