@@ -1,6 +1,6 @@
 # Stage design candidates
 
-`stages/`は、20ステージ再設計のための固定マップ候補です。レビューとBevy上の操作確認が終わるまでは`assets/stages/`を置き換えません。
+`stages/`は、20ステージ再設計のための固定マップ候補です。レビューとBevy上の操作確認が終わるまでは`assets/stages/`を置き換えません。CLIの検証結果は候補の成立条件を確認するもので、製品地形のクリアや操作感を証明しません。
 
 Stage 8だけは、Rhaiの接触待ちを試す製品試作を`prototypes/stage-8-playful-v1.*`で管理します。旧`stages/stage-8.ron`とKeystoneの`.ks`解法はCLI研究候補として残しており、試作の正解や製品物理の証明ではありません。
 
@@ -14,6 +14,9 @@ Stage 8だけは、Rhaiの接触待ちを試す製品試作を`prototypes/stage-
 
 - 商品・価格・発売日・品質ゲート: `release-and-implementation-plan.md`
 - 実装担当向けのファイル所有・依存・受入条件: `stage-implementation-handoff.md`
+- 旧mainのStage 1〜12から抽出した遊びの特性と、新面を考える基準: `stage-play-characteristics.md`
+
+旧mainの地形を一括復元する案は採用していません。既存面の役割を理解せずに平坦な候補へそろえないための分析は上記の特性文書に残し、地形の変更は個別に実機確認を伴って判断します。
 
 ## 検証
 

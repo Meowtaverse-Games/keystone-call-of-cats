@@ -1,12 +1,12 @@
 # Stage implementation handoff — fixed 20-stage release
 
-- 更新日: 2026-09-05
+- 更新日: 2026-09-27
 - 作業ブランチ: `feature/20-stage-release-handoff`
 - 起点: `main` / `e49b1df`
 
 ## 1. 目的
 
-CLIで解法成立を確認した固定20面を、Keystone: Call of Catsの製品ステージへ昇格する。面数やメカニクスを増やす作業ではない。2027-01-14のitch.io 1.0、2027-02-16のSteam 1.0を目標に、次を完成させる。
+CLIで解法成立を確認した20面の候補を、Keystone: Call of Catsの製品ステージとして検討する。CLIの成立は製品クリアや遊びの完成を意味しない。特に既存面の地形を平坦な教材へそろえる案は再設計中であり、既存の地形・高低差・複数石が担う役割を個別に評価する。面数やメカニクスを増やす作業ではない。2027-01-14のitch.io 1.0、2027-02-16のSteam 1.0を目標に、次を完成させる。
 
 - 固定20面を製品上で開始、リセット、クリアできる。
 - Stage 13〜16、20で必要な`place`を製品実装する。
@@ -18,6 +18,8 @@ CLIで解法成立を確認した固定20面を、Keystone: Call of Catsの製�
 - https://docs.google.com/spreadsheets/d/1iXRJlJJ7kFDQ9uhlhcrkMdMKGxVCR6lGhB9WsJndCmw/edit
 
 ## 2. 変更してはいけない決定
+
+次の章構成と`place`仕様は既存の候補計画である。製品地形の面白さを犠牲にして機械的に合わせる基準ではなく、実装・採用前に設計レビューを要する。
 
 - 1.0は固定20面。Stage 21以降を追加しない。
 - ランダム、変数、石間通信を必須解法にしない。
@@ -38,25 +40,25 @@ CLIで解法成立を確認した固定20面を、Keystone: Call of Catsの製�
 
 | 正本 | 役割 |
 | --- | --- |
-| `design/stages/stage-N.ron` | 固定地形と石配置 |
+| `design/stages/stage-N.ron` | CLI研究用の固定地形候補と石配置。無条件の製品正本ではない。 |
 | `design/solutions/stage-N-*.ks` | 現行Keystone言語で実行できる石コード |
 | `design/solutions/stage-N-player.plan` | プレイヤー操作とCLI再生手順 |
 | `design/stages-01-20.md` | 全体カリキュラムと章構成 |
 | `design/stages-XX-YY.md` | 面別の意図、想定解、Bevy確認点 |
-| `./design/verify-all.sh` | 20面の初期到達不可と想定解到達を確認する回帰 |
+| `./design/verify-all.sh` | 20面候補の初期到達不可と想定解到達を確認する回帰。製品クリアの証明ではない。 |
 | Google Sheets V2 | 難易度、目標時間、商品状態、実装計画、プレイテスト記録 |
 
 Stage 13〜16、20は、製品側の`place`基盤がないため`.ks`ではなくCLI操作計画で検証している。`keystone-lang`の構文とイベントは実装済みだが、これは製品で配置できるという意味ではない。
 
 ## 実装進捗スナップショット
 
-2026-09-05時点:
+2026-09-27時点:
 
 - 製品カタログと`assets/stages/list.ron`はStage 1〜20へ整合済み。
-- 既存能力で解けるStage 1〜12・17〜19は固定設計RONを`assets/stages/`へ昇格済み。製品RONを使うCLI正解検証も成功済み。
+- 既存能力で解けるStage 1〜12・17〜19は候補RONを`assets/stages/`へ反映している。ただしCLIの正解検証は製品でのゴール、操作感、既存面の持ち味を保証しない。
 - Stage 13〜20のRONはカタログからロード可能。ただし13〜16・20は`place`未実装のため製品クリア未達。
-- `keystone-lang`の`feature/place-command`（`fe41c163`）で`place <direction>`と`Place(Direction)`を実装し、全65テスト成功。`keystone_cc`側も同SHAへ依存を固定済み。
-- 次の実装対象はWP3の製品側`place`基盤。言語ブランチのレビューとmainへのマージは未実施。
+- `keystone-lang`の`feature/place-command`（`fe41c163`、履歴上は`a655aca`から参照可能）には`place <direction>`と`Place(Direction)`の準備がある。一方、製品側には`Place`の変換・能力・地形処理がないため、このリポジトリの依存はmainの既存リビジョンへ戻している。依存更新と製品`place`基盤は将来の独立PRとして扱う。
+- 次の実装対象は、まず候補地形の再設計と実機確認である。WP3の製品側`place`基盤は未着手であり、この文書の詳細仕様は実装開始時に再確認する。
 - 全面のBevy物理・UI確認は別環境で未実施。
 
 2026-09-27時点のA1X実機確認追記:
@@ -64,8 +66,8 @@ Stage 13〜16、20は、製品側の`place`基盤がないため`.ks`ではな�
 - Stage 1〜12・17〜19の全15面で、隔離セーブ領域からのロードと正本コードのF3実行・停止・再実行を確認した。詳細は[実機確認記録](verification-2026-09-27-a1x.md)を参照する。
 - この確認は短時間の実行経路までであり、全15面のゴール到達、全コマンド完了、全リセット完全性は未確認である。WP1を完了扱いにしない。
 - Stage 1〜3で `Goal reached!` と次面遷移を確認済み。Stage 3→4では隔離した `stage_progress.ron` の `unlocked_until: (4)` により進行保存も確認した。残るゴール確認はStage 4〜12・17〜19の12面である。
-- Stage 8は、実機でプレイヤーを近づけても現行正解例の有限`loop 6`が接触前に終了し、ゴールへ進まないことを確認した。すべての解法が不可能とは断定せず、接触待ちの仕様を満たす修正を独立PRとして判断する。`while`導入は学習内容を増やすため要確認である。
-- Stage 8はRhaiの`loop { if is_touched() { move("right"); } }`を用いる「石の待つ谷へ」試作へ差し替えた。試作の地形・解法・試し方は`prototypes/stage-8-playful-v1.md`を参照する。Keystone言語の有限`loop`はこの試作の対象外であり、A1Xでの操作感、クリア、リセットは未確認である。
+- Stage 8の有限`loop 6`を前提にした旧候補の記録を、再設計後の製品成立証跡へ流用しない。このブランチではRhaiの`loop { if is_touched() { move("right"); } }`を用いる「石の待つ谷へ」試作を扱う。地形・解法・試し方は`prototypes/stage-8-playful-v1.md`を参照する。Keystone言語の有限`loop`は対象外で、A1Xでの操作感、クリア、リセットは未確認である。
+- stage_simを製品に合わせて石番号順・石ごとの掘削残数へ整合した後、Stage 18の既存プレイヤー計画はゴール前で終了することが分かった。このブランチでは地形や解法を変更せず、候補の再検証課題として残す。そのため`verify-all.sh`はStage 18で失敗する。Stage 19の既存解法とStage 20のCLI配置計画は個別に通過したが、いずれも製品クリアの証明ではない。
 - Stage 13の`place`縦切り（WP3）は未着手であり、既存能力15面の確認結果を`place`実装の受入証跡へ流用しない。
 
 ## 4. 現在の製品コードとの差分
@@ -73,9 +75,9 @@ Stage 13〜16、20は、製品側の`place`基盤がないため`.ks`ではな�
 ### ステージ登録
 
 - `assets/stages/`、`StageMeta::load_map`、`assets/stages/list.ron`はStage 1〜20へ整合済み。
-- Stage 1〜12・17〜19は固定設計RONへ昇格済み。
-- Stage 13〜20は固定設計RONを配置済み。ただし13〜16・20は`place`実装後に製品クリア確認が必要。
-- `design/stages/`にはCLI検証済みの固定Stage 1〜20があり、製品RON昇格時の正本とする。
+- Stage 1〜12・17〜19は候補RONを製品側へ反映している。旧mainの地形を一括復元する案は未採用で、別ブランチのローカル退避にのみ保存されている。
+- Stage 13〜20は候補RONを配置済み。ただし13〜16・20は`place`実装後に製品クリア確認が必要である。
+- `design/stages/`にはCLI検証済みの候補Stage 1〜20がある。製品RONへの採用は、面ごとの設計・実機確認を経て判断する。
 
 Stage 21〜23は一覧から削除済み。データ面の次の差分は`place_limit`追加後にStage 13〜16・20へ上限値を反映すること。
 
@@ -89,7 +91,7 @@ Stage 21〜23は一覧から削除済み。データ面の次の差分は`place_
 - `ChunkGrammarConfig`、`Map`、石スポーン状態は`dig_limit`だけを持ち、`place_limit`を持たない。
 - CLIの`tools/stage_sim`には設計検証用の配置処理がある。
 
-外部依存`keystone-lang`は`feature/place-command`のGitリビジョン`fe41c163e2795f5a39173517d1f441be5efbfc73`へ固定済み。製品側の能力制限、`up`から`MoveDirection::Top`への変換、配置処理はWP3で実装する。
+`keystone-lang`の`feature/place-command`は`fe41c163e2795f5a39173517d1f441be5efbfc73`にあるが、製品が対応するまで依存固定しない。製品側の能力制限、`up`から`MoveDirection::Top`への変換、配置処理はWP3を独立して実装・検証する。
 
 ### 複数石
 
