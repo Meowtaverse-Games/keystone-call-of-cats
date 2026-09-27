@@ -57,8 +57,8 @@ Stage 13〜16、20は、製品側の`place`基盤を利用できる。ただし�
 - 製品カタログと`assets/stages/list.ron`はStage 1〜20へ整合済み。
 - 既存能力で解けるStage 1〜12・17〜19は候補RONを`assets/stages/`へ反映している。ただしCLIの正解検証は製品でのゴール、操作感、既存面の持ち味を保証しない。
 - Stage 13〜20のRONはカタログからロード可能。ただし13〜16・20は`place_limit`設定と製品クリア確認が未完である。
-- `keystone-lang`の`feature/place-command`（`fe41c163`、履歴上は`a655aca`から参照可能）には`place <direction>`と`Place(Direction)`の準備がある。一方、製品側には`Place`の変換・能力・地形処理がないため、このリポジトリの依存はmainの既存リビジョンへ戻している。依存更新と製品`place`基盤は将来の独立PRとして扱う。
-- 次の実装対象は、まず候補地形の再設計と実機確認である。WP3の製品側`place`基盤は未着手であり、この文書の詳細仕様は実装開始時に再確認する。
+- `keystone-lang`の`place`は `267d9cc` を依存固定し、製品側の変換・能力・衝突・共有上限・リセットは [PR #84](https://github.com/Meowtaverse-Games/keystone-call-of-cats/pull/84) で実装済みである。能力制限は [PR #83](https://github.com/Meowtaverse-Games/keystone-call-of-cats/pull/83) で導入済み。
+- 次の対象は候補地形の設計と実機確認である。HTTP 外部入力は [Draft PR #85](https://github.com/Meowtaverse-Games/keystone-call-of-cats/pull/85) で検証中であり、Type5ではない。
 - 全面のBevy物理・UI確認は別環境で未実施。
 
 2026-09-27時点のA1X実機確認追記:
@@ -68,7 +68,7 @@ Stage 13〜16、20は、製品側の`place`基盤を利用できる。ただし�
 - Stage 1〜3で `Goal reached!` と次面遷移を確認済み。Stage 3→4では隔離した `stage_progress.ron` の `unlocked_until: (4)` により進行保存も確認した。残るゴール確認はStage 4〜12・17〜19の12面である。
 - Stage 8の接触待ちを試す地形とRhai解法は別の試作PRで扱う。有限`loop 6`の旧候補の記録を、再設計後の製品成立証跡へ流用しない。
 - stage_simを製品に合わせて石番号順・石ごとの掘削残数へ整合した後、Stage 18の既存プレイヤー計画はゴール前で終了することが分かった。このPRでは地形や解法を変更せず、候補の再検証課題として残す。そのため`verify-all.sh`はStage 18で失敗する。Stage 19の既存解法とStage 20のCLI配置計画は個別に通過したが、いずれも製品クリアの証明ではない。
-- Stage 13の`place`縦切り（WP3）は未着手であり、既存能力15面の確認結果を`place`実装の受入証跡へ流用しない。
+- Stage 13の`place`基盤は実装済みだが、既存能力15面の確認結果をStage 13〜16・20の受入証跡へ流用しない。
 
 ## 4. 現在の製品コードとの差分
 
@@ -76,22 +76,19 @@ Stage 13〜16、20は、製品側の`place`基盤を利用できる。ただし�
 
 - `assets/stages/`、`StageMeta::load_map`、`assets/stages/list.ron`はStage 1〜20へ整合済み。
 - Stage 1〜12・17〜19は候補RONを製品側へ反映している。旧mainの地形を一括復元する案は未採用で、別ブランチのローカル退避にのみ保存されている。
-- Stage 13〜20は候補RONを配置済み。ただし13〜16・20は`place`実装後に製品クリア確認が必要である。
+- Stage 13〜20は候補RONを配置済み。ただし13〜16・20は`place_limit`設定と製品クリア確認が必要である。
 - `design/stages/`にはCLI検証済みの候補Stage 1〜20がある。製品RONへの採用は、面ごとの設計・実機確認を経て判断する。
 
 Stage 21〜23は一覧から削除済み。データ面の次の差分は`place_limit`追加後にStage 13〜16・20へ上限値を反映すること。
 
 ### `place`
 
-- `src/resources/stone_type.rs`に`Type4`はあるが、能力登録がコメントアウトされている。
-- `keystone-lang`側には`place <direction>`と`Place(Direction)`を追加済み。
-- `src/util/script_types.rs`の`ScriptCommand`はまだ`Move / Sleep / Dig`だけ。
-- `src/resources/script_engine/keystone_executor.rs`はまだ`keystone_lang::Event`を`Move / Sleep / Dig`だけへ変換している。
-- `src/scenes/stage/systems/stone.rs`の実行アクションにも配置処理はない。
-- `ChunkGrammarConfig`、`Map`、石スポーン状態は`dig_limit`だけを持ち、`place_limit`を持たない。
+- `Type4`は`move / is_touched / is_empty / place`を明示的に持つ。
+- `ScriptCommand::Place`、Keystone/Rhai変換、`PlaceState`共有上限、配置衝突とリセットは製品実装済み。
+- `ChunkGrammarConfig`と`Map`は後方互換の`place_limit`を持つ。
 - CLIの`tools/stage_sim`には設計検証用の配置処理がある。
 
-`keystone-lang`の`feature/place-command`は`fe41c163e2795f5a39173517d1f441be5efbfc73`にあるが、製品が対応するまで依存固定しない。製品側の能力制限、`up`から`MoveDirection::Top`への変換、配置処理はWP3を独立して実装・検証する。
+`keystone-lang`は`267d9cc`へ固定済みで、`up`から`MoveDirection::Top`への変換、能力制限、配置処理は実装済みである。残るのは対象5面のデータと受入確認である。
 
 ### 複数石
 
@@ -132,7 +129,7 @@ Stage 21〜23は一覧から削除済み。データ面の次の差分は`place_
 
 対象リポジトリ: `Meowtaverse-Games/keystone-lang`
 
-進捗: 実装・単体テスト・ブランチ公開・依存固定まで完了。レビューとmainへのマージ待ち。
+進捗: `267d9cc` がmainへ統合済み。
 
 作業:
 
@@ -149,6 +146,8 @@ Stage 21〜23は一覧から削除済み。データ面の次の差分は`place_
 - 既存の`move / sleep / dig`テストが回帰しない。
 
 ### WP3 — 製品側`place`基盤
+
+進捗: PR #84で実装・Windows検証・独立レビューまで完了。以下は実装仕様の履歴であり、残作業はステージ別の受入確認である。
 
 主な所有ファイル:
 
