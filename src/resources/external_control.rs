@@ -144,6 +144,7 @@ impl ExternalControlBridge {
     }
 }
 pub struct ExternalControlServer {
+    #[cfg_attr(not(test), allow(dead_code))]
     pub address: SocketAddr,
     shutdown: Option<oneshot::Sender<()>>,
     join: Option<thread::JoinHandle<()>>,
@@ -481,6 +482,7 @@ pub fn drain_external_commands(
     }
 }
 
+#[allow(clippy::type_complexity)]
 pub fn publish_external_snapshot(
     bridge: Res<ExternalControlBridge>,
     control: Res<ExternalControlState>,

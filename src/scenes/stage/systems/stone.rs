@@ -249,7 +249,7 @@ type StoneBehaviorQuery<'w, 's> = Query<
 >;
 
 #[derive(SystemParam)]
-struct StoneOutput<'w> {
+pub(crate) struct StoneOutput<'w> {
     place_writer: MessageWriter<'w, StonePlaceRequestMessage>,
     external_outcomes: MessageWriter<'w, StoneExternalOutcomeMessage>,
 }
