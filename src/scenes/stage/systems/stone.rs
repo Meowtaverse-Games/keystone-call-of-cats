@@ -772,6 +772,7 @@ mod tests {
     use super::*;
     use crate::scenes::stage::systems::ui::ScriptEditorState;
     use bevy::{
+        asset::AssetPlugin,
         gizmos::GizmoPlugin,
         prelude::{App, Messages, Update},
     };
@@ -856,6 +857,7 @@ mod tests {
         let mut app = App::new();
         app.add_plugins((
             MinimalPlugins,
+            AssetPlugin::default(),
             TransformPlugin,
             PhysicsPlugins::default(),
             GizmoPlugin,
