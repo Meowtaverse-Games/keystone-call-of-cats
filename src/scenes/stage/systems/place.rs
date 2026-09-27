@@ -338,4 +338,59 @@ mod tests {
         assert_eq!(placed_tiles(&mut app).len(), 1);
         assert_eq!(app.world().resource::<PlaceState>().remaining, Some(0));
     }
+
+    #[test]
+    fn resolver_checks_the_snapped_center_for_an_off_center_stone() {
+        let mut app = placement_app(Some(1));
+        let (_, stone) = spawn_stage_and_stone(&mut app, 0, IVec2::new(2, 2));
+        app.world_mut()
+            .get_mut::<Transform>(stone)
+            .unwrap()
+            .translation += Vec3::new(0.35, 0.0, 0.0);
+        let target = test_metrics().cell_to_local(IVec2::new(3, 2));
+        app.world_mut().spawn((
+            RigidBody::Static,
+            Collider::rectangle(1.0, 1.0),
+            Transform::from_translation(target.extend(0.0)),
+            GlobalTransform::from(Transform::from_translation(target.extend(0.0))),
+        ));
+        app.update();
+        request_place(&mut app, stone, 0);
+        app.update();
+
+        assert!(placed_tiles(&mut app).is_empty());
+        assert_eq!(app.world().resource::<PlaceState>().remaining, Some(1));
+    }
+
+    #[test]
+    fn resolver_allows_a_block_adjacent_to_an_existing_block_edge() {
+        let mut app = placement_app(Some(2));
+        let (_, first) = spawn_stage_and_stone(&mut app, 0, IVec2::new(2, 2));
+        let (_, second) = spawn_stage_and_stone(&mut app, 1, IVec2::new(3, 2));
+        app.update();
+        request_place(&mut app, first, 0);
+        app.update();
+        request_place(&mut app, second, 1);
+        app.update();
+
+        assert_eq!(placed_tiles(&mut app).len(), 2);
+        assert_eq!(app.world().resource::<PlaceState>().remaining, Some(0));
+    }
+
+    #[test]
+    fn resolver_allows_replacing_a_dug_placed_block_without_refunding_budget() {
+        let mut app = placement_app(Some(2));
+        let (_, stone) = spawn_stage_and_stone(&mut app, 0, IVec2::new(2, 2));
+        app.update();
+        request_place(&mut app, stone, 0);
+        app.update();
+        let block = placed_tiles(&mut app)[0];
+        app.world_mut().despawn(block);
+        app.update();
+        request_place(&mut app, stone, 0);
+        app.update();
+
+        assert_eq!(placed_tiles(&mut app).len(), 1);
+        assert_eq!(app.world().resource::<PlaceState>().remaining, Some(0));
+    }
 }
