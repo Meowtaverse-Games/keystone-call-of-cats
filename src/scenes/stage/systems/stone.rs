@@ -775,8 +775,8 @@ mod tests {
         asset::AssetPlugin,
         gizmos::GizmoPlugin,
         prelude::{App, Messages, Update},
-        time::TimeUpdateStrategy,
     };
+    use bevy_ecs::system::RunSystemOnce;
 
     #[derive(Resource, Default)]
     struct ExternalOutcomes(Vec<StoneExternalOutcomeMessage>);
@@ -857,28 +857,20 @@ mod tests {
     fn external_dig_at_zero_limit_reports_blocked_after_execution() {
         let mut app = App::new();
         app.add_plugins((
-            MinimalPlugins,
             AssetPlugin::default(),
             TransformPlugin,
             PhysicsPlugins::default(),
             GizmoPlugin,
         ))
+        .insert_resource(Time::default())
         .insert_resource(StageAudioHandles::new(Handle::default(), Handle::default()))
         .init_resource::<StageAudioState>()
         .insert_resource(GameSettings::default())
         .insert_resource(crate::resources::launch_profile::LaunchProfile::default())
-        .insert_resource(TimeUpdateStrategy::ManualDuration(Duration::ZERO))
         .add_message::<StoneTickMessage>()
         .add_message::<StonePlaceRequestMessage>()
         .add_message::<StoneExternalOutcomeMessage>()
-        .init_resource::<ExternalOutcomes>()
-        .add_systems(
-            Update,
-            (
-                update_stone_behavior,
-                collect_external_outcomes.after(update_stone_behavior),
-            ),
-        );
+        .init_resource::<ExternalOutcomes>();
 
         let stone = app
             .world_mut()
@@ -898,12 +890,23 @@ mod tests {
             ))
             .id();
 
-        app.update();
+        app.world_mut()
+            .run_system_once(update_stone_behavior)
+            .unwrap();
+        app.world_mut()
+            .run_system_once(collect_external_outcomes)
+            .unwrap();
         assert!(app.world().resource::<ExternalOutcomes>().0.is_empty());
 
-        *app.world_mut().resource_mut::<TimeUpdateStrategy>() =
-            TimeUpdateStrategy::ManualDuration(Duration::from_millis(100));
-        app.update();
+        app.world_mut()
+            .resource_mut::<Time>()
+            .advance_by(Duration::from_millis(100));
+        app.world_mut()
+            .run_system_once(update_stone_behavior)
+            .unwrap();
+        app.world_mut()
+            .run_system_once(collect_external_outcomes)
+            .unwrap();
 
         assert!(
             app.world()
