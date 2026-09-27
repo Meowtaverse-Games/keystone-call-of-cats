@@ -651,7 +651,23 @@ impl Drop for RhaiScriptProgram {
 mod tests {
     use super::*;
     use crate::util::script_types::MoveDirection;
-    use std::thread;
+    use std::{thread, time::Instant};
+
+    fn next_command_within(
+        program: &mut dyn ScriptProgram,
+        state: &ScriptState,
+    ) -> Option<ScriptCommand> {
+        let deadline = Instant::now() + Duration::from_millis(100);
+        loop {
+            if let Some(command) = program.next(state) {
+                return Some(command);
+            }
+            if Instant::now() >= deadline {
+                return None;
+            }
+            thread::yield_now();
+        }
+    }
 
     #[test]
     fn touched_reflects_latest_state_between_steps() {
@@ -666,8 +682,8 @@ mod tests {
             ScriptStateValue::Bool(true),
         );
 
-        // First tick should see `touched = true` and emit a move command.
-        let command = program.next(&touched_state);
+        // `next` is a non-blocking poll; wait for the worker to receive this state update.
+        let command = next_command_within(&mut *program, &touched_state);
         match command {
             Some(ScriptCommand::Move(MoveDirection::Down)) => {}
             other => panic!("expected move down, got {other:?}"),
@@ -716,7 +732,7 @@ mod tests {
             ScriptStateValue::Bool(true),
         );
         assert!(matches!(
-            program.next(&touched_state),
+            next_command_within(&mut *program, &touched_state),
             Some(ScriptCommand::Move(MoveDirection::Right))
         ));
 
