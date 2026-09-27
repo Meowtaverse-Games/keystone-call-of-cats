@@ -431,10 +431,12 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                                 if let (Some(control), Some(bridge)) =
                                     (external_control.as_deref_mut(), external_bridge.as_deref())
                                 {
-                                    control.cancel_for_human(bridge);
+                                    crate::resources::external_control::stop_for_human(
+                                        control,
+                                        bridge,
+                                        &mut editor,
+                                    );
                                 }
-                                editor.controls_enabled = false;
-                                editor.pending_player_reset = true;
                                 editor.last_run_feedback = Some(tr(&localization, "stage-ui-feedback-stopped"));
                                 editor.stage_cleared = false;
                                 editor.stage_clear_popup_open = false;

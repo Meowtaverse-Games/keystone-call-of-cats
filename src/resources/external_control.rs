@@ -113,6 +113,16 @@ impl ExternalControlState {
         }
     }
 }
+
+pub(crate) fn stop_for_human(
+    control: &mut ExternalControlState,
+    bridge: &ExternalControlBridge,
+    editor: &mut ScriptEditorState,
+) {
+    control.cancel_for_human(bridge);
+    editor.controls_enabled = false;
+    editor.pending_player_reset = true;
+}
 impl ExternalControlBridge {
     fn put(&self, r: ActionRecord) {
         let mut q = self.records.lock().unwrap();
@@ -825,5 +835,66 @@ mod tests {
             .unwrap();
         // Keep the request body incomplete: server shutdown must still join.
         server.stop();
+    }
+
+    #[test]
+    fn external_start_rejects_an_active_script_without_resetting_it() {
+        let (mut app, bridge) = ecs_app();
+        stone(&mut app, 0);
+        app.world_mut()
+            .resource_mut::<ScriptEditorState>()
+            .controls_enabled = true;
+        bridge.submit(0, ExternalRequest::Start).unwrap();
+        app.update();
+        assert!(app.world().resource::<ScriptEditorState>().controls_enabled);
+        assert!(
+            !app.world()
+                .resource::<ScriptEditorState>()
+                .pending_player_reset
+        );
+        assert_eq!(
+            bridge
+                .records
+                .lock()
+                .unwrap()
+                .0
+                .back()
+                .unwrap()
+                .detail
+                .as_deref(),
+            Some("script_session_active")
+        );
+    }
+
+    #[test]
+    fn human_stop_cancels_external_work_and_requests_the_existing_reset() {
+        let bridge = bridge(1);
+        let mut control = ExternalControlState {
+            generation: 4,
+            owner: true,
+            active: HashMap::from([(0, (9, 4, true))]),
+        };
+        let mut editor = ScriptEditorState {
+            controls_enabled: true,
+            ..default()
+        };
+        stop_for_human(&mut control, &bridge, &mut editor);
+        assert!(!control.owner);
+        assert_eq!(control.generation, 5);
+        assert!(control.active.is_empty());
+        assert!(!editor.controls_enabled);
+        assert!(editor.pending_player_reset);
+        assert_eq!(
+            bridge
+                .records
+                .lock()
+                .unwrap()
+                .0
+                .back()
+                .unwrap()
+                .detail
+                .as_deref(),
+            Some("human_stopped")
+        );
     }
 }
