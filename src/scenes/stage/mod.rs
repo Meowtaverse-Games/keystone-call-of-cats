@@ -21,6 +21,11 @@ impl Plugin for StageScenePlugin {
             .add_message::<systems::StonePlaceRequestMessage>()
             .add_systems(OnEnter(GameState::Stage), systems::setup)
             .add_systems(
+                OnEnter(GameState::Stage),
+                crate::resources::external_control::invalidate_external_generation
+                    .run_if(resource_exists::<crate::resources::external_control::ExternalControlState>),
+            )
+            .add_systems(
                 Update,
                 tick_pending_tutorial.run_if(in_state(GameState::Stage)),
             )
@@ -31,6 +36,13 @@ impl Plugin for StageScenePlugin {
             )
             .add_systems(OnExit(GameState::Stage), systems::cleanup)
             // Input: メッセージの受信、UI入力
+            .add_systems(
+                Update,
+                crate::resources::external_control::drain_external_commands
+                    .in_set(systems::StageSystemSet::Input)
+                    .run_if(resource_exists::<crate::resources::external_control::ExternalControlBridge>)
+                    .run_if(in_state(GameState::Stage)),
+            )
             .add_systems(
                 Update,
                 (
@@ -46,6 +58,13 @@ impl Plugin for StageScenePlugin {
                 Update,
                 systems::tick_script_program
                     .in_set(systems::StageSystemSet::Script)
+                    .run_if(in_state(GameState::Stage)),
+            )
+            .add_systems(
+                Update,
+                crate::resources::external_control::publish_external_snapshot
+                    .after(systems::update_stone_behavior)
+                    .run_if(resource_exists::<crate::resources::external_control::ExternalControlBridge>)
                     .run_if(in_state(GameState::Stage)),
             )
             // Reset: リセット処理

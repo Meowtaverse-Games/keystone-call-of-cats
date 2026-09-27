@@ -24,6 +24,10 @@ pub struct LaunchProfile {
     /// An opt-in, machine-readable launch check for CI. This never enables itself
     /// for normal player launches.
     pub ci_smoke_report: Option<PathBuf>,
+    pub external_control: bool,
+    pub external_control_port: Option<u16>,
+    /// Read once from KEYSTONE_EXTERNAL_CONTROL_TOKEN; never printed in the profile.
+    pub external_control_token: Option<String>,
 }
 
 impl LaunchProfile {
@@ -62,6 +66,21 @@ impl LaunchProfile {
                 "--ci-smoke" => {
                     launch_profile.ci_smoke_requested = true;
                     changed = true;
+                }
+                "--external-control" => {
+                    launch_profile.external_control = true;
+                    launch_profile.external_control_token =
+                        std::env::var("KEYSTONE_EXTERNAL_CONTROL_TOKEN")
+                            .ok()
+                            .filter(|v| !v.is_empty());
+                    changed = true;
+                }
+                "--external-control-port" => {
+                    if let Some(value) = args.get(index + 1).and_then(|v| v.parse().ok()) {
+                        launch_profile.external_control_port = Some(value);
+                        index += 1;
+                        changed = true;
+                    }
                 }
                 "--ci-smoke-report" => {
                     if let Some(path) = args.get(index + 1) {
