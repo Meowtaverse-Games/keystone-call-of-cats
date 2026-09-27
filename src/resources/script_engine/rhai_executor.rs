@@ -689,9 +689,12 @@ mod tests {
     #[test]
     fn reports_a_runtime_error_when_a_disallowed_branch_becomes_reachable() {
         let executor = RhaiScriptExecutor::new();
-        let type1 = allowed(&["move", "sleep"]);
+        let type2_without_dig = allowed(&["move", "sleep", "is_touched"]);
         let mut program = executor
-            .compile_step(r#"loop { if is_touched() { dig("down"); } }"#, Some(&type1))
+            .compile_step(
+                r#"loop { if is_touched() { dig("down"); } }"#,
+                Some(&type2_without_dig),
+            )
             .expect("an unreachable branch can pass Rhai preflight");
 
         let mut untouched_state = ScriptState::default();
