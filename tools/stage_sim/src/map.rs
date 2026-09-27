@@ -139,16 +139,21 @@ pub struct GeneratedMap {
     pub stone_adjustments: Vec<(f32, f32)>,
     pub selected_chunks: Vec<String>,
     pub tiles: HashMap<(i32, i32), TileKind>,
+    stone_positions: Vec<(i32, i32)>,
 }
 
 impl GeneratedMap {
     pub fn positions(&self, kind: TileKind) -> Vec<(i32, i32)> {
+        if kind == TileKind::Stone {
+            return self.stone_positions.clone();
+        }
+
         let mut positions = self
             .tiles
             .iter()
             .filter_map(|(position, value)| (*value == kind).then_some(*position))
             .collect::<Vec<_>>();
-        positions.sort_by_key(|(x, y)| (*y, *x));
+        positions.sort_unstable();
         positions
     }
 }
@@ -198,6 +203,13 @@ pub fn generate(config: &StageConfig, seed: u64) -> Result<GeneratedMap> {
 
     adjust_goal_layout(&mut placed, margin.1);
 
+    let stone_positions = placed
+        .iter()
+        .flat_map(|chunk| &chunk.tiles)
+        .filter(|tile| tile.kind == TileKind::Stone)
+        .map(|tile| (tile.x, tile.y))
+        .collect();
+
     let mut tiles = build_margin_tiles(margin);
     for chunk in &placed {
         for tile in &chunk.tiles {
@@ -220,6 +232,7 @@ pub fn generate(config: &StageConfig, seed: u64) -> Result<GeneratedMap> {
             .unwrap_or_default(),
         selected_chunks: placed.iter().map(|chunk| chunk.id.clone()).collect(),
         tiles,
+        stone_positions,
     })
 }
 
@@ -608,5 +621,17 @@ mod tests {
         let b = generate(&config, 42).unwrap();
         assert_eq!(a.tiles, b.tiles);
         assert_eq!(a.selected_chunks, b.selected_chunks);
+    }
+
+    #[test]
+    fn preserves_stone_order_from_the_ron_chunk() {
+        let map = generate(
+            &parse_stage(include_str!("../tests/fixtures/two_stones_scan_order.ron")).unwrap(),
+            0,
+        )
+        .unwrap();
+
+        // The upper stone is index 0, just as the product scans each RON row before lower rows.
+        assert_eq!(map.positions(TileKind::Stone), vec![(14, 12), (3, 1)]);
     }
 }
