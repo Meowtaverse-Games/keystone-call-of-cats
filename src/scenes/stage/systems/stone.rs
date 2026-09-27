@@ -775,6 +775,7 @@ mod tests {
         asset::AssetPlugin,
         gizmos::GizmoPlugin,
         prelude::{App, Messages, Update},
+        time::TimeUpdateStrategy,
     };
 
     #[derive(Resource, Default)]
@@ -866,6 +867,7 @@ mod tests {
         .init_resource::<StageAudioState>()
         .insert_resource(GameSettings::default())
         .insert_resource(crate::resources::launch_profile::LaunchProfile::default())
+        .insert_resource(TimeUpdateStrategy::ManualDuration(Duration::ZERO))
         .add_message::<StoneTickMessage>()
         .add_message::<StonePlaceRequestMessage>()
         .add_message::<StoneExternalOutcomeMessage>()
@@ -899,9 +901,8 @@ mod tests {
         app.update();
         assert!(app.world().resource::<ExternalOutcomes>().0.is_empty());
 
-        app.world_mut()
-            .resource_mut::<Time>()
-            .advance_by(Duration::from_millis(100));
+        *app.world_mut().resource_mut::<TimeUpdateStrategy>() =
+            TimeUpdateStrategy::ManualDuration(Duration::from_millis(100));
         app.update();
 
         assert!(
