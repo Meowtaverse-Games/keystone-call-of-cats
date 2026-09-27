@@ -753,3 +753,57 @@ pub fn update_stage_color_grading(
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::resources::{
+        external_control::{self, ExternalControlState},
+        launch_profile::LaunchProfile,
+    };
+
+    #[test]
+    fn reload_system_invalidates_external_ownership_before_rebuilding_the_stage() {
+        let profile = LaunchProfile {
+            external_control: true,
+            external_control_port: Some(0),
+            external_control_token: Some("test-token".into()),
+            ..LaunchProfile::default()
+        };
+        let (bridge, receiver, server) = external_control::start(&profile).unwrap().unwrap();
+        let mut progression = StageProgressionState::default();
+        progression.select_stage(&StageMeta {
+            id: StageId(1),
+            title: "Stage 1".into(),
+            unlocked: true,
+        });
+
+        let mut app = App::new();
+        app.add_plugins(AssetPlugin::default())
+            .init_asset::<TextureAtlasLayout>()
+            .insert_resource(AssetStore::default())
+            .insert_resource(ScaledViewport::new(Vec2::ONE))
+            .insert_resource(LetterboxOffsets::default())
+            .insert_resource(TiledMapAssets {
+                tileset: crate::resources::tiled::Tileset { image: None },
+            })
+            .insert_resource(Localization::new())
+            .insert_resource(progression)
+            .insert_resource(bridge)
+            .insert_resource(receiver)
+            .insert_resource(ExternalControlState {
+                generation: 9,
+                owner: true,
+                ..ExternalControlState::default()
+            });
+
+        app.world_mut()
+            .run_system_once(reload_stage_if_needed)
+            .unwrap();
+
+        let control = app.world().resource::<ExternalControlState>();
+        assert_eq!(control.generation, 10);
+        assert!(!control.owner);
+        server.stop();
+    }
+}

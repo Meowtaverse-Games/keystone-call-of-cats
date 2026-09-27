@@ -734,7 +734,7 @@ pub(crate) fn invalidate_external_state(
 mod tests {
     use super::*;
     use crate::scenes::stage::components::StoneRune;
-    use bevy::prelude::{App, Messages, Update};
+    use bevy::prelude::{App, Messages, RunSystemOnce, Transform, TransformPlugin, Update};
     fn bridge(capacity: usize) -> ExternalControlBridge {
         let (ingress, receiver) = std::sync::mpsc::sync_channel(capacity);
         // Keep the consumer endpoint alive: these tests exercise a full queue,
@@ -836,6 +836,72 @@ mod tests {
         headers.insert(header::AUTHORIZATION, "Bearer secret".parse().unwrap());
         headers.insert(header::ORIGIN, "http://localhost".parse().unwrap());
         assert!(auth(&headers, &state).is_err());
+    }
+
+    #[test]
+    fn title_session_start_is_rejected_before_a_stage_is_active() {
+        let http = Http {
+            bridge: bridge(1),
+            token: Arc::from("secret"),
+        };
+        let mut headers = HeaderMap::new();
+        headers.insert(header::AUTHORIZATION, "Bearer secret".parse().unwrap());
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        let error = runtime
+            .block_on(session(State(http), headers, Path("start".to_string())))
+            .unwrap_err();
+        assert_eq!(error.0, 409);
+        assert_eq!(error.1, "no_active_stage");
+    }
+
+    #[test]
+    fn snapshot_uses_parented_world_position_and_ignores_player_as_a_wall() {
+        let mut app = App::new();
+        app.add_plugins((TransformPlugin, avian2d::prelude::PhysicsPlugins::default()))
+            .insert_resource(bridge(MAX_INGRESS))
+            .init_resource::<ExternalControlState>()
+            .init_resource::<StageProgressionState>();
+        let root = app
+            .world_mut()
+            .spawn(Transform::from_xyz(100.0, 200.0, 0.0).with_scale(Vec3::splat(2.0)))
+            .id();
+        let stone = app
+            .world_mut()
+            .spawn((
+                StoneRune,
+                StoneIndex(0),
+                StoneType::Type1,
+                Transform::from_xyz(16.0, 0.0, 0.0),
+                GlobalTransform::default(),
+                StoneCommandState::default(),
+                DigLimit(None),
+            ))
+            .id();
+        app.world_mut().entity_mut(root).add_child(stone);
+        app.world_mut().spawn((
+            Player,
+            Transform::from_xyz(196.0, 200.0, 0.0),
+            GlobalTransform::default(),
+            avian2d::prelude::RigidBody::Static,
+            avian2d::prelude::Collider::circle(16.0),
+            avian2d::prelude::CollidingEntities::default(),
+        ));
+        app.update();
+        app.world_mut()
+            .run_system_once(publish_external_snapshot)
+            .unwrap();
+
+        let bridge = app.world().resource::<ExternalControlBridge>();
+        let snapshot = bridge.snapshot.lock().unwrap();
+        let stone = snapshot.stones.first().unwrap();
+        assert_eq!((stone.x, stone.y), (132.0, 200.0));
+        assert!(
+            stone.is_empty.right,
+            "a player must not make a direction occupied"
+        );
     }
 
     #[test]

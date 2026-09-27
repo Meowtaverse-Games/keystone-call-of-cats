@@ -937,4 +937,66 @@ mod tests {
             Some(Some(0))
         );
     }
+
+    #[test]
+    fn two_external_digs_for_a_vanished_shared_target_are_blocked_without_charging() {
+        let mut app = App::new();
+        app.add_plugins((
+            AssetPlugin::default(),
+            TransformPlugin,
+            PhysicsPlugins::default(),
+            GizmoPlugin,
+        ))
+        .insert_resource(Time::<()>::default())
+        .insert_resource(StageAudioHandles::new(Handle::default(), Handle::default()))
+        .init_resource::<StageAudioState>()
+        .insert_resource(GameSettings::default())
+        .insert_resource(crate::resources::launch_profile::LaunchProfile::default())
+        .add_message::<StoneTickMessage>()
+        .add_message::<StonePlaceRequestMessage>()
+        .add_message::<StoneExternalOutcomeMessage>()
+        .init_resource::<ExternalOutcomes>();
+
+        let target = app.world_mut().spawn(StageTile).id();
+        let mut finished = Timer::from_seconds(0.5, TimerMode::Once);
+        finished.tick(Duration::from_secs(1));
+        for (index, action_id) in [(0, 101), (1, 102)] {
+            app.world_mut().spawn((
+                StoneRune,
+                StoneIndex(index),
+                StoneCommandState {
+                    current: Some(StoneAction::Dig(finished.clone(), target, false)),
+                    external_action_id: Some(action_id),
+                    ..default()
+                },
+                Transform::default(),
+                GlobalTransform::default(),
+                LinearVelocity::default(),
+                StoneMotion::default(),
+                DigLimit(Some(1)),
+            ));
+        }
+
+        app.world_mut()
+            .run_system_once(update_stone_behavior)
+            .unwrap();
+        app.world_mut()
+            .run_system_once(collect_external_outcomes)
+            .unwrap();
+
+        let outcomes = &app.world().resource::<ExternalOutcomes>().0;
+        assert!(
+            outcomes
+                .iter()
+                .any(|outcome| outcome.action_id == 101 && outcome.blocked)
+        );
+        assert!(
+            outcomes
+                .iter()
+                .any(|outcome| outcome.action_id == 102 && outcome.blocked)
+        );
+        let world = app.world_mut();
+        let mut limits = world.query::<&DigLimit>();
+        assert!(limits.iter(world).all(|limit| limit.0 == Some(1)));
+    }
 }
