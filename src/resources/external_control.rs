@@ -338,8 +338,28 @@ pub fn drain_external_commands(
     mut control: ResMut<ExternalControlState>,
     mut editor: ResMut<ScriptEditorState>,
     mut append: MessageWriter<StoneAppendCommandMessage>,
+    mut outcomes: MessageReader<crate::scenes::stage::systems::StoneExternalOutcomeMessage>,
     mut stones: Query<(&StoneIndex, &StoneType, &mut StoneCommandState), With<StoneRune>>,
 ) {
+    for outcome in outcomes.read() {
+        if let Some((&stone, &(_, generation, _))) = control
+            .active
+            .iter()
+            .find(|(_, value)| value.0 == outcome.action_id)
+        {
+            control.active.remove(&stone);
+            bridge.finish(
+                outcome.action_id,
+                generation,
+                if outcome.blocked {
+                    "blocked"
+                } else {
+                    "complete"
+                },
+                None,
+            );
+        }
+    }
     while let Ok(request) = receiver.0.try_recv() {
         if request.generation != control.generation {
             bridge.finish(
@@ -428,6 +448,7 @@ pub fn drain_external_commands(
                     append.write(StoneAppendCommandMessage {
                         stone_index: stone,
                         command,
+                        external_action_id: Some(request.id),
                     });
                     control
                         .active
@@ -435,29 +456,6 @@ pub fn drain_external_commands(
                     bridge.finish(request.id, control.generation, "running", None);
                 }
             }
-        }
-    }
-    let done: Vec<_> = control
-        .active
-        .iter()
-        .filter_map(|(&stone, &(id, generation, started))| {
-            stones
-                .iter()
-                .find(|(index, _, _)| index.0 == stone)
-                .filter(|(_, _, state)| started && !state.is_busy())
-                .map(|_| (stone, id, generation))
-        })
-        .collect();
-    for (stone, id, generation) in done {
-        control.active.remove(&stone);
-        bridge.finish(id, generation, "complete", None);
-    }
-    for (&stone, entry) in &mut control.active {
-        if stones
-            .iter()
-            .any(|(index, _, state)| index.0 == stone && state.is_busy())
-        {
-            entry.2 = true;
         }
     }
 }

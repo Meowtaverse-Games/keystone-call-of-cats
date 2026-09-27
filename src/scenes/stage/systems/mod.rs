@@ -40,9 +40,10 @@ pub use obstacle::*;
 pub use place::{PlaceState, StageGridMetrics, reset_placed_tiles, resolve_place_requests};
 pub use player::*;
 pub use stone::{
-    StoneAppendCommandMessage, StoneCommandMessage, StonePlaceRequestMessage, StoneTickMessage,
-    carry_riders_with_stone, handle_stone_append_messages, handle_stone_messages,
-    reset_stone_position, update_stone_behavior,
+    StoneAppendCommandMessage, StoneCommandMessage, StoneExternalOutcomeMessage,
+    StonePlaceRequestMessage, StoneTickMessage, carry_riders_with_stone,
+    handle_stone_append_messages, handle_stone_messages, reset_stone_position,
+    update_stone_behavior,
 };
 use ui::{ScriptEditorState, StageTutorialOverlay};
 pub use ui::{handle_tutorial_overlay_input, tick_script_program, ui};

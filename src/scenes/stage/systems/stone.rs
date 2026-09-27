@@ -21,6 +21,13 @@ pub struct StoneCommandMessage {
 pub struct StoneAppendCommandMessage {
     pub stone_index: usize,
     pub command: ScriptCommand,
+    pub external_action_id: Option<u64>,
+}
+
+#[derive(Message, Clone)]
+pub struct StoneExternalOutcomeMessage {
+    pub action_id: u64,
+    pub blocked: bool,
 }
 
 #[derive(Message, Clone)]
@@ -39,6 +46,7 @@ pub(crate) struct StoneCommandState {
     current: Option<StoneAction>,
     cooldown: Timer,
     pub step_size: f32, // Dynamic step size based on map scale
+    external_action_id: Option<u64>,
 }
 
 impl Default for StoneCommandState {
@@ -48,6 +56,7 @@ impl Default for StoneCommandState {
             current: None,
             cooldown: Timer::from_seconds(0.0, TimerMode::Once),
             step_size: 32.0,
+            external_action_id: None,
         }
     }
 }
@@ -81,6 +90,7 @@ struct MoveCommandProgress {
 enum StoneAction {
     Move(MoveCommandProgress),
     Sleep(Timer),
+    Blocked(Timer),
     Dig(Timer, Entity),
     Place(MoveDirection),
 }
@@ -205,12 +215,13 @@ pub fn handle_stone_append_messages(
     for msg in reader.read() {
         // Consume already-emitted commands after a script error. Reset runs after Script in
         // the current frame, while these messages are read next frame in Input.
-        if !editor.controls_enabled {
+        if !editor.controls_enabled && msg.external_action_id.is_none() {
             continue;
         }
         for (stone_idx, mut state) in query.iter_mut() {
             if stone_idx.0 == msg.stone_index {
                 state.queue.push_back(msg.command.clone());
+                state.external_action_id = msg.external_action_id;
                 if matches!(msg.command, ScriptCommand::Move(_)) {
                     state.queue.push_back(ScriptCommand::Sleep(0.0001));
                 }
@@ -254,6 +265,7 @@ pub fn update_stone_behavior(
     spatial: SpatialQuery,
     mut stone_moved_writer: MessageWriter<StoneTickMessage>,
     mut place_writer: MessageWriter<StonePlaceRequestMessage>,
+    mut external_outcomes: MessageWriter<StoneExternalOutcomeMessage>,
 ) {
     if query.is_empty() {
         audio_state.stop_push_loop(&mut commands);
@@ -312,7 +324,7 @@ pub fn update_stone_behavior(
                     if path_blocked {
                         // Path is blocked - skip this move, just do a tiny pause
                         info!("Move blocked by tile, skipping");
-                        StoneAction::Sleep(Timer::from_seconds(0.05, TimerMode::Once))
+                        StoneAction::Blocked(Timer::from_seconds(0.05, TimerMode::Once))
                     } else {
                         let offset = Vec3::new(dir.x, dir.y, 0.0) * state.step_size;
                         let velocity = offset.truncate() / STONE_MOVE_DURATION;
@@ -467,6 +479,12 @@ pub fn update_stone_behavior(
                         stone_moved_writer.write(StoneTickMessage);
                     }
                 }
+                StoneAction::Blocked(timer) => {
+                    if timer.tick(time.delta()).is_finished() {
+                        velocity.0 = Vec2::ZERO;
+                        stop_current = true;
+                    }
+                }
                 StoneAction::Dig(timer, entity) => {
                     if timer.tick(time.delta()).is_finished() {
                         if let Some(count) = dig_limit.0 {
@@ -501,7 +519,11 @@ pub fn update_stone_behavior(
         }
 
         if stop_current {
+            let blocked = matches!(state.current, Some(StoneAction::Blocked(_)));
             state.current = None;
+            if let Some(action_id) = state.external_action_id.take() {
+                external_outcomes.write(StoneExternalOutcomeMessage { action_id, blocked });
+            }
             // Start cooldown
             state.cooldown = Timer::from_seconds(STONE_ACTION_COOLDOWN, TimerMode::Once);
         }
@@ -752,6 +774,7 @@ mod tests {
             .write(StoneAppendCommandMessage {
                 stone_index: 0,
                 command: ScriptCommand::Move(MoveDirection::Right),
+                external_action_id: None,
             });
 
         app.update();

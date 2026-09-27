@@ -17,6 +17,7 @@ impl Plugin for StageScenePlugin {
         app.init_resource::<systems::StageProgressionState>()
             .add_message::<systems::StoneCommandMessage>()
             .add_message::<systems::StoneAppendCommandMessage>()
+            .add_message::<systems::StoneExternalOutcomeMessage>()
             .add_message::<systems::StoneTickMessage>()
             .add_message::<systems::StonePlaceRequestMessage>()
             .add_systems(OnEnter(GameState::Stage), systems::setup)
