@@ -687,4 +687,40 @@ mod tests {
             );
         }
     }
+
+    #[test]
+    fn touched_loop_waits_then_moves_right_until_contact_ends() {
+        let executor = RhaiScriptExecutor::new();
+        let mut program = executor
+            .compile_step(r#"loop { if is_touched() { move("right"); } }"#, None)
+            .expect("script should compile");
+
+        let mut untouched_state = ScriptState::default();
+        untouched_state.insert(
+            PLAYER_TOUCHED_STATE_KEY.to_string(),
+            ScriptStateValue::Bool(false),
+        );
+
+        // The worker stays alive while the player takes time to reach the stone.
+        for _ in 0..5 {
+            thread::sleep(Duration::from_millis(2));
+            assert!(program.next(&untouched_state).is_none());
+        }
+
+        let mut touched_state = ScriptState::default();
+        touched_state.insert(
+            PLAYER_TOUCHED_STATE_KEY.to_string(),
+            ScriptStateValue::Bool(true),
+        );
+        assert!(matches!(
+            program.next(&touched_state),
+            Some(ScriptCommand::Move(MoveDirection::Right))
+        ));
+
+        // After stepping off, the same running loop must not emit another move.
+        for _ in 0..5 {
+            thread::sleep(Duration::from_millis(2));
+            assert!(program.next(&untouched_state).is_none());
+        }
+    }
 }

@@ -34,11 +34,16 @@ for stage_id in $(seq 1 20); do
   "${stage_sim[@]}" analyze "$stage_id" --stages-dir assets/stages >/dev/null
 done
 
-for stage_id in $(seq 1 12) 17 18 19; do
+for stage_id in $(seq 1 7) 9 10 11 12 17 18 19; do
   if ! cmp -s "design/stages/stage-${stage_id}.ron" "assets/stages/stage-${stage_id}.ron"; then
     echo "product Stage $stage_id differs from the fixed design baseline" >&2
     exit 1
   fi
 done
 
-echo "product stage catalog: 20 entries parsed; fixed existing-ability stages match the design baseline"
+if ! cmp -s "design/prototypes/stage-8-playful-v1.ron" "assets/stages/stage-8.ron"; then
+  echo "product Stage 8 differs from the Stage 8 playful prototype" >&2
+  exit 1
+fi
+
+echo "product stage catalog: 20 entries parsed; fixed baselines and the Stage 8 playful prototype match"
