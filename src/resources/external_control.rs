@@ -129,17 +129,23 @@ impl ExternalControlBridge {
             status: "queued".into(),
             detail: None,
         };
+        // Publish before sending so a fast game frame cannot overwrite a terminal
+        // outcome with a stale `queued` record.
+        self.put(r.clone());
         match self.ingress.try_send(ExternalCommand {
             id,
             generation,
             request,
         }) {
-            Ok(()) => {
-                self.put(r.clone());
-                Ok(r)
+            Ok(()) => Ok(r),
+            Err(TrySendError::Full(_)) => {
+                self.finish(id, generation, "rejected", Some("queue_full".into()));
+                Err(ApiError(429, "queue_full"))
             }
-            Err(TrySendError::Full(_)) => Err(ApiError(429, "queue_full")),
-            Err(TrySendError::Disconnected(_)) => Err(ApiError(503, "server_stopped")),
+            Err(TrySendError::Disconnected(_)) => {
+                self.finish(id, generation, "rejected", Some("server_stopped".into()));
+                Err(ApiError(503, "server_stopped"))
+            }
         }
     }
 }
@@ -403,25 +409,27 @@ pub fn drain_external_commands(
             }
             ExternalRequest::Stop => {
                 control.owner = false;
+                control.generation = control.generation.wrapping_add(1);
                 for (_, _, mut state) in &mut stones {
                     state.clear_commands();
                 }
                 for (_, (id, generation, _)) in control.active.drain() {
                     bridge.finish(id, generation, "rejected", Some("session_stopped".into()));
                 }
-                bridge.finish(request.id, control.generation, "complete", None);
+                bridge.finish(request.id, request.generation, "complete", None);
             }
             ExternalRequest::Reset => {
                 editor.controls_enabled = false;
                 editor.active_programs.clear();
                 editor.pending_player_reset = true;
+                control.generation = control.generation.wrapping_add(1);
                 for (_, (id, generation, _)) in control.active.drain() {
                     bridge.finish(id, generation, "rejected", Some("reset".into()));
                 }
                 for (_, _, mut state) in &mut stones {
                     state.clear_commands();
                 }
-                bridge.finish(request.id, control.generation, "complete", None);
+                bridge.finish(request.id, request.generation, "complete", None);
             }
             ExternalRequest::Command { stone, command } => {
                 let Some((_, kind, state)) =
