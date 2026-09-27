@@ -112,10 +112,6 @@ impl StageProgressionState {
             false
         }
     }
-
-    pub fn has_pending_reload(&self) -> bool {
-        self.pending_reload
-    }
 }
 
 type StageCleanupFilter = Or<(

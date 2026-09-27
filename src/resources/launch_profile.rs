@@ -215,7 +215,7 @@ mod tests {
     fn debug_output_redacts_external_control_token() {
         let profile = LaunchProfile {
             external_control_token: Some("token-that-must-not-be-logged".into()),
-            ..default()
+            ..LaunchProfile::default()
         };
         let output = format!("{profile:?}");
         assert!(!output.contains("token-that-must-not-be-logged"));
