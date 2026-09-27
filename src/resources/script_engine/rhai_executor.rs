@@ -544,6 +544,9 @@ const MAX_EXPR_DEPTH: usize = 64; // max expression depth
 const MAX_CALL_LEVELS: usize = 32; // max call stack depth
 const MAX_COMMANDS: usize = 5_000; // cap recorded commands to prevent OOM
 const STREAM_CHANNEL_SIZE: usize = 1; // backpressure so scripts yield one step at a time
+// A state update may resume only a worker already waiting for that update. Keeping a permit here
+// would let an earlier `is_touched = true` observation emit a move after contact has ended.
+const RESUME_CHANNEL_SIZE: usize = 0;
 
 // --------- Step program implementation ---------
 struct RhaiScriptProgram {
@@ -561,7 +564,7 @@ impl RhaiScriptProgram {
     ) -> Result<Self, ScriptExecutionError> {
         let (sender, receiver) = mpsc::sync_channel::<ScriptCommand>(STREAM_CHANNEL_SIZE);
         let stop_flag = Arc::new(AtomicBool::new(false));
-        let (resume_tx, resume_rx) = mpsc::sync_channel::<()>(1);
+        let (resume_tx, resume_rx) = mpsc::sync_channel::<()>(RESUME_CHANNEL_SIZE);
         let resume_rx = Arc::new(Mutex::new(resume_rx));
         let shared_state = SharedScriptState::default();
 
