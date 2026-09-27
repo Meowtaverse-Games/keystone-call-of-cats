@@ -5,7 +5,7 @@ use crate::{
         stone_type::{StoneCapabilities, StoneType},
     },
     scenes::stage::{
-        components::{DigLimit, StoneIndex, StoneRune},
+        components::{DigLimit, Player, StageTile, StoneIndex, StoneRune},
         systems::{
             PlaceState, ScriptEditorState, StageProgressionState, StoneAppendCommandMessage,
             StoneCommandState,
@@ -70,6 +70,15 @@ pub struct StoneSnapshot {
     pub queued: usize,
     pub dig_remaining: Option<u32>,
     pub place_remaining: Option<u32>,
+    pub touched: bool,
+    pub is_empty: DirectionalEmpty,
+}
+#[derive(Clone, Debug, Serialize)]
+pub struct DirectionalEmpty {
+    pub up: bool,
+    pub down: bool,
+    pub left: bool,
+    pub right: bool,
 }
 #[derive(Clone, Debug, Serialize)]
 pub struct ActionRecord {
@@ -475,6 +484,7 @@ pub fn publish_external_snapshot(
     place: Option<Res<PlaceState>>,
     stones: Query<
         (
+            Entity,
             &StoneIndex,
             &StoneType,
             &Transform,
@@ -483,6 +493,10 @@ pub fn publish_external_snapshot(
         ),
         With<StoneRune>,
     >,
+    players: Query<(Entity, &avian2d::prelude::CollidingEntities), With<Player>>,
+    tiles: Query<(), With<StageTile>>,
+    all_stones: Query<(), With<StoneRune>>,
+    spatial: avian2d::prelude::SpatialQuery,
 ) {
     let mut snapshot = ControlSnapshot {
         generation: control.generation,
@@ -491,7 +505,7 @@ pub fn publish_external_snapshot(
         stones: Vec::new(),
     };
     let place_remaining = place.as_ref().and_then(|p| p.remaining);
-    for (index, kind, transform, state, dig) in &stones {
+    for (entity, index, kind, transform, state, dig) in &stones {
         let mut capabilities: Vec<_> = StoneCapabilities::default()
             .get_capabilities(*kind)
             .into_iter()
@@ -499,6 +513,27 @@ pub fn publish_external_snapshot(
             .cloned()
             .collect();
         capabilities.sort();
+        let touched = players
+            .iter()
+            .any(|(_, collisions)| collisions.contains(entity));
+        let empty = |direction: Vec2| {
+            let collider = avian2d::prelude::Collider::circle(
+                crate::scenes::stage::systems::stone::STONE_COLLIDER_RADIUS * transform.scale.x,
+            );
+            let hit = spatial.cast_shape(
+                &collider,
+                transform.translation.truncate(),
+                0.0,
+                avian2d::prelude::Dir2::new(direction).unwrap(),
+                &avian2d::prelude::ShapeCastConfig::from_max_distance(
+                    state.step_size * transform.scale.x,
+                ),
+                &avian2d::prelude::SpatialQueryFilter::default().with_excluded_entities([entity]),
+            );
+            !hit.is_some_and(|hit| {
+                tiles.get(hit.entity).is_ok() || all_stones.get(hit.entity).is_ok()
+            })
+        };
         snapshot.stones.push(StoneSnapshot {
             index: index.0,
             capabilities,
@@ -508,6 +543,13 @@ pub fn publish_external_snapshot(
             queued: state.queue.len(),
             dig_remaining: dig.0,
             place_remaining,
+            touched,
+            is_empty: DirectionalEmpty {
+                up: empty(Vec2::Y),
+                down: empty(Vec2::NEG_Y),
+                left: empty(Vec2::NEG_X),
+                right: empty(Vec2::X),
+            },
         });
     }
     snapshot.stones.sort_by_key(|s| s.index);
