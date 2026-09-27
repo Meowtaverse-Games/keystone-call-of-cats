@@ -37,9 +37,7 @@ use audio::{StageAudioHandles, StageAudioState};
 
 pub use goal::check_goal_completion;
 pub use obstacle::*;
-pub use place::{
-    PlaceState, PlacedTile, StageGridMetrics, reset_placed_tiles, resolve_place_requests,
-};
+pub use place::{PlaceState, StageGridMetrics, reset_placed_tiles, resolve_place_requests};
 pub use player::*;
 pub use stone::{
     StoneAppendCommandMessage, StoneCommandMessage, StonePlaceRequestMessage, StoneTickMessage,

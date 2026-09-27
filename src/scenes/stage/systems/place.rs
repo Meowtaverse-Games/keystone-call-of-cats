@@ -178,6 +178,60 @@ pub fn reset_placed_tiles(
 mod tests {
     use super::*;
 
+    fn test_metrics() -> StageGridMetrics {
+        StageGridMetrics {
+            local_tile_size: Vec2::ONE,
+            viewport_size: Vec2::ZERO,
+            sprite_scale: 1.0,
+            map_size: (8, 8),
+            boundary_margin: (1, 1),
+        }
+    }
+
+    fn placement_app(limit: Option<u32>) -> App {
+        let mut app = App::new();
+        app.add_plugins((MinimalPlugins, TransformPlugin, PhysicsPlugins::default()))
+            .insert_resource(test_metrics())
+            .insert_resource(PlaceState::new(limit))
+            .add_message::<StonePlaceRequestMessage>()
+            .add_systems(Update, resolve_place_requests);
+        app
+    }
+
+    fn spawn_stage_and_stone(app: &mut App, index: usize, cell: IVec2) -> (Entity, Entity) {
+        let root = app
+            .world_mut()
+            .spawn((StageRoot, Transform::default(), GlobalTransform::default()))
+            .id();
+        let position = test_metrics().cell_to_local(cell);
+        let stone = app
+            .world_mut()
+            .spawn((
+                StoneRune,
+                StoneIndex(index),
+                Transform::from_translation(position.extend(0.0)),
+                GlobalTransform::from(Transform::from_translation(position.extend(0.0))),
+            ))
+            .id();
+        (root, stone)
+    }
+
+    fn request_place(app: &mut App, stone: Entity, stone_index: usize) {
+        app.world_mut()
+            .resource_mut::<Messages<StonePlaceRequestMessage>>()
+            .write(StonePlaceRequestMessage {
+                stone,
+                stone_index,
+                direction: MoveDirection::Right,
+            });
+    }
+
+    fn placed_tiles(app: &mut App) -> Vec<Entity> {
+        let world = app.world_mut();
+        let mut query = world.query_filtered::<Entity, With<PlacedTile>>();
+        query.iter(world).collect()
+    }
+
     #[test]
     fn place_limit_consumes_only_successful_commits_and_resets() {
         let mut state = PlaceState::new(Some(1));
@@ -194,13 +248,7 @@ mod tests {
 
     #[test]
     fn grid_rejects_boundaries_and_accepts_interior_cells() {
-        let metrics = StageGridMetrics {
-            local_tile_size: Vec2::ONE,
-            viewport_size: Vec2::ZERO,
-            sprite_scale: 1.0,
-            map_size: (10, 8),
-            boundary_margin: (1, 1),
-        };
+        let metrics = test_metrics();
         assert!(!metrics.is_placeable_cell(IVec2::new(0, 4)));
         assert!(!metrics.is_placeable_cell(IVec2::new(9, 4)));
         assert!(!metrics.is_placeable_cell(IVec2::new(4, 0)));
@@ -236,5 +284,61 @@ mod tests {
         let state = app.world().resource::<PlaceState>();
         assert_eq!(state.remaining, Some(2));
         assert!(state.placed_cells.is_empty());
+    }
+
+    #[test]
+    fn resolver_spawns_one_stage_child_with_a_static_collider_and_charges_once() {
+        let mut app = placement_app(Some(1));
+        let (root, stone) = spawn_stage_and_stone(&mut app, 0, IVec2::new(2, 2));
+        app.update();
+        request_place(&mut app, stone, 0);
+        app.update();
+
+        let placed = placed_tiles(&mut app);
+        assert_eq!(placed.len(), 1);
+        let block = placed[0];
+        assert!(app.world().get::<Collider>(block).is_some());
+        assert_eq!(
+            app.world().get::<RigidBody>(block),
+            Some(&RigidBody::Static)
+        );
+        assert_eq!(
+            app.world().get::<ChildOf>(block).map(ChildOf::parent),
+            Some(root)
+        );
+        assert_eq!(app.world().resource::<PlaceState>().remaining, Some(0));
+    }
+
+    #[test]
+    fn resolver_rejects_live_collider_without_charging_the_shared_limit() {
+        let mut app = placement_app(Some(1));
+        let (_, stone) = spawn_stage_and_stone(&mut app, 0, IVec2::new(2, 2));
+        let target = test_metrics().cell_to_local(IVec2::new(3, 2));
+        app.world_mut().spawn((
+            RigidBody::Static,
+            Collider::rectangle(1.0, 1.0),
+            Transform::from_translation(target.extend(0.0)),
+            GlobalTransform::from(Transform::from_translation(target.extend(0.0))),
+        ));
+        app.update();
+        request_place(&mut app, stone, 0);
+        app.update();
+
+        assert!(placed_tiles(&mut app).is_empty());
+        assert_eq!(app.world().resource::<PlaceState>().remaining, Some(1));
+    }
+
+    #[test]
+    fn resolver_resolves_same_cell_conflicts_by_stone_index() {
+        let mut app = placement_app(Some(1));
+        let (_, first) = spawn_stage_and_stone(&mut app, 0, IVec2::new(2, 2));
+        let (_, second) = spawn_stage_and_stone(&mut app, 1, IVec2::new(2, 2));
+        app.update();
+        request_place(&mut app, second, 1);
+        request_place(&mut app, first, 0);
+        app.update();
+
+        assert_eq!(placed_tiles(&mut app).len(), 1);
+        assert_eq!(app.world().resource::<PlaceState>().remaining, Some(0));
     }
 }
