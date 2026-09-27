@@ -968,4 +968,45 @@ mod tests {
             Some("human_stopped")
         );
     }
+
+    #[test]
+    fn human_stop_rejects_commands_still_waiting_in_ingress() {
+        let (mut app, bridge) = ecs_app();
+        stone(&mut app, 0);
+        bridge.submit(0, ExternalRequest::Start).unwrap();
+        app.update();
+        let command = bridge
+            .submit(
+                0,
+                ExternalRequest::Command {
+                    stone: 0,
+                    command: ScriptCommand::Move(MoveDirection::Right),
+                },
+            )
+            .unwrap();
+
+        let mut control = app
+            .world_mut()
+            .remove_resource::<ExternalControlState>()
+            .unwrap();
+        let mut editor = app
+            .world_mut()
+            .remove_resource::<ScriptEditorState>()
+            .unwrap();
+        stop_for_human(&mut control, &bridge, &mut editor);
+        app.world_mut().insert_resource(control);
+        app.world_mut().insert_resource(editor);
+        app.update();
+
+        let record = bridge
+            .records
+            .lock()
+            .unwrap()
+            .0
+            .iter()
+            .find(|record| record.id == command.id)
+            .unwrap();
+        assert_eq!(record.status, "rejected");
+        assert_eq!(record.detail.as_deref(), Some("stale_generation"));
+    }
 }
