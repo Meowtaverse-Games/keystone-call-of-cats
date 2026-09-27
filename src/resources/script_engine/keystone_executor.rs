@@ -97,8 +97,12 @@ impl ScriptStepper for KeystoneScriptExecutor {
     fn compile_step(
         &self,
         source: &str,
-        _allowed_commands: Option<&HashSet<String>>,
+        allowed_commands: Option<&HashSet<String>>,
     ) -> Result<Box<dyn ScriptProgram>, ScriptExecutionError> {
+        if let Some(allowed_commands) = allowed_commands {
+            validate_allowed_commands(source, allowed_commands).map_err(map_error)?;
+        }
+
         let mut preflight_api_inner = self.api.clone();
         preflight_api_inner.shared_signals =
             Arc::new(std::sync::Mutex::new(std::collections::HashSet::new()));
@@ -203,6 +207,7 @@ fn map_event(event: Event) -> Option<ScriptCommand> {
         Event::Move(dir) => Some(ScriptCommand::Move(map_direction(dir)?)),
         Event::Sleep(duration) => Some(ScriptCommand::Sleep(duration)),
         Event::Dig(dir) => Some(ScriptCommand::Dig(map_direction(dir)?)),
+        Event::Place(dir) => Some(ScriptCommand::Place(map_direction(dir)?)),
         _ => None,
     }
 }
@@ -261,6 +266,9 @@ fn map_error(err: Error) -> ScriptExecutionError {
             "{} expected {} args, but got {}",
             called, expected, got
         )),
+        Error::CommandNotAllowed { command } => ScriptExecutionError::InvalidCommand(format!(
+            "Command '{command}' is not allowed for this stone."
+        )),
     }
 }
 
@@ -305,5 +313,31 @@ fn dir_to_str(dir: Direction) -> String {
         Direction::Left => String::from("left"),
         Direction::Right => String::from("right"),
         _ => String::from("unknown"),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rejects_disallowed_commands_inside_unexecuted_keystone_branches() {
+        let executor = KeystoneScriptExecutor::default();
+        let allowed_commands = HashSet::from(["move".to_string(), "sleep".to_string()]);
+
+        let result = executor.compile_step("if false\n    dig down\nend", Some(&allowed_commands));
+
+        assert!(matches!(
+            result,
+            Err(ScriptExecutionError::InvalidCommand(message)) if message.contains("dig")
+        ));
+    }
+
+    #[test]
+    fn maps_place_events_to_place_commands() {
+        assert!(matches!(
+            map_event(Event::Place(Direction::Right)),
+            Some(ScriptCommand::Place(MoveDirection::Right))
+        ));
     }
 }

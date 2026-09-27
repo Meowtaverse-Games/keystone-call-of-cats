@@ -18,6 +18,7 @@ impl Plugin for StageScenePlugin {
             .add_message::<systems::StoneCommandMessage>()
             .add_message::<systems::StoneAppendCommandMessage>()
             .add_message::<systems::StoneTickMessage>()
+            .add_message::<systems::StonePlaceRequestMessage>()
             .add_systems(OnEnter(GameState::Stage), systems::setup)
             .add_systems(
                 Update,
@@ -51,6 +52,7 @@ impl Plugin for StageScenePlugin {
             .add_systems(
                 Update,
                 (
+                    systems::reset_placed_tiles,
                     systems::restore_dug_tiles,
                     systems::reset_stone_position,
                     systems::reset_player_position,
@@ -72,6 +74,7 @@ impl Plugin for StageScenePlugin {
                 (
                     systems::move_player,
                     systems::update_stone_behavior,
+                    systems::resolve_place_requests.after(systems::update_stone_behavior),
                     systems::update_stage_root,
                 )
                     .in_set(systems::StageSystemSet::Movement)

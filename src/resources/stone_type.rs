@@ -42,13 +42,37 @@ impl Default for StoneCapabilities {
         type3.insert("dig".to_string());
         map.insert(StoneType::Type3, type3);
 
-        // // Type 4: Move + Touched
-        // let mut type4 = HashSet::new();
-        // type4.insert("move".to_string());
-        // type4.insert("is_touched".to_string());
-        // map.insert(StoneType::Type4, type4);
+        // Type 4: Move + Touched + IsEmpty + Place
+        let mut type4 = type2;
+        type4.insert("place".to_string());
+        map.insert(StoneType::Type4, type4);
 
         Self { map }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn type4_has_only_its_explicit_place_capabilities() {
+        let capabilities = StoneCapabilities::default();
+        let type4 = capabilities
+            .get_capabilities(StoneType::Type4)
+            .expect("Type4 must not be unrestricted");
+
+        assert_eq!(
+            type4,
+            &HashSet::from([
+                "move".to_string(),
+                "is_touched".to_string(),
+                "is_empty".to_string(),
+                "place".to_string(),
+            ])
+        );
+        assert!(!type4.contains("dig"));
+        assert!(!type4.contains("sleep"));
     }
 }
 

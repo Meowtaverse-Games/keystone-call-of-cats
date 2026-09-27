@@ -256,6 +256,7 @@ pub struct StageUIParams<'w, 's> {
     progression: Res<'w, StageProgressionState>,
     tutorial_overlays: Query<'w, 's, Entity, With<StageTutorialOverlay>>,
     stone_capabilities: Res<'w, StoneCapabilities>,
+    place_state: Option<Res<'w, PlaceState>>,
     stone_query: Query<
         'w,
         's,
@@ -286,6 +287,7 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
         progression,
         tutorial_overlays,
         stone_capabilities,
+        place_state,
         stone_query,
         file_storage,
     } = params;
@@ -538,6 +540,18 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                     ui.label(feedback);
                 }
 
+                if let Some(place_state) = place_state.as_ref() {
+                    let remaining = place_state
+                        .remaining
+                        .map(|count| count.to_string())
+                        .unwrap_or_else(|| tr(&localization, "stage-ui-place-unlimited"));
+                    ui.label(tr_with_args(
+                        &localization,
+                        "stage-ui-place-remaining",
+                        &[("count", remaining.as_str())],
+                    ));
+                }
+
                 ui.separator();
 
                 let mut available_size = ui.available_size();
@@ -687,8 +701,24 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                                                     let entry_job = highlight_backtick_segments(
                                                         &entry, &font_id, ui,
                                                     );
-                                                    ui.label(entry_job);
+                                                ui.label(entry_job);
+                                                if stone_query
+                                                    .iter()
+                                                    .find(|(_, _, _, index)| index.0 == editor.selected_idx)
+                                                    .is_some_and(|(_, _, stone_type, _)| *stone_type == StoneType::Type4)
+                                                {
                                                     ui.add_space(4.0);
+                                                    let place_syntax = match settings.script_language {
+                                                        Language::Rhai => "place(\"right\");",
+                                                        Language::Keystone => "place right",
+                                                    };
+                                                    ui.label(RichText::new(tr_with_args(
+                                                        &localization,
+                                                        "stage-ui-place-help",
+                                                        &[("place", place_syntax)],
+                                                    )).font(font_id.clone()));
+                                                }
+                                                ui.add_space(4.0);
                                                 });
                                             },
                                         );
@@ -784,6 +814,7 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
 /// Each frame, pull at most one next command from the active program and append it to the Stone.
 pub fn tick_script_program(
     mut editor: ResMut<ScriptEditorState>,
+    localization: Res<Localization>,
     mut append_writer: MessageWriter<StoneAppendCommandMessage>,
     players: Query<(Entity, &CollidingEntities), With<Player>>,
     stone_query: Query<(Entity, &GlobalTransform, &StoneIndex, &StoneType), With<StoneRune>>,
@@ -796,6 +827,9 @@ pub fn tick_script_program(
         editor.active_programs.clear();
         return;
     }
+
+    let mut runtime_error = None;
+    let mut pending_commands = Vec::new();
 
     for (stone_entity, stone_transform, stone_index, _) in stone_query.iter() {
         let idx = stone_index.0;
@@ -860,12 +894,25 @@ pub fn tick_script_program(
         }
 
         if let Some(command) = program.next(&state) {
-            append_writer.write(StoneAppendCommandMessage {
+            pending_commands.push(StoneAppendCommandMessage {
                 stone_index: idx,
                 command: command.clone(),
             });
+        } else if let Some(error) = program.take_error() {
+            runtime_error = Some(error);
+            break;
         }
     }
+
+    if let Some(error) = runtime_error {
+        editor.last_run_feedback = Some(script_error_message(&localization, &error));
+        editor.controls_enabled = false;
+        editor.active_programs.clear();
+        editor.pending_player_reset = true;
+        return;
+    }
+
+    append_writer.write_batch(pending_commands);
 }
 
 fn is_player_touching_stone(
@@ -908,6 +955,7 @@ fn command_help_args(language: Language) -> &'static [(&'static str, &'static st
             ("dig-down", "dig(\"down\");"),
             ("dig-left", "dig(\"left\");"),
             ("dig-right", "dig(\"right\");"),
+            ("place-right", "place(\"right\");"),
             ("loop-example", "loop {\n    move(\"up\");\n}"),
             (
                 "loop-example2",
@@ -925,6 +973,7 @@ fn command_help_args(language: Language) -> &'static [(&'static str, &'static st
             ("move-left", "move left"),
             ("sleep-1", "sleep 1"),
             ("sleep-2x5", "sleep 2<<dot>>5"),
+            ("place-right", "place right"),
         ],
     }
 }
