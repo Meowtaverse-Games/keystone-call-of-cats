@@ -58,7 +58,6 @@ impl StageGridMetrics {
 pub struct PlaceState {
     initial_limit: Option<u32>,
     pub remaining: Option<u32>,
-    placed_cells: HashSet<IVec2>,
 }
 
 impl PlaceState {
@@ -66,16 +65,14 @@ impl PlaceState {
         Self {
             initial_limit: limit,
             remaining: limit,
-            placed_cells: HashSet::new(),
         }
     }
 
-    fn can_commit(&self, cell: IVec2) -> bool {
-        self.remaining != Some(0) && !self.placed_cells.contains(&cell)
+    fn can_commit(&self) -> bool {
+        self.remaining != Some(0)
     }
 
-    fn commit(&mut self, cell: IVec2) {
-        self.placed_cells.insert(cell);
+    fn commit(&mut self) {
         if let Some(remaining) = &mut self.remaining {
             *remaining = remaining.saturating_sub(1);
         }
@@ -83,7 +80,6 @@ impl PlaceState {
 
     fn reset(&mut self) {
         self.remaining = self.initial_limit;
-        self.placed_cells.clear();
     }
 }
 
@@ -114,31 +110,35 @@ pub fn resolve_place_requests(
 
     let mut requests: Vec<_> = requests.read().cloned().collect();
     requests.sort_by_key(|request| request.stone_index);
+    let mut reserved_cells = HashSet::new();
 
     for request in requests {
         let Ok((_, stone_transform)) = stones.get(request.stone) else {
             continue;
         };
-        let target_world = stone_transform.translation().truncate()
+        let target = stone_transform.translation().truncate()
             + direction_to_vec(request.direction) * metrics.world_tile_size(root_transform);
-        let cell = metrics.world_to_cell(target_world, root_transform);
-        if !metrics.is_placeable_cell(cell) || !state.can_commit(cell) {
+        let cell = metrics.world_to_cell(target, root_transform);
+        let local = metrics.cell_to_local(cell);
+        let target_world =
+            root_transform.translation().truncate() + local * root_transform.scale().truncate();
+        if !metrics.is_placeable_cell(cell) || !state.can_commit() || !reserved_cells.insert(cell) {
             continue;
         }
 
         let candidate = Collider::rectangle(
-            metrics.world_tile_size(root_transform).x,
-            metrics.world_tile_size(root_transform).y,
+            metrics.world_tile_size(root_transform).x * 0.998,
+            metrics.world_tile_size(root_transform).y * 0.998,
         );
         let filter = SpatialQueryFilter::default().with_excluded_entities([request.stone]);
         if !spatial
             .shape_intersections(&candidate, target_world, 0.0, &filter)
             .is_empty()
         {
+            reserved_cells.remove(&cell);
             continue;
         }
 
-        let local = metrics.cell_to_local(cell);
         commands.entity(stage_root).with_children(|parent| {
             parent.spawn((
                 PlacedTile,
@@ -155,7 +155,7 @@ pub fn resolve_place_requests(
                 Collider::rectangle(16.0, 16.0),
             ));
         });
-        state.commit(cell);
+        state.commit();
     }
 }
 
@@ -236,14 +236,13 @@ mod tests {
     fn place_limit_consumes_only_successful_commits_and_resets() {
         let mut state = PlaceState::new(Some(1));
         let cell = IVec2::new(3, 4);
-        assert!(state.can_commit(cell));
-        state.commit(cell);
+        assert!(state.can_commit());
+        state.commit();
         assert_eq!(state.remaining, Some(0));
-        assert!(!state.can_commit(cell));
-        assert!(!state.can_commit(IVec2::new(4, 4)));
+        assert!(!state.can_commit());
         state.reset();
         assert_eq!(state.remaining, Some(1));
-        assert!(state.can_commit(cell));
+        assert!(state.can_commit());
     }
 
     #[test]
@@ -269,7 +268,6 @@ mod tests {
         app.insert_resource(PlaceState {
             initial_limit: Some(2),
             remaining: Some(0),
-            placed_cells: HashSet::from([IVec2::new(2, 2), IVec2::new(3, 2)]),
         })
         .insert_resource(super::super::ui::ScriptEditorState {
             pending_player_reset: true,
@@ -283,7 +281,6 @@ mod tests {
         assert!(app.world().get_entity(tile).is_err());
         let state = app.world().resource::<PlaceState>();
         assert_eq!(state.remaining, Some(2));
-        assert!(state.placed_cells.is_empty());
     }
 
     #[test]

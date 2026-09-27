@@ -708,9 +708,14 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                                                     .is_some_and(|(_, _, stone_type, _)| *stone_type == StoneType::Type4)
                                                 {
                                                     ui.add_space(4.0);
-                                                    ui.label(RichText::new(tr(
+                                                    let place_syntax = match settings.script_language {
+                                                        Language::Rhai => "place(\"right\");",
+                                                        Language::Keystone => "place right",
+                                                    };
+                                                    ui.label(RichText::new(tr_with_args(
                                                         &localization,
                                                         "stage-ui-place-help",
+                                                        &[("place", place_syntax)],
                                                     )).font(font_id.clone()));
                                                 }
                                                 ui.add_space(4.0);
