@@ -9,7 +9,7 @@ use crate::{
     util::script_types::MoveDirection,
 };
 
-use super::StonePlaceRequestMessage;
+use super::{StoneExternalOutcomeMessage, StonePlaceRequestMessage};
 
 #[derive(Component)]
 pub struct PlacedTile;
@@ -100,6 +100,7 @@ pub fn resolve_place_requests(
     roots: Query<(Entity, &GlobalTransform), With<StageRoot>>,
     stones: Query<(&StoneIndex, &GlobalTransform), With<StoneRune>>,
     spatial: SpatialQuery,
+    mut outcomes: MessageWriter<StoneExternalOutcomeMessage>,
 ) {
     let Some(metrics) = metrics else {
         return;
@@ -123,6 +124,12 @@ pub fn resolve_place_requests(
         let target_world =
             root_transform.translation().truncate() + local * root_transform.scale().truncate();
         if !metrics.is_placeable_cell(cell) || !state.can_commit() || !reserved_cells.insert(cell) {
+            if let Some(id) = request.external_action_id {
+                outcomes.write(StoneExternalOutcomeMessage {
+                    action_id: id,
+                    blocked: true,
+                });
+            }
             continue;
         }
 
@@ -135,6 +142,12 @@ pub fn resolve_place_requests(
             .shape_intersections(&candidate, target_world, 0.0, &filter)
             .is_empty()
         {
+            if let Some(id) = request.external_action_id {
+                outcomes.write(StoneExternalOutcomeMessage {
+                    action_id: id,
+                    blocked: true,
+                });
+            }
             reserved_cells.remove(&cell);
             continue;
         }
@@ -162,6 +175,12 @@ pub fn resolve_place_requests(
             ));
         });
         state.commit();
+        if let Some(id) = request.external_action_id {
+            outcomes.write(StoneExternalOutcomeMessage {
+                action_id: id,
+                blocked: false,
+            });
+        }
     }
 }
 
@@ -229,6 +248,7 @@ mod tests {
                 stone,
                 stone_index,
                 direction: MoveDirection::Right,
+                external_action_id: None,
             });
     }
 

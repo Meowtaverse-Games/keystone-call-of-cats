@@ -39,6 +39,7 @@ pub struct StonePlaceRequestMessage {
     pub stone: Entity,
     pub stone_index: usize,
     pub direction: MoveDirection,
+    pub external_action_id: Option<u64>,
 }
 
 #[derive(Component)]
@@ -521,6 +522,7 @@ pub fn update_stone_behavior(
                         stone: entity,
                         stone_index: stone_index.0,
                         direction: *direction,
+                        external_action_id: state.external_action_id.take(),
                     });
                     stop_current = true;
                 }
@@ -529,8 +531,9 @@ pub fn update_stone_behavior(
 
         if stop_current {
             let blocked = matches!(state.current, Some(StoneAction::Blocked(_)));
+            let was_place = matches!(state.current, Some(StoneAction::Place(_)));
             state.current = None;
-            if let Some(action_id) = state.external_action_id.take() {
+            if !was_place && let Some(action_id) = state.external_action_id.take() {
                 output
                     .external_outcomes
                     .write(StoneExternalOutcomeMessage { action_id, blocked });
