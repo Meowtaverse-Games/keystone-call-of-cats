@@ -135,6 +135,7 @@ impl ExternalControlBridge {
     }
 }
 pub struct ExternalControlServer {
+    pub address: SocketAddr,
     shutdown: Option<oneshot::Sender<()>>,
     join: Option<thread::JoinHandle<()>>,
 }
@@ -300,6 +301,7 @@ pub fn start(
         token: Arc::from(token),
     };
     let (stop, stop_rx) = oneshot::channel();
+    let (bound_tx, bound_rx) = std::sync::mpsc::sync_channel(1);
     let port = profile.external_control_port.unwrap_or(38473);
     let join = thread::spawn(move || {
         tokio::runtime::Builder::new_current_thread()
@@ -311,6 +313,7 @@ pub fn start(
                     TcpListener::bind(SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), port))
                         .await
                         .expect("loopback bind");
+                let _ = bound_tx.send(listener.local_addr().expect("loopback address"));
                 let app = Router::new()
                     .route("/v1/state", get(state))
                     .route("/v1/actions/{id}", get(action))
@@ -323,10 +326,14 @@ pub fn start(
                 tokio::select! {_=server=>{},_=stop_rx=>{}}
             });
     });
+    let address = bound_rx
+        .recv_timeout(std::time::Duration::from_secs(1))
+        .map_err(|_| "external control listener did not start".to_string())?;
     Ok(Some((
         bridge,
         ExternalControlReceiver(rx),
         ExternalControlServer {
+            address,
             shutdown: Some(stop),
             join: Some(join),
         },
@@ -718,6 +725,12 @@ mod tests {
             ..Default::default()
         };
         let (_, _, server) = start(&profile).unwrap().unwrap();
+        let mut client = std::net::TcpStream::connect(server.address).unwrap();
+        use std::io::Write;
+        client
+            .write_all(b"POST /v1/state HTTP/1.1\r\nHost: localhost\r\nContent-Length: 100\r\n")
+            .unwrap();
+        // Keep the request body incomplete: server shutdown must still join.
         server.stop();
     }
 }
