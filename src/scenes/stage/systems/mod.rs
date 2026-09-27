@@ -39,8 +39,9 @@ pub use goal::check_goal_completion;
 pub use obstacle::*;
 pub use place::{PlaceState, StageGridMetrics, reset_placed_tiles, resolve_place_requests};
 pub use player::*;
+pub(crate) use stone::StoneCommandState;
 pub use stone::{
-    StoneAppendCommandMessage, StoneCommandMessage, StoneCommandState, StoneExternalOutcomeMessage,
+    StoneAppendCommandMessage, StoneCommandMessage, StoneExternalOutcomeMessage,
     StonePlaceRequestMessage, StoneTickMessage, carry_riders_with_stone,
     handle_stone_append_messages, handle_stone_messages, reset_stone_position,
     update_stone_behavior,

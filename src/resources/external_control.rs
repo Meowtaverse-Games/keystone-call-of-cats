@@ -470,10 +470,11 @@ pub fn drain_external_commands(
                         command,
                         external_action_id: Some(request.id),
                     });
+                    let generation = control.generation;
                     control
                         .active
-                        .insert(stone, (request.id, control.generation, false));
-                    bridge.finish(request.id, control.generation, "running", None);
+                        .insert(stone, (request.id, generation, false));
+                    bridge.finish(request.id, generation, "running", None);
                 }
             }
         }
@@ -518,7 +519,7 @@ pub fn publish_external_snapshot(
         capabilities.sort();
         let touched = players
             .iter()
-            .any(|(_, collisions)| collisions.contains(entity));
+            .any(|(_, collisions)| collisions.contains(&entity));
         let empty = |direction: Vec2| {
             let collider = avian2d::prelude::Collider::circle(16.5 * transform.scale.x);
             let hit = spatial.cast_shape(
@@ -529,7 +530,7 @@ pub fn publish_external_snapshot(
                 &avian2d::prelude::ShapeCastConfig::from_max_distance(
                     state.step_size * transform.scale.x,
                 ),
-                &avian2d::prelude::SpatialQueryFilter::default().with_excluded_entities([*entity]),
+                &avian2d::prelude::SpatialQueryFilter::default().with_excluded_entities([entity]),
             );
             !hit.is_some_and(|hit| {
                 tiles.get(hit.entity).is_ok() || all_stones.get(hit.entity).is_ok()
