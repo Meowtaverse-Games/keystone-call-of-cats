@@ -67,6 +67,14 @@ fn main() {
 
     let mut app = App::new();
 
+    let external_control = match resources::external_control::start(&launch_profile) {
+        Ok(control) => control,
+        Err(error) => {
+            eprintln!("External control was not started: {error}");
+            std::process::exit(2);
+        }
+    };
+
     if launch_profile.ci_smoke_requested && !launch_profile.ci_smoke_enabled() {
         eprintln!("--ci-smoke requires --ci-smoke-report <path>");
         std::process::exit(2);
@@ -107,6 +115,14 @@ fn main() {
                 next_state.set(GameState::SelectStage);
             },
         );
+    let external_server = if let Some((bridge, receiver, server)) = external_control {
+        app.insert_resource(bridge)
+            .insert_resource(receiver)
+            .insert_resource(resources::external_control::ExternalControlState::default());
+        Some(server)
+    } else {
+        None
+    };
 
     #[cfg(target_os = "windows")]
     app.add_plugins(EmbeddedAssetPlugin {
@@ -171,6 +187,11 @@ fn main() {
     }
 
     let exit = app.run();
+    // The listener has no detached lifetime: shutdown joins its thread on game exit.
+    // (The server resource is moved out before `run` and remains owned here.)
+    if let Some(server) = external_server {
+        server.stop();
+    }
     if exit.is_error() {
         std::process::exit(1);
     }

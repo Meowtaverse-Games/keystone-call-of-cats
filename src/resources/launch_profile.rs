@@ -12,7 +12,7 @@ pub enum LaunchType {
     SteamAppInfo,
 }
 
-#[derive(Resource, Debug, Clone, Default)]
+#[derive(Resource, Clone, Default)]
 pub struct LaunchProfile {
     pub changed: bool,
     pub launch_type: LaunchType,
@@ -24,6 +24,32 @@ pub struct LaunchProfile {
     /// An opt-in, machine-readable launch check for CI. This never enables itself
     /// for normal player launches.
     pub ci_smoke_report: Option<PathBuf>,
+    pub external_control: bool,
+    pub external_control_port: Option<u16>,
+    /// Read once from KEYSTONE_EXTERNAL_CONTROL_TOKEN; never printed in the profile.
+    pub external_control_token: Option<String>,
+}
+
+impl std::fmt::Debug for LaunchProfile {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("LaunchProfile")
+            .field("changed", &self.changed)
+            .field("launch_type", &self.launch_type)
+            .field("skip_boot", &self.skip_boot)
+            .field("skip_title", &self.skip_title)
+            .field("render_physics", &self.render_physics)
+            .field("stage_id", &self.stage_id)
+            .field("ci_smoke_requested", &self.ci_smoke_requested)
+            .field("ci_smoke_report", &self.ci_smoke_report)
+            .field("external_control", &self.external_control)
+            .field("external_control_port", &self.external_control_port)
+            .field(
+                "external_control_token",
+                &self.external_control_token.as_ref().map(|_| "[REDACTED]"),
+            )
+            .finish()
+    }
 }
 
 impl LaunchProfile {
@@ -62,6 +88,21 @@ impl LaunchProfile {
                 "--ci-smoke" => {
                     launch_profile.ci_smoke_requested = true;
                     changed = true;
+                }
+                "--external-control" => {
+                    launch_profile.external_control = true;
+                    launch_profile.external_control_token =
+                        std::env::var("KEYSTONE_EXTERNAL_CONTROL_TOKEN")
+                            .ok()
+                            .filter(|v| !v.is_empty());
+                    changed = true;
+                }
+                "--external-control-port" => {
+                    if let Some(value) = args.get(index + 1).and_then(|v| v.parse().ok()) {
+                        launch_profile.external_control_port = Some(value);
+                        index += 1;
+                        changed = true;
+                    }
                 }
                 "--ci-smoke-report" => {
                     if let Some(path) = args.get(index + 1) {
@@ -168,5 +209,16 @@ mod tests {
     fn smoke_flag_without_report_does_not_enable_smoke() {
         let args = vec!["keystone-cc".to_string(), "--ci-smoke".to_string()];
         assert!(!LaunchProfile::from_args(&args).ci_smoke_enabled());
+    }
+
+    #[test]
+    fn debug_output_redacts_external_control_token() {
+        let profile = LaunchProfile {
+            external_control_token: Some("token-that-must-not-be-logged".into()),
+            ..LaunchProfile::default()
+        };
+        let output = format!("{profile:?}");
+        assert!(!output.contains("token-that-must-not-be-logged"));
+        assert!(output.contains("[REDACTED]"));
     }
 }

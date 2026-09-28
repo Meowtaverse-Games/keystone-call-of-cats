@@ -1,6 +1,7 @@
 pub mod asset_store;
 pub mod chunk_grammar_map;
 pub mod design_resolution;
+pub mod external_control;
 pub mod file_storage;
 pub mod game_state;
 pub mod launch_profile;

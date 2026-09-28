@@ -69,7 +69,7 @@ cargo run --manifest-path tools/stage_sim/Cargo.toml -- \
 ./design/verify-stages-09-12.sh
 ```
 
-13〜16面（CLI提案仕様のplace章）の検証：
+13〜16面（`place`実装済み・面ごとの受入確認待ち）の検証：
 
 ```bash
 ./design/verify-stages-13-16.sh
