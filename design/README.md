@@ -4,6 +4,8 @@
 
 Stage 8だけは、Rhaiの接触待ちを試す製品試作を`prototypes/stage-8-playful-v1.*`で管理します。旧`stages/stage-8.ron`とKeystoneの`.ks`解法はCLI研究候補として残しており、試作の正解や製品物理の証明ではありません。
 
+2026-09-28時点で、この試作は [PR #82](https://github.com/Meowtaverse-Games/keystone-call-of-cats/pull/82) のDraft統合案に含まれます。PR #82は20面候補を一括で`main`へ取り込むPRではありません。製品へ採用する面は、最新`main`から作る新しい個別PRで、その面の地形・説明・ロケール・解法と必要なカタログ／進行だけを切り出し、実機の遊び確認とCIを通して判断します。採用後は`main`をこの統合案へ戻し、採用済みと未採用を追跡します。
+
 各ステージは次の3点をセットで管理します。
 
 - `stages/stage-N.ron`: 固定ASCIIマップ
