@@ -1,5 +1,11 @@
 # セッション引き継ぎ: 軽量CLIとAIステージ生成・検証
 
+## 再開後のステージ確認
+
+- main `43a8df9`のStage 1〜4を`/tmp/keystone-main-ascii-43a8df9/`へ抽出し、CLI seed 0で生成したASCIIをユーザーへ表示した。
+- ユーザーは「stage 4まではこのままでいいかな」と評価。Stage 1〜4はmain版を維持し、再設計・フレーバー追加を必須にしない方針を[最終提案](../../design/stage-design-final-proposal.md)へ記録した。
+- 次に構成を確認する対象はmainのStage 5以降。Stage 1〜4の実機クリア・全seed成立を確認済みとはしない。統合ブランチのassetsは旧固定候補のままであり、main版へ置換したと誤認しない。
+
 ## 対象
 
 - リポジトリ / worktree / Git toplevel: `/home/ubuntu/repos/meowtaverse-games/keystone_cc`
