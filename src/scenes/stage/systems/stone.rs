@@ -1,7 +1,11 @@
-use std::{collections::VecDeque, time::Duration};
+use std::{
+    collections::{HashSet, VecDeque},
+    time::Duration,
+};
 
 use avian2d::prelude::*;
 use bevy::prelude::*;
+use bevy_ecs::system::SystemParam;
 
 use super::{StageAudioHandles, StageAudioState, ui::ScriptEditorState};
 use crate::{
@@ -21,6 +25,14 @@ pub struct StoneCommandMessage {
 pub struct StoneAppendCommandMessage {
     pub stone_index: usize,
     pub command: ScriptCommand,
+    pub external_action_id: Option<u64>,
+    pub external_generation: Option<u64>,
+}
+
+#[derive(Message, Clone)]
+pub struct StoneExternalOutcomeMessage {
+    pub action_id: u64,
+    pub blocked: bool,
 }
 
 #[derive(Message, Clone)]
@@ -31,6 +43,7 @@ pub struct StonePlaceRequestMessage {
     pub stone: Entity,
     pub stone_index: usize,
     pub direction: MoveDirection,
+    pub external_action_id: Option<u64>,
 }
 
 #[derive(Component)]
@@ -39,15 +52,19 @@ pub(crate) struct StoneCommandState {
     current: Option<StoneAction>,
     cooldown: Timer,
     pub step_size: f32, // Dynamic step size based on map scale
+    external_action_id: Option<u64>,
 }
 
 impl Default for StoneCommandState {
     fn default() -> Self {
+        let mut cooldown = Timer::from_seconds(0.0, TimerMode::Once);
+        cooldown.tick(Duration::ZERO);
         Self {
             queue: VecDeque::new(),
             current: None,
-            cooldown: Timer::from_seconds(0.0, TimerMode::Once),
+            cooldown,
             step_size: 32.0,
+            external_action_id: None,
         }
     }
 }
@@ -55,6 +72,15 @@ impl Default for StoneCommandState {
 impl StoneCommandState {
     pub(crate) fn is_busy(&self) -> bool {
         self.current.is_some() || !self.queue.is_empty() || !self.cooldown.is_finished()
+    }
+
+    /// Cancels an externally owned action before reset or session stop.
+    pub(crate) fn clear_commands(&mut self) {
+        self.queue.clear();
+        self.current = None;
+        self.cooldown = Timer::from_seconds(0.0, TimerMode::Once);
+        self.cooldown.tick(Duration::ZERO);
+        self.external_action_id = None;
     }
 }
 
@@ -69,12 +95,14 @@ struct MoveCommandProgress {
     timer: Timer,
     moved_distance: f32,
     start_position: Vec3, // Position at start of move command
+    blocked: bool,
 }
 
 enum StoneAction {
     Move(MoveCommandProgress),
     Sleep(Timer),
-    Dig(Timer, Entity),
+    Blocked(Timer),
+    Dig(Timer, Entity, bool),
     Place(MoveDirection),
 }
 
@@ -193,17 +221,27 @@ pub fn handle_stone_messages(
 pub fn handle_stone_append_messages(
     mut reader: MessageReader<StoneAppendCommandMessage>,
     editor: Res<ScriptEditorState>,
+    external: Option<Res<crate::resources::external_control::ExternalControlState>>,
     mut query: Query<(&StoneIndex, &mut StoneCommandState), With<StoneRune>>,
 ) {
     for msg in reader.read() {
         // Consume already-emitted commands after a script error. Reset runs after Script in
         // the current frame, while these messages are read next frame in Input.
-        if !editor.controls_enabled {
+        if !editor.controls_enabled && msg.external_action_id.is_none() {
+            continue;
+        }
+        if let (Some(action_id), Some(generation)) =
+            (msg.external_action_id, msg.external_generation)
+            && !external
+                .as_ref()
+                .is_some_and(|control| control.owns_action(msg.stone_index, action_id, generation))
+        {
             continue;
         }
         for (stone_idx, mut state) in query.iter_mut() {
             if stone_idx.0 == msg.stone_index {
                 state.queue.push_back(msg.command.clone());
+                state.external_action_id = msg.external_action_id;
                 if matches!(msg.command, ScriptCommand::Move(_)) {
                     state.queue.push_back(ScriptCommand::Sleep(0.0001));
                 }
@@ -229,6 +267,12 @@ type StoneBehaviorQuery<'w, 's> = Query<
     With<StoneRune>,
 >;
 
+#[derive(SystemParam)]
+pub(crate) struct StoneOutput<'w> {
+    place_writer: MessageWriter<'w, StonePlaceRequestMessage>,
+    external_outcomes: MessageWriter<'w, StoneExternalOutcomeMessage>,
+}
+
 #[allow(clippy::type_complexity, clippy::too_many_arguments)]
 pub fn update_stone_behavior(
     mut commands: Commands,
@@ -246,7 +290,7 @@ pub fn update_stone_behavior(
     query_colliders: Query<&Collider>,
     spatial: SpatialQuery,
     mut stone_moved_writer: MessageWriter<StoneTickMessage>,
-    mut place_writer: MessageWriter<StonePlaceRequestMessage>,
+    mut output: StoneOutput,
 ) {
     if query.is_empty() {
         audio_state.stop_push_loop(&mut commands);
@@ -254,6 +298,9 @@ pub fn update_stone_behavior(
     }
 
     let mut any_stone_moving = false;
+    // Collider removals are deferred until this system finishes. Reserve a target
+    // immediately so only one completed dig can consume it in this update.
+    let mut dug_targets = HashSet::new();
 
     for (
         entity,
@@ -305,7 +352,7 @@ pub fn update_stone_behavior(
                     if path_blocked {
                         // Path is blocked - skip this move, just do a tiny pause
                         info!("Move blocked by tile, skipping");
-                        StoneAction::Sleep(Timer::from_seconds(0.05, TimerMode::Once))
+                        StoneAction::Blocked(Timer::from_seconds(0.05, TimerMode::Once))
                     } else {
                         let offset = Vec3::new(dir.x, dir.y, 0.0) * state.step_size;
                         let velocity = offset.truncate() / STONE_MOVE_DURATION;
@@ -314,6 +361,7 @@ pub fn update_stone_behavior(
                             timer: Timer::from_seconds(STONE_MOVE_DURATION, TimerMode::Once),
                             moved_distance: 0.0,
                             start_position: transform.translation,
+                            blocked: false,
                         })
                     }
                 }
@@ -321,7 +369,7 @@ pub fn update_stone_behavior(
                     StoneAction::Sleep(Timer::from_seconds(seconds.max(0.0), TimerMode::Once))
                 }
                 ScriptCommand::Dig(direction) => match dig_limit.0 {
-                    Some(0) => StoneAction::Sleep(Timer::from_seconds(0.1, TimerMode::Once)),
+                    Some(0) => StoneAction::Blocked(Timer::from_seconds(0.1, TimerMode::Once)),
                     Some(_) | None => {
                         let dir_vec = direction_to_vec(direction);
                         let ray_dir = Dir2::new(dir_vec).unwrap_or(Dir2::X);
@@ -337,27 +385,19 @@ pub fn update_stone_behavior(
                             if let Ok(kind) = tile_kinds.get(hit.entity) {
                                 if *kind == TileKind::Wall {
                                     info!("Hit a Wall, skipping dig");
-                                    StoneAction::Dig(
-                                        Timer::from_seconds(0.5, TimerMode::Once),
-                                        Entity::PLACEHOLDER,
-                                    )
+                                    StoneAction::Blocked(Timer::from_seconds(0.1, TimerMode::Once))
                                 } else {
                                     StoneAction::Dig(
                                         Timer::from_seconds(0.5, TimerMode::Once),
                                         hit.entity,
+                                        false,
                                     )
                                 }
                             } else {
-                                StoneAction::Dig(
-                                    Timer::from_seconds(0.5, TimerMode::Once),
-                                    Entity::PLACEHOLDER,
-                                )
+                                StoneAction::Blocked(Timer::from_seconds(0.1, TimerMode::Once))
                             }
                         } else {
-                            StoneAction::Dig(
-                                Timer::from_seconds(0.5, TimerMode::Once),
-                                Entity::PLACEHOLDER,
-                            )
+                            StoneAction::Blocked(Timer::from_seconds(0.1, TimerMode::Once))
                         }
                     }
                 },
@@ -441,6 +481,7 @@ pub fn update_stone_behavior(
                         );
                         velocity.0 = Vec2::ZERO;
                         stop_current = true;
+                        progress.blocked = true;
                         // Revert to last safe position (just before collision)
                         transform.translation = progress.start_position;
                     } else if !is_colliding {
@@ -460,12 +501,20 @@ pub fn update_stone_behavior(
                         stone_moved_writer.write(StoneTickMessage);
                     }
                 }
-                StoneAction::Dig(timer, entity) => {
+                StoneAction::Blocked(timer) => {
                     if timer.tick(time.delta()).is_finished() {
-                        if let Some(count) = dig_limit.0 {
-                            dig_limit.0 = Some(count.saturating_sub(1));
-                        }
-                        if let Ok(collider) = query_colliders.get(*entity) {
+                        velocity.0 = Vec2::ZERO;
+                        stop_current = true;
+                    }
+                }
+                StoneAction::Dig(timer, entity, blocked) => {
+                    if timer.tick(time.delta()).is_finished() {
+                        if dug_targets.insert(*entity)
+                            && let Ok(collider) = query_colliders.get(*entity)
+                        {
+                            if let Some(count) = dig_limit.0 {
+                                dig_limit.0 = Some(count.saturating_sub(1));
+                            }
                             commands
                                 .entity(*entity)
                                 .remove::<Collider>()
@@ -474,8 +523,7 @@ pub fn update_stone_behavior(
                                     collider: collider.clone(),
                                 });
                         } else {
-                            // Fallback for non-colliding entities or if query fails (shouldn't happen for tiles)
-                            commands.entity(*entity).despawn();
+                            *blocked = true;
                         }
                         // Play mining sound?
                         velocity.0 = Vec2::ZERO;
@@ -483,10 +531,11 @@ pub fn update_stone_behavior(
                     }
                 }
                 StoneAction::Place(direction) => {
-                    place_writer.write(StonePlaceRequestMessage {
+                    output.place_writer.write(StonePlaceRequestMessage {
                         stone: entity,
                         stone_index: stone_index.0,
                         direction: *direction,
+                        external_action_id: state.external_action_id.take(),
                     });
                     stop_current = true;
                 }
@@ -494,7 +543,14 @@ pub fn update_stone_behavior(
         }
 
         if stop_current {
+            let blocked = state.current.as_ref().is_some_and(action_was_blocked);
+            let was_place = matches!(state.current, Some(StoneAction::Place(_)));
             state.current = None;
+            if !was_place && let Some(action_id) = state.external_action_id.take() {
+                output
+                    .external_outcomes
+                    .write(StoneExternalOutcomeMessage { action_id, blocked });
+            }
             // Start cooldown
             state.cooldown = Timer::from_seconds(STONE_ACTION_COOLDOWN, TimerMode::Once);
         }
@@ -512,6 +568,15 @@ pub fn update_stone_behavior(
         audio_state.ensure_push_loop(&mut commands, &audio_handles, settings.sfx_volume_linear());
     } else {
         audio_state.stop_push_loop(&mut commands);
+    }
+}
+
+fn action_was_blocked(action: &StoneAction) -> bool {
+    match action {
+        StoneAction::Move(progress) => progress.blocked,
+        StoneAction::Blocked(_) => true,
+        StoneAction::Sleep(_) | StoneAction::Place(_) => false,
+        StoneAction::Dig(_, _, blocked) => *blocked,
     }
 }
 
@@ -594,6 +659,7 @@ pub fn carry_riders_with_stone(
         >,
     )>,
     spatial: SpatialQuery,
+    mut external_outcomes: MessageWriter<StoneExternalOutcomeMessage>,
 ) {
     // Collect moving stones first to avoid borrow conflicts (we need to mutate them later if blocked)
     // We store the data needed for the check, plus the Entity ID to look it up again for mutation.
@@ -710,6 +776,12 @@ pub fn carry_riders_with_stone(
                 velocity.0 = Vec2::ZERO;
                 command_state.current = None;
                 command_state.queue.clear();
+                if let Some(action_id) = command_state.external_action_id.take() {
+                    external_outcomes.write(StoneExternalOutcomeMessage {
+                        action_id,
+                        blocked: true,
+                    });
+                }
             }
         }
     }
@@ -719,7 +791,22 @@ pub fn carry_riders_with_stone(
 mod tests {
     use super::*;
     use crate::scenes::stage::systems::ui::ScriptEditorState;
-    use bevy::prelude::{App, Messages, Update};
+    use bevy::{
+        asset::AssetPlugin,
+        gizmos::GizmoPlugin,
+        prelude::{App, Messages, Update},
+    };
+    use bevy_ecs::system::RunSystemOnce;
+
+    #[derive(Resource, Default)]
+    struct ExternalOutcomes(Vec<StoneExternalOutcomeMessage>);
+
+    fn collect_external_outcomes(
+        mut reader: MessageReader<StoneExternalOutcomeMessage>,
+        mut outcomes: ResMut<ExternalOutcomes>,
+    ) {
+        outcomes.0.extend(reader.read().cloned());
+    }
 
     #[test]
     fn tiles_and_other_stones_block_movement() {
@@ -745,6 +832,8 @@ mod tests {
             .write(StoneAppendCommandMessage {
                 stone_index: 0,
                 command: ScriptCommand::Move(MoveDirection::Right),
+                external_action_id: None,
+                external_generation: None,
             });
 
         app.update();
@@ -752,5 +841,233 @@ mod tests {
         let state = app.world().get::<StoneCommandState>(stone).unwrap();
         assert!(state.queue.is_empty());
         assert!(state.current.is_none());
+    }
+
+    #[test]
+    fn external_outcome_distinguishes_blocked_moves_from_completed_actions() {
+        let completed_move = StoneAction::Move(MoveCommandProgress {
+            velocity: Vec2::X,
+            timer: Timer::from_seconds(1.0, TimerMode::Once),
+            moved_distance: STONE_STEP_DISTANCE,
+            start_position: Vec3::ZERO,
+            blocked: false,
+        });
+        let collision_stopped_move = StoneAction::Move(MoveCommandProgress {
+            velocity: Vec2::X,
+            timer: Timer::from_seconds(1.0, TimerMode::Once),
+            moved_distance: 2.0,
+            start_position: Vec3::ZERO,
+            blocked: true,
+        });
+
+        assert!(!action_was_blocked(&completed_move));
+        assert!(action_was_blocked(&collision_stopped_move));
+        assert!(!action_was_blocked(&StoneAction::Sleep(
+            Timer::from_seconds(0.0, TimerMode::Once,)
+        )));
+        assert!(!action_was_blocked(&StoneAction::Dig(
+            Timer::from_seconds(0.5, TimerMode::Once),
+            Entity::PLACEHOLDER,
+            false,
+        )));
+        assert!(action_was_blocked(&StoneAction::Blocked(
+            Timer::from_seconds(0.1, TimerMode::Once,)
+        )));
+    }
+
+    #[test]
+    fn external_dig_at_zero_limit_reports_blocked_after_execution() {
+        let mut app = App::new();
+        app.add_plugins((
+            AssetPlugin::default(),
+            TransformPlugin,
+            PhysicsPlugins::default(),
+            GizmoPlugin,
+        ))
+        .insert_resource(Time::<()>::default())
+        .insert_resource(StageAudioHandles::new(Handle::default(), Handle::default()))
+        .init_resource::<StageAudioState>()
+        .insert_resource(GameSettings::default())
+        .insert_resource(crate::resources::launch_profile::LaunchProfile::default())
+        .add_message::<StoneTickMessage>()
+        .add_message::<StonePlaceRequestMessage>()
+        .add_message::<StoneExternalOutcomeMessage>()
+        .init_resource::<ExternalOutcomes>();
+
+        let stone = app
+            .world_mut()
+            .spawn((
+                StoneRune,
+                StoneIndex(0),
+                StoneCommandState {
+                    queue: VecDeque::from([ScriptCommand::Dig(MoveDirection::Right)]),
+                    external_action_id: Some(91),
+                    ..default()
+                },
+                Transform::default(),
+                GlobalTransform::default(),
+                LinearVelocity::default(),
+                StoneMotion::default(),
+                DigLimit(Some(0)),
+            ))
+            .id();
+
+        app.world_mut()
+            .run_system_once(update_stone_behavior)
+            .unwrap();
+        app.world_mut()
+            .run_system_once(collect_external_outcomes)
+            .unwrap();
+        assert!(app.world().resource::<ExternalOutcomes>().0.is_empty());
+
+        app.world_mut()
+            .resource_mut::<Time<()>>()
+            // `Timer::from_seconds(0.1)` converts its f32 input to a Duration.
+            // Advance past, rather than exactly to, 100ms so the test is not
+            // sensitive to that conversion's nanosecond rounding.
+            .advance_by(Duration::from_millis(101));
+        app.world_mut()
+            .run_system_once(update_stone_behavior)
+            .unwrap();
+        app.world_mut()
+            .run_system_once(collect_external_outcomes)
+            .unwrap();
+
+        assert!(
+            app.world()
+                .resource::<ExternalOutcomes>()
+                .0
+                .iter()
+                .any(|outcome| outcome.action_id == 91 && outcome.blocked)
+        );
+        assert_eq!(
+            app.world().get::<DigLimit>(stone).map(|limit| limit.0),
+            Some(Some(0))
+        );
+    }
+
+    #[test]
+    fn two_external_digs_for_a_vanished_shared_target_are_blocked_without_charging() {
+        let mut app = App::new();
+        app.add_plugins((
+            AssetPlugin::default(),
+            TransformPlugin,
+            PhysicsPlugins::default(),
+            GizmoPlugin,
+        ))
+        .insert_resource(Time::<()>::default())
+        .insert_resource(StageAudioHandles::new(Handle::default(), Handle::default()))
+        .init_resource::<StageAudioState>()
+        .insert_resource(GameSettings::default())
+        .insert_resource(crate::resources::launch_profile::LaunchProfile::default())
+        .add_message::<StoneTickMessage>()
+        .add_message::<StonePlaceRequestMessage>()
+        .add_message::<StoneExternalOutcomeMessage>()
+        .init_resource::<ExternalOutcomes>();
+
+        let target = app.world_mut().spawn(StageTile).id();
+        let mut finished = Timer::from_seconds(0.5, TimerMode::Once);
+        finished.tick(Duration::from_secs(1));
+        for (index, action_id) in [(0, 101), (1, 102)] {
+            app.world_mut().spawn((
+                StoneRune,
+                StoneIndex(index),
+                StoneCommandState {
+                    current: Some(StoneAction::Dig(finished.clone(), target, false)),
+                    external_action_id: Some(action_id),
+                    ..default()
+                },
+                Transform::default(),
+                GlobalTransform::default(),
+                LinearVelocity::default(),
+                StoneMotion::default(),
+                DigLimit(Some(1)),
+            ));
+        }
+
+        app.world_mut()
+            .run_system_once(update_stone_behavior)
+            .unwrap();
+        app.world_mut()
+            .run_system_once(collect_external_outcomes)
+            .unwrap();
+
+        let outcomes = &app.world().resource::<ExternalOutcomes>().0;
+        assert!(
+            outcomes
+                .iter()
+                .any(|outcome| outcome.action_id == 101 && outcome.blocked)
+        );
+        assert!(
+            outcomes
+                .iter()
+                .any(|outcome| outcome.action_id == 102 && outcome.blocked)
+        );
+        let world = app.world_mut();
+        let mut limits = world.query::<&DigLimit>();
+        assert!(limits.iter(world).all(|limit| limit.0 == Some(1)));
+    }
+
+    #[test]
+    fn simultaneous_external_digs_reserve_one_live_target_and_charge_once() {
+        let mut app = App::new();
+        app.add_plugins((
+            AssetPlugin::default(),
+            TransformPlugin,
+            PhysicsPlugins::default(),
+            GizmoPlugin,
+        ))
+        .insert_resource(Time::<()>::default())
+        .insert_resource(StageAudioHandles::new(Handle::default(), Handle::default()))
+        .init_resource::<StageAudioState>()
+        .insert_resource(GameSettings::default())
+        .insert_resource(crate::resources::launch_profile::LaunchProfile::default())
+        .add_message::<StoneTickMessage>()
+        .add_message::<StonePlaceRequestMessage>()
+        .add_message::<StoneExternalOutcomeMessage>()
+        .init_resource::<ExternalOutcomes>();
+
+        let target = app
+            .world_mut()
+            .spawn((StageTile, Collider::circle(16.0)))
+            .id();
+        let mut finished = Timer::from_seconds(0.5, TimerMode::Once);
+        finished.tick(Duration::from_secs(1));
+        for (index, action_id) in [(0, 201), (1, 202)] {
+            app.world_mut().spawn((
+                StoneRune,
+                StoneIndex(index),
+                StoneCommandState {
+                    current: Some(StoneAction::Dig(finished.clone(), target, false)),
+                    external_action_id: Some(action_id),
+                    ..default()
+                },
+                Transform::default(),
+                GlobalTransform::default(),
+                LinearVelocity::default(),
+                StoneMotion::default(),
+                DigLimit(Some(1)),
+            ));
+        }
+
+        app.world_mut()
+            .run_system_once(update_stone_behavior)
+            .unwrap();
+        app.world_mut()
+            .run_system_once(collect_external_outcomes)
+            .unwrap();
+
+        let outcomes = &app.world().resource::<ExternalOutcomes>().0;
+        assert_eq!(outcomes.len(), 2);
+        assert_eq!(
+            outcomes.iter().filter(|outcome| !outcome.blocked).count(),
+            1
+        );
+        assert_eq!(outcomes.iter().filter(|outcome| outcome.blocked).count(), 1);
+        let world = app.world_mut();
+        let mut limits = world.query::<&DigLimit>();
+        let mut remaining: Vec<_> = limits.iter(world).map(|limit| limit.0).collect();
+        remaining.sort();
+        assert_eq!(remaining, vec![Some(0), Some(1)]);
     }
 }
