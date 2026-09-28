@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet, VecDeque};
 
 use anyhow::{Result, anyhow, bail};
 
-use crate::map::{GeneratedMap, TileKind};
+use crate::map::{GeneratedMap, StoneType, TileKind};
 
 type Position = (i32, i32);
 
@@ -35,7 +35,7 @@ impl Direction {
     }
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, serde::Serialize)]
 pub struct Metrics {
     pub actions: usize,
     pub player_actions: usize,
@@ -52,6 +52,7 @@ pub struct World {
     initial: Snapshot,
     player: Position,
     stones: Vec<Position>,
+    stone_type: StoneType,
     dig_remaining: Vec<Option<u32>>,
     place_remaining: Option<u32>,
     pub metrics: Metrics,
@@ -68,6 +69,7 @@ struct Snapshot {
 
 impl World {
     pub fn from_map(map: &GeneratedMap, place_limit: Option<u32>) -> Result<Self> {
+        let place_limit = place_limit.or(map.place_limit);
         let mut terrain = map.tiles.clone();
         let players = map.positions(TileKind::Player);
         if players.len() != 1 {
@@ -93,6 +95,7 @@ impl World {
             initial,
             player,
             stones,
+            stone_type: map.stone_type,
             dig_remaining,
             place_remaining: place_limit,
             metrics: Metrics::default(),
@@ -192,7 +195,7 @@ impl World {
     }
 
     pub fn reachable_positions(&self) -> HashSet<Position> {
-        let start = self.settle(self.player).unwrap_or(self.player);
+        let start = self.player;
         let mut reached = HashSet::from([start]);
         let mut queue = VecDeque::from([start]);
         while let Some(position) = queue.pop_front() {
@@ -206,9 +209,49 @@ impl World {
     }
 
     pub fn goal_is_reachable(&self) -> bool {
-        self.reachable_positions()
-            .into_iter()
-            .any(|position| self.touches_goal(position))
+        self.goal_route().is_some()
+    }
+
+    /// A replayable player-only path. Stones and obstacles remain stationary.
+    /// Use exactly the same transitions as the manual player commands.
+    pub fn goal_route(&self) -> Option<Vec<String>> {
+        let mut parents = HashMap::new();
+        let mut seen = HashSet::from([self.player]);
+        let mut queue = VecDeque::from([self.player]);
+        while let Some(position) = queue.pop_front() {
+            if self.touches_goal(position) {
+                let mut route = Vec::new();
+                let mut cursor = position;
+                while let Some(&(previous, action)) = parents.get(&cursor) {
+                    route.push(format!("p {action}"));
+                    cursor = previous;
+                }
+                route.reverse();
+                return Some(route);
+            }
+            for action in PLAYER_ACTIONS {
+                if let Some(next) = self.player_destination(position, action)
+                    && seen.insert(next)
+                {
+                    parents.insert(next, (position, action));
+                    queue.push_back(next);
+                }
+            }
+        }
+        None
+    }
+
+    pub fn walk_to_goal(&mut self) -> Result<Vec<String>> {
+        let route = self.goal_route().ok_or_else(|| {
+            anyhow!("no player-only route to goal with the current stones and terrain")
+        })?;
+        for action in &route {
+            self.execute(action)?;
+        }
+        if !self.goal_reached() {
+            bail!("computed player route did not reach the goal");
+        }
+        Ok(route)
     }
 
     pub fn program_is_empty(&self, stone_index: usize, delta: (i32, i32)) -> bool {
@@ -248,6 +291,14 @@ impl World {
                 ))
             }
             ["reachmap"] => Ok(self.render_reachable(true)),
+            ["route"] => self
+                .goal_route()
+                .map(|route| route.join("\n"))
+                .ok_or_else(|| anyhow!("no player-only route to goal")),
+            ["walk-goal"] => {
+                let route = self.walk_to_goal()?;
+                Ok(format!("walked {} actions: {}", route.len(), self.status()))
+            }
             ["reset"] => {
                 self.reset();
                 Ok("reset".to_owned())
@@ -266,6 +317,13 @@ impl World {
                     bail!("assert reachable failed")
                 }
             }
+            ["assert", "unreachable"] => {
+                if !self.goal_is_reachable() {
+                    Ok("assert unreachable: ok (static grid)".to_owned())
+                } else {
+                    bail!("assert unreachable failed: player-only goal route exists")
+                }
+            }
             ["p", "left"] | ["player", "left"] => self.player_walk(Direction::Left),
             ["p", "right"] | ["player", "right"] => self.player_walk(Direction::Right),
             ["p", "jump"] | ["player", "jump"] => self.player_jump(0),
@@ -278,6 +336,11 @@ impl World {
                     .parse::<usize>()
                     .map_err(|_| anyhow!("invalid stone index '{index}'"))?;
                 let direction = Direction::parse(direction)?;
+                if (*action == "dig" && !matches!(self.stone_type, StoneType::Type3))
+                    || (*action == "place" && !matches!(self.stone_type, StoneType::Type4))
+                {
+                    bail!("{:?} cannot {action}", self.stone_type);
+                }
                 match *action {
                     "move" => self.stone_move(index, direction),
                     "dig" => self.stone_dig(index, direction),
@@ -290,52 +353,55 @@ impl World {
     }
 
     fn player_walk(&mut self, direction: Direction) -> Result<String> {
-        let dx = match direction {
-            Direction::Left => -1,
-            Direction::Right => 1,
+        let action = match direction {
+            Direction::Left => "left",
+            Direction::Right => "right",
             _ => bail!("player walk only supports left or right"),
         };
-        self.metrics.actions += 1;
-        self.metrics.player_actions += 1;
-        let target = (self.player.0 + dx, self.player.1);
-        if !self.is_open_for_player(target) {
-            self.metrics.blocked_actions += 1;
-            return Ok(format!("player walk blocked at {target:?}"));
-        }
-        self.player = self.settle(target).unwrap_or(target);
-        Ok(format!("player -> {:?}", self.player))
+        self.apply_player_action(action)
     }
 
     fn player_jump(&mut self, dx: i32) -> Result<String> {
-        self.metrics.actions += 1;
-        self.metrics.player_actions += 1;
-        let above = (self.player.0, self.player.1 + 1);
-        let target = (self.player.0 + dx, self.player.1 + 1);
-        if !self.is_open_for_player(above) || !self.is_open_for_player(target) {
-            self.metrics.blocked_actions += 1;
-            return Ok(format!("player jump blocked at {target:?}"));
-        }
-        self.player = self.settle(target).unwrap_or(target);
-        Ok(format!("player -> {:?}", self.player))
+        self.apply_player_action(match dx {
+            -1 => "jump-left",
+            1 => "jump-right",
+            _ => "jump",
+        })
     }
 
     fn player_leap(&mut self, sign: i32) -> Result<String> {
+        self.apply_player_action(if sign < 0 { "leap-left" } else { "leap-right" })
+    }
+
+    fn apply_player_action(&mut self, action: &str) -> Result<String> {
         self.metrics.actions += 1;
         self.metrics.player_actions += 1;
-        let path = [
-            (self.player.0, self.player.1 + 1),
-            (self.player.0 + sign, self.player.1 + 2),
-            (self.player.0 + sign * 2, self.player.1 + 1),
-        ];
-        if path
-            .iter()
-            .any(|position| !self.is_open_for_player(*position))
-        {
+        if let Some(target) = self.player_destination(self.player, action) {
+            self.player = target;
+            Ok(format!("player -> {:?}", self.player))
+        } else {
             self.metrics.blocked_actions += 1;
-            return Ok("player leap blocked".to_owned());
+            Ok(format!("player {action} blocked"))
         }
-        self.player = self.settle(path[2]).unwrap_or(path[2]);
-        Ok(format!("player -> {:?}", self.player))
+    }
+
+    fn player_destination(&self, position: Position, action: &str) -> Option<Position> {
+        let (x, y) = position;
+        let path = match action {
+            "left" => vec![(x - 1, y)],
+            "right" => vec![(x + 1, y)],
+            "jump" => vec![(x, y + 1)],
+            "jump-left" => vec![(x, y + 1), (x - 1, y + 1)],
+            "jump-right" => vec![(x, y + 1), (x + 1, y + 1)],
+            "leap-left" => vec![(x, y + 1), (x - 1, y + 2), (x - 2, y + 1)],
+            "leap-right" => vec![(x, y + 1), (x + 1, y + 2), (x + 2, y + 1)],
+            _ => return None,
+        };
+        if path.iter().all(|p| self.is_open_for_player(*p)) {
+            self.settle(*path.last()?)
+        } else {
+            None
+        }
     }
 
     fn stone_move(&mut self, index: usize, direction: Direction) -> Result<String> {
@@ -411,7 +477,8 @@ impl World {
         }
         let delta = direction.delta();
         let target = (source.0 + delta.0, source.1 + delta.1);
-        if self.terrain.contains_key(&target)
+        if !self.is_inside(target)
+            || self.terrain.contains_key(&target)
             || self.player == target
             || self.stones.contains(&target)
         {
@@ -469,45 +536,10 @@ impl World {
     }
 
     fn player_neighbors(&self, position: Position) -> Vec<Position> {
-        let mut neighbors = Vec::new();
-        for dx in [-1, 1] {
-            let candidate = (position.0 + dx, position.1);
-            if let Some(landing) = self.settle(candidate)
-                && landing != position
-            {
-                neighbors.push(landing);
-            }
-        }
-
-        let headroom = (position.0, position.1 + 1);
-        if self.is_open_for_player(headroom) {
-            for dx in -1..=1 {
-                let candidate = (position.0 + dx, position.1 + 1);
-                if self.is_open_for_player(candidate)
-                    && let Some(landing) = self.settle(candidate)
-                {
-                    neighbors.push(landing);
-                }
-            }
-
-            for sign in [-1, 1] {
-                let path = [
-                    headroom,
-                    (position.0 + sign, position.1 + 2),
-                    (position.0 + sign * 2, position.1 + 1),
-                ];
-                if path
-                    .iter()
-                    .all(|candidate| self.is_open_for_player(*candidate))
-                    && let Some(landing) = self.settle(path[2])
-                {
-                    neighbors.push(landing);
-                }
-            }
-        }
-        neighbors.sort_unstable();
-        neighbors.dedup();
-        neighbors
+        PLAYER_ACTIONS
+            .iter()
+            .filter_map(|action| self.player_destination(position, action))
+            .collect()
     }
 
     fn touches_goal(&self, position: Position) -> bool {
@@ -533,18 +565,30 @@ fn stone_limit_text(limits: &[Option<u32>]) -> String {
         .join(",")
 }
 
+const PLAYER_ACTIONS: [&str; 7] = [
+    "left",
+    "right",
+    "jump",
+    "jump-left",
+    "jump-right",
+    "leap-left",
+    "leap-right",
+];
+
 pub const HELP: &str = r#"commands:
   show
   status
   reachable
   reachmap
+  route       (print player-only path; does not move anything)
+  walk-goal   (replay that path; stones remain stationary)
   p left | p right
   p jump | p jump-left | p jump-right
   p leap-left | p leap-right
   s <index> move <left|right|up|down>
   s <index> dig <left|right|up|down>
   s <index> place <left|right|up|down>
-  assert goal | assert reachable
+  assert goal | assert reachable | assert unreachable
   reset
   help
   quit
@@ -581,6 +625,7 @@ mod tests {
     #[test]
     fn placed_tile_uses_budget() {
         let mut world = world(0, 1);
+        world.stone_type = StoneType::Type4;
         assert!(world.execute("s 0 place up").unwrap().contains("placed"));
         assert!(world.execute("s 0 place left").unwrap().contains("no uses"));
     }
@@ -599,5 +644,63 @@ mod tests {
         }
         assert!(!world.execute("s 1 dig down").unwrap().contains("no uses"));
         assert!(world.status().contains("dig=0:0,1:4"));
+    }
+
+    fn candidate() -> World {
+        let config = parse_stage(include_str!("../examples/ai-candidate.ron")).unwrap();
+        World::from_map(&generate(&config, 42).unwrap(), None).unwrap()
+    }
+
+    #[test]
+    fn generated_route_is_replayable_and_reset_restores_the_unsolved_puzzle() {
+        let mut world = candidate();
+        assert!(world.goal_route().is_none());
+        world.execute("s 0 place up").unwrap();
+        let route = world.goal_route().unwrap();
+        assert!(!route.is_empty());
+        assert!(
+            !world.goal_reached(),
+            "search itself must not move the player"
+        );
+        for action in &route {
+            world.execute(action).unwrap();
+        }
+        assert!(world.goal_reached());
+        assert_eq!(world.metrics.blocked_actions, 0);
+        assert_eq!(world.place_remaining, Some(0));
+        world.reset();
+        assert!(!world.goal_reached());
+        assert!(world.goal_route().is_none());
+        assert_eq!(world.place_remaining, Some(1));
+    }
+
+    #[test]
+    fn failed_auto_walk_does_not_modify_the_world() {
+        let mut world = candidate();
+        let before = world.render(true);
+        assert!(world.walk_to_goal().is_err());
+        assert_eq!(world.render(true), before);
+        assert_eq!(world.metrics.actions, 0);
+    }
+
+    #[test]
+    fn manual_commands_obey_stone_type_and_ron_budget() {
+        let mut world = candidate();
+        assert!(world.execute("s 0 dig down").is_err());
+        assert_eq!(world.metrics.actions, 0);
+        assert!(world.execute("s 0 place down").unwrap().contains("placed"));
+        assert!(world.execute("s 0 place up").unwrap().contains("no uses"));
+        assert!(world.goal_route().is_none());
+        world.stone_type = StoneType::Type1;
+        assert!(world.execute("s 0 place up").is_err());
+    }
+
+    #[test]
+    fn placing_on_occupied_tile_preserves_shared_budget() {
+        let mut world = candidate();
+        assert!(world.execute("s 0 place left").unwrap().contains("blocked"));
+        assert_eq!(world.place_remaining, Some(1));
+        world.execute("s 0 place up").unwrap();
+        assert_eq!(world.place_remaining, Some(0));
     }
 }

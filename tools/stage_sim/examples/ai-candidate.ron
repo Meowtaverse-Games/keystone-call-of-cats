@@ -1,0 +1,37 @@
+// Design-lab candidate only. Not registered in the product stage catalog.
+// Stable puzzle: one block on the stone makes the high ledge accessible.
+// Flavor: alternative short corridors after that ledge.
+(
+    map_size: (28, 18),
+    stone_type: Type4,
+    dig_limit: Some(0),
+    place_limit: Some(1),
+    start_chunks: [ChunkTemplate(
+        id: "one-block-ledge",
+        map: [
+            "..............",
+            "..............",
+            "..............",
+            "..............",
+            "..............",
+            "..............",
+            "..............",
+            "..............",
+            "..............",
+            "..............",
+            "..............",
+            ".............E",
+            "..........####",
+            ".....@........",
+            "#########S....",
+            "..............",
+            "..............",
+            "##############",
+        ],
+    )],
+    middle_chunks: [
+        ChunkTemplate(id: "short-corridor", map: ["...", "I.E", "###"]),
+        ChunkTemplate(id: "rock-above", map: [".#..", "....", "I..E", "####"]),
+    ],
+    goal_chunks: [ChunkTemplate(id: "exit", map: ["I.G", "###"])],
+)
