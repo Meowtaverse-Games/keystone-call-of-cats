@@ -1,6 +1,6 @@
 # Stage implementation handoff — fixed 20-stage release
 
-> 2026-09-28方針更新: 固定20枚の地形への置換は採用しません。チャンク合成による地形の変化を中核に、mainの遊びを生かしてStage 1から再設計します。[現行方針](stages-01-20-reassessment.md)と[再開handoff](../docs/handoffs/2026-09-28-stage-integration-and-extraction.md)を優先してください。以下の固定配置・章区切り・昇格順序は従来案の履歴です。
+> 2026-09-28方針更新: [全20ステージの最終提案](stage-design-final-proposal.md)と[再開handoff](../docs/handoffs/2026-09-28-stage-integration-and-extraction.md)を先に参照してください。mainの完成面は原則継承し、チャンク合成は主要課題を崩さないフレーバーとします。Stage 1から確認しますが、全既存面の再制作を求めません。以下の固定配置・章区切り・昇格順序は従来案の履歴です。
 
 - 更新日: 2026-09-27
 - 作業ブランチ: `feature/20-stage-release-handoff`
