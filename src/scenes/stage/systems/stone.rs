@@ -1,4 +1,7 @@
-use std::{collections::VecDeque, time::Duration};
+use std::{
+    collections::{HashSet, VecDeque},
+    time::Duration,
+};
 
 use avian2d::prelude::*;
 use bevy::prelude::*;
@@ -295,6 +298,9 @@ pub fn update_stone_behavior(
     }
 
     let mut any_stone_moving = false;
+    // Collider removals are deferred until this system finishes. Reserve a target
+    // immediately so only one completed dig can consume it in this update.
+    let mut dug_targets = HashSet::new();
 
     for (
         entity,
@@ -503,7 +509,9 @@ pub fn update_stone_behavior(
                 }
                 StoneAction::Dig(timer, entity, blocked) => {
                     if timer.tick(time.delta()).is_finished() {
-                        if let Ok(collider) = query_colliders.get(*entity) {
+                        if dug_targets.insert(*entity)
+                            && let Ok(collider) = query_colliders.get(*entity)
+                        {
                             if let Some(count) = dig_limit.0 {
                                 dig_limit.0 = Some(count.saturating_sub(1));
                             }
@@ -998,5 +1006,68 @@ mod tests {
         let world = app.world_mut();
         let mut limits = world.query::<&DigLimit>();
         assert!(limits.iter(world).all(|limit| limit.0 == Some(1)));
+    }
+
+    #[test]
+    fn simultaneous_external_digs_reserve_one_live_target_and_charge_once() {
+        let mut app = App::new();
+        app.add_plugins((
+            AssetPlugin::default(),
+            TransformPlugin,
+            PhysicsPlugins::default(),
+            GizmoPlugin,
+        ))
+        .insert_resource(Time::<()>::default())
+        .insert_resource(StageAudioHandles::new(Handle::default(), Handle::default()))
+        .init_resource::<StageAudioState>()
+        .insert_resource(GameSettings::default())
+        .insert_resource(crate::resources::launch_profile::LaunchProfile::default())
+        .add_message::<StoneTickMessage>()
+        .add_message::<StonePlaceRequestMessage>()
+        .add_message::<StoneExternalOutcomeMessage>()
+        .init_resource::<ExternalOutcomes>();
+
+        let target = app
+            .world_mut()
+            .spawn((StageTile, Collider::circle(16.0)))
+            .id();
+        let mut finished = Timer::from_seconds(0.5, TimerMode::Once);
+        finished.tick(Duration::from_secs(1));
+        for (index, action_id) in [(0, 201), (1, 202)] {
+            app.world_mut().spawn((
+                StoneRune,
+                StoneIndex(index),
+                StoneCommandState {
+                    current: Some(StoneAction::Dig(finished.clone(), target, false)),
+                    external_action_id: Some(action_id),
+                    ..default()
+                },
+                Transform::default(),
+                GlobalTransform::default(),
+                LinearVelocity::default(),
+                StoneMotion::default(),
+                DigLimit(Some(1)),
+            ));
+        }
+
+        app.world_mut()
+            .run_system_once(update_stone_behavior)
+            .unwrap();
+        app.world_mut()
+            .run_system_once(collect_external_outcomes)
+            .unwrap();
+
+        let outcomes = &app.world().resource::<ExternalOutcomes>().0;
+        assert_eq!(outcomes.len(), 2);
+        assert_eq!(
+            outcomes.iter().filter(|outcome| !outcome.blocked).count(),
+            1
+        );
+        assert_eq!(outcomes.iter().filter(|outcome| outcome.blocked).count(), 1);
+        let world = app.world_mut();
+        let mut limits = world.query::<&DigLimit>();
+        let mut remaining: Vec<_> = limits.iter(world).map(|limit| limit.0).collect();
+        remaining.sort();
+        assert_eq!(remaining, vec![Some(0), Some(1)]);
     }
 }

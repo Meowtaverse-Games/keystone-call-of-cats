@@ -294,7 +294,7 @@ async fn session(
         _ => return Err(ApiError(404, "unknown_session_action")),
     };
     let snapshot = s.bridge.snapshot.lock().unwrap().clone();
-    if matches!(&r, ExternalRequest::Start) && snapshot.active_stage.is_none() {
+    if snapshot.active_stage.is_none() {
         return Err(ApiError(409, "no_active_stage"));
     }
     let g = snapshot.generation;
@@ -528,6 +528,10 @@ pub fn drain_external_commands(
             ExternalRequest::Stop => {
                 control.owner = false;
                 control.generation = control.generation.wrapping_add(1);
+                // `controls_enabled` gates an editor script session as well as player
+                // movement. Releasing external ownership must release that script
+                // session gate so a later external start can establish a new session.
+                editor.controls_enabled = false;
                 editor.pending_player_reset = true;
                 for (_, _, mut state, mut velocity) in &mut stones {
                     state.clear_commands();
@@ -539,7 +543,10 @@ pub fn drain_external_commands(
                 bridge.finish(request.id, request.generation, "complete", None);
             }
             ExternalRequest::Reset => {
-                editor.controls_enabled = false;
+                // Reset retains an existing external session owner. Keep the shared
+                // gameplay gate enabled only for that owner so the player and goal
+                // systems continue to run and its client can use the next generation.
+                editor.controls_enabled = control.owner;
                 editor.active_programs.clear();
                 editor.pending_player_reset = true;
                 control.generation = control.generation.wrapping_add(1);
@@ -840,7 +847,7 @@ mod tests {
     }
 
     #[test]
-    fn title_session_start_is_rejected_before_a_stage_is_active() {
+    fn title_session_requests_are_rejected_before_a_stage_is_active() {
         let http = Http {
             bridge: bridge(1),
             token: Arc::from("secret"),
@@ -851,11 +858,21 @@ mod tests {
             .enable_all()
             .build()
             .unwrap();
-        let error = runtime
-            .block_on(session(State(http), headers, Path("start".to_string())))
-            .unwrap_err();
-        assert_eq!(error.0, 409);
-        assert_eq!(error.1, "no_active_stage");
+        for action in ["start", "stop", "reset"] {
+            let error = runtime
+                .block_on(session(
+                    State(http.clone()),
+                    headers.clone(),
+                    Path(action.to_string()),
+                ))
+                .unwrap_err();
+            assert_eq!(error.0, 409, "{action}");
+            assert_eq!(error.1, "no_active_stage", "{action}");
+        }
+        assert!(
+            http.bridge.records.lock().unwrap().0.is_empty(),
+            "a title-screen session request must not enter ingress"
+        );
     }
 
     #[test]
@@ -1169,6 +1186,99 @@ mod tests {
         let record = bridge.records.lock().unwrap().0.back().unwrap().clone();
         assert_eq!(record.status, "rejected");
         assert_eq!(record.detail.as_deref(), Some("external_session_active"));
+    }
+
+    #[test]
+    fn stop_releases_script_gate_so_the_client_can_start_a_new_session() {
+        let (mut app, bridge) = ecs_app();
+        stone(&mut app, 0);
+
+        let first_start = bridge.submit(0, ExternalRequest::Start).unwrap();
+        app.update();
+        assert!(app.world().resource::<ExternalControlState>().owner);
+        assert!(app.world().resource::<ScriptEditorState>().controls_enabled);
+
+        let stop = bridge.submit(0, ExternalRequest::Stop).unwrap();
+        app.update();
+        assert!(!app.world().resource::<ExternalControlState>().owner);
+        assert!(!app.world().resource::<ScriptEditorState>().controls_enabled);
+        assert_eq!(app.world().resource::<ExternalControlState>().generation, 1);
+        assert_eq!(
+            bridge
+                .records
+                .lock()
+                .unwrap()
+                .0
+                .iter()
+                .find(|record| record.id == stop.id)
+                .map(|record| record.status.as_str()),
+            Some("complete")
+        );
+
+        let second_start = bridge.submit(1, ExternalRequest::Start).unwrap();
+        app.update();
+        assert!(app.world().resource::<ExternalControlState>().owner);
+        assert!(app.world().resource::<ScriptEditorState>().controls_enabled);
+        assert_eq!(
+            bridge
+                .records
+                .lock()
+                .unwrap()
+                .0
+                .iter()
+                .find(|record| record.id == second_start.id)
+                .map(|record| record.status.as_str()),
+            Some("complete")
+        );
+        assert_eq!(first_start.generation, 0);
+        assert_eq!(second_start.generation, 1);
+    }
+
+    #[test]
+    fn reset_keeps_external_owner_and_controls_for_the_next_generation() {
+        let (mut app, bridge) = ecs_app();
+        stone(&mut app, 0);
+        bridge.submit(0, ExternalRequest::Start).unwrap();
+        app.update();
+
+        let reset = bridge.submit(0, ExternalRequest::Reset).unwrap();
+        app.update();
+        assert!(app.world().resource::<ExternalControlState>().owner);
+        assert!(app.world().resource::<ScriptEditorState>().controls_enabled);
+        assert_eq!(app.world().resource::<ExternalControlState>().generation, 1);
+        assert_eq!(
+            bridge
+                .records
+                .lock()
+                .unwrap()
+                .0
+                .iter()
+                .find(|record| record.id == reset.id)
+                .map(|record| record.status.as_str()),
+            Some("complete")
+        );
+
+        let command = bridge
+            .submit(
+                1,
+                ExternalRequest::Command {
+                    stone: 0,
+                    command: ScriptCommand::Sleep(0.0),
+                },
+            )
+            .unwrap();
+        app.update();
+        assert_eq!(
+            bridge
+                .records
+                .lock()
+                .unwrap()
+                .0
+                .iter()
+                .find(|record| record.id == command.id)
+                .map(|record| record.status.as_str()),
+            Some("running")
+        );
     }
 
     #[test]
