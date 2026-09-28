@@ -1,5 +1,7 @@
 # Stage design candidates
 
+**2026-09-28 方針変更:** ユーザーの試遊評価を受け、Stage 8の先行抽出から、mainの遊びを極力生かす20面の再設計へ移行します。[mainとの比較・石種と面構成の確認案](stages-01-20-reassessment.md)を先に読み、全体構造の確認後にStage 1から進めます。以下の固定20面候補とStage 8抽出手順は従来案の記録です。
+
 `stages/`は、20ステージ再設計のための固定マップ候補です。レビューとBevy上の操作確認が終わるまでは`assets/stages/`を置き換えません。CLIの検証結果は候補の成立条件を確認するもので、製品地形のクリアや操作感を証明しません。
 
 Stage 8だけは、Rhaiの接触待ちを試す製品試作を`prototypes/stage-8-playful-v1.*`で管理します。旧`stages/stage-8.ron`とKeystoneの`.ks`解法はCLI研究候補として残しており、試作の正解や製品物理の証明ではありません。
