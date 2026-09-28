@@ -39,13 +39,15 @@ pub use goal::check_goal_completion;
 pub use obstacle::*;
 pub use place::{PlaceState, StageGridMetrics, reset_placed_tiles, resolve_place_requests};
 pub use player::*;
+pub(crate) use stone::StoneCommandState;
 pub use stone::{
-    StoneAppendCommandMessage, StoneCommandMessage, StonePlaceRequestMessage, StoneTickMessage,
-    carry_riders_with_stone, handle_stone_append_messages, handle_stone_messages,
-    reset_stone_position, update_stone_behavior,
+    StoneAppendCommandMessage, StoneCommandMessage, StoneExternalOutcomeMessage,
+    StonePlaceRequestMessage, StoneTickMessage, carry_riders_with_stone,
+    handle_stone_append_messages, handle_stone_messages, reset_stone_position,
+    update_stone_behavior,
 };
-use ui::{ScriptEditorState, StageTutorialOverlay};
-pub use ui::{handle_tutorial_overlay_input, tick_script_program, ui};
+use ui::StageTutorialOverlay;
+pub use ui::{ScriptEditorState, handle_tutorial_overlay_input, tick_script_program, ui};
 
 pub use tiles::restore_dug_tiles;
 
@@ -598,11 +600,21 @@ pub struct StageReloadParams<'w, 's> {
     localization: Res<'w, Localization>,
     audio_state: Option<ResMut<'w, StageAudioState>>,
     stage_scripts: Option<Res<'w, StageScripts>>,
+    external_control: Option<ResMut<'w, crate::resources::external_control::ExternalControlState>>,
+    external_bridge: Option<Res<'w, crate::resources::external_control::ExternalControlBridge>>,
+    external_receiver: Option<Res<'w, crate::resources::external_control::ExternalControlReceiver>>,
 }
 
 pub fn reload_stage_if_needed(mut commands: Commands, mut params: StageReloadParams) {
     if !params.progression.take_pending_reload() {
         return;
+    }
+    if let Some(control) = params.external_control.as_deref_mut() {
+        crate::resources::external_control::invalidate_external_state(
+            control,
+            params.external_bridge.as_deref(),
+            params.external_receiver.as_deref(),
+        );
     }
 
     let stage_id = params.progression.current_stage_id();
@@ -739,5 +751,59 @@ pub fn update_stage_color_grading(
         if (section.saturation - target_saturation).abs() > SATURATION_EPSILON {
             section.saturation = target_saturation;
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::resources::{
+        external_control::{self, ExternalControlState},
+        launch_profile::LaunchProfile,
+    };
+    use bevy_ecs::system::RunSystemOnce;
+
+    #[test]
+    fn reload_system_invalidates_external_ownership_before_rebuilding_the_stage() {
+        let profile = LaunchProfile {
+            external_control: true,
+            external_control_port: Some(0),
+            external_control_token: Some("test-token".into()),
+            ..LaunchProfile::default()
+        };
+        let (bridge, receiver, server) = external_control::start(&profile).unwrap().unwrap();
+        let mut progression = StageProgressionState::default();
+        progression.select_stage(&StageMeta {
+            id: StageId(1),
+            title: "Stage 1".into(),
+            unlocked: true,
+        });
+        let mut external_state = ExternalControlState::default();
+        external_state.generation = 9;
+        external_state.owner = true;
+
+        let mut app = App::new();
+        app.add_plugins(AssetPlugin::default())
+            .init_asset::<TextureAtlasLayout>()
+            .insert_resource(AssetStore::default())
+            .insert_resource(ScaledViewport::new(Vec2::ONE))
+            .insert_resource(LetterboxOffsets::default())
+            .insert_resource(TiledMapAssets {
+                tileset: crate::resources::tiled::Tileset { image: None },
+            })
+            .insert_resource(Localization::new())
+            .insert_resource(progression)
+            .insert_resource(bridge)
+            .insert_resource(receiver)
+            .insert_resource(external_state);
+
+        app.world_mut()
+            .run_system_once(reload_stage_if_needed)
+            .unwrap();
+
+        let control = app.world().resource::<ExternalControlState>();
+        assert_eq!(control.generation, 10);
+        assert!(!control.owner);
+        server.stop();
     }
 }
