@@ -58,7 +58,7 @@ Stage 13〜16、20は、製品側の`place`基盤を利用できる。ただし�
 - 既存能力で解けるStage 1〜12・17〜19は候補RONを`assets/stages/`へ反映している。ただしCLIの正解検証は製品でのゴール、操作感、既存面の持ち味を保証しない。
 - Stage 13〜20のRONはカタログからロード可能。ただし13〜16・20は`place_limit`設定と製品クリア確認が未完である。
 - `keystone-lang`の`place`は `267d9cc` を依存固定し、製品側の変換・能力・衝突・共有上限・リセットは [PR #84](https://github.com/Meowtaverse-Games/keystone-call-of-cats/pull/84) で実装済みである。能力制限は [PR #83](https://github.com/Meowtaverse-Games/keystone-call-of-cats/pull/83) で導入済み。
-- 次の対象は候補地形の設計と実機確認である。HTTP 外部入力は [Draft PR #85](https://github.com/Meowtaverse-Games/keystone-call-of-cats/pull/85) で検証中であり、Type5ではない。
+- 次の対象は候補地形の設計と実機確認である。HTTP 外部入力は [PR #85](https://github.com/Meowtaverse-Games/keystone-call-of-cats/pull/85) としてmainへマージ済みであり、Type5ではない。
 - 全面のBevy物理・UI確認は別環境で未実施。
 
 2026-09-27時点のA1X実機確認追記:
