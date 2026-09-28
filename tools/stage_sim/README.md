@@ -61,7 +61,7 @@ sim analyze 11 --stages-dir assets/stages
 sim render 13 --stage-file tools/stage_sim/examples/ai-candidate.ron --seed 7
 ```
 
-`--stage-file`は単独の候補ファイルを直接指定します。省略時は`--stages-dir`以下の`stage-N.ron`を使います。**この作業ブランチのassetsはmainと異なる候補を含みます。** mainを検証する場合は、そのRONを別ディレクトリへ取り出して明示的に指定してください。
+`--stage-file`は単独の候補ファイルを直接指定します。省略時は`--stages-dir`以下の`stage-N.ron`を使います。`assets/stages`は現在チェックアウトしているブランチの面です。設計用ブランチではmainと異なる候補を含むため、mainの完成面を確認する場合はmainのRONを別ディレクトリへ取り出し、`--stages-dir`または`--stage-file`で明示してください。候補を試すときは、コミット済みの`tools/stage_sim/examples/`か、明示した候補ファイルを使います。
 
 ## 操作を記録・再生する
 
@@ -126,17 +126,11 @@ sim check 13 --stage-file /tmp/stage-check-001/source.ron \
 
 ## AIで生成してチェックする
 
-[AI生成の作業手順](AI_WORKFLOW.md)に沿い、この会話のAIに候補RONと操作計画を作らせ、`check`のJSONを読みながら修正します。CLI自体は外部AIサービスを呼びません。APIキーやBevyの起動は不要です。
+[AI生成の作業手順](AI_WORKFLOW.md)に沿い、候補RONと操作計画を作り、`check`のJSONを読みながら修正します。CLI自体は外部AIサービスを呼びません。APIキーやBevyの起動は不要です。
 
 ## Keystoneコードの実行（既存機能）
 
-```bash
-sim run 11 --stages-dir design/stages \
-  --stone-script design/solutions/stage-11-stone-0.ks \
-  --player-plan design/solutions/stage-11-player.plan --frames
-```
-
-`--stone-script`を石番号順に複数回指定できます。プレイヤー計画は1ラウンド1行、待機は`wait`です。時間待ちは秒を設計ラウンドへ丸めた近似です。
+`run`はKeystoneコードを石番号順に受け取り、プレイヤー計画を1ラウンド1行で再生します（待機は`wait`）。時間待ちは秒を設計ラウンドへ丸めた近似です。コード・計画は検証対象と同じコミットで管理されたものを明示的に指定してください。
 
 **この独立ツールのCargo.lockは既存のkeystone-lang版を固定しており、製品の現在の言語版とは同一ではありません。** この版の`run`には`place`イベントの対応がなく、Rhaiも実行しません。配置面は手動コマンド／操作計画で検証します。`run`の言語評価・センサーの能力制限も、製品と同等の受入検証には使わないでください。
 
@@ -146,7 +140,6 @@ sim run 11 --stages-dir design/stages \
 - `O`の時間消滅はなく、`?`は静的な障害物です。動的地形の抽選・小数の石位置補正は適用しません。
 - 到達探索はプレイヤーだけです。失敗は、その手順／そのモデルで届かなかったという結果であり、別解の不存在を意味しません。
 - CLI seedは製品seedではありません。同じツール版とRONで再現してください。
-- 大量のマップ全体を作り直す前に、mainの完成面をそのまま検証します。既知のStage 18失敗を通すために地形・解法・assertを弱めません。
 
 ## 開発時の検証
 

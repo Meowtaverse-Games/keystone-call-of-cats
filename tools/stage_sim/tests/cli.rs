@@ -236,12 +236,13 @@ fn recorded_interactive_play_replays_without_overwriting_files() {
         .stdin
         .take()
         .unwrap()
-        .write_all(b"s 0 place up\nwalk-goal\nassert goal\nquit\n")
+        .write_all(b"s\t0 place up\nwalk-goal\nassert\tgoal\nquit\n")
         .unwrap();
     let run = child.wait_with_output().unwrap();
     assert!(run.status.success());
     let contents = fs::read_to_string(&recording).unwrap();
-    assert!(contents.contains("s 0 place up"));
+    assert!(contents.contains("s\t0 place up"));
+    assert!(contents.contains("assert\tgoal"));
     assert!(contents.contains("p "));
     assert!(
         !contents.contains("walk-goal"),

@@ -1,6 +1,6 @@
 # AI生成 → 軽量チェック → 修正の作業契約
 
-このCLIはAIが生成した候補を検証する道具です。AIモデルの呼び出しや製品への自動採用はしません。この会話のAIが候補を作り、コマンドの結果を読み、修正を繰り返します。
+このCLIはAIが生成した候補を検証する道具です。AIモデルの呼び出しや製品への自動採用はしません。候補を作り、コマンドの結果を読み、修正を繰り返すために使います。
 
 ## AIへの依頼例
 
@@ -23,7 +23,7 @@ AIはブリーフを満たす候補RONと`.plan`を作ります。必要なら�
 
 ## 2. RONと計画
 
-例は`examples/ai-candidate.ron`、`examples/ai-candidate.plan`、`examples/ai-candidate.rhai`です。このセッションのAIが作成した、製品未登録の候補です。
+例は`examples/ai-candidate.ron`、`examples/ai-candidate.plan`、`examples/ai-candidate.rhai`です。いずれも製品未登録のコミット済み候補です。
 
 RONは既存の`start_chunks`、`middle_chunks`、`goal_chunks`を使います。記号は`@`、`S`、`#`、`G`、接続の`I`/`E`など。`map_size`は30×20以内。石種は1面1種類です。
 
