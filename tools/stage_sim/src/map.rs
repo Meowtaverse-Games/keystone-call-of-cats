@@ -21,11 +21,14 @@ pub struct Adjustments {
 }
 
 #[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct StageConfig {
     pub map_size: (i32, i32),
     #[serde(default)]
     pub stone_type: StoneType,
     pub dig_limit: Option<u32>,
+    #[serde(default)]
+    pub place_limit: Option<u32>,
     #[serde(default)]
     pub dynamic_max: u32,
     #[serde(default)]
@@ -37,6 +40,7 @@ pub struct StageConfig {
 }
 
 #[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct ChunkTemplate {
     id: String,
     map: Vec<String>,
@@ -134,6 +138,7 @@ pub struct GeneratedMap {
     pub boundary_margin: (i32, i32),
     pub stone_type: StoneType,
     pub dig_limit: Option<u32>,
+    pub place_limit: Option<u32>,
     pub dynamic_min: u32,
     pub dynamic_max: u32,
     pub stone_adjustments: Vec<(f32, f32)>,
@@ -163,6 +168,13 @@ pub fn parse_stage(input: &str) -> Result<StageConfig> {
 }
 
 pub fn generate(config: &StageConfig, seed: u64) -> Result<GeneratedMap> {
+    if config.map_size.0 <= 0
+        || config.map_size.1 <= 0
+        || config.map_size.0 > CANVAS_SIZE.0
+        || config.map_size.1 > CANVAS_SIZE.1
+    {
+        bail!("map_size must be positive and fit the {CANVAS_SIZE:?} canvas");
+    }
     if config.start_chunks.is_empty() || config.goal_chunks.is_empty() {
         bail!("stage must contain at least one start and goal chunk");
     }
@@ -223,6 +235,7 @@ pub fn generate(config: &StageConfig, seed: u64) -> Result<GeneratedMap> {
         boundary_margin: margin,
         stone_type: config.stone_type,
         dig_limit: config.dig_limit,
+        place_limit: config.place_limit,
         dynamic_min: config.dynamic_min,
         dynamic_max: config.dynamic_max,
         stone_adjustments: config
@@ -315,6 +328,9 @@ fn build_layout(
     let mut optional = Vec::new();
     for middle in middles {
         if middle.required_count > 0 {
+            if middle.required_count > 600 || required.len() + middle.required_count > 600 {
+                bail!("required chunk count exceeds the 600-cell design budget");
+            }
             for _ in 0..middle.required_count {
                 required.push(middle);
             }
@@ -323,6 +339,9 @@ fn build_layout(
         }
     }
 
+    // Bound unsuccessful candidate exploration as well as layout attempts. AI-written
+    // candidates can have impossible connections; they must not trap a batch run.
+    let mut search_budget = 200_000_usize;
     for _ in 0..10_000 {
         let mut required_queue = required.clone();
         required_queue.shuffle(rng);
@@ -351,8 +370,17 @@ fn build_layout(
         let Some(goal_target) = goal_target(rng, map_size, current_exit, goal) else {
             continue;
         };
-        let Some(mut path) = find_path(rng, map_size, &optional, current_exit, goal_target.entry)
-        else {
+        let Some(mut path) = find_path(
+            rng,
+            map_size,
+            &optional,
+            current_exit,
+            goal_target.entry,
+            &mut search_budget,
+        ) else {
+            if search_budget == 0 {
+                bail!("chunk search budget exhausted (not proof that the layout is impossible)");
+            }
             continue;
         };
         let final_exit = path.last().and_then(pick_exit).unwrap_or(current_exit).0;
@@ -455,6 +483,7 @@ fn find_path(
     candidates: &[&InnerChunk],
     start: ExitPoint,
     goal: (i32, i32),
+    budget: &mut usize,
 ) -> Option<Vec<PlacedChunk>> {
     let mut path = Vec::new();
     let mut visited = HashSet::from([start.0]);
@@ -466,6 +495,7 @@ fn find_path(
         goal,
         &mut path,
         &mut visited,
+        budget,
     )
 }
 
@@ -477,7 +507,12 @@ fn search_path(
     goal: (i32, i32),
     path: &mut Vec<PlacedChunk>,
     visited: &mut HashSet<(i32, i32)>,
+    budget: &mut usize,
 ) -> Option<Vec<PlacedChunk>> {
+    if *budget == 0 {
+        return None;
+    }
+    *budget -= 1;
     if current.0 == goal {
         return Some(path.clone());
     }
@@ -498,11 +533,16 @@ fn search_path(
             continue;
         }
         path.push(placed);
-        if let Some(result) = search_path(rng, map_size, candidates, next, goal, path, visited) {
+        if let Some(result) =
+            search_path(rng, map_size, candidates, next, goal, path, visited, budget)
+        {
             return Some(result);
         }
         path.pop();
         visited.remove(&next.0);
+        if *budget == 0 {
+            return None;
+        }
     }
     None
 }

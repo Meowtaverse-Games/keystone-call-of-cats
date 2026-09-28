@@ -1,0 +1,4 @@
+# The stone solution is identical across all flavor layouts.
+# check --walk-to-goal finds and replays the remaining player-only path.
+assert unreachable
+s 0 place up
