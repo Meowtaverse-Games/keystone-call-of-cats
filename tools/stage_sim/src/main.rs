@@ -275,7 +275,7 @@ fn play(args: &SimArgs, record: Option<&Path>) -> Result<()> {
                                 for action in route {
                                     writeln!(file, "{action}")?;
                                 }
-                            } else if is_state_command(command) || command.starts_with("assert ") {
+                            } else if is_recordable_command(command) {
                                 writeln!(file, "{command}")?;
                             }
                             file.flush()?;
@@ -328,12 +328,18 @@ fn simulate(args: &SimArgs, plan_path: &Path, frames: bool, require_goal: bool) 
 }
 
 fn is_state_command(command: &str) -> bool {
-    command.starts_with("p ")
-        || command.starts_with("player ")
-        || command.starts_with("s ")
-        || command.starts_with("stone ")
-        || command == "reset"
-        || command == "walk-goal"
+    matches!(
+        command.split_whitespace().collect::<Vec<_>>().as_slice(),
+        ["p" | "player", _] | ["s" | "stone", _, _, _] | ["reset"] | ["walk-goal"]
+    )
+}
+
+fn is_recordable_command(command: &str) -> bool {
+    is_state_command(command)
+        || matches!(
+            command.split_whitespace().collect::<Vec<_>>().as_slice(),
+            ["assert", _]
+        )
 }
 
 #[derive(Clone)]
