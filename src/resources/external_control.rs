@@ -175,6 +175,20 @@ impl ExternalControlBridge {
             detail,
         })
     }
+    /// Validates and enqueues while holding the published session snapshot.
+    ///
+    /// Stage invalidation takes this same lock before it drains ingress. That makes
+    /// an acceptance linearize either before invalidation (and be rejected by its
+    /// drain) or after it (and be rejected without entering ingress).
+    fn submit_for_active_snapshot(
+        &self,
+        request: ExternalRequest,
+        validate: impl FnOnce(&ControlSnapshot) -> Result<u64, ApiError>,
+    ) -> Result<ActionRecord, ApiError> {
+        let snapshot = self.snapshot.lock().unwrap();
+        let generation = validate(&snapshot)?;
+        self.submit(generation, request)
+    }
     fn submit(&self, generation: u64, request: ExternalRequest) -> Result<ActionRecord, ApiError> {
         if self.pending_is_full() {
             return Err(ApiError(429, "queue_full"));
@@ -293,12 +307,16 @@ async fn session(
         "reset" => ExternalRequest::Reset,
         _ => return Err(ApiError(404, "unknown_session_action")),
     };
-    let snapshot = s.bridge.snapshot.lock().unwrap().clone();
-    if snapshot.active_stage.is_none() {
-        return Err(ApiError(409, "no_active_stage"));
-    }
-    let g = snapshot.generation;
-    Ok((StatusCode::ACCEPTED, Json(s.bridge.submit(g, r)?)))
+    Ok((
+        StatusCode::ACCEPTED,
+        Json(s.bridge.submit_for_active_snapshot(r, |snapshot| {
+            snapshot
+                .active_stage
+                .is_some()
+                .then_some(snapshot.generation)
+                .ok_or(ApiError(409, "no_active_stage"))
+        })?),
+    ))
 }
 fn command(b: CommandBody) -> Result<ScriptCommand, ApiError> {
     let dir = || {
@@ -331,22 +349,22 @@ async fn submit(
     auth(&h, &s)?;
     let generation = b.generation;
     let c = command(b)?;
-    let snap = s.bridge.snapshot.lock().unwrap().clone();
-    if snap.active_stage.is_none() {
-        return Err(ApiError(409, "no_active_stage"));
-    }
-    if !snap.external_owner {
-        return Err(ApiError(409, "external_session_not_started"));
-    }
-    if generation != snap.generation {
-        return Err(ApiError(409, "stale_generation"));
-    }
     Ok((
         StatusCode::ACCEPTED,
-        Json(
-            s.bridge
-                .submit(generation, ExternalRequest::Command { stone, command: c })?,
-        ),
+        Json(s.bridge.submit_for_active_snapshot(
+            ExternalRequest::Command { stone, command: c },
+            |snapshot| {
+                if snapshot.active_stage.is_none() {
+                    Err(ApiError(409, "no_active_stage"))
+                } else if !snapshot.external_owner {
+                    Err(ApiError(409, "external_session_not_started"))
+                } else if generation != snapshot.generation {
+                    Err(ApiError(409, "stale_generation"))
+                } else {
+                    Ok(generation)
+                }
+            },
+        )?),
     ))
 }
 pub fn start(
@@ -716,6 +734,16 @@ pub(crate) fn invalidate_external_state(
     control.owner = false;
     let cancelled: Vec<_> = control.active.drain().collect();
     if let Some(bridge) = bridge {
+        // Lock before draining ingress. HTTP acceptance holds this lock through
+        // `try_send`, so a request cannot be placed behind this drain after it has
+        // published an active-stage snapshot.
+        {
+            let mut snapshot = bridge.snapshot.lock().unwrap();
+            snapshot.generation = control.generation;
+            snapshot.active_stage = None;
+            snapshot.external_owner = false;
+            snapshot.stones.clear();
+        }
         for (_, (id, generation, _)) in cancelled {
             bridge.finish(id, generation, "rejected", Some("stage_changed".into()));
         }
@@ -729,11 +757,6 @@ pub(crate) fn invalidate_external_state(
                 );
             }
         }
-        let mut snapshot = bridge.snapshot.lock().unwrap();
-        snapshot.generation = control.generation;
-        snapshot.active_stage = None;
-        snapshot.external_owner = false;
-        snapshot.stones.clear();
     }
 }
 
@@ -1342,6 +1365,119 @@ mod tests {
                 .0
                 .iter()
                 .any(|record| record.id == 8 && record.detail.as_deref() == Some("stage_changed"))
+        );
+    }
+
+    #[test]
+    fn exit_linearizes_http_acceptance_before_or_after_ingress_drain() {
+        let (ingress, receiver) = std::sync::mpsc::sync_channel(4);
+        let bridge = ExternalControlBridge {
+            ingress,
+            snapshot: Arc::new(Mutex::new(ControlSnapshot {
+                generation: 5,
+                active_stage: Some(202),
+                external_owner: true,
+                stones: vec![],
+            })),
+            records: Arc::new(Mutex::new(Records::default())),
+            ids: Arc::new(AtomicU64::new(1)),
+        };
+        let receiver = ExternalControlReceiver(Arc::new(Mutex::new(receiver)));
+        let mut control = ExternalControlState {
+            generation: 5,
+            owner: true,
+            active: HashMap::new(),
+        };
+        let http = Http {
+            bridge: bridge.clone(),
+            token: Arc::from("secret"),
+        };
+        let mut headers = HeaderMap::new();
+        headers.insert(header::AUTHORIZATION, "Bearer secret".parse().unwrap());
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+
+        // These acceptances linearize before exit. Invalidation drains both and
+        // gives them terminal records instead of leaving a queued orphan.
+        let session_action = runtime
+            .block_on(session(
+                State(http.clone()),
+                headers.clone(),
+                Path("start".to_string()),
+            ))
+            .unwrap()
+            .1
+            .0;
+        let command_action = runtime
+            .block_on(submit(
+                State(http.clone()),
+                headers.clone(),
+                Path(0),
+                Json(CommandBody {
+                    generation: 5,
+                    command: "sleep".into(),
+                    direction: None,
+                    duration: Some(0.0),
+                }),
+            ))
+            .unwrap()
+            .1
+            .0;
+
+        // Model a handler that had observed the old value just before exit. The
+        // route never reuses this clone: its acceptance re-locks the snapshot.
+        let stale_snapshot = bridge.snapshot.lock().unwrap().clone();
+        invalidate_external_state(&mut control, Some(&bridge), Some(&receiver));
+        assert_eq!(stale_snapshot.generation, 5);
+
+        for action in [session_action, command_action] {
+            let record = bridge
+                .records
+                .lock()
+                .unwrap()
+                .0
+                .iter()
+                .find(|record| record.id == action.id)
+                .cloned()
+                .unwrap();
+            assert_eq!(record.status, "rejected");
+            assert_eq!(record.detail.as_deref(), Some("stage_changed"));
+        }
+
+        let session_error = runtime
+            .block_on(session(
+                State(http.clone()),
+                headers.clone(),
+                Path("stop".to_string()),
+            ))
+            .unwrap_err();
+        assert_eq!(session_error.0, 409);
+        assert_eq!(session_error.1, "no_active_stage");
+        let command_error = runtime
+            .block_on(submit(
+                State(http),
+                headers,
+                Path(0),
+                Json(CommandBody {
+                    generation: stale_snapshot.generation,
+                    command: "sleep".into(),
+                    direction: None,
+                    duration: Some(0.0),
+                }),
+            ))
+            .unwrap_err();
+        assert_eq!(command_error.0, 409);
+        assert_eq!(command_error.1, "no_active_stage");
+        assert!(
+            bridge
+                .records
+                .lock()
+                .unwrap()
+                .0
+                .iter()
+                .all(|record| record.status != "queued")
         );
     }
 
