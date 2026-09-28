@@ -1,5 +1,7 @@
 # Stage design candidates
 
+**軽量な生成・検証:** [stage_sim](../tools/stage_sim/README.md)で、Bevyを起動せずに石とプレイヤーを操作・記録・再生できます。[AI生成手順](../tools/stage_sim/AI_WORKFLOW.md)では、候補RONと操作計画を複数seedで検証し、JSONと失敗配置を保存して修正します。軽量モデルの合格と実機・面白さの確認は分けます。
+
 **最新の提案:** [全20ステージの最終提案](stage-design-final-proposal.md)を先に参照してください。mainの1〜12は原則継承し、13〜20を拡張します。ランダムチャンクは安定した課題に変化を添えるフレーバーとして維持し、完成面の作り直しや全ステージのランダム化を求めません。以下と過去の構造案は比較・検討の履歴です。
 
 mainの原案と解法候補を先に確認する場合は、[main時点のステージ意図・コード案・Stage 11の2石調査](main-stage-intent-and-code-candidates.md)を参照してください。複数石の採用範囲は、この調査と実機確認を踏まえて決めます。

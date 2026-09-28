@@ -1,3 +1,4 @@
+mod check;
 mod map;
 mod sim;
 
@@ -32,7 +33,15 @@ enum Command {
     /// Print structural metrics and approximate player reachability.
     Analyze(StageArgs),
     /// Manipulate the player and stones in an interactive prompt.
-    Play(SimArgs),
+    Play {
+        #[command(flatten)]
+        sim: SimArgs,
+        /// Save accepted state-changing commands as a replayable plan (new file only).
+        #[arg(long)]
+        record: Option<PathBuf>,
+    },
+    /// Check a candidate over many seeds and save machine-readable, reproducible evidence.
+    Check(check::CheckArgs),
     /// Replay a text plan and optionally print every frame.
     Simulate {
         #[command(flatten)]
@@ -43,6 +52,9 @@ enum Command {
         /// Print the map after every state-changing command.
         #[arg(long)]
         frames: bool,
+        /// Require actual player arrival, not just a possible route.
+        #[arg(long)]
+        require_goal: bool,
     },
     /// Execute real Keystone-language programs against the grid model.
     Run {
@@ -73,6 +85,9 @@ struct StageArgs {
     /// Root containing stage-N.ron files.
     #[arg(long, default_value = "assets/stages")]
     stages_dir: PathBuf,
+    /// Read a candidate RON directly instead of stage-N.ron in --stages-dir.
+    #[arg(long)]
+    stage_file: Option<PathBuf>,
     /// Show x/y coordinates around the ASCII map.
     #[arg(long)]
     coordinates: bool,
@@ -82,9 +97,9 @@ struct StageArgs {
 struct SimArgs {
     #[command(flatten)]
     stage: StageArgs,
-    /// Number of blocks available to the proposed place command.
-    #[arg(long, default_value_t = 0)]
-    place_limit: u32,
+    /// Override the RON's shared placement budget (omitted RON limit means unlimited).
+    #[arg(long)]
+    place_limit: Option<u32>,
 }
 
 fn main() -> Result<()> {
@@ -101,8 +116,14 @@ fn main() -> Result<()> {
             let generated = load_map(&args)?;
             analyze(args.stage, args.seed, &generated)?;
         }
-        Command::Play(args) => play(&args)?,
-        Command::Simulate { sim, plan, frames } => simulate(&sim, &plan, frames)?,
+        Command::Play { sim, record } => play(&sim, record.as_deref())?,
+        Command::Check(args) => check::run(&args)?,
+        Command::Simulate {
+            sim,
+            plan,
+            frames,
+            require_goal,
+        } => simulate(&sim, &plan, frames, require_goal)?,
         Command::Run {
             sim,
             stone_scripts,
@@ -121,12 +142,18 @@ fn main() -> Result<()> {
 }
 
 fn load_map(args: &StageArgs) -> Result<GeneratedMap> {
-    let path = stage_path(&args.stages_dir, args.stage);
+    let path = source_path(args);
     let input =
         fs::read_to_string(&path).with_context(|| format!("failed to read {}", path.display()))?;
     let config =
         parse_stage(&input).with_context(|| format!("failed to parse {}", path.display()))?;
     generate(&config, args.seed).with_context(|| format!("failed to generate stage {}", args.stage))
+}
+
+fn source_path(args: &StageArgs) -> PathBuf {
+    args.stage_file
+        .clone()
+        .unwrap_or_else(|| stage_path(&args.stages_dir, args.stage))
 }
 
 fn stage_path(root: &Path, stage: usize) -> PathBuf {
@@ -152,10 +179,13 @@ fn analyze(stage: usize, seed: u64, map: &GeneratedMap) -> Result<()> {
     print_header(stage, seed, map);
     let world = World::from_map(map, None)?;
     println!(
-        "stone-type={:?} stones={} dig-limit={} dynamic={}-{}",
+        "stone-type={:?} stones={} dig-limit={} place-limit={} dynamic={}-{}",
         map.stone_type,
         map.positions(TileKind::Stone).len(),
         map.dig_limit
+            .map(|value| value.to_string())
+            .unwrap_or_else(|| "unlimited".to_owned()),
+        map.place_limit
             .map(|value| value.to_string())
             .unwrap_or_else(|| "unlimited".to_owned()),
         map.dynamic_min,
@@ -187,9 +217,32 @@ fn analyze(stage: usize, seed: u64, map: &GeneratedMap) -> Result<()> {
     Ok(())
 }
 
-fn play(args: &SimArgs) -> Result<()> {
+fn play(args: &SimArgs, record: Option<&Path>) -> Result<()> {
     let map = load_map(&args.stage)?;
-    let mut world = World::from_map(&map, Some(args.place_limit))?;
+    let mut world = World::from_map(&map, args.place_limit)?;
+    let mut recording = record
+        .map(|path| -> Result<_> {
+            let mut file = fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(path)
+                .with_context(|| {
+                    format!(
+                        "cannot create recording {} (will not overwrite)",
+                        path.display()
+                    )
+                })?;
+            writeln!(
+                file,
+                "# stage={} seed={} source={:?} place-limit-override={:?}",
+                args.stage.stage,
+                args.stage.seed,
+                source_path(&args.stage),
+                args.place_limit
+            )?;
+            Ok(file)
+        })
+        .transpose()?;
     print_header(args.stage.stage, args.stage.seed, &map);
     print!("{}", world.render(true));
     print_legend();
@@ -206,20 +259,40 @@ fn play(args: &SimArgs) -> Result<()> {
         match line.trim() {
             "quit" | "exit" => break,
             "help" => println!("{HELP}"),
-            command => match world.execute(command) {
-                Ok(output) if !output.is_empty() => println!("{output}"),
-                Ok(_) => {}
-                Err(error) => eprintln!("error: {error:#}"),
-            },
+            command => {
+                let expanded = if command == "walk-goal" {
+                    world.goal_route()
+                } else {
+                    None
+                };
+                match world.execute(command) {
+                    Ok(output) => {
+                        if !output.is_empty() {
+                            println!("{output}");
+                        }
+                        if let Some(file) = &mut recording {
+                            if let Some(route) = expanded {
+                                for action in route {
+                                    writeln!(file, "{action}")?;
+                                }
+                            } else if is_state_command(command) || command.starts_with("assert ") {
+                                writeln!(file, "{command}")?;
+                            }
+                            file.flush()?;
+                        }
+                    }
+                    Err(error) => eprintln!("error: {error:#}"),
+                }
+            }
         }
     }
     println!("final: {}", world.status());
     Ok(())
 }
 
-fn simulate(args: &SimArgs, plan_path: &Path, frames: bool) -> Result<()> {
+fn simulate(args: &SimArgs, plan_path: &Path, frames: bool, require_goal: bool) -> Result<()> {
     let map = load_map(&args.stage)?;
-    let mut world = World::from_map(&map, Some(args.place_limit))?;
+    let mut world = World::from_map(&map, args.place_limit)?;
     let plan = fs::read_to_string(plan_path)
         .with_context(|| format!("failed to read plan {}", plan_path.display()))?;
 
@@ -245,6 +318,9 @@ fn simulate(args: &SimArgs, plan_path: &Path, frames: bool) -> Result<()> {
         }
     }
     println!("final: {}", world.status());
+    if require_goal && !world.goal_reached() {
+        bail!("plan ended before the player reached the goal");
+    }
     if !world.goal_reached() && !world.goal_is_reachable() {
         bail!("plan ended with the goal unreachable in the abstract simulator")
     }
@@ -257,6 +333,7 @@ fn is_state_command(command: &str) -> bool {
         || command.starts_with("s ")
         || command.starts_with("stone ")
         || command == "reset"
+        || command == "walk-goal"
 }
 
 #[derive(Clone)]
@@ -306,7 +383,7 @@ fn run_programs(
     frames: bool,
 ) -> Result<()> {
     let map = load_map(&args.stage)?;
-    let world = Arc::new(Mutex::new(World::from_map(&map, Some(args.place_limit))?));
+    let world = Arc::new(Mutex::new(World::from_map(&map, args.place_limit)?));
     let signals = Arc::new(Mutex::new(HashSet::new()));
     let mut programs = Vec::new();
 
