@@ -2,6 +2,8 @@
 
 `stages/`は、20ステージ再設計のための固定マップ候補です。レビューとBevy上の操作確認が終わるまでは`assets/stages/`を置き換えません。CLIの検証結果は候補の成立条件を確認するもので、製品地形のクリアや操作感を証明しません。
 
+Stage 8だけは、Rhaiの接触待ちを試す製品試作を`prototypes/stage-8-playful-v1.*`で管理します。旧`stages/stage-8.ron`とKeystoneの`.ks`解法はCLI研究候補として残しており、試作の正解や製品物理の証明ではありません。
+
 各ステージは次の3点をセットで管理します。
 
 - `stages/stage-N.ron`: 固定ASCIIマップ
@@ -25,7 +27,7 @@
 ./design/verify-all.sh
 ```
 
-製品カタログの1〜20、製品RONの解析、既存能力で解けるStage 1〜12・17〜19と設計正本の一致を軽量確認できます。
+製品カタログの1〜20と製品RONの解析を軽量確認できます。Stage 8は`prototypes/stage-8-playful-v1.ron`との一致を、他の既存能力面は従来の設計候補との一致を確認します。
 
 ```bash
 ./design/verify-product-stage-catalog.sh
