@@ -1,3 +1,5 @@
+**最新の13〜20候補:** [チャンク付き第1候補と検証結果](prototypes/stages-13-20-v1/README.md)。各100 seedで実到達を確認した設計用候補です。製品への採用・実機合格ではありません。
+
 # Stage design candidates
 
 **軽量な生成・検証:** [stage_sim](../tools/stage_sim/README.md)で、Bevyを起動せずに石とプレイヤーを操作・記録・再生できます。[AI生成手順](../tools/stage_sim/AI_WORKFLOW.md)では、候補RONと操作計画を複数seedで検証し、JSONと失敗配置を保存して修正します。軽量モデルの合格と実機・面白さの確認は分けます。
