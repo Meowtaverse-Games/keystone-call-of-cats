@@ -1291,7 +1291,11 @@ mod tests {
 
     fn stage_thirteen_description(ftl: &str) -> &str {
         ftl.split_once("stage13-description = ")
-            .and_then(|(_, remaining)| remaining.split_once("\n\n"))
+            .and_then(|(_, remaining)| {
+                remaining
+                    .split_once("\r\n\r\n")
+                    .or_else(|| remaining.split_once("\n\n"))
+            })
             .map(|(description, _)| description)
             .expect("stage 13 description")
     }
@@ -1351,5 +1355,15 @@ mod tests {
                 Some(expected)
             );
         }
+    }
+
+    #[test]
+    fn stage_thirteen_description_accepts_windows_newlines() {
+        assert_eq!(
+            stage_thirteen_description(
+                "stage13-description = Build one foothold.\r\n    `{$place-up}`\r\n\r\nstage14-text = Next"
+            ),
+            "Build one foothold.\r\n    `{$place-up}`"
+        );
     }
 }
