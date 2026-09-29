@@ -976,6 +976,7 @@ fn command_help_args(language: Language) -> &'static [(&'static str, &'static st
             ("dig-down", "dig(\"down\");"),
             ("dig-left", "dig(\"left\");"),
             ("dig-right", "dig(\"right\");"),
+            ("place-up", "place(\"up\");"),
             ("place-right", "place(\"right\");"),
             ("loop-example", "loop {\n    move(\"up\");\n}"),
             (
@@ -994,6 +995,7 @@ fn command_help_args(language: Language) -> &'static [(&'static str, &'static st
             ("move-left", "move left"),
             ("sleep-1", "sleep 1"),
             ("sleep-2x5", "sleep 2<<dot>>5"),
+            ("place-up", "place up"),
             ("place-right", "place right"),
         ],
     }

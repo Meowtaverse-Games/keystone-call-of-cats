@@ -238,19 +238,13 @@ stage11-text = This level alternates between hollows and rocks.
 stage11-description = ...
 
 
-stage13-text = Within a narrow tunnel, you and the stone must pass each other.
-    If either one goes too far forward, it will block the other's path, and you won't be able to proceed.
-    
-    In this stage, let's program a "give way movement" using is_touched_player and sleep, such as:
-    
-    The stone pauses if the player catches up
-    
-    Let the player pass first, then the stone starts moving again
-    
-    If you get stuck, think about "when should I have waited" and rewrite the program.
+stage13-text = A high ledge blocks your way.
+    Build one foothold above the stone, then use it to cross to the other side.
 
 
-stage13-description = ...
+stage13-description = Place one foothold above the stone to reach the high ledge.
+    Rhai: `{$place-up}`
+    Keystone: `{$place-up}`
 
 
 stage14-text = You wandered into a small maze made of soft rock.

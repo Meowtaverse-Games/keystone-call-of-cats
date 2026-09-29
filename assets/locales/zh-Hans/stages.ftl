@@ -238,21 +238,13 @@ stage11-text = 这一层空洞和岩石交错分布。
 stage11-description = ...
 
 
-stage13-text = 在狭窄的隧道中，你和石头必须互相错开。
-    如果任何一方过于靠前，就会堵住另一方的路，无法前进。
-    
-    在这个关卡，使用 is_touched_player 和 sleep，
-    
-    如果玩家追上了，石头就暂停
-    
-    先让玩家通过，然后石头再次开始移动
-    
-    试着编写这样的“互相谦让的动作”。
-    如果卡住了，请一边思考“在什么时机等待比较好”，
-    一边重写程序。
+stage13-text = 高台挡住了去路。
+    在石头上方放置一个落脚点，再以它为踏板前往另一侧。
 
 
-stage13-description = ...
+stage13-description = 在石头上方放置一个落脚点，前往高处的平台。
+    Rhai：`{$place-up}`
+    Keystone：`{$place-up}`
 
 
 stage14-text = 闯入了一个由软岩构成的小迷宫。
