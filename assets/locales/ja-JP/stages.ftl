@@ -271,8 +271,7 @@ stage13-text = 高い足場が行く手をふさいでいます。
 
 
 stage13-description = 石の上に足場を1つ置いて、高い足場へ渡りましょう。
-    Rhai: `{$place-up}`
-    Keystone: `{$place-up}`
+    `{$place-up}`
 
 
 # stage 14

@@ -243,8 +243,7 @@ stage13-text = A high ledge blocks your way.
 
 
 stage13-description = Place one foothold above the stone to reach the high ledge.
-    Rhai: `{$place-up}`
-    Keystone: `{$place-up}`
+    `{$place-up}`
 
 
 stage14-text = You wandered into a small maze made of soft rock.

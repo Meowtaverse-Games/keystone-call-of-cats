@@ -1286,7 +1286,15 @@ pub fn handle_tutorial_overlay_input(
 
 #[cfg(test)]
 mod tests {
-    use super::ScriptEditorState;
+    use super::{ScriptEditorState, command_help_args};
+    use crate::resources::script_engine::Language;
+
+    fn stage_thirteen_description(ftl: &str) -> &str {
+        ftl.split_once("stage13-description = ")
+            .and_then(|(_, remaining)| remaining.split_once("\n\n"))
+            .map(|(description, _)| description)
+            .expect("stage 13 description")
+    }
 
     #[test]
     fn resize_buffers_preserves_saved_codes_and_normalizes_selection() {
@@ -1317,5 +1325,31 @@ mod tests {
         editor.normalize_selected_idx();
 
         assert_eq!(editor.selected_idx, 0);
+    }
+
+    #[test]
+    fn stage_thirteen_help_uses_one_language_specific_place_sample() {
+        for ftl in [
+            include_str!("../../../../assets/locales/en-US/stages.ftl"),
+            include_str!("../../../../assets/locales/ja-JP/stages.ftl"),
+            include_str!("../../../../assets/locales/zh-Hans/stages.ftl"),
+        ] {
+            let description = stage_thirteen_description(ftl);
+            assert_eq!(description.matches("{$place-up}").count(), 1);
+            assert!(!description.contains("Rhai"));
+            assert!(!description.contains("Keystone"));
+        }
+
+        for (language, expected) in [
+            (Language::Rhai, "place(\"up\");"),
+            (Language::Keystone, "place up"),
+        ] {
+            assert_eq!(
+                command_help_args(language)
+                    .iter()
+                    .find_map(|(key, value)| (*key == "place-up").then_some(*value)),
+                Some(expected)
+            );
+        }
     }
 }

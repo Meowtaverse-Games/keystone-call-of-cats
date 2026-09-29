@@ -243,8 +243,7 @@ stage13-text = 高台挡住了去路。
 
 
 stage13-description = 在石头上方放置一个落脚点，前往高处的平台。
-    Rhai：`{$place-up}`
-    Keystone：`{$place-up}`
+    `{$place-up}`
 
 
 stage14-text = 闯入了一个由软岩构成的小迷宫。
