@@ -158,10 +158,7 @@ stage7-description = 代替 sleep 命令，可以使用 is_touched 命令。
     右: `{$move-right}`
 
 
-stage8-text = 来到了迷宫一样的楼层。
-    石头具有判定功能，可以检查上下左右方向是否有可移动的地方，或者是否为空。
-    ____
-    利用 is_empty 判定功能，一边判断该走哪条路，一边引导玩家到达终点吧。
+stage8-text = 山谷对面有一块石头在等待。使用 is_touched，让石头只在你站在上面时向右移动。
 
 
 stage8-description = 代替 sleep 命令，可以使用 is_touched 命令。

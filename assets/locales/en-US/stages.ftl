@@ -158,10 +158,7 @@ stage7-description = Instead of the sleep command, you can use the is_touched co
     Right: `{$move-right}`
 
 
-stage8-text = You have reached a maze-like level.
-    The stone has a detection function to check if there is a place to move in the up, down, left, or right directions, or if it is empty.
-    ____
-    Use the detection function is_empty to determine which path to take and guide the player to the goal.
+stage8-text = A stone is waiting across the valley. Use is_touched so it moves right only while you are riding it.
 
 
 stage8-description = Instead of the sleep command, you can use the is_touched command.

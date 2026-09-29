@@ -1,0 +1,17 @@
+assert unreachable
+s 1 move up
+s 1 move up
+s 1 move up
+s 1 move up
+p right
+p right
+p right
+p right
+p right
+p jump-right
+s 0 move right
+s 0 move right
+s 0 move right
+s 0 move right
+s 0 move right
+s 0 move right

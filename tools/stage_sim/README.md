@@ -61,7 +61,7 @@ sim analyze 11 --stages-dir assets/stages
 sim render 13 --stage-file tools/stage_sim/examples/ai-candidate.ron --seed 7
 ```
 
-`--stage-file`は単独の候補ファイルを直接指定します。省略時は`--stages-dir`以下の`stage-N.ron`を使います。このリポジトリの`assets/stages`をそのまま指定して、mainにある面を描画・構造確認できます。候補を試すときは、コミット済みの`tools/stage_sim/examples/`か、明示した候補ファイルを使います。
+`--stage-file`は単独の候補ファイルを直接指定します。省略時は`--stages-dir`以下の`stage-N.ron`を使います。`assets/stages`は現在チェックアウトしているブランチの面です。設計用ブランチではmainと異なる候補を含むため、mainの完成面を確認する場合はmainのRONを別ディレクトリへ取り出し、`--stages-dir`または`--stage-file`で明示してください。候補を試すときは、コミット済みの`tools/stage_sim/examples/`か、明示した候補ファイルを使います。
 
 ## 操作を記録・再生する
 

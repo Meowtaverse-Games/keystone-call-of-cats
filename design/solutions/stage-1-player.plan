@@ -1,0 +1,21 @@
+# Stage 1 teaches player movement only.
+p right
+p right
+p right
+p jump-right
+p right
+p right
+p right
+p right
+p right
+p right
+p right
+p right
+p right
+p right
+p right
+p right
+p right
+p right
+p right
+assert goal

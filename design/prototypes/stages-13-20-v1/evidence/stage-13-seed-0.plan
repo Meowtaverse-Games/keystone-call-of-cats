@@ -1,0 +1,19 @@
+assert unreachable
+assert unreachable
+s 0 place up
+p leap-right
+p leap-right
+p leap-right
+p leap-right
+p leap-right
+p leap-right
+p leap-right
+p right
+p right
+p leap-right
+p right
+p right
+p leap-right
+p leap-right
+p leap-right
+assert goal
