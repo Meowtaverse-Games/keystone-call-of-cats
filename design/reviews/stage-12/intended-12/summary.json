@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "simulator_version": "0.1.0",
+  "model": "discrete_grid",
+  "limitations": [
+    "Not a Bevy physics, timing, human difficulty or fun verdict.",
+    "Player-only paths hold stones and obstacles stationary; no stone-program search.",
+    "Obstacle expiry, dynamic terrain randomization and fractional stone offsets are not simulated.",
+    "CLI seeds are not product seeds. Use the captured RON with the same simulator revision.",
+    "Plans are sequential simulator actions, not Rhai/Keystone programs or concurrent scheduling."
+  ],
+  "stage": 12,
+  "first_seed": 0,
+  "seeds": 1,
+  "expect": "goal",
+  "walk_to_goal": true,
+  "require_initially_unreachable": false,
+  "reject_blocked": true,
+  "place_limit_override": null,
+  "passed": 0,
+  "failed": 1,
+  "distinct_initial_layouts": 1,
+  "result_groups": [
+    {
+      "seeds": [
+        0
+      ],
+      "result": {
+        "passed": false,
+        "error": "no player-only route after plan",
+        "initially_reachable": false,
+        "goal_reached": false,
+        "goal_reachable": false,
+        "final_status": "player=(14, 10) stones=[(14, 9)] dig=0:0 place=unlimited goal=not-reached actions=22 blocked=0",
+        "metrics": {
+          "actions": 22,
+          "player_actions": 7,
+          "stone_moves": 10,
+          "digs": 5,
+          "places": 0,
+          "blocked_actions": 0
+        }
+      }
+    }
+  ],
+  "source_commit": "252efbea156f674b6be819656a676592fff55eaf",
+  "simulator_commit": "bcb599b",
+  "source_variant": "unmodified main"
+}
