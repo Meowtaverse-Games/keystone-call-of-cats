@@ -4,7 +4,33 @@
 
 製品地形を変更していない。これは離散グリッドの確認であり実機合格ではない。Stage 8・11のO除去は別データでの仮定であり、mainの成功結果に数えない。
 
-## 結果
+## 追加検証: 地形変更なしで100/100到達
+
+前回の83/100は、最初の搭乗後に石の操作を止めた手順の不足だった。`complete-crossing/input.plan`で13種類・seed 0〜99の全件に実到達し、無効操作0、採掘5回（残数0）を確認した。前回の失敗記録は比較のため保持する。不可能配置と判断したり、チャンクを削ったりしていない。
+
+追加した流れ:
+
+1. 左・上の2回採掘で最初に搭乗し、石を上へ1回動かす。
+2. プレイヤーはいったん右の足場へ降りる。石だけを下へ1回、右へ9回、上へ2回送り、通路の先へ回す。
+3. 残り3回の採掘で右側の岩を開け、石をプレイヤーが乗り直せる位置(14,4)へ戻す。
+4. 再搭乗して右へ7回運び、(21,4)から下車して出口へ進む。
+
+主要課題である採掘・移動順・プレイヤーの乗降が、この地形のままで成立する。5回が全解法における最小採掘数という証明ではない。二度の搭乗に合わせた待機や接触を含む製品コード、実際のジャンプ・運搬は未検証。
+
+```bash
+sim() { cargo run --quiet --locked --manifest-path tools/stage_sim/Cargo.toml -- "$@"; }
+sim check 10 --stage-file design/reviews/stage-10/main-stage-10.ron \
+  --plan design/reviews/stage-10/complete-crossing/input.plan \
+  --seeds 100 --walk-to-goal --require-initially-unreachable --reject-blocked \
+  --output /tmp/stage10-complete-repeat
+sim simulate 10 --stage-file design/reviews/stage-10/main-stage-10.ron \
+  --plan design/reviews/stage-10/complete-crossing/seed-1-replay.plan \
+  --seed 1 --require-goal
+```
+
+結果は[complete-crossing/summary.json](complete-crossing/summary.json)。seed 0・1の完全操作列は保存先から再実行して到達確認済み。
+
+## 前回の結果
 
 | 試験 | 成功 / 件数 | 地形数 | ソース |
 | --- | ---: | ---: | --- |
