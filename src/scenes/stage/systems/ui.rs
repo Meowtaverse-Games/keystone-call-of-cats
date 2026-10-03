@@ -260,6 +260,7 @@ pub struct StageUIParams<'w, 's> {
     tutorial_overlays: Query<'w, 's, Entity, With<StageTutorialOverlay>>,
     stone_capabilities: Res<'w, StoneCapabilities>,
     place_state: Option<Res<'w, PlaceState>>,
+    vpl_state: ResMut<'w, keystone_blocks::VplState>,
     stone_query: Query<
         'w,
         's,
@@ -295,6 +296,7 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
         place_state,
         stone_query,
         file_storage,
+        mut vpl_state,
     } = params;
 
     let Ok(ctx) = contexts.ctx_mut() else {
@@ -612,6 +614,23 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
 
                             if ui.button(button_text).clicked() {
                                 editor.selected_idx = idx;
+                            }
+                        }
+                    });
+                }
+
+                let vpl_button_text = if vpl_state.is_visible { "<< [ VPL ]" } else { ">> VPL" };
+                if ui.button(vpl_button_text).clicked() {
+                    vpl_state.is_visible = !vpl_state.is_visible;
+                }
+
+                if vpl_state.is_visible {
+                    ui.vertical_centered(|ui| {
+                        if let Some(buffer) = editor.buffers.get_mut(idx) {
+                            let latest_code = keystone_blocks::generate_code_from_state(&vpl_state);
+                            if *buffer != latest_code {
+                                *buffer = latest_code;
+                                text_edit_response = Some(ui.label(""));
                             }
                         }
                     });

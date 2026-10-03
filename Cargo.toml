@@ -27,6 +27,7 @@ thiserror = "2.0.20"
 fluent_content = "0.0.5"
 unic-langid = { version = "0.9.6", features = ["macros"] }
 keystone-lang = { git = "https://github.com/Meowtaverse-Games/keystone-lang.git", rev = "267d9ccdf94e336ab282580763ee28a6a1139272" }
+keystone-blocks = { git = "https://github.com/Meowtaverse-Games/keystone-blocks.git" }
 bevy_embedded_assets = "0.16.0"
 
 [features]
