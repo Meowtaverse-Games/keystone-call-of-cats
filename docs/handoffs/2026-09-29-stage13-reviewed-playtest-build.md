@@ -34,7 +34,7 @@
 - artifact内RONの生バイトSHA-256: `5dd951eb6b6477f53716b663ed3a5d4638fa5e4a20e08b99ccab35dc6662646c`。WindowsのCRLFをLFへ正規化すると候補ソースと完全一致。生バイト一致と記載しない。
 - 最初の成功run `36548884639` は説明修正前。`36549780516` はテスト失敗。どちらも最終試遊用に選ばない。
 
-## 未実施と次の正確な一手
+## 初回時点の未実施と次の一手（下記の実機追記で更新）
 
 1. A1X workerの接続を再確認する。今回の確認では最終接続は9月28日12:16:40 JST、約30時間経過し、queued/runningジョブなし。ユーザーへ起動・接続の必要を伝えている。オフラインのままジョブは投入していない。
 2. 成功runのartifactを専用ディレクトリへ配置し、metadata・exeハッシュを再確認する。`KEYSTONE_CI_SAVE_DIR` に新しい隔離セーブを指定し、`--ci-smoke --ci-smoke-report <専用パス> --stage-id 13` で起動する。既存の実行中ゲームがあれば無断で終了させない。
@@ -44,3 +44,25 @@
 今回のユーザー指示は、試遊準備と検証を順に進めること。マージ・公開配布・本番リリースは未実施。A1Xでの起動・ゲームプレイも未実施。17/18の製品コード、その他の面の実機受入、20面通しプレイ、HTTP解放実装は未完のまま。
 
 本記録は統合ブランチに単独でコミット・pushする。Stage13専用ブランチのレビュー済みheadは変更しない。Sasara Hubへの登録は行わずGitを永続先とする。
+
+
+## A1X実機追記（2026-09-29 22:17 JST）
+
+- A1X workerは復旧済み。現在のworker IDは `d8341468f81a48459b50b95836a892cb`。ユーザーはworker PowerShellを開いたままにしている。古いworkerのモジュール参照エラーは新規PowerShellでUtility/ArchiveをGlobal importして解消。セキュリティ機能の無効化は行っていない。
+- 上記レビュー済みexeをA1Xへ配置し、exe・metadata・RONのハッシュを確認して起動済み。キャッシュは `%LOCALAPPDATA%\Sasara\WindowsWorker\20260929-214305-5cc9bf78f4f8\source\verified-build\payload`。毎ジョブで隔離セーブを新設している。
+- 実機で `place("up");` をF3実行し、青いブロックが石の上に1個出現、残りブロック0を画面で確認。ログも `Place(Top)` を確認した。証拠job `20260929-221159-3ae47616e211` の `placed.png`。結果zip SHA-256 `f2bc8058fb0b2157a8e8edf0e04c7516f5b7b176317a897503cacb653768e963` を検証済み。
+- 同ジョブで停止ログは得たが、停止後の撮影時に前面が外れたため、リセット・再配置の一連の検証は未完。ジョブ自体は失敗扱いで、成功とは扱わない。
+- 最後の診断job `20260929-221559-25b6958652b8` ではアプリ切り替え画面が開いていることを確認。結果zip SHA-256 `39b1901767b0512f276a071f0016928ea751ec71d704afa7fbd8d1283f1a3f4b` を検証済み。前面確認に失敗したため入力を中止し、自分が起動したゲームだけを終了した。ユーザーへ操作中か確認中。次のジョブ投入前に回答を確認する。
+- ゲームを開いたまま結果回収するとファイルロックでworkerのzip生成が止まった。今後は1ジョブ内で起動・操作・撮影・自身のゲーム終了・ログ回収を完結させる。実行中ログはoutput外のruntimeへ置く。この方式で失敗時も結果が自動回収できることを確認済み。
+- 一時スクリプト: `/tmp/keystone-stage13-focus-diagnostic.ps1`（配置・停止・再配置、前面確認付き）、`/tmp/keystone-stage13-route-trial.ps1`（移動試行用、未実行）。前面以外へ入力しない制御を保持する。生ログ・画面はqueueと/tmpに保存しGitへ入れない。
+- 次: 操作競合がない状態で配置→停止→再配置を完了させ、実際のキー入力で足場乗降・高台・ゴールを確認する。無配置でもジャンプで突破できるかは未確認であり、CLI到達不可だけで製品実機の到達不可とは断定しない。
+- Stage13の実機合格、14以降の準備、20面通しの受入は未完。PR #87はDraft・未マージのまま。製品コードやレビュー済みheadは変更していない。
+
+
+## A1Xでの再開（2026-10-05 JST）
+
+- 以降の作業ホストはOracleサーバーからA1X（WSL2）へ移した。worktreeは `/home/ubuntu/repos/meowtaverse/keystone_cc`（本ブランチ）。上記の `/home/ubuntu/repos/meowtaverse-games/...` と `/tmp/...` はOracle上のパスで、A1Xには存在しない。
+- 再開時に `origin/feature/20-stage-release-handoff` = `1d2abc0`、`origin/feature/stage13-playtest` = `69530d9`、`origin/main` = `252efbe` を確認。#87・#82はともにOPEN/Draft、CI成功のまま変化なし。
+- 試遊はworkerのジョブ投入ではなく、A1Xで直接起動する。前面が外れる問題を避け、本人の初見評価もそのまま行うため。実行物は引き続きrun `36550431386` のartifactを使い、上記ハッシュと照合する。Oracleの `/tmp` にあったartifact・PowerShellスクリプトは再開に必須ではない。
+- A1XにはWSL・Windowsのどちらにもまだ Rust toolchainがない。CLIのstage_simを使うときはWSLへrustupを入れる。採用判断に使うビルドはCIのartifactとする。
+- Oracleに残る作業: remoteにブランチがない言語pin・Stage 8試作のworktreeについて、未push・未コミットの変更がないか一度確認する。Stage13の続行には関係しない。
