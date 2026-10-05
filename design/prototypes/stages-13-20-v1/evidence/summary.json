@@ -1,0 +1,529 @@
+{
+  "base_commit": "0d57857",
+  "simulator_commit": "bcb599b",
+  "model": "discrete grid; no Bevy physics, real time, or Rhai execution",
+  "stages": [
+    {
+      "stage": 13,
+      "seeds": 100,
+      "passed": 100,
+      "failed": 0,
+      "distinct_initial_layouts": 75,
+      "require_initially_unreachable": true,
+      "reject_blocked": true,
+      "source_sha256": "2bb8a8f9417067f1e706040b6c5abfd231b4125550d24ba818fa43ee1af42899",
+      "plan_sha256": "0900e4904ba98cb53a5d0ee74b00ba916da577a32403991ecc54b6e4fd3e23f3",
+      "seed0_status": "player=(28, 1) stones=[(10, 4)] dig=0:0 place=0 goal=reached actions=16 blocked=0",
+      "observed_chunks": {
+        "stage-13-core": 100,
+        "step-down": 222,
+        "ceiling": 147,
+        "corridor": 131,
+        "exit-drop": 40,
+        "exit-ledge": 60
+      }
+    },
+    {
+      "stage": 14,
+      "seeds": 100,
+      "passed": 100,
+      "failed": 0,
+      "distinct_initial_layouts": 72,
+      "require_initially_unreachable": true,
+      "reject_blocked": true,
+      "source_sha256": "e80fb6d64fe5ea67ae89f1eb2a83798e13868e2d152317d1da6cbf785fd25ec9",
+      "plan_sha256": "78a2bcf579c7d3afff7634de3f68e7146c3331894bb65e828a259fceb452a329",
+      "seed0_status": "player=(28, 1) stones=[(15, 6)] dig=0:0 place=0 goal=reached actions=28 blocked=0",
+      "observed_chunks": {
+        "stage-14-core": 100,
+        "corridor": 132,
+        "step-down": 139,
+        "exit-ledge": 54,
+        "ceiling": 129,
+        "exit-drop": 46
+      }
+    },
+    {
+      "stage": 15,
+      "seeds": 100,
+      "passed": 100,
+      "failed": 0,
+      "distinct_initial_layouts": 16,
+      "require_initially_unreachable": true,
+      "reject_blocked": true,
+      "source_sha256": "5d9c3fdfe909d9a7852f154e812e3d5ec6416a1d0ad82da515c5d4ac1ba2dd8e",
+      "plan_sha256": "463bc351d6491558f3aa52eb6c3804207b361a8e37cc7761ed19497a750b40a5",
+      "seed0_status": "player=(28, 1) stones=[(19, 6)] dig=0:0 place=0 goal=reached actions=31 blocked=0",
+      "observed_chunks": {
+        "stage-15-core": 100,
+        "corridor": 52,
+        "step-down": 94,
+        "exit-drop": 47,
+        "ceiling": 54,
+        "exit-ledge": 53
+      }
+    },
+    {
+      "stage": 16,
+      "seeds": 100,
+      "passed": 100,
+      "failed": 0,
+      "distinct_initial_layouts": 18,
+      "require_initially_unreachable": true,
+      "reject_blocked": true,
+      "source_sha256": "4ef516749e112620d99aea280b02e312d7b8baec95ee20deada3b56a21b6ab24",
+      "plan_sha256": "a1ca3ec5ce4da5f02f24a503f8fe604f09bba7194b4bbeac13c094648e560ae9",
+      "seed0_status": "player=(28, 1) stones=[(8, 4), (18, 8)] dig=0:0,1:0 place=0 goal=reached actions=26 blocked=0",
+      "observed_chunks": {
+        "stage-16-core": 100,
+        "step-down": 108,
+        "ceiling": 44,
+        "exit-drop": 53,
+        "exit-ledge": 47,
+        "corridor": 48
+      }
+    },
+    {
+      "stage": 17,
+      "seeds": 100,
+      "passed": 100,
+      "failed": 0,
+      "distinct_initial_layouts": 4,
+      "require_initially_unreachable": true,
+      "reject_blocked": true,
+      "source_sha256": "a48b9af41b4d5b5364bceb2a77b383f84ef4121fd54ae2645ba9b8ad61b9498d",
+      "plan_sha256": "c6147b14ac5251d6b60ed752570c67f914de864ee1a8a905ab600b13fbba8900",
+      "seed0_status": "player=(28, 1) stones=[(13, 5), (23, 5)] dig=0:0,1:0 place=unlimited goal=reached actions=20 blocked=0",
+      "observed_chunks": {
+        "stage-17-core": 100,
+        "overhead": 52,
+        "exit": 46,
+        "walk": 48,
+        "exit-drop": 54
+      }
+    },
+    {
+      "stage": 18,
+      "seeds": 100,
+      "passed": 100,
+      "failed": 0,
+      "distinct_initial_layouts": 16,
+      "require_initially_unreachable": true,
+      "reject_blocked": true,
+      "source_sha256": "5cf38a92637a7c8aa900e2aa7683f28c05a263d2c81b6bf5ab35b8d7315af60d",
+      "plan_sha256": "c5c78e369b36e19bc8b402638282322f07c10e9b11ad84da585e221e20d2ea9d",
+      "seed0_status": "player=(28, 1) stones=[(19, 10), (7, 9)] dig=0:0,1:0 place=unlimited goal=reached actions=22 blocked=0",
+      "observed_chunks": {
+        "stage-18-core": 100,
+        "overhead": 139,
+        "walk": 161,
+        "exit-drop": 57,
+        "exit": 43
+      }
+    },
+    {
+      "stage": 19,
+      "seeds": 100,
+      "passed": 100,
+      "failed": 0,
+      "distinct_initial_layouts": 8,
+      "require_initially_unreachable": true,
+      "reject_blocked": true,
+      "source_sha256": "d457bccfae0c42f75c2045e7005a9f68ea1cf47f8b5f16cfd4d0f7d0f5fa3009",
+      "plan_sha256": "bc57ad13cb8ba4a8eb322c42ed1d3876610f4670fea0c4a3e1c66bac2a1a402a",
+      "seed0_status": "player=(28, 1) stones=[(11, 4), (20, 4)] dig=0:3,1:3 place=unlimited goal=reached actions=31 blocked=0",
+      "observed_chunks": {
+        "stage-19-core": 100,
+        "overhead": 101,
+        "exit": 48,
+        "walk": 99,
+        "exit-drop": 52
+      }
+    },
+    {
+      "stage": 20,
+      "seeds": 100,
+      "passed": 100,
+      "failed": 0,
+      "distinct_initial_layouts": 8,
+      "require_initially_unreachable": true,
+      "reject_blocked": true,
+      "source_sha256": "78648d6ba9c794cccbe680b5fe772336c89f66d2d141b0d5537f1905580e24ff",
+      "plan_sha256": "91562786efa161f5f3f9d7558cbadbc228b8d4ee9df220979b17a4c3750c1e72",
+      "seed0_status": "player=(28, 1) stones=[(10, 6), (19, 9)] dig=0:0,1:0 place=0 goal=reached actions=28 blocked=0",
+      "observed_chunks": {
+        "stage-20-core": 100,
+        "walk": 121,
+        "exit": 47,
+        "exit-drop": 53,
+        "overhead": 79
+      }
+    }
+  ],
+  "controls": [
+    {
+      "stage": 13,
+      "seeds": 100,
+      "passed": 0,
+      "failed": 100,
+      "distinct_initial_layouts": 75,
+      "reject_blocked": true,
+      "place_limit_override": null,
+      "name": "13-no-stone",
+      "plan": "",
+      "error_counts": {
+        "no player-only route after plan": 100
+      }
+    },
+    {
+      "stage": 13,
+      "seeds": 100,
+      "passed": 0,
+      "failed": 100,
+      "distinct_initial_layouts": 75,
+      "reject_blocked": true,
+      "place_limit_override": 0,
+      "name": "13-zero-budget",
+      "plan": "assert unreachable\ns 0 place up\n",
+      "error_counts": {
+        "plan line 2: blocked/no-effect action: s 0 place up": 100
+      }
+    },
+    {
+      "stage": 14,
+      "seeds": 100,
+      "passed": 0,
+      "failed": 100,
+      "distinct_initial_layouts": 72,
+      "reject_blocked": true,
+      "place_limit_override": 6,
+      "name": "14-budget-minus-one",
+      "plan": "assert unreachable\ns 0 place down\ns 0 move right\ns 0 place down\ns 0 move right\ns 0 place down\ns 0 move right\ns 0 place down\ns 0 move right\ns 0 place down\ns 0 move right\ns 0 place down\ns 0 move right\ns 0 place down\ns 0 move right\ns 0 move up\n",
+      "error_counts": {
+        "plan line 14: blocked/no-effect action: s 0 place down": 100
+      }
+    },
+    {
+      "stage": 14,
+      "seeds": 100,
+      "passed": 0,
+      "failed": 100,
+      "distinct_initial_layouts": 72,
+      "reject_blocked": true,
+      "place_limit_override": null,
+      "name": "14-no-stone",
+      "plan": "",
+      "error_counts": {
+        "no player-only route after plan": 100
+      }
+    },
+    {
+      "stage": 14,
+      "seeds": 100,
+      "passed": 0,
+      "failed": 100,
+      "distinct_initial_layouts": 72,
+      "reject_blocked": true,
+      "place_limit_override": 0,
+      "name": "14-zero-budget",
+      "plan": "assert unreachable\ns 0 place down\ns 0 move right\ns 0 place down\ns 0 move right\ns 0 place down\ns 0 move right\ns 0 place down\ns 0 move right\ns 0 place down\ns 0 move right\ns 0 place down\ns 0 move right\ns 0 place down\ns 0 move right\ns 0 move up\n",
+      "error_counts": {
+        "plan line 2: blocked/no-effect action: s 0 place down": 100
+      }
+    },
+    {
+      "stage": 15,
+      "seeds": 100,
+      "passed": 0,
+      "failed": 100,
+      "distinct_initial_layouts": 16,
+      "reject_blocked": true,
+      "place_limit_override": 5,
+      "name": "15-budget-minus-one",
+      "plan": "assert unreachable\ns 0 place down\ns 0 move right\ns 0 place down\ns 0 move right\ns 0 place down\ns 0 move right\ns 0 move right\ns 0 move right\ns 0 move right\ns 0 move right\ns 0 move right\ns 0 place down\ns 0 move right\ns 0 place down\ns 0 move right\ns 0 place down\ns 0 move right\ns 0 move up\n",
+      "error_counts": {
+        "plan line 17: blocked/no-effect action: s 0 place down": 100
+      }
+    },
+    {
+      "stage": 15,
+      "seeds": 100,
+      "passed": 0,
+      "failed": 100,
+      "distinct_initial_layouts": 16,
+      "reject_blocked": true,
+      "place_limit_override": null,
+      "name": "15-no-stone",
+      "plan": "",
+      "error_counts": {
+        "no player-only route after plan": 100
+      }
+    },
+    {
+      "stage": 15,
+      "seeds": 100,
+      "passed": 0,
+      "failed": 100,
+      "distinct_initial_layouts": 16,
+      "reject_blocked": true,
+      "place_limit_override": 0,
+      "name": "15-zero-budget",
+      "plan": "assert unreachable\ns 0 place down\ns 0 move right\ns 0 place down\ns 0 move right\ns 0 place down\ns 0 move right\ns 0 move right\ns 0 move right\ns 0 move right\ns 0 move right\ns 0 move right\ns 0 place down\ns 0 move right\ns 0 place down\ns 0 move right\ns 0 place down\ns 0 move right\ns 0 move up\n",
+      "error_counts": {
+        "plan line 2: blocked/no-effect action: s 0 place down": 100
+      }
+    },
+    {
+      "stage": 16,
+      "seeds": 100,
+      "passed": 0,
+      "failed": 100,
+      "distinct_initial_layouts": 18,
+      "reject_blocked": true,
+      "place_limit_override": 3,
+      "name": "16-budget-minus-one",
+      "plan": "assert unreachable\ns 0 place up\ns 1 move up\ns 1 move up\ns 1 move up\ns 1 place down\ns 1 move right\ns 1 place down\ns 1 move right\ns 1 place down\ns 1 move right\ns 1 move up\n",
+      "error_counts": {
+        "plan line 10: blocked/no-effect action: s 1 place down": 100
+      }
+    },
+    {
+      "stage": 16,
+      "seeds": 100,
+      "passed": 0,
+      "failed": 100,
+      "distinct_initial_layouts": 18,
+      "reject_blocked": true,
+      "place_limit_override": null,
+      "name": "16-no-stone",
+      "plan": "",
+      "error_counts": {
+        "no player-only route after plan": 100
+      }
+    },
+    {
+      "stage": 16,
+      "seeds": 100,
+      "passed": 0,
+      "failed": 100,
+      "distinct_initial_layouts": 18,
+      "reject_blocked": true,
+      "place_limit_override": null,
+      "name": "16-omit-0",
+      "plan": "assert unreachable\ns 1 move up\ns 1 move up\ns 1 move up\ns 1 place down\ns 1 move right\ns 1 place down\ns 1 move right\ns 1 place down\ns 1 move right\ns 1 move up\n",
+      "error_counts": {
+        "no player-only route after plan": 100
+      }
+    },
+    {
+      "stage": 16,
+      "seeds": 100,
+      "passed": 0,
+      "failed": 100,
+      "distinct_initial_layouts": 18,
+      "reject_blocked": true,
+      "place_limit_override": null,
+      "name": "16-omit-1",
+      "plan": "assert unreachable\ns 0 place up\n",
+      "error_counts": {
+        "no player-only route after plan": 100
+      }
+    },
+    {
+      "stage": 16,
+      "seeds": 100,
+      "passed": 0,
+      "failed": 100,
+      "distinct_initial_layouts": 18,
+      "reject_blocked": true,
+      "place_limit_override": 0,
+      "name": "16-zero-budget",
+      "plan": "assert unreachable\ns 0 place up\ns 1 move up\ns 1 move up\ns 1 move up\ns 1 place down\ns 1 move right\ns 1 place down\ns 1 move right\ns 1 place down\ns 1 move right\ns 1 move up\n",
+      "error_counts": {
+        "plan line 2: blocked/no-effect action: s 0 place up": 100
+      }
+    },
+    {
+      "stage": 17,
+      "seeds": 100,
+      "passed": 0,
+      "failed": 100,
+      "distinct_initial_layouts": 4,
+      "reject_blocked": false,
+      "place_limit_override": null,
+      "name": "17-omit-0",
+      "plan": "assert unreachable\np right\np right\np right\np jump-right\ns 1 move right\ns 1 move right\ns 1 move right\ns 1 move right\ns 1 move right\ns 1 move right\n",
+      "error_counts": {
+        "no player-only route after plan": 100
+      }
+    },
+    {
+      "stage": 17,
+      "seeds": 100,
+      "passed": 0,
+      "failed": 100,
+      "distinct_initial_layouts": 4,
+      "reject_blocked": false,
+      "place_limit_override": null,
+      "name": "17-omit-1",
+      "plan": "assert unreachable\ns 0 move right\ns 0 move right\ns 0 move right\ns 0 move right\ns 0 move right\ns 0 move right\np right\np right\np right\np jump-right\n",
+      "error_counts": {
+        "no player-only route after plan": 100
+      }
+    },
+    {
+      "stage": 17,
+      "seeds": 100,
+      "passed": 0,
+      "failed": 100,
+      "distinct_initial_layouts": 4,
+      "reject_blocked": false,
+      "place_limit_override": null,
+      "name": "17-omit-all",
+      "plan": "\n",
+      "error_counts": {
+        "no player-only route after plan": 100
+      }
+    },
+    {
+      "stage": 18,
+      "seeds": 100,
+      "passed": 0,
+      "failed": 100,
+      "distinct_initial_layouts": 16,
+      "reject_blocked": false,
+      "place_limit_override": null,
+      "name": "18-omit-0",
+      "plan": "assert unreachable\ns 1 move up\ns 1 move up\ns 1 move up\ns 1 move up\np right\np right\np right\np right\np right\np jump-right\n",
+      "error_counts": {
+        "no player-only route after plan": 100
+      }
+    },
+    {
+      "stage": 18,
+      "seeds": 100,
+      "passed": 0,
+      "failed": 100,
+      "distinct_initial_layouts": 16,
+      "reject_blocked": false,
+      "place_limit_override": null,
+      "name": "18-omit-1",
+      "plan": "assert unreachable\np right\np right\np right\np right\np right\np jump-right\ns 0 move right\ns 0 move right\ns 0 move right\ns 0 move right\ns 0 move right\ns 0 move right\n",
+      "error_counts": {
+        "no player-only route after plan": 100
+      }
+    },
+    {
+      "stage": 18,
+      "seeds": 100,
+      "passed": 0,
+      "failed": 100,
+      "distinct_initial_layouts": 16,
+      "reject_blocked": false,
+      "place_limit_override": null,
+      "name": "18-omit-all",
+      "plan": "\n",
+      "error_counts": {
+        "no player-only route after plan": 100
+      }
+    },
+    {
+      "stage": 19,
+      "seeds": 100,
+      "passed": 0,
+      "failed": 100,
+      "distinct_initial_layouts": 8,
+      "reject_blocked": false,
+      "place_limit_override": null,
+      "name": "19-omit-0",
+      "plan": "assert unreachable\ns 1 dig right\ns 1 move right\ns 1 dig right\ns 1 move right\ns 1 move down\n",
+      "error_counts": {
+        "no player-only route after plan": 100
+      }
+    },
+    {
+      "stage": 19,
+      "seeds": 100,
+      "passed": 0,
+      "failed": 100,
+      "distinct_initial_layouts": 8,
+      "reject_blocked": false,
+      "place_limit_override": null,
+      "name": "19-omit-1",
+      "plan": "assert unreachable\ns 0 dig right\ns 0 move right\ns 0 dig right\ns 0 move right\ns 0 move down\n",
+      "error_counts": {
+        "no player-only route after plan": 100
+      }
+    },
+    {
+      "stage": 19,
+      "seeds": 100,
+      "passed": 0,
+      "failed": 100,
+      "distinct_initial_layouts": 8,
+      "reject_blocked": false,
+      "place_limit_override": null,
+      "name": "19-omit-all",
+      "plan": "\n",
+      "error_counts": {
+        "no player-only route after plan": 100
+      }
+    },
+    {
+      "stage": 20,
+      "seeds": 100,
+      "passed": 0,
+      "failed": 100,
+      "distinct_initial_layouts": 8,
+      "reject_blocked": true,
+      "place_limit_override": 4,
+      "name": "20-final-budget-minus-one",
+      "plan": "assert unreachable\ns 0 move down\ns 0 move down\ns 0 move down\ns 0 place down\ns 0 move right\ns 0 place down\ns 0 move right\ns 0 move up\ns 1 place down\ns 1 move right\ns 1 place down\ns 1 move right\ns 1 place down\ns 1 move right\ns 1 move up\n",
+      "error_counts": {
+        "plan line 14: blocked/no-effect action: s 1 place down": 100
+      }
+    },
+    {
+      "stage": 20,
+      "seeds": 100,
+      "passed": 0,
+      "failed": 100,
+      "distinct_initial_layouts": 8,
+      "reject_blocked": false,
+      "place_limit_override": null,
+      "name": "20-final-omit-0",
+      "plan": "assert unreachable\ns 1 place down\ns 1 move right\ns 1 place down\ns 1 move right\ns 1 place down\ns 1 move right\ns 1 move up\n",
+      "error_counts": {
+        "no player-only route after plan": 100
+      }
+    },
+    {
+      "stage": 20,
+      "seeds": 100,
+      "passed": 0,
+      "failed": 100,
+      "distinct_initial_layouts": 8,
+      "reject_blocked": false,
+      "place_limit_override": null,
+      "name": "20-final-omit-1",
+      "plan": "assert unreachable\ns 0 move down\ns 0 move down\ns 0 move down\ns 0 place down\ns 0 move right\ns 0 place down\ns 0 move right\ns 0 move up\n",
+      "error_counts": {
+        "no player-only route after plan": 100
+      }
+    },
+    {
+      "stage": 20,
+      "seeds": 100,
+      "passed": 0,
+      "failed": 100,
+      "distinct_initial_layouts": 8,
+      "reject_blocked": false,
+      "place_limit_override": null,
+      "name": "20-final-omit-all",
+      "plan": "\n",
+      "error_counts": {
+        "no player-only route after plan": 100
+      }
+    }
+  ]
+}

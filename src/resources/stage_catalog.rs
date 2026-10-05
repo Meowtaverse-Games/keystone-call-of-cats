@@ -29,6 +29,14 @@ impl StageMeta {
             10 => include_bytes!("../../assets/stages/stage-10.ron"),
             11 => include_bytes!("../../assets/stages/stage-11.ron"),
             12 => include_bytes!("../../assets/stages/stage-12.ron"),
+            13 => include_bytes!("../../assets/stages/stage-13.ron"),
+            14 => include_bytes!("../../assets/stages/stage-14.ron"),
+            15 => include_bytes!("../../assets/stages/stage-15.ron"),
+            16 => include_bytes!("../../assets/stages/stage-16.ron"),
+            17 => include_bytes!("../../assets/stages/stage-17.ron"),
+            18 => include_bytes!("../../assets/stages/stage-18.ron"),
+            19 => include_bytes!("../../assets/stages/stage-19.ron"),
+            20 => include_bytes!("../../assets/stages/stage-20.ron"),
             _ => panic!("Stage ID: {} Not found.", stage_id),
         };
 

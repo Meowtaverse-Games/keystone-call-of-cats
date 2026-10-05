@@ -1,0 +1,95 @@
+**最新の13〜20候補:** [チャンク付き第1候補と検証結果](prototypes/stages-13-20-v1/README.md)。各100 seedで実到達を確認した設計用候補です。製品への採用・実機合格ではありません。
+
+# Stage design candidates
+
+**軽量な生成・検証:** [stage_sim](../tools/stage_sim/README.md)で、Bevyを起動せずに石とプレイヤーを操作・記録・再生できます。[AI生成手順](../tools/stage_sim/AI_WORKFLOW.md)では、候補RONと操作計画を複数seedで検証し、JSONと失敗配置を保存して修正します。軽量モデルの合格と実機・面白さの確認は分けます。
+
+**最新の提案:** [全20ステージの最終提案](stage-design-final-proposal.md)を先に参照してください。mainの1〜12は原則継承し、13〜20を拡張します。ランダムチャンクは安定した課題に変化を添えるフレーバーとして維持し、完成面の作り直しや全ステージのランダム化を求めません。以下と過去の構造案は比較・検討の履歴です。
+
+mainの原案と解法候補を先に確認する場合は、[main時点のステージ意図・コード案・Stage 11の2石調査](main-stage-intent-and-code-candidates.md)を参照してください。複数石の採用範囲は、この調査と実機確認を踏まえて決めます。
+
+**2026-09-28 方針変更:** ユーザーの試遊評価を受け、Stage 8の先行抽出から、mainの遊びを極力生かす20面の再設計へ移行します。[mainとの比較・石種と面構成の確認案](stages-01-20-reassessment.md)を先に読み、全体構造の確認後にStage 1から進めます。以下の固定20面候補とStage 8抽出手順は従来案の記録です。
+
+`stages/`は、20ステージ再設計のための固定マップ候補です。レビューとBevy上の操作確認が終わるまでは`assets/stages/`を置き換えません。CLIの検証結果は候補の成立条件を確認するもので、製品地形のクリアや操作感を証明しません。
+
+Stage 8だけは、Rhaiの接触待ちを試す製品試作を`prototypes/stage-8-playful-v1.*`で管理します。旧`stages/stage-8.ron`とKeystoneの`.ks`解法はCLI研究候補として残しており、試作の正解や製品物理の証明ではありません。
+
+2026-09-28時点で、この試作は [PR #82](https://github.com/Meowtaverse-Games/keystone-call-of-cats/pull/82) のDraft統合案に含まれます。PR #82は20面候補を一括で`main`へ取り込むPRではありません。製品へ採用する面は、最新`main`から作る新しい個別PRで、その面の地形・説明・ロケール・解法と必要なカタログ／進行だけを切り出し、実機の遊び確認とCIを通して判断します。採用後は`main`をこの統合案へ戻し、採用済みと未採用を追跡します。
+
+各ステージは次の3点をセットで管理します。
+
+- `stages/stage-N.ron`: 固定ASCIIマップ
+- `solutions/stage-N-stone-M.ks`: 石ごとのKeystone想定解
+- `solutions/stage-N-player.plan`: プレイヤーの操作計画または検証条件
+
+全体の学習曲線と製品化順序は`stages-01-20.md`にまとめています。
+
+- 商品・価格・発売日・品質ゲート: `release-and-implementation-plan.md`
+- 実装担当向けのファイル所有・依存・受入条件: `stage-implementation-handoff.md`
+- 旧mainのStage 1〜12から抽出した遊びの特性と、新面を考える基準: `stage-play-characteristics.md`
+- 旧 [PR #53](https://github.com/Meowtaverse-Games/keystone-call-of-cats/pull/53) の地形資料: `references/pr-53/README.md`
+
+旧mainの地形を一括復元する案は採用していません。既存面の役割を理解せずに平坦な候補へそろえないための分析は上記の特性文書に残し、地形の変更は個別に実機確認を伴って判断します。
+
+## 検証
+
+全20面を一括検証できます。
+
+```bash
+./design/verify-all.sh
+```
+
+製品カタログの1〜20と製品RONの解析を軽量確認できます。Stage 8は`prototypes/stage-8-playful-v1.ron`との一致を、他の既存能力面は従来の設計候補との一致を確認します。
+
+```bash
+./design/verify-product-stage-catalog.sh
+```
+
+個別の解析・実行例：
+
+```bash
+cargo run --manifest-path tools/stage_sim/Cargo.toml -- \
+  analyze 2 --stages-dir design/stages --coordinates
+
+cargo run --manifest-path tools/stage_sim/Cargo.toml -- \
+  run 2 --stages-dir design/stages \
+  --stone-script design/solutions/stage-2-stone-0.ks
+```
+
+設計候補の合格条件：
+
+1. ステージ1以外は初期状態でゴールへ到達できない。
+2. 想定解の実行後にゴールへ到達可能になる。
+3. その面で未習得の命令を必須にしない。
+4. 石の無効移動や無駄な`dig`を想定解に含めない。
+5. Bevy上でジャンプ距離、石への乗り降り、ゴール判定を確認する。
+
+1〜4面のCLI検証はまとめて実行できます。
+
+```bash
+./design/verify-stages-01-04.sh
+```
+
+5〜8面も同じ形で検証できます。
+
+```bash
+./design/verify-stages-05-08.sh
+```
+
+9〜12面（採掘章）の検証：
+
+```bash
+./design/verify-stages-09-12.sh
+```
+
+13〜16面（`place`実装済み・面ごとの受入確認待ち）の検証：
+
+```bash
+./design/verify-stages-13-16.sh
+```
+
+17〜20面（複数ストーン章）の検証：
+
+```bash
+./design/verify-stages-17-20.sh
+```

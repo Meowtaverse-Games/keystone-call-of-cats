@@ -1,0 +1,36 @@
+s 0 place up
+s 1 move up
+s 1 move up
+s 1 move up
+s 1 place down
+s 1 move right
+s 1 place down
+s 1 move right
+s 1 place down
+s 1 move right
+s 1 move up
+p right
+p right
+p right
+p jump-right
+p jump-right
+p right
+p right
+p right
+p right
+p right
+p right
+p right
+p right
+p right
+p right
+p right
+p right
+p right
+p right
+p right
+p right
+p right
+p right
+p right
+assert goal
