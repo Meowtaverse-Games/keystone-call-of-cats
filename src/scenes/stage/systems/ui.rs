@@ -115,6 +115,43 @@ fn scaled_panel_font_size(base: f32, offset: f32) -> f32 {
     ((base + offset).max(4.0)) * 2.0
 }
 
+fn show_vpl_in_panel(
+    ui: &mut egui::Ui,
+    vpl_state: &mut keystone_blocks::VplState,
+    size: egui::Vec2,
+    font_offset: f32,
+) {
+    let (rect, _) = ui.allocate_exact_size(size, egui::Sense::hover());
+    let mut child = ui.new_child(egui::UiBuilder::new().max_rect(rect));
+    child.set_clip_rect(rect.intersect(ui.clip_rect()));
+
+    child.style_mut().text_styles = [
+        (
+            TextStyle::Heading,
+            FontId::new(scaled_panel_font_size(7.0, font_offset), Proportional),
+        ),
+        (
+            TextStyle::Body,
+            FontId::new(scaled_panel_font_size(5.5, font_offset), Proportional),
+        ),
+        (
+            TextStyle::Monospace,
+            FontId::new(scaled_panel_font_size(5.5, font_offset), Monospace),
+        ),
+        (
+            TextStyle::Button,
+            FontId::new(scaled_panel_font_size(5.5, font_offset), Proportional),
+        ),
+        (
+            TextStyle::Small,
+            FontId::new(scaled_panel_font_size(4.5, font_offset), Proportional),
+        ),
+    ]
+    .into();
+
+    keystone_blocks::show_vpl_contents(&mut child, vpl_state);
+}
+
 #[derive(Resource)]
 pub struct ScriptEditorState {
     pub buffers: Vec<String>,
@@ -599,6 +636,7 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                 let editing_locked = editor.controls_enabled;
 
                 let mut text_edit_response = None;
+                let mut vpl_code_changed = false;
                 let stone_count = editor.buffers.len();
                 editor.normalize_selected_idx();
                 let idx = editor.selected_idx;
@@ -625,18 +663,25 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                 }
 
                 if vpl_state.is_visible {
-                    ui.vertical_centered(|ui| {
-                        if let Some(buffer) = editor.buffers.get_mut(idx) {
-                            let latest_code = keystone_blocks::generate_code_from_state(&vpl_state);
-                            if *buffer != latest_code {
-                                *buffer = latest_code;
-                                text_edit_response = Some(ui.label(""));
-                            }
+                    show_vpl_in_panel(
+                        ui,
+                        &mut vpl_state,
+                        egui::Vec2::new(available_size.x, text_height),
+                        editor.font_offset,
+                    );
+
+                    if let Some(buffer) = editor.buffers.get_mut(idx) {
+                        let latest_code = keystone_blocks::generate_code_from_state(&vpl_state);
+                        if *buffer != latest_code {
+                            *buffer = latest_code;
+                            vpl_code_changed = true;
                         }
-                    });
+                    }
                 }
 
-                if let Some(buffer) = editor.buffers.get_mut(idx) {
+                if !vpl_state.is_visible
+                    && let Some(buffer) = editor.buffers.get_mut(idx)
+                {
                     egui::ScrollArea::vertical()
                         .max_height(text_height)
                         .show(ui, |ui| {
@@ -655,8 +700,11 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                         });
                 }
 
-                if text_edit_response.is_some_and(|r| r.changed()) {
-                    editor.buffers[idx].retain(|c| c.is_ascii());
+                let text_edited = text_edit_response.is_some_and(|r| r.changed());
+                if text_edited || vpl_code_changed {
+                    if text_edited {
+                        editor.buffers[idx].retain(|c| c.is_ascii());
+                    }
 
                     info!("Script editor buffer changed");
                     editor.controls_enabled = false;

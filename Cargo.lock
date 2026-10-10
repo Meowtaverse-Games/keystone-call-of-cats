@@ -4118,7 +4118,7 @@ dependencies = [
 [[package]]
 name = "keystone-blocks"
 version = "0.1.0"
-source = "git+https://github.com/Meowtaverse-Games/keystone-blocks.git#be04510641cf13c389dd7772271e0b67c43fccb2"
+source = "git+https://github.com/Meowtaverse-Games/keystone-blocks.git#985978992bfd47bf6a08b7b4dc9f160edef5336d"
 dependencies = [
  "bevy",
  "bevy_egui",
