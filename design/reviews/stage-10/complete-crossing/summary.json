@@ -1,0 +1,2280 @@
+{
+  "schema_version": 1,
+  "simulator_version": "0.1.0",
+  "model": "discrete_grid",
+  "limitations": [
+    "Not a Bevy physics, timing, human difficulty or fun verdict.",
+    "Player-only paths hold stones and obstacles stationary; no stone-program search.",
+    "Obstacle expiry, dynamic terrain randomization and fractional stone offsets are not simulated.",
+    "CLI seeds are not product seeds. Use the captured RON with the same simulator revision.",
+    "Plans are sequential simulator actions, not Rhai/Keystone programs or concurrent scheduling."
+  ],
+  "stage": 10,
+  "first_seed": 0,
+  "seeds": 100,
+  "expect": "goal",
+  "walk_to_goal": true,
+  "require_initially_unreachable": true,
+  "reject_blocked": true,
+  "place_limit_override": null,
+  "passed": 100,
+  "failed": 0,
+  "distinct_initial_layouts": 13,
+  "source_commit": "252efbea156f674b6be819656a676592fff55eaf",
+  "simulator_commit": "bcb599b",
+  "source_variant": "unmodified main",
+  "results": [
+    {
+      "seed": 0,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_5",
+        "middle_4",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 1,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_5",
+        "middle_5",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 2,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_0",
+        "middle_0",
+        "middle_2",
+        "middle_5",
+        "middle_0",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 3,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_5",
+        "middle_5",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 4,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_5",
+        "middle_5",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 5,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_0",
+        "middle_0",
+        "middle_0",
+        "middle_5",
+        "middle_0",
+        "goal-1"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 6,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_5",
+        "middle_2",
+        "middle_2",
+        "middle_0",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 7,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_2",
+        "middle_0",
+        "middle_5",
+        "middle_0",
+        "goal-1"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 8,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_2",
+        "middle_2",
+        "middle_5",
+        "middle_0",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 9,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_5",
+        "middle_5",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 10,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_5",
+        "middle_2",
+        "middle_2",
+        "goal-1"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 11,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_2",
+        "middle_5",
+        "middle_2",
+        "goal-1"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 12,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_5",
+        "middle_5",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 13,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_5",
+        "middle_5",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 14,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_5",
+        "middle_4",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 15,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_5",
+        "middle_0",
+        "middle_2",
+        "middle_0",
+        "goal-1"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 16,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_0",
+        "middle_2",
+        "middle_5",
+        "middle_0",
+        "middle_0",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 17,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_5",
+        "middle_0",
+        "middle_2",
+        "middle_2",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 18,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_5",
+        "middle_2",
+        "middle_0",
+        "middle_0",
+        "middle_0",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 19,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_5",
+        "middle_5",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 20,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_5",
+        "middle_5",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 21,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_5",
+        "middle_5",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 22,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_0",
+        "middle_5",
+        "middle_2",
+        "middle_0",
+        "goal-1"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 23,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_5",
+        "middle_0",
+        "middle_2",
+        "middle_2",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 24,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_2",
+        "middle_2",
+        "middle_5",
+        "goal-1"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 25,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_2",
+        "middle_2",
+        "middle_5",
+        "goal-1"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 26,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_2",
+        "middle_5",
+        "middle_0",
+        "middle_0",
+        "middle_0",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 27,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_5",
+        "middle_2",
+        "middle_0",
+        "middle_0",
+        "goal-1"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 28,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_0",
+        "middle_2",
+        "middle_0",
+        "middle_5",
+        "middle_0",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 29,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_0",
+        "middle_2",
+        "middle_5",
+        "middle_0",
+        "goal-1"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 30,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_0",
+        "middle_0",
+        "middle_0",
+        "middle_5",
+        "middle_0",
+        "goal-1"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 31,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_5",
+        "middle_2",
+        "middle_0",
+        "middle_2",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 32,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_0",
+        "middle_0",
+        "middle_0",
+        "middle_2",
+        "middle_5",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 33,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_0",
+        "middle_5",
+        "middle_0",
+        "middle_0",
+        "middle_0",
+        "middle_0",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 34,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_2",
+        "middle_5",
+        "middle_2",
+        "middle_0",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 35,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_5",
+        "middle_2",
+        "middle_0",
+        "middle_0",
+        "middle_0",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 36,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_5",
+        "middle_4",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 37,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_5",
+        "middle_5",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 38,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_5",
+        "middle_5",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 39,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_5",
+        "middle_0",
+        "middle_0",
+        "middle_2",
+        "goal-1"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 40,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_2",
+        "middle_5",
+        "middle_0",
+        "middle_0",
+        "goal-1"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 41,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_5",
+        "middle_4",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 42,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_2",
+        "middle_5",
+        "middle_0",
+        "middle_0",
+        "goal-1"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 43,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_5",
+        "middle_0",
+        "middle_2",
+        "middle_0",
+        "middle_0",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 44,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_5",
+        "middle_4",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 45,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_5",
+        "middle_4",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 46,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_5",
+        "middle_2",
+        "middle_2",
+        "goal-1"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 47,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_2",
+        "middle_2",
+        "middle_5",
+        "goal-1"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 48,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_2",
+        "middle_0",
+        "middle_5",
+        "middle_0",
+        "goal-1"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 49,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_5",
+        "middle_0",
+        "middle_0",
+        "middle_2",
+        "middle_0",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 50,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_5",
+        "middle_5",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 51,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_5",
+        "middle_5",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 52,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_0",
+        "middle_2",
+        "middle_0",
+        "middle_5",
+        "goal-1"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 53,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_0",
+        "middle_5",
+        "middle_0",
+        "middle_2",
+        "middle_0",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 54,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_2",
+        "middle_2",
+        "middle_0",
+        "middle_5",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 55,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_5",
+        "middle_2",
+        "middle_2",
+        "goal-1"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 56,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_2",
+        "middle_5",
+        "middle_0",
+        "middle_0",
+        "goal-1"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 57,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_2",
+        "middle_2",
+        "middle_5",
+        "goal-1"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 58,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_2",
+        "middle_0",
+        "middle_0",
+        "middle_5",
+        "goal-1"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 59,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_2",
+        "middle_2",
+        "middle_0",
+        "middle_5",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 60,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_0",
+        "middle_5",
+        "middle_2",
+        "middle_0",
+        "goal-1"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 61,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_2",
+        "middle_2",
+        "middle_5",
+        "middle_0",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 62,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_0",
+        "middle_2",
+        "middle_0",
+        "middle_5",
+        "goal-1"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 63,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_5",
+        "middle_4",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 64,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_5",
+        "middle_0",
+        "middle_0",
+        "middle_2",
+        "middle_0",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 65,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_0",
+        "middle_2",
+        "middle_2",
+        "middle_5",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 66,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_5",
+        "middle_2",
+        "middle_2",
+        "middle_0",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 67,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_0",
+        "middle_5",
+        "middle_0",
+        "middle_2",
+        "goal-1"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 68,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_5",
+        "middle_2",
+        "middle_2",
+        "middle_0",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 69,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_5",
+        "middle_0",
+        "middle_0",
+        "middle_0",
+        "middle_2",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 70,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_0",
+        "middle_5",
+        "middle_0",
+        "middle_0",
+        "middle_0",
+        "goal-1"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 71,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_5",
+        "middle_2",
+        "middle_2",
+        "goal-1"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 72,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_5",
+        "middle_4",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 73,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_2",
+        "middle_2",
+        "middle_5",
+        "goal-1"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 74,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_5",
+        "middle_4",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 75,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_2",
+        "middle_5",
+        "middle_2",
+        "middle_0",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 76,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_5",
+        "middle_0",
+        "middle_2",
+        "middle_0",
+        "goal-1"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 77,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_2",
+        "middle_5",
+        "middle_2",
+        "goal-1"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 78,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_5",
+        "middle_4",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 79,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_0",
+        "middle_0",
+        "middle_5",
+        "middle_0",
+        "middle_0",
+        "goal-1"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 80,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_2",
+        "middle_5",
+        "middle_2",
+        "middle_0",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 81,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_5",
+        "middle_4",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 82,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_2",
+        "middle_0",
+        "middle_0",
+        "middle_5",
+        "goal-1"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 83,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_5",
+        "middle_5",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 84,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_0",
+        "middle_0",
+        "middle_0",
+        "middle_0",
+        "middle_5",
+        "goal-1"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 85,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_5",
+        "middle_5",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 86,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_2",
+        "middle_5",
+        "middle_0",
+        "middle_2",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 87,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_0",
+        "middle_2",
+        "middle_0",
+        "middle_5",
+        "goal-1"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 88,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_5",
+        "middle_5",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 89,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_0",
+        "middle_0",
+        "middle_0",
+        "middle_0",
+        "middle_5",
+        "goal-1"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 90,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_0",
+        "middle_2",
+        "middle_0",
+        "middle_5",
+        "goal-1"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 91,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_5",
+        "middle_4",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 92,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_0",
+        "middle_5",
+        "middle_0",
+        "middle_0",
+        "middle_0",
+        "goal-1"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 93,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_5",
+        "middle_4",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 94,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_5",
+        "middle_0",
+        "middle_2",
+        "middle_0",
+        "goal-1"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 95,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_2",
+        "middle_5",
+        "middle_0",
+        "middle_0",
+        "middle_0",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 96,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_5",
+        "middle_0",
+        "middle_0",
+        "middle_0",
+        "middle_0",
+        "goal-1"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 97,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_5",
+        "middle_5",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 98,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_5",
+        "middle_2",
+        "middle_2",
+        "middle_0",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    },
+    {
+      "seed": 99,
+      "passed": true,
+      "error": null,
+      "chunks": [
+        "start",
+        "middle_5",
+        "middle_2",
+        "middle_2",
+        "middle_0",
+        "goal-2"
+      ],
+      "goal_reached": true,
+      "final_status": "player=(28, 1) stones=[(21, 4)] dig=0:0 place=unlimited goal=reached actions=62 blocked=0",
+      "metrics": {
+        "actions": 62,
+        "player_actions": 34,
+        "stone_moves": 23,
+        "digs": 5,
+        "places": 0,
+        "blocked_actions": 0
+      }
+    }
+  ]
+}
