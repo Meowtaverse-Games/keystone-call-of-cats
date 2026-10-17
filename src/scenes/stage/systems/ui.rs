@@ -125,26 +125,24 @@ fn show_vpl_in_panel(
     let mut child = ui.new_child(egui::UiBuilder::new().max_rect(rect));
     child.set_clip_rect(rect.intersect(ui.clip_rect()));
 
+    let body_size = scaled_panel_font_size(BASE_EDITOR_FONT_SIZE, font_offset);
     child.style_mut().text_styles = [
         (
             TextStyle::Heading,
-            FontId::new(scaled_panel_font_size(7.0, font_offset), Proportional),
+            FontId::new(
+                scaled_panel_font_size(BASE_EDITOR_FONT_SIZE + 2.0, font_offset),
+                Proportional,
+            ),
         ),
-        (
-            TextStyle::Body,
-            FontId::new(scaled_panel_font_size(5.5, font_offset), Proportional),
-        ),
-        (
-            TextStyle::Monospace,
-            FontId::new(scaled_panel_font_size(5.5, font_offset), Monospace),
-        ),
-        (
-            TextStyle::Button,
-            FontId::new(scaled_panel_font_size(5.5, font_offset), Proportional),
-        ),
+        (TextStyle::Body, FontId::new(body_size, Proportional)),
+        (TextStyle::Monospace, FontId::new(body_size, Monospace)),
+        (TextStyle::Button, FontId::new(body_size, Proportional)),
         (
             TextStyle::Small,
-            FontId::new(scaled_panel_font_size(4.5, font_offset), Proportional),
+            FontId::new(
+                scaled_panel_font_size(BASE_EDITOR_FONT_SIZE - 2.0, font_offset),
+                Proportional,
+            ),
         ),
     ]
     .into();
