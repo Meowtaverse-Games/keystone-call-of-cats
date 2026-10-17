@@ -118,12 +118,18 @@ fn scaled_panel_font_size(base: f32, offset: f32) -> f32 {
 fn show_vpl_in_panel(
     ui: &mut egui::Ui,
     vpl_state: &mut keystone_blocks::VplState,
+    stone_idx: usize,
+    code: &mut String,
     size: egui::Vec2,
     font_offset: f32,
-) {
+    editing_locked: bool,
+) -> bool {
     let (rect, _) = ui.allocate_exact_size(size, egui::Sense::hover());
     let mut child = ui.new_child(egui::UiBuilder::new().max_rect(rect));
     child.set_clip_rect(rect.intersect(ui.clip_rect()));
+    if editing_locked {
+        child.disable();
+    }
 
     let body_size = scaled_panel_font_size(BASE_EDITOR_FONT_SIZE, font_offset);
     child.style_mut().text_styles = [
@@ -147,7 +153,7 @@ fn show_vpl_in_panel(
     ]
     .into();
 
-    keystone_blocks::show_vpl_contents(&mut child, vpl_state);
+    keystone_blocks::show_vpl_for_code(&mut child, vpl_state, stone_idx, code)
 }
 
 #[derive(Resource)]
@@ -655,26 +661,33 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                     });
                 }
 
+                let vpl_available = settings.script_language == Language::Keystone;
+                if !vpl_available {
+                    vpl_state.is_visible = false;
+                }
+
                 let vpl_button_text = if vpl_state.is_visible { "<< [ VPL ]" } else { ">> VPL" };
-                if ui.button(vpl_button_text).clicked() {
+                if ui
+                    .add_enabled(vpl_available, egui::Button::new(vpl_button_text))
+                    .on_disabled_hover_text("Blocks are available only for the Keystone language")
+                    .clicked()
+                {
                     vpl_state.is_visible = !vpl_state.is_visible;
                 }
 
-                if vpl_state.is_visible {
-                    show_vpl_in_panel(
+                let font_offset = editor.font_offset;
+                if vpl_state.is_visible
+                    && let Some(buffer) = editor.buffers.get_mut(idx)
+                {
+                    vpl_code_changed = show_vpl_in_panel(
                         ui,
                         &mut vpl_state,
+                        idx,
+                        buffer,
                         egui::Vec2::new(available_size.x, text_height),
-                        editor.font_offset,
+                        font_offset,
+                        editing_locked,
                     );
-
-                    if let Some(buffer) = editor.buffers.get_mut(idx) {
-                        let latest_code = keystone_blocks::generate_code_from_state(&vpl_state);
-                        if *buffer != latest_code {
-                            *buffer = latest_code;
-                            vpl_code_changed = true;
-                        }
-                    }
                 }
 
                 if !vpl_state.is_visible
