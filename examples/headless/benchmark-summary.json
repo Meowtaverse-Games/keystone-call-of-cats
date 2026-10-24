@@ -1,0 +1,18 @@
+[
+  {
+    "count": 1,
+    "jobs": 1,
+    "process_wall_seconds": 0.38030287899891846,
+    "elapsed_seconds": 0.366160545,
+    "frames": 1800,
+    "frames_per_second": 4915.876449768775
+  },
+  {
+    "count": 1000,
+    "jobs": 24,
+    "process_wall_seconds": 62.76975038199453,
+    "elapsed_seconds": 62.716021355,
+    "frames": 1800000,
+    "frames_per_second": 28700.800227922875
+  }
+]

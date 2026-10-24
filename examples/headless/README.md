@@ -174,3 +174,10 @@ changes peak rise by approximately +1.070887 / +0.277669 / -0.128340 / -0.197955
 -0.267298 cells. The resize frame itself preserves normalized cell position
 apart from baseline motion, while world pixels change with the root scale.
 No correction to the product's viewport handling is included.
+
+
+The release benchmark completed 1,000 seeds × 1,800 frames with `--jobs 24` in
+62.770 seconds of process wall time (62.716 seconds simulation time; 28,700.8 FPS).
+One seed took 0.380 seconds wall time (0.366 seconds simulation; 4,915.9 FPS).
+See `benchmark-summary.json`; regenerate with `python3 examples/headless/benchmark.py --jobs 24`.
+The 300-second target is met on this machine and is not a CI timing gate.
