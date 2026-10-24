@@ -12,6 +12,7 @@ use bevy_egui::EguiPlugin;
 
 use avian2d::{debug_render::PhysicsDebugPlugin, prelude::*};
 
+use keystone_blocks::VisualProgrammingPlugin;
 use unic_langid::langid;
 
 #[cfg(target_os = "windows")]
@@ -169,6 +170,7 @@ fn main() {
         .add_plugins(AssetLoaderPlugin)
         .add_plugins(EguiPlugin::default())
         .add_plugins(ScenesPlugin)
+        .add_plugins(VisualProgrammingPlugin)
         .add_systems(Update, update_dynamic_solid)
         .add_systems(Update, resize_editor_buffers_system.after(setup))
         .add_systems(

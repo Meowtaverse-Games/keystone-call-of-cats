@@ -9,6 +9,7 @@ use bevy_egui::{
     },
 };
 use bevy_fluent::prelude::Localization;
+use std::collections::HashSet;
 
 use super::stone::StoneCommandState;
 use crate::scenes::stage::systems::StageProgressionState;
@@ -113,6 +114,48 @@ const FONT_OFFSET_MAX: f32 = 0.0;
 
 fn scaled_panel_font_size(base: f32, offset: f32) -> f32 {
     ((base + offset).max(4.0)) * 2.0
+}
+
+fn show_vpl_in_panel(
+    ui: &mut egui::Ui,
+    vpl_state: &mut keystone_blocks::VplState,
+    stone_idx: usize,
+    code: &mut String,
+    allowed_commands: Option<&HashSet<String>>,
+    size: egui::Vec2,
+    font_offset: f32,
+    editing_locked: bool,
+) -> bool {
+    let (rect, _) = ui.allocate_exact_size(size, egui::Sense::hover());
+    let mut child = ui.new_child(egui::UiBuilder::new().max_rect(rect));
+    child.set_clip_rect(rect.intersect(ui.clip_rect()));
+    if editing_locked {
+        child.disable();
+    }
+
+    let body_size = scaled_panel_font_size(BASE_EDITOR_FONT_SIZE, font_offset);
+    child.style_mut().text_styles = [
+        (
+            TextStyle::Heading,
+            FontId::new(
+                scaled_panel_font_size(BASE_EDITOR_FONT_SIZE + 2.0, font_offset),
+                Proportional,
+            ),
+        ),
+        (TextStyle::Body, FontId::new(body_size, Proportional)),
+        (TextStyle::Monospace, FontId::new(body_size, Monospace)),
+        (TextStyle::Button, FontId::new(body_size, Proportional)),
+        (
+            TextStyle::Small,
+            FontId::new(
+                scaled_panel_font_size(BASE_EDITOR_FONT_SIZE - 2.0, font_offset),
+                Proportional,
+            ),
+        ),
+    ]
+    .into();
+
+    keystone_blocks::show_vpl_for_code(&mut child, vpl_state, stone_idx, code, allowed_commands)
 }
 
 #[derive(Resource)]
@@ -260,6 +303,7 @@ pub struct StageUIParams<'w, 's> {
     tutorial_overlays: Query<'w, 's, Entity, With<StageTutorialOverlay>>,
     stone_capabilities: Res<'w, StoneCapabilities>,
     place_state: Option<Res<'w, PlaceState>>,
+    vpl_state: ResMut<'w, keystone_blocks::VplState>,
     stone_query: Query<
         'w,
         's,
@@ -295,6 +339,7 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
         place_state,
         stone_query,
         file_storage,
+        mut vpl_state,
     } = params;
 
     let Ok(ctx) = contexts.ctx_mut() else {
@@ -597,6 +642,7 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                 let editing_locked = editor.controls_enabled;
 
                 let mut text_edit_response = None;
+                let mut vpl_code_changed = false;
                 let stone_count = editor.buffers.len();
                 editor.normalize_selected_idx();
                 let idx = editor.selected_idx;
@@ -617,7 +663,45 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                     });
                 }
 
-                if let Some(buffer) = editor.buffers.get_mut(idx) {
+                let vpl_available = settings.script_language == Language::Keystone;
+                if !vpl_available {
+                    vpl_state.is_visible = false;
+                }
+
+                let vpl_button_text = if vpl_state.is_visible { "<< [ VPL ]" } else { ">> VPL" };
+                if ui
+                    .add_enabled(vpl_available, egui::Button::new(vpl_button_text))
+                    .on_disabled_hover_text("Blocks are available only for the Keystone language")
+                    .clicked()
+                {
+                    vpl_state.is_visible = !vpl_state.is_visible;
+                }
+
+                let font_offset = editor.font_offset;
+                if vpl_state.is_visible
+                    && let Some(buffer) = editor.buffers.get_mut(idx)
+                {
+                    let allowed_commands = stone_query
+                        .iter()
+                        .find(|(_, _, _, index)| index.0 == idx)
+                        .and_then(|(_, _, stone_type, _)| {
+                            stone_capabilities.get_capabilities(*stone_type)
+                        });
+                    vpl_code_changed = show_vpl_in_panel(
+                        ui,
+                        &mut vpl_state,
+                        idx,
+                        buffer,
+                        allowed_commands,
+                        egui::Vec2::new(available_size.x, text_height),
+                        font_offset,
+                        editing_locked,
+                    );
+                }
+
+                if !vpl_state.is_visible
+                    && let Some(buffer) = editor.buffers.get_mut(idx)
+                {
                     egui::ScrollArea::vertical()
                         .max_height(text_height)
                         .show(ui, |ui| {
@@ -636,8 +720,11 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                         });
                 }
 
-                if text_edit_response.is_some_and(|r| r.changed()) {
-                    editor.buffers[idx].retain(|c| c.is_ascii());
+                let text_edited = text_edit_response.is_some_and(|r| r.changed());
+                if text_edited || vpl_code_changed {
+                    if text_edited {
+                        editor.buffers[idx].retain(|c| c.is_ascii());
+                    }
 
                     info!("Script editor buffer changed");
                     editor.controls_enabled = false;
