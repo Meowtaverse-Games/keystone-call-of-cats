@@ -14,6 +14,7 @@ use bevy::{
     ecs::system::SystemParam, prelude::*, render::view::ColorGrading, window::PrimaryWindow,
 };
 use bevy_fluent::prelude::Localization;
+use keystone_blocks::VplState;
 
 use super::components::*;
 
@@ -320,6 +321,7 @@ pub struct StageSetupParams<'w, 's> {
     window_query: Query<'w, 's, &'static Window, With<PrimaryWindow>>,
     progression: ResMut<'w, StageProgressionState>,
     editor_state: Option<ResMut<'w, ScriptEditorState>>,
+    vpl_state: ResMut<'w, VplState>,
     audio_handles: Option<Res<'w, StageAudioHandles>>,
     audio_state: Option<ResMut<'w, StageAudioState>>,
     localization: Res<'w, Localization>,
@@ -436,7 +438,15 @@ pub fn flash_selected_stone_system(
     }
 }
 
+fn reset_vpl_for_stage(state: &mut VplState) {
+    // Stone indices and code can be identical across different stages.
+    let visible = state.is_visible;
+    *state = VplState::default();
+    state.is_visible = visible;
+}
+
 pub fn setup(mut commands: Commands, mut params: StageSetupParams) {
+    reset_vpl_for_stage(&mut params.vpl_state);
     let current_stage_id = params.progression.current_stage_id();
     match params.editor_state.as_deref_mut() {
         Some(editor) => {
@@ -597,6 +607,7 @@ pub struct StageReloadParams<'w, 's> {
     stones: Query<'w, 's, Entity, With<StoneRune>>,
     tutorial_overlays: Query<'w, 's, Entity, With<StageTutorialOverlay>>,
     editor_state: Option<ResMut<'w, ScriptEditorState>>,
+    vpl_state: ResMut<'w, VplState>,
     localization: Res<'w, Localization>,
     audio_state: Option<ResMut<'w, StageAudioState>>,
     stage_scripts: Option<Res<'w, StageScripts>>,
@@ -609,6 +620,7 @@ pub fn reload_stage_if_needed(mut commands: Commands, mut params: StageReloadPar
     if !params.progression.take_pending_reload() {
         return;
     }
+    reset_vpl_for_stage(&mut params.vpl_state);
     if let Some(control) = params.external_control.as_deref_mut() {
         crate::resources::external_control::invalidate_external_state(
             control,
@@ -764,6 +776,35 @@ mod tests {
     use bevy_ecs::system::RunSystemOnce;
 
     #[test]
+    fn stage_reset_discards_vpl_blocks_and_sync_but_preserves_visibility() {
+        for visible in [false, true] {
+            let mut state = VplState::default();
+            state.is_visible = visible;
+            state.load_code(0, "");
+            // An invalid edit that cannot be written back to the empty source.
+            state
+                .blocks
+                .push(keystone_lang::Statement::Print(keystone_lang::Expr::Var(
+                    "invalid name".into(),
+                )));
+            assert_eq!(
+                state.sync_status(),
+                &keystone_blocks::CodeSyncStatus::Synced
+            );
+            assert!(!state.blocks.is_empty());
+
+            reset_vpl_for_stage(&mut state);
+
+            assert!(state.blocks.is_empty());
+            assert_eq!(
+                state.sync_status(),
+                &keystone_blocks::CodeSyncStatus::NotLoaded
+            );
+            assert_eq!(state.is_visible, visible);
+        }
+    }
+
+    #[test]
     fn reload_system_invalidates_external_ownership_before_rebuilding_the_stage() {
         let profile = LaunchProfile {
             external_control: true,
@@ -785,6 +826,7 @@ mod tests {
         let mut app = App::new();
         app.add_plugins(AssetPlugin::default())
             .init_asset::<TextureAtlasLayout>()
+            .init_resource::<VplState>()
             .insert_resource(AssetStore::default())
             .insert_resource(ScaledViewport::new(Vec2::ONE))
             .insert_resource(LetterboxOffsets::default())
