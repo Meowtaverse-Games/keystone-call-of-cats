@@ -19,6 +19,7 @@ use unic_langid::langid;
 use bevy_embedded_assets::EmbeddedAssetPlugin;
 
 mod config;
+mod headless;
 mod plugins;
 mod resources;
 mod scenes;
@@ -54,6 +55,13 @@ fn main() {
         println!("Launch profile: {:?}", launch_profile);
     }
     match launch_profile.launch_type {
+        LaunchType::HeadlessVerify | LaunchType::HeadlessMeasureReach => {
+            if let Err(error) = headless::run(&launch_profile) {
+                eprintln!("Headless verification failed: {error}");
+                std::process::exit(2);
+            }
+            return;
+        }
         LaunchType::ShowChunkGrammarAsciiMap => {
             chunk_grammar_map::show_ascii_map(launch_profile.stage_id.unwrap_or(StageId(1)).0);
             return;

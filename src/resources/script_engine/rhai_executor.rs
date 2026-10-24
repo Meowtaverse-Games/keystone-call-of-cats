@@ -7,7 +7,7 @@ use std::{
     collections::HashSet,
     sync::{
         Arc, Mutex,
-        atomic::{AtomicBool, Ordering},
+        atomic::{AtomicBool, AtomicUsize, Ordering},
         mpsc::{self, Receiver, RecvTimeoutError, SyncSender, TrySendError},
     },
     thread::JoinHandle,
@@ -15,11 +15,23 @@ use std::{
 };
 
 /// Rhai-based implementation of the `ScriptRunner` boundary.
-pub struct RhaiScriptExecutor;
+pub struct RhaiScriptExecutor {
+    blocking_steps: bool,
+}
 
 impl RhaiScriptExecutor {
     pub fn new() -> Self {
-        Self
+        Self {
+            blocking_steps: false,
+        }
+    }
+
+    /// Wait for a VM command/error rather than advancing a simulation frame on a
+    /// wall-clock timeout. Normal interactive execution retains its 1ms timeout.
+    pub(crate) fn deterministic() -> Self {
+        Self {
+            blocking_steps: true,
+        }
     }
 
     fn parse_commands(
@@ -53,6 +65,9 @@ impl RhaiScriptExecutor {
         let emitter = CommandEmitter::recorder(PREFLIGHT_MAX_COMMANDS);
         let state = SharedScriptState::default();
         let mut engine = base_engine(Some(PREFLIGHT_MAX_OPS as u64));
+        if self.blocking_steps {
+            disable_wall_clock(&mut engine);
+        }
         register_commands(&mut engine, emitter.clone(), state, allowed_commands);
 
         match engine.eval::<Dynamic>(script) {
@@ -96,6 +111,7 @@ impl ScriptStepper for RhaiScriptExecutor {
         Ok(Box::new(RhaiScriptProgram::spawn(
             source.trim().to_string(),
             allowed_commands.cloned(),
+            self.blocking_steps,
         )?))
     }
 }
@@ -303,6 +319,15 @@ fn streaming_engine(stop_flag: &Arc<AtomicBool>) -> Engine {
         }
     });
     engine
+}
+
+/// Native override also covers dynamically constructed Fn pointers and eval.
+fn disable_wall_clock(engine: &mut Engine) {
+    engine.register_fn("timestamp", || {
+        command_not_allowed_error::<Dynamic>(
+            "timestamp (wall clock is unavailable in headless verification)",
+        )
+    });
 }
 
 fn register_commands(
@@ -538,6 +563,8 @@ fn map_engine_error(error: EvalAltResult) -> ScriptExecutionError {
                 ScriptExecutionError::InvalidCommand(format!(
                     "Command '{command}' is not allowed for this stone."
                 ))
+            } else if message == "Headless script step exceeded 100000 operations" {
+                ScriptExecutionError::Engine(message)
             } else {
                 ScriptExecutionError::Engine("Script terminated".to_string())
             }
@@ -587,6 +614,8 @@ const RESUME_CHANNEL_SIZE: usize = 0;
 
 // --------- Step program implementation ---------
 struct RhaiScriptProgram {
+    blocking_steps: bool,
+    step_operations: Arc<AtomicUsize>,
     receiver: Mutex<Receiver<ScriptCommand>>,
     stop_flag: Arc<AtomicBool>,
     handle: Option<JoinHandle<()>>,
@@ -599,6 +628,7 @@ impl RhaiScriptProgram {
     fn spawn(
         source: String,
         allowed_commands: Option<HashSet<String>>,
+        blocking_steps: bool,
     ) -> Result<Self, ScriptExecutionError> {
         let (sender, receiver) = mpsc::sync_channel::<ScriptCommand>(STREAM_CHANNEL_SIZE);
         let stop_flag = Arc::new(AtomicBool::new(false));
@@ -608,6 +638,22 @@ impl RhaiScriptProgram {
         let runtime_error = Arc::new(Mutex::new(None));
 
         let mut engine = streaming_engine(&stop_flag);
+        let step_operations = Arc::new(AtomicUsize::new(0));
+        if blocking_steps {
+            disable_wall_clock(&mut engine);
+            let operations = step_operations.clone();
+            let stop = stop_flag.clone();
+            engine.on_progress(move |_| {
+                if stop.load(Ordering::Relaxed) {
+                    Some(STOP_REQUEST_TOKEN.into())
+                } else if operations.fetch_add(1, Ordering::Relaxed) >= MAX_OPS {
+                    Some("Headless script step exceeded 100000 operations".into())
+                } else {
+                    None
+                }
+            });
+        }
+
         let emitter = CommandEmitter::stream(sender, stop_flag.clone(), resume_rx.clone());
         register_commands(
             &mut engine,
@@ -642,6 +688,8 @@ impl RhaiScriptProgram {
         });
 
         Ok(Self {
+            blocking_steps,
+            step_operations,
             receiver: Mutex::new(receiver),
             stop_flag,
             handle: Some(handle),
@@ -662,6 +710,9 @@ impl RhaiScriptProgram {
 impl ScriptProgram for RhaiScriptProgram {
     fn next(&mut self, state: &ScriptState) -> Option<ScriptCommand> {
         self.shared_state.write(state);
+        if self.blocking_steps {
+            self.step_operations.store(0, Ordering::Relaxed);
+        }
 
         match self.resume_tx.try_send(()) {
             Ok(_) | Err(TrySendError::Full(_)) => {}
@@ -673,7 +724,11 @@ impl ScriptProgram for RhaiScriptProgram {
                 Ok(receiver) => receiver,
                 Err(poisoned) => poisoned.into_inner(),
             };
-            receiver.recv_timeout(Duration::from_millis(1))
+            if self.blocking_steps {
+                receiver.recv().map_err(|_| RecvTimeoutError::Disconnected)
+            } else {
+                receiver.recv_timeout(Duration::from_millis(1))
+            }
         };
 
         match result {
@@ -711,6 +766,15 @@ mod tests {
             .iter()
             .map(|command| (*command).to_string())
             .collect()
+    }
+
+    #[test]
+    fn deterministic_steps_reject_dynamic_wall_clock_access() {
+        let executor = RhaiScriptExecutor::deterministic();
+        let result = executor.compile_step("let f = Fn(\"time\" + \"stamp\"); f.call();", None);
+        assert!(
+            matches!(result, Err(ScriptExecutionError::InvalidCommand(message)) if message.contains("wall clock"))
+        );
     }
 
     #[test]

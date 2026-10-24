@@ -33,7 +33,7 @@ use crate::{
     scenes::{assets::AudioKey, stage::components::StageTile},
     util::localization::{localized_stage_name, tr, tr_with_args},
 };
-use audio::{StageAudioHandles, StageAudioState};
+pub(crate) use audio::{StageAudioHandles, StageAudioState};
 
 pub use goal::check_goal_completion;
 pub use obstacle::*;
@@ -130,7 +130,7 @@ fn compute_stage_root_translation(viewport: &ScaledViewport, window_size: Vec2) 
     Vec3::new(translation.x, translation.y, 1.0)
 }
 
-fn spawn_stage(
+pub(crate) fn spawn_stage(
     commands: &mut Commands,
     transform: Transform,
     map_assets: &TiledMapAssets,
@@ -217,6 +217,7 @@ fn populate_stage_contents(
         );
     }
 
+    let mut obstacle_random = map.simulation_seed.map(obstacle::ObstacleRandom::new);
     map.tile_positions(TileKind::Obstacle)
         .iter()
         .for_each(|&obstacle_position| {
@@ -233,8 +234,15 @@ fn populate_stage_contents(
                     scale,
                     0.0,
                 ),
+                obstacle_random.as_mut(),
             );
         });
+
+    if let Some(random) = obstacle_random {
+        commands.insert_resource(random);
+    } else {
+        commands.remove_resource::<obstacle::ObstacleRandom>();
+    }
 
     map.tile_positions(TileKind::Goal)
         .iter()
