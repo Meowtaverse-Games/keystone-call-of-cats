@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use avian2d::prelude::*;
 use bevy::prelude::*;
 
-use rand::{Rng, RngExt};
+use rand::{Rng, RngExt, SeedableRng};
 
 use crate::{
     resources::{chunk_grammar_map::*, design_resolution::ScaledViewport, tiled::*},
@@ -17,7 +17,7 @@ const BACKGROUND_IDS: [u32; 16] = [
     251, 252, 253, 254, 268, 269, 270, 271, 285, 286, 287, 288, 302, 303, 304, 305,
 ];
 
-fn background_tile_id(rng: &mut rand::rngs::ThreadRng) -> u32 {
+fn background_tile_id(rng: &mut impl Rng) -> u32 {
     let index = rng.random_range(0..(BACKGROUND_IDS.len()));
     BACKGROUND_IDS[index]
 }
@@ -32,9 +32,36 @@ pub fn spawn_tiles(
     placed_chunks: &Map,
     viewport: &ScaledViewport,
 ) {
-    let tileset = tiled_map_assets.tileset.clone();
+    if let Some(seed) = placed_chunks.simulation_seed {
+        spawn_tiles_with_rng(
+            commands,
+            stage_root,
+            tiled_map_assets,
+            placed_chunks,
+            viewport,
+            &mut rand::rngs::StdRng::seed_from_u64(seed),
+        );
+    } else {
+        spawn_tiles_with_rng(
+            commands,
+            stage_root,
+            tiled_map_assets,
+            placed_chunks,
+            viewport,
+            &mut rand::rng(),
+        );
+    }
+}
 
-    let mut rng = rand::rng();
+fn spawn_tiles_with_rng(
+    commands: &mut Commands,
+    stage_root: Entity,
+    tiled_map_assets: &TiledMapAssets,
+    placed_chunks: &Map,
+    viewport: &ScaledViewport,
+    rng: &mut impl Rng,
+) {
+    let tileset = tiled_map_assets.tileset.clone();
 
     let (map_size_x, map_size_y) = placed_chunks.map_size;
 
@@ -124,7 +151,7 @@ pub fn spawn_tiles(
                             61
                         }
                     } else {
-                        background_tile_id(&mut rng)
+                        background_tile_id(rng)
                     };
 
                     let image = image_from_tileset(&tileset, tile_id as usize).unwrap();
@@ -176,7 +203,7 @@ pub fn spawn_tiles(
             }
 
             for ((x, y), kind) in placed_chunks.map_iter() {
-                let Some(tile_id) = tile_id_for_kind(&mut rng, kind) else {
+                let Some(tile_id) = tile_id_for_kind(rng, kind) else {
                     continue;
                 };
                 let Some(image) = image_from_tileset(&tileset, tile_id as usize) else {
@@ -334,7 +361,10 @@ pub fn restore_dug_tiles(
     }
 }
 
+type DynamicRandomState = Option<(u64, rand::rngs::StdRng)>;
+
 pub fn update_dynamic_solid(
+    mut seeded_random: Local<DynamicRandomState>,
     mut commands: Commands,
     mut message_reader: MessageReader<StoneTickMessage>,
     map: Option<Res<Map>>,
@@ -414,7 +444,18 @@ pub fn update_dynamic_solid(
         if has_updated {
             break;
         }
-        let mut rng = rand::rng();
+        let mut unseeded = rand::rng();
+        let rng: &mut dyn Rng = if let Some(seed) = current_map.simulation_seed {
+            if seeded_random
+                .as_ref()
+                .is_none_or(|(current_seed, _)| *current_seed != seed)
+            {
+                *seeded_random = Some((seed, rand::rngs::StdRng::seed_from_u64(seed)));
+            }
+            &mut seeded_random.as_mut().unwrap().1
+        } else {
+            &mut unseeded
+        };
         let min = current_map.dynamic_min;
         let max = current_map.dynamic_max.max(min);
         let mut remain_dynamic = rng.random_range(min..=max);

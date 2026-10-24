@@ -1,5 +1,5 @@
 use bevy_ecs::{component::Component, resource::Resource};
-use rand::{Rng, RngExt, seq::SliceRandom};
+use rand::{Rng, RngExt, SeedableRng, seq::SliceRandom};
 use std::collections::{HashMap, HashSet};
 
 use serde::Deserialize;
@@ -193,11 +193,12 @@ impl ChunkGrammarConfig {
     }
 }
 
-fn generate_random_layout(config: &ChunkGrammarConfig) -> PlacedChunkLayout {
+fn generate_random_layout(config: &ChunkGrammarConfig, rng: &mut impl Rng) -> PlacedChunkLayout {
     let starts = config.starts();
     let middles = config.middles();
     let goals = config.goals();
     try_build_random_path(
+        rng,
         config.map_size,
         config.adjustments.clone(),
         &starts,
@@ -207,9 +208,21 @@ fn generate_random_layout(config: &ChunkGrammarConfig) -> PlacedChunkLayout {
 }
 
 pub fn generate_map_from_config(config: ChunkGrammarConfig) -> Map {
-    let placed_chunk_layout = generate_random_layout(&config);
+    generate_map_with_rng(config, &mut rand::rng())
+}
+
+/// Uses the same generator as normal play, with a reproducible random stream.
+pub fn generate_map_with_seed(config: ChunkGrammarConfig, seed: u64) -> Map {
+    let mut map = generate_map_with_rng(config, &mut rand::rngs::StdRng::seed_from_u64(seed));
+    map.simulation_seed = Some(seed);
+    map
+}
+
+fn generate_map_with_rng(config: ChunkGrammarConfig, rng: &mut impl Rng) -> Map {
+    let placed_chunk_layout = generate_random_layout(&config, rng);
 
     let mut map = Map {
+        simulation_seed: None,
         placed_chunks: placed_chunk_layout.placed_chunks,
         adjustment: placed_chunk_layout.adjustment,
         map_size: placed_chunk_layout.map_size,
@@ -464,6 +477,7 @@ impl PlacedChunkLayout {
 
 #[derive(Clone, Debug, Resource)]
 pub struct Map {
+    pub simulation_seed: Option<u64>,
     pub placed_chunks: Vec<PlacedChunk>,
     pub adjustment: Option<Adjustments>,
     pub map_size: (isize, isize),
@@ -518,6 +532,7 @@ impl Map {
         }
 
         Map {
+            simulation_seed: None,
             placed_chunks,
             adjustment,
             map_size: (MAP_SIZE.0, MAP_SIZE.1),
@@ -529,6 +544,28 @@ impl Map {
             boundary_margin,
             margin_tiles: build_margin_tiles(boundary_margin),
         }
+    }
+
+    /// Synthetic interior for headless reach experiments. Coordinates are bottom-up.
+    pub(crate) fn synthetic(size: (isize, isize), tiles: Vec<((isize, isize), TileKind)>) -> Self {
+        let margin = ((MAP_SIZE.0 - size.0) / 2, (MAP_SIZE.1 - size.1) / 2);
+        Self::new(
+            vec![PlacedChunk {
+                id: "reach-fixture".into(),
+                exits_world: vec![],
+                tiles_world: tiles
+                    .into_iter()
+                    .map(|((x, y), kind)| Tile { x, y, kind })
+                    .collect(),
+            }],
+            StoneType::Type1,
+            None,
+            None,
+            0,
+            0,
+            None,
+            margin,
+        )
     }
 
     pub fn tile_position(&self, kind: TileKind) -> (f32, f32) {
@@ -654,13 +691,13 @@ fn build_margin_tiles(margin: (isize, isize)) -> Vec<Tile> {
 }
 
 fn try_build_random_path(
+    rng: &mut impl Rng,
     map_size: (isize, isize),
     adjustment: Option<Adjustments>,
     start_chunks: &[InnerChunkTemplate],
     mid_chunks: &[InnerChunkTemplate],
     goal_chunks: &[InnerChunkTemplate],
 ) -> PlacedChunkLayout {
-    let mut rng = rand::rng();
     let placed_start = place_chunk(
         &start_chunks[rng.random_range(0..start_chunks.len())],
         (0, 0),
@@ -687,7 +724,7 @@ fn try_build_random_path(
 
     loop {
         let mut mandatory_queue = required_templates.clone();
-        mandatory_queue.shuffle(&mut rng);
+        mandatory_queue.shuffle(rng);
 
         let mut mandatory_chunks = Vec::with_capacity(mandatory_queue.len());
         let mut path_start_exit = start_exit;
@@ -711,14 +748,13 @@ fn try_build_random_path(
         }
 
         let goal_template = &goal_chunks[rng.random_range(0..goal_chunks.len())];
-        let Some(goal_target) =
-            random_goal_target(&mut rng, map_size, path_start_exit, goal_template)
+        let Some(goal_target) = random_goal_target(rng, map_size, path_start_exit, goal_template)
         else {
             continue;
         };
 
         if let Some(mut mid_path) = find_path_to_goal(
-            &mut rng,
+            rng,
             map_size,
             &optional_templates,
             path_start_exit,
@@ -873,21 +909,46 @@ fn search_path_to_goal(
     None
 }
 
-pub fn print_ascii_map(map: &Map) {
+pub fn ascii_map(map: &Map) -> String {
+    let mut result = String::new();
     let tile_map = build_tile_char_map(map);
     let (map_width, map_height) = map.map_size;
     for y in (0..map_height).rev() {
         for x in 0..map_width {
             let ch = tile_map.get(&(x, y)).copied().unwrap_or('.');
-            print!("{ch}");
+            result.push(ch);
         }
-        println!();
+        result.push('\n');
     }
+    result
+}
+
+pub fn print_ascii_map(map: &Map) {
+    print!("{}", ascii_map(map));
 }
 
 #[cfg(test)]
 mod tests {
     use super::{ChunkGrammarConfig, apply_stone_adjustments};
+
+    #[test]
+    fn seeded_generation_is_repeatable_and_unseeded_generation_remains_valid() {
+        let source = include_str!("../../assets/stages/stage-1.ron");
+        let seeded = || super::generate_map_with_seed(ron::from_str(source).unwrap(), 1234);
+        assert_eq!(super::ascii_map(&seeded()), super::ascii_map(&seeded()));
+        for map in [
+            seeded(),
+            super::generate_map_from_config(ron::from_str(source).unwrap()),
+        ] {
+            assert_eq!(map.map_size, super::MAP_SIZE);
+            assert!(!map.tile_positions(super::TileKind::PlayerSpawn).is_empty());
+            assert!(!map.tile_positions(super::TileKind::Goal).is_empty());
+            assert_eq!(
+                super::ascii_map(&map).lines().count(),
+                super::MAP_SIZE.1 as usize
+            );
+        }
+    }
 
     #[test]
     fn missing_stone_adjustments_do_not_drop_positions() {

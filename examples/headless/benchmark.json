@@ -1,0 +1,10 @@
+{
+  "stage_id": 1,
+  "seed_start": 0,
+  "seed_count": 1000,
+  "start_frame": 0,
+  "max_frames": 1800,
+  "trajectory_every": 1800,
+  "inputs": [],
+  "programs": []
+}

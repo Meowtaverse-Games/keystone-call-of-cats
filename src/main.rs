@@ -10,7 +10,7 @@ use bevy_fluent::prelude::*;
 
 use bevy_egui::EguiPlugin;
 
-use avian2d::{debug_render::PhysicsDebugPlugin, prelude::*};
+use avian2d::debug_render::PhysicsDebugPlugin;
 
 use keystone_blocks::VisualProgrammingPlugin;
 use unic_langid::langid;
@@ -19,6 +19,7 @@ use unic_langid::langid;
 use bevy_embedded_assets::EmbeddedAssetPlugin;
 
 mod config;
+mod headless;
 mod plugins;
 mod resources;
 mod scenes;
@@ -27,7 +28,7 @@ mod util;
 
 use crate::resources::stage_catalog::StageId;
 use crate::scenes::stage::systems::{
-    flash_selected_stone_system, resize_editor_buffers_system, setup, update_dynamic_solid,
+    flash_selected_stone_system, resize_editor_buffers_system, setup,
 };
 use crate::{
     config::*,
@@ -54,6 +55,13 @@ fn main() {
         println!("Launch profile: {:?}", launch_profile);
     }
     match launch_profile.launch_type {
+        LaunchType::HeadlessVerify | LaunchType::HeadlessMeasureReach => {
+            if let Err(error) = headless::run(&launch_profile) {
+                eprintln!("Headless verification failed: {error}");
+                std::process::exit(2);
+            }
+            return;
+        }
         LaunchType::ShowChunkGrammarAsciiMap => {
             chunk_grammar_map::show_ascii_map(launch_profile.stage_id.unwrap_or(StageId(1)).0);
             return;
@@ -150,7 +158,7 @@ fn main() {
                 ..default()
             })
             .set(ImagePlugin::default_nearest()),
-        PhysicsPlugins::default(),
+        scenes::stage::StagePhysicsPlugin,
         FluentPlugin,
     ));
 
@@ -171,7 +179,6 @@ fn main() {
         .add_plugins(EguiPlugin::default())
         .add_plugins(ScenesPlugin)
         .add_plugins(VisualProgrammingPlugin)
-        .add_systems(Update, update_dynamic_solid)
         .add_systems(Update, resize_editor_buffers_system.after(setup))
         .add_systems(
             Update,
