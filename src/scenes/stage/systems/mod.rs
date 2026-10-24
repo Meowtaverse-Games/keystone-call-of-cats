@@ -14,6 +14,7 @@ use bevy::{
     ecs::system::SystemParam, prelude::*, render::view::ColorGrading, window::PrimaryWindow,
 };
 use bevy_fluent::prelude::Localization;
+use keystone_blocks::VplState;
 
 use super::components::*;
 
@@ -328,6 +329,7 @@ pub struct StageSetupParams<'w, 's> {
     window_query: Query<'w, 's, &'static Window, With<PrimaryWindow>>,
     progression: ResMut<'w, StageProgressionState>,
     editor_state: Option<ResMut<'w, ScriptEditorState>>,
+    vpl_state: ResMut<'w, VplState>,
     audio_handles: Option<Res<'w, StageAudioHandles>>,
     audio_state: Option<ResMut<'w, StageAudioState>>,
     localization: Res<'w, Localization>,
@@ -444,7 +446,15 @@ pub fn flash_selected_stone_system(
     }
 }
 
+fn reset_vpl_for_stage(state: &mut VplState) {
+    // Stone indices and code can be identical across different stages.
+    let visible = state.is_visible;
+    *state = VplState::default();
+    state.is_visible = visible;
+}
+
 pub fn setup(mut commands: Commands, mut params: StageSetupParams) {
+    reset_vpl_for_stage(&mut params.vpl_state);
     let current_stage_id = params.progression.current_stage_id();
     match params.editor_state.as_deref_mut() {
         Some(editor) => {
@@ -563,6 +573,8 @@ pub fn advance_stage_if_cleared(
         warn!("Stage clear: failed to save scripts: {err}");
     }
 
+    // Keep the next ID unlocked even at the catalog end so future stages are
+    // available to players who have already cleared the current final stage.
     progress.unlock_until(StageId(progression.current_stage_id().0 + 1));
 
     if progression.advance(&stage_catalog) {
@@ -605,6 +617,7 @@ pub struct StageReloadParams<'w, 's> {
     stones: Query<'w, 's, Entity, With<StoneRune>>,
     tutorial_overlays: Query<'w, 's, Entity, With<StageTutorialOverlay>>,
     editor_state: Option<ResMut<'w, ScriptEditorState>>,
+    vpl_state: ResMut<'w, VplState>,
     localization: Res<'w, Localization>,
     audio_state: Option<ResMut<'w, StageAudioState>>,
     stage_scripts: Option<Res<'w, StageScripts>>,
@@ -617,6 +630,7 @@ pub fn reload_stage_if_needed(mut commands: Commands, mut params: StageReloadPar
     if !params.progression.take_pending_reload() {
         return;
     }
+    reset_vpl_for_stage(&mut params.vpl_state);
     if let Some(control) = params.external_control.as_deref_mut() {
         crate::resources::external_control::invalidate_external_state(
             control,
@@ -772,6 +786,95 @@ mod tests {
     use bevy_ecs::system::RunSystemOnce;
 
     #[test]
+    fn advancing_from_last_catalog_stage_keeps_current_stage() {
+        let catalog = StageCatalog::load_from_assets();
+        let last = catalog.stages.last().unwrap();
+        let mut progression = StageProgressionState::default();
+        progression.select_stage(last);
+        progression.clear_reload();
+
+        assert!(!progression.advance(&catalog));
+        assert_eq!(progression.current_stage_id(), last.id);
+        assert!(!progression.take_pending_reload());
+    }
+
+    #[test]
+    fn clearing_catalog_stages_sets_feedback_and_unlocks_next_id() {
+        let catalog = StageCatalog::load_from_assets();
+        let last_id = catalog.stages.last().unwrap().id;
+        for stage in catalog.iter() {
+            let mut progression = StageProgressionState::default();
+            progression.select_stage(stage);
+            progression.clear_reload();
+            let mut world = World::new();
+            world.insert_resource(progression);
+            world.insert_resource(ScriptEditorState {
+                stage_cleared: true,
+                controls_enabled: true,
+                pending_player_reset: true,
+                ..default()
+            });
+            world.insert_resource(StageProgress::default());
+            world.insert_resource(catalog.clone());
+            // Without locale assets, tr returns the message key, identifying the
+            // feedback branch without requiring an asset server or rendering.
+            world.insert_resource(Localization::new());
+
+            world.run_system_once(advance_stage_if_cleared).unwrap();
+
+            let editor = world.resource::<ScriptEditorState>();
+            let progression = world.resource::<StageProgressionState>();
+            let expected_feedback = if stage.id == last_id {
+                assert_eq!(progression.current_stage_id(), last_id);
+                assert!(!progression.pending_reload);
+                "stage-ui-feedback-complete"
+            } else {
+                assert_eq!(progression.current_stage_id(), StageId(stage.id.0 + 1));
+                assert!(progression.pending_reload);
+                "stage-ui-feedback-advance"
+            };
+            assert_eq!(editor.last_run_feedback.as_deref(), Some(expected_feedback));
+            assert!(!editor.controls_enabled);
+            assert!(!editor.pending_player_reset);
+            assert!(!editor.stage_cleared);
+            assert!(
+                world
+                    .resource::<StageProgress>()
+                    .is_unlocked(StageId(stage.id.0 + 1))
+            );
+        }
+    }
+
+    #[test]
+    fn stage_reset_discards_vpl_blocks_and_sync_but_preserves_visibility() {
+        for visible in [false, true] {
+            let mut state = VplState::default();
+            state.is_visible = visible;
+            state.load_code(0, "");
+            // An invalid edit that cannot be written back to the empty source.
+            state
+                .blocks
+                .push(keystone_lang::Statement::Print(keystone_lang::Expr::Var(
+                    "invalid name".into(),
+                )));
+            assert_eq!(
+                state.sync_status(),
+                &keystone_blocks::CodeSyncStatus::Synced
+            );
+            assert!(!state.blocks.is_empty());
+
+            reset_vpl_for_stage(&mut state);
+
+            assert!(state.blocks.is_empty());
+            assert_eq!(
+                state.sync_status(),
+                &keystone_blocks::CodeSyncStatus::NotLoaded
+            );
+            assert_eq!(state.is_visible, visible);
+        }
+    }
+
+    #[test]
     fn reload_system_invalidates_external_ownership_before_rebuilding_the_stage() {
         let profile = LaunchProfile {
             external_control: true,
@@ -793,6 +896,7 @@ mod tests {
         let mut app = App::new();
         app.add_plugins(AssetPlugin::default())
             .init_asset::<TextureAtlasLayout>()
+            .init_resource::<VplState>()
             .insert_resource(AssetStore::default())
             .insert_resource(ScaledViewport::new(Vec2::ONE))
             .insert_resource(LetterboxOffsets::default())
