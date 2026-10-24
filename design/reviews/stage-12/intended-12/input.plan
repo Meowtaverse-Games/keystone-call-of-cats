@@ -1,0 +1,22 @@
+s 0 move left
+p leap-right
+p leap-right
+p leap-right
+p leap-right
+p leap-right
+p right
+p jump-right
+s 0 move right
+s 0 move down
+s 0 dig down
+s 0 move down
+s 0 dig down
+s 0 move down
+s 0 move down
+s 0 dig down
+s 0 move down
+s 0 move down
+s 0 dig down
+s 0 move down
+s 0 dig down
+s 0 move down

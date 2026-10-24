@@ -163,7 +163,7 @@ stage7-description = sleep命令が使えない代わりに、is_touchedとい�
 
 
 # stage 8
-stage8-text = 水が出てプレイヤーの行手を塞いています。しばらく待てば水は止まるので、先ほど扱った is_touched 判定をうまく使いましょう。
+stage8-text = 谷の向こうで石が待っています。石へ乗った時だけ右へ進むように、is_touched 判定を使いましょう。
 
 
 stage8-description = sleep命令が使えない代わりに、is_touchedという命令が使えます。
@@ -475,5 +475,4 @@ stage23-text = 最終試練を越えたあと、洞窟の壁に古いルーン�
 
 
 stage23-description = ・・・
-
 
