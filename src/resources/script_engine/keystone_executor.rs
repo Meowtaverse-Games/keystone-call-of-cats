@@ -340,4 +340,16 @@ mod tests {
             Some(ScriptCommand::Place(MoveDirection::Right))
         ));
     }
+
+    #[test]
+    fn accepts_place_up_when_the_capability_is_allowed() {
+        let executor = KeystoneScriptExecutor::default();
+        let allowed_commands = HashSet::from(["place".to_string()]);
+
+        assert!(
+            executor
+                .compile_step("place up", Some(&allowed_commands))
+                .is_ok()
+        );
+    }
 }

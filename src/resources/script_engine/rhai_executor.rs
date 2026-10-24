@@ -776,12 +776,12 @@ mod tests {
         let executor = RhaiScriptExecutor::new();
         let type4 = allowed(&["move", "is_touched", "is_empty", "place"]);
         assert!(matches!(
-            executor.run("place(\"right\");", Some(&type4)),
-            Ok(commands) if matches!(commands.as_slice(), [ScriptCommand::Place(MoveDirection::Right)])
+            executor.run("place(\"up\");", Some(&type4)),
+            Ok(commands) if matches!(commands.as_slice(), [ScriptCommand::Place(MoveDirection::Top)])
         ));
         assert!(
             executor
-                .compile_step("place(\"right\");", Some(&allowed(&["move"])))
+                .compile_step("place(\"up\");", Some(&allowed(&["move"])))
                 .is_err()
         );
     }

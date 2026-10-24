@@ -29,6 +29,7 @@ impl StageMeta {
             10 => include_bytes!("../../assets/stages/stage-10.ron"),
             11 => include_bytes!("../../assets/stages/stage-11.ron"),
             12 => include_bytes!("../../assets/stages/stage-12.ron"),
+            13 => include_bytes!("../../assets/stages/stage-13.ron"),
             _ => panic!("Stage ID: {} Not found.", stage_id),
         };
 
@@ -106,4 +107,20 @@ fn build_stage_meta(entries: Vec<RonStageEntry>) -> Vec<StageMeta> {
             unlocked: entry.unlocked,
         })
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn stage_thirteen_follows_twelve_and_is_the_catalog_boundary() {
+        let catalog = StageCatalog::load_from_assets();
+
+        assert_eq!(
+            catalog.next_stage(StageId(12)).map(|stage| stage.id),
+            Some(StageId(13))
+        );
+        assert_eq!(catalog.next_stage(StageId(13)).map(|stage| stage.id), None);
+    }
 }
