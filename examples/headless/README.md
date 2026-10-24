@@ -51,7 +51,8 @@ Missing programs compile as empty Rhai programs; duplicate or nonexistent stone
 indices are errors. Product `ScriptExecutor` compilation and `StoneCapabilities`
 restrictions apply. Rhai uses the same interpreter with a blocking per-command
 handoff in this mode, so a 1ms UI timeout cannot change the emission frame under
-CPU load. A headless-only 100,000-operation budget per step reports a script error
+CPU load. Both resume notification and command reception rendezvous with the VM
+worker; a worker that has not yet started waiting cannot lose its resume signal. A headless-only 100,000-operation budget per step reports a script error
 instead of hanging on a non-yielding Rhai loop. Normal interactive timeouts and
 execution remain unchanged. The headless Rhai interpreter rejects `timestamp()`
 (including dynamic calls) because it reads wall-clock time. Accepted keys: `ArrowLeft`, `ArrowRight`, `ArrowUp`, `KeyA`,
@@ -156,3 +157,20 @@ actual system TypeIds, membership in `StageSystemSet`, and dependency reachabili
 (including within-set chains), plus fixed physics/physics/substep schedules.
 Both paths also install the shared gameplay and physics plugins. Tests do not
 require Bevy debug system names, a display server, or a renderer.
+
+
+## Reference results
+
+On the recorded build, Stage 1 / seed 17 clears at frame 787. Stage 2 / seed 17
+clears at frame 1087 after the stone's `move("down");` reports `blocked` at frame
+50. Both scenarios and reports are included here; the terrain was not edited to
+force these outcomes.
+
+The six-scale sweep (dev build) found one-cell steps and two-cell gaps for every
+map size, direction, and approach. Identical-input apex/landing positions differ
+by less than 0.00001 cells across constant scales. Mid-jump resizing changes the
+subsequent apex: relative to scale 1.0, resizing to 0.5 / 0.75 / 1.25 / 1.5 / 2.0
+changes peak rise by approximately +1.070887 / +0.277669 / -0.128340 / -0.197955 /
+-0.267298 cells. The resize frame itself preserves normalized cell position
+apart from baseline motion, while world pixels change with the root scale.
+No correction to the product's viewport handling is included.

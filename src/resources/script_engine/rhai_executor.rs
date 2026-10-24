@@ -714,9 +714,18 @@ impl ScriptProgram for RhaiScriptProgram {
             self.step_operations.store(0, Ordering::Relaxed);
         }
 
-        match self.resume_tx.try_send(()) {
-            Ok(_) | Err(TrySendError::Full(_)) => {}
-            Err(TrySendError::Disconnected(_)) => return None,
+        if self.blocking_steps {
+            // The resume channel is a rendezvous channel. A nonblocking send can
+            // miss a worker that has not reached its receive yet, leaving both
+            // sides waiting forever when command reception below is blocking.
+            if self.resume_tx.send(()).is_err() {
+                return None;
+            }
+        } else {
+            match self.resume_tx.try_send(()) {
+                Ok(_) | Err(TrySendError::Full(_)) => {}
+                Err(TrySendError::Disconnected(_)) => return None,
+            }
         }
 
         let result = {
@@ -766,6 +775,32 @@ mod tests {
             .iter()
             .map(|command| (*command).to_string())
             .collect()
+    }
+
+    #[test]
+    fn deterministic_steps_wait_for_worker_at_startup_and_after_each_yield() {
+        let (finished, result) = mpsc::channel();
+        let worker = thread::spawn(move || {
+            let executor = RhaiScriptExecutor::deterministic();
+            for _ in 0..100 {
+                let mut program = executor
+                    .compile_step("move(\"down\"); move(\"up\");", None)
+                    .unwrap();
+                for direction in [MoveDirection::Down, MoveDirection::Top] {
+                    assert!(
+                        matches!(program.next(&ScriptState::new()), Some(ScriptCommand::Move(actual)) if actual == direction)
+                    );
+                }
+                assert!(program.next(&ScriptState::new()).is_none());
+                assert!(program.take_error().is_none());
+            }
+            finished.send(()).unwrap();
+        });
+        // A missed rendezvous must fail this test instead of hanging the suite.
+        result
+            .recv_timeout(Duration::from_secs(10))
+            .expect("deterministic VM handshake stalled");
+        worker.join().unwrap();
     }
 
     #[test]
