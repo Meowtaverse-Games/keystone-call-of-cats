@@ -321,6 +321,18 @@ mod tests {
     use super::*;
 
     #[test]
+    fn rejects_oversized_integer_literals_as_syntax_errors() {
+        let executor = KeystoneScriptExecutor::default();
+
+        let result = executor.compile_step("move 99999999999", None);
+
+        assert!(matches!(
+            result,
+            Err(ScriptExecutionError::Engine(message)) if message.contains("Syntax error")
+        ));
+    }
+
+    #[test]
     fn rejects_disallowed_commands_inside_unexecuted_keystone_branches() {
         let executor = KeystoneScriptExecutor::default();
         let allowed_commands = HashSet::from(["move".to_string(), "sleep".to_string()]);
