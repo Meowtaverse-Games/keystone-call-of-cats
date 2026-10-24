@@ -9,6 +9,7 @@ use bevy_egui::{
     },
 };
 use bevy_fluent::prelude::Localization;
+use std::collections::HashSet;
 
 use super::stone::StoneCommandState;
 use crate::scenes::stage::systems::StageProgressionState;
@@ -120,6 +121,7 @@ fn show_vpl_in_panel(
     vpl_state: &mut keystone_blocks::VplState,
     stone_idx: usize,
     code: &mut String,
+    allowed_commands: Option<&HashSet<String>>,
     size: egui::Vec2,
     font_offset: f32,
     editing_locked: bool,
@@ -153,7 +155,7 @@ fn show_vpl_in_panel(
     ]
     .into();
 
-    keystone_blocks::show_vpl_for_code(&mut child, vpl_state, stone_idx, code)
+    keystone_blocks::show_vpl_for_code(&mut child, vpl_state, stone_idx, code, allowed_commands)
 }
 
 #[derive(Resource)]
@@ -679,11 +681,18 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                 if vpl_state.is_visible
                     && let Some(buffer) = editor.buffers.get_mut(idx)
                 {
+                    let allowed_commands = stone_query
+                        .iter()
+                        .find(|(_, _, _, index)| index.0 == idx)
+                        .and_then(|(_, _, stone_type, _)| {
+                            stone_capabilities.get_capabilities(*stone_type)
+                        });
                     vpl_code_changed = show_vpl_in_panel(
                         ui,
                         &mut vpl_state,
                         idx,
                         buffer,
+                        allowed_commands,
                         egui::Vec2::new(available_size.x, text_height),
                         font_offset,
                         editing_locked,

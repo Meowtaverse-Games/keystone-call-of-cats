@@ -4118,7 +4118,7 @@ dependencies = [
 [[package]]
 name = "keystone-blocks"
 version = "0.1.0"
-source = "git+https://github.com/Meowtaverse-Games/keystone-blocks.git#aa5da8200ea52a81a0543824c2f6dd7f0f5571b6"
+source = "git+https://github.com/Meowtaverse-Games/keystone-blocks.git?rev=833d678469ef46778b8899de1b26129c2b5c86d3#833d678469ef46778b8899de1b26129c2b5c86d3"
 dependencies = [
  "bevy",
  "bevy_egui",
@@ -4160,7 +4160,7 @@ dependencies = [
 [[package]]
 name = "keystone-lang"
 version = "0.1.0"
-source = "git+https://github.com/Meowtaverse-Games/keystone-lang.git#fc8e3f44f52ed47301a16ab1f109eed077f558a9"
+source = "git+https://github.com/Meowtaverse-Games/keystone-lang.git?rev=fc8e3f44f52ed47301a16ab1f109eed077f558a9#fc8e3f44f52ed47301a16ab1f109eed077f558a9"
 dependencies = [
  "chumsky",
  "rand",
