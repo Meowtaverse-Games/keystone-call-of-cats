@@ -739,8 +739,13 @@ pub fn update_stage_root(
     let window_size = window.resolution.size();
     let translation = compute_stage_root_translation(&viewport, window_size);
 
+    apply_stage_root_viewport(&mut transform, translation, viewport.scale);
+}
+
+/// Shared viewport transform operation; the headless viewport stays centered.
+pub(crate) fn apply_stage_root_viewport(transform: &mut Transform, translation: Vec3, scale: f32) {
     transform.translation = translation;
-    transform.scale = Vec3::splat(viewport.scale);
+    transform.scale = Vec3::splat(scale);
 }
 
 const DISABLED_SCENE_SATURATION: f32 = 0.01;

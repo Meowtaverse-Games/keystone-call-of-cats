@@ -19,6 +19,7 @@ pub struct LaunchProfile {
     pub headless_scenario: Option<PathBuf>,
     pub headless_report: Option<PathBuf>,
     pub headless_jobs: Option<usize>,
+    pub headless_viewport_scale: Option<f32>,
     pub changed: bool,
     pub launch_type: LaunchType,
     pub skip_boot: bool,
@@ -82,6 +83,14 @@ impl LaunchProfile {
                 }
                 "--report" => {
                     launch_profile.headless_report = args.get(index + 1).map(PathBuf::from);
+                    index += 1;
+                }
+                "--viewport-scale" => {
+                    launch_profile.headless_viewport_scale = Some(
+                        args.get(index + 1)
+                            .and_then(|s| s.parse().ok())
+                            .unwrap_or(f32::NAN),
+                    );
                     index += 1;
                 }
                 "--jobs" => {

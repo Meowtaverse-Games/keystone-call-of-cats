@@ -168,3 +168,12 @@ impl Plugin for StageGameplayPlugin {
             );
     }
 }
+
+/// Identical physics and timed terrain registration for both launch configurations.
+pub struct StagePhysicsPlugin;
+impl Plugin for StagePhysicsPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_plugins(avian2d::prelude::PhysicsPlugins::default())
+            .add_systems(Update, systems::update_dynamic_solid);
+    }
+}

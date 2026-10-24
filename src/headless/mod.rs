@@ -17,8 +17,8 @@ use crate::{
     scenes::{
         assets::PLAYER_IDLE_KEYS,
         stage::{
-            StageGameplayPlugin,
-            components::{Player, StoneIndex, StoneRune},
+            StageGameplayPlugin, StagePhysicsPlugin,
+            components::{Player, StageRoot, StoneIndex, StoneRune},
             systems::{
                 self, ScriptEditorState, StageAudioHandles, StageAudioState, StageGridMetrics,
                 StageSystemSet, StoneAppendCommandMessage, StoneExternalOutcomeMessage,
@@ -57,6 +57,10 @@ type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Scenario {
+    #[serde(default = "default_scale")]
+    pub viewport_scale: f32,
+    #[serde(default)]
+    pub scale_changes: Vec<ScaleChange>,
     pub stage_id: Option<usize>,
     pub ron_path: Option<PathBuf>,
     pub seed_start: u64,
@@ -72,6 +76,18 @@ pub struct Scenario {
     pub max_frames: u64,
     #[serde(default = "default_stride")]
     pub trajectory_every: u64,
+}
+fn default_scale() -> f32 {
+    1.0
+}
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ScaleChange {
+    pub frame: u64,
+    pub scale: f32,
+}
+fn valid_scale(scale: f32) -> bool {
+    scale.is_finite() && scale > 0.0
 }
 fn default_stride() -> u64 {
     10
@@ -231,7 +247,7 @@ fn setup(
 ) {
     systems::spawn_stage(
         &mut commands,
-        Transform::from_xyz(0.0, 0.0, 1.0),
+        Transform::from_xyz(0.0, 0.0, 1.0).with_scale(Vec3::splat(viewport.scale)),
         &tiles,
         &map,
         &viewport,
@@ -241,7 +257,21 @@ fn setup(
     );
 }
 
-pub(super) fn build_app(map: Map) -> App {
+#[cfg(test)]
+fn build_app(map: Map) -> App {
+    build_app_at_scale(map, 1.0)
+}
+fn update_headless_root(
+    viewport: Res<ScaledViewport>,
+    mut roots: Query<&mut Transform, With<StageRoot>>,
+) {
+    if viewport.is_changed() {
+        for mut transform in &mut roots {
+            systems::apply_stage_root_viewport(&mut transform, Vec3::Z, viewport.scale);
+        }
+    }
+}
+pub(super) fn build_app_at_scale(map: Map, scale: f32) -> App {
     let mut app = App::new();
     app.add_plugins((
         MinimalPlugins.set(TaskPoolPlugin {
@@ -256,17 +286,21 @@ pub(super) fn build_app(map: Map) -> App {
     .init_asset::<bevy::mesh::Mesh>()
     .init_asset::<GizmoAsset>()
     .init_gizmo_group::<DefaultGizmoConfigGroup>()
-    .add_plugins((PhysicsPlugins::default(), StageGameplayPlugin))
+    .add_plugins((StagePhysicsPlugin, StageGameplayPlugin))
     .insert_resource(TimeUpdateStrategy::ManualDuration(Duration::from_secs_f64(
         1.0 / 60.0,
     )))
     .insert_resource(LaunchProfile::default())
-    .insert_resource(ScaledViewport::new(Vec2::new(1800.0, 1200.0)))
+    .insert_resource(ScaledViewport {
+        scale,
+        ..ScaledViewport::new(Vec2::new(1800.0, 1200.0))
+    })
     .insert_resource(Localization::new())
     .insert_resource(GameSettings::default())
     .insert_resource(StageAudioHandles::new(Handle::default(), Handle::default()))
     .init_resource::<StageAudioState>()
     .init_resource::<ScriptEditorState>()
+    .init_resource::<keystone_blocks::VplState>()
     .init_resource::<ButtonInput<KeyCode>>()
     .init_resource::<Observation>()
     .insert_resource(TiledMapAssets {
@@ -287,7 +321,12 @@ pub(super) fn build_app(map: Map) -> App {
             crate::systems::engine::friction::apply_zero_friction_to_rigid_bodies.after(setup),
         ),
     )
-    .add_systems(Update, systems::update_dynamic_solid)
+    .add_systems(
+        Update,
+        update_headless_root
+            .in_set(StageSystemSet::Movement)
+            .run_if(in_state(GameState::Stage)),
+    )
     .add_systems(
         Update,
         tag_commands
@@ -421,6 +460,20 @@ pub(super) fn player_position(app: &mut App) -> Option<Vec2> {
         .next()
         .map(|t| t.translation().truncate())
 }
+/// Canvas coordinates before viewport scaling, including the map's boundary margin.
+fn stage_cell_position(app: &mut App, position: Vec2) -> Vec2 {
+    let world = app.world_mut();
+    let root = world
+        .query_filtered::<&GlobalTransform, With<StageRoot>>()
+        .single(world)
+        .expect("stage root");
+    let local = root
+        .affine()
+        .inverse()
+        .transform_point3(position.extend(root.translation().z));
+    let metrics = world.resource::<StageGridMetrics>();
+    (local.truncate() + metrics.viewport_size * 0.5) / metrics.local_tile_size
+}
 fn snapshot(app: &mut App, frame: u64, digest: &mut Digest) -> Result<TrajectoryPoint> {
     let position = player_position(app).ok_or("Player was not spawned")?;
     digest.add(&frame.to_le_bytes());
@@ -468,10 +521,7 @@ fn snapshot(app: &mut App, frame: u64, digest: &mut Digest) -> Result<Trajectory
         digest.add(&elapsed.to_le_bytes());
         digest.add(&[u8::from(collider)]);
     }
-    let metrics = world.resource::<StageGridMetrics>();
-    let cell = ((position + metrics.viewport_size * 0.5) / metrics.local_tile_size)
-        .floor()
-        .as_ivec2();
+    let cell = stage_cell_position(app, position).floor().as_ivec2();
     Ok(TrajectoryPoint {
         frame,
         cell: [cell.x, cell.y],
@@ -486,7 +536,7 @@ fn verify_seed(scenario: &Scenario, seed: u64) -> Result<SeedReport> {
     digest.add(&serde_json::to_vec(scenario)?);
     digest.add(&seed.to_le_bytes());
     digest.add(ascii.as_bytes());
-    let mut app = build_app(map);
+    let mut app = build_app_at_scale(map, scenario.viewport_scale);
     let mut report = SeedReport {
         seed,
         cleared: false,
@@ -509,6 +559,9 @@ fn verify_seed(scenario: &Scenario, seed: u64) -> Result<SeedReport> {
     let mut cursor = 0;
     for frame in 0..scenario.max_frames {
         app.world_mut().resource_mut::<Observation>().frame = frame;
+        for change in scenario.scale_changes.iter().filter(|c| c.frame == frame) {
+            app.world_mut().resource_mut::<ScaledViewport>().scale = change.scale;
+        }
         if frame == scenario.start_frame
             && let Err(error) = start_programs(&mut app, scenario)
         {
@@ -561,6 +614,23 @@ fn verify_seed(scenario: &Scenario, seed: u64) -> Result<SeedReport> {
     Ok(report)
 }
 fn validate(scenario: &Scenario) -> Result<()> {
+    if !valid_scale(scenario.viewport_scale)
+        || scenario
+            .scale_changes
+            .iter()
+            .any(|c| !valid_scale(c.scale) || c.frame >= scenario.max_frames)
+    {
+        return Err("Viewport scales must be finite and positive; scale change frames must be below max_frames".into());
+    }
+    let mut scale_frames = std::collections::HashSet::new();
+    if scenario
+        .scale_changes
+        .iter()
+        .any(|c| !scale_frames.insert(c.frame))
+    {
+        return Err("Duplicate scale change frame".into());
+    }
+
     if scenario.seed_count == 0
         || scenario.max_frames == 0
         || scenario.trajectory_every == 0
@@ -640,14 +710,21 @@ pub fn run(profile: &LaunchProfile) -> Result<()> {
     if jobs == 0 || jobs > 256 {
         return Err("--jobs must be between 1 and 256".into());
     }
+    let scale = profile.headless_viewport_scale.unwrap_or(1.0);
+    if !valid_scale(scale) {
+        return Err("--viewport-scale must be finite and positive".into());
+    }
     let value = match profile.launch_type {
-        LaunchType::HeadlessMeasureReach => serde_json::to_value(reach::measure()?)?,
+        LaunchType::HeadlessMeasureReach => serde_json::to_value(reach::measure(scale)?)?,
         _ => {
             let source = profile
                 .headless_scenario
                 .as_ref()
                 .ok_or("--headless-verify <scenario.json> is required")?;
-            let scenario: Scenario = serde_json::from_str(&fs::read_to_string(source)?)?;
+            let mut scenario: Scenario = serde_json::from_str(&fs::read_to_string(source)?)?;
+            if profile.headless_viewport_scale.is_some() {
+                scenario.viewport_scale = scale;
+            }
             serde_json::to_value(verify(&scenario, jobs)?)?
         }
     };
@@ -660,6 +737,153 @@ mod tests {
     use super::*;
     fn scenario(stage: usize) -> Scenario {
         serde_json::from_value(serde_json::json!({"stage_id":stage,"seed_start":17,"seed_count":1,"max_frames":120,"inputs":[{"frame":2,"key":"ArrowRight","pressed":true},{"frame":20,"key":"Space","pressed":true}]})).unwrap()
+    }
+    #[test]
+    fn graphical_and_headless_register_the_same_gameplay_and_physics() {
+        use crate::scenes::stage::StageScenePlugin;
+        use bevy::ecs::schedule::{NodeId, ScheduleGraph, ScheduleLabel, SystemSet};
+        use bevy::ecs::system::{IntoSystem, System};
+        fn reachable(graph: &ScheduleGraph, from: NodeId, to: NodeId, hierarchy: bool) -> bool {
+            let edges = if hierarchy {
+                graph.hierarchy().graph()
+            } else {
+                graph.dependency().graph()
+            };
+            let mut visited = std::collections::HashSet::new();
+            let mut pending = vec![from];
+            while let Some(node) = pending.pop() {
+                if node == to {
+                    return true;
+                }
+                if visited.insert(node) {
+                    pending.extend(edges.neighbors(node));
+                }
+            }
+            false
+        }
+        fn signature(app: &mut App) -> (Vec<(String, String)>, Vec<(String, String)>) {
+            let mut schedule = app
+                .world_mut()
+                .resource_mut::<Schedules>()
+                .remove(Update)
+                .unwrap();
+            schedule.initialize(app.world_mut()).unwrap();
+            let graph = schedule.graph();
+            // Bevy's debug names may be disabled; compare actual system TypeIds.
+            macro_rules! core { ($($name:ident),*) => { [$( (stringify!($name), IntoSystem::into_system(systems::$name).system_type()) ),*] }; }
+            let core = core!(
+                handle_stone_messages,
+                handle_stone_append_messages,
+                tick_script_program,
+                reset_placed_tiles,
+                restore_dug_tiles,
+                reset_stone_position,
+                reset_player_position,
+                animate_obstacle,
+                move_player,
+                update_stone_behavior,
+                resolve_place_requests,
+                carry_riders_with_stone,
+                check_goal_completion,
+                drive_player_goal_descent,
+                update_dynamic_solid
+            );
+            let mut nodes = vec![];
+            for (name, id) in core {
+                let matches: Vec<_> = schedule
+                    .systems()
+                    .unwrap()
+                    .filter(|(_, system)| system.system_type() == id)
+                    .collect();
+                assert_eq!(matches.len(), 1, "{name} must be registered exactly once");
+                nodes.push((name.to_owned(), NodeId::System(matches[0].0)));
+            }
+            let mut membership = vec![];
+            for set in [
+                StageSystemSet::Input,
+                StageSystemSet::Script,
+                StageSystemSet::Reset,
+                StageSystemSet::Animation,
+                StageSystemSet::Movement,
+                StageSystemSet::Collision,
+                StageSystemSet::Goal,
+            ] {
+                let node = NodeId::Set(graph.system_sets.get_key(set.intern()).unwrap());
+                for (name, system) in &nodes {
+                    if reachable(graph, node, *system, true) {
+                        membership.push((name.clone(), format!("{set:?}")));
+                    }
+                }
+                nodes.push((format!("{set:?}"), node));
+            }
+            let mut dependencies = vec![];
+            for (an, a) in &nodes {
+                for (bn, b) in &nodes {
+                    if a != b && reachable(graph, *a, *b, false) {
+                        dependencies.push((an.clone(), bn.clone()));
+                    }
+                }
+            }
+            (membership, dependencies)
+        }
+        let mut normal = App::new();
+        normal
+            .add_plugins((MinimalPlugins, TransformPlugin, StatesPlugin))
+            .init_state::<GameState>()
+            .add_plugins((StagePhysicsPlugin, StageScenePlugin));
+        normal.finish();
+        normal.cleanup();
+        let s = scenario(1);
+        let mut headless = build_app(load_map(&s, 17).unwrap());
+        assert!(normal.is_plugin_added::<StageGameplayPlugin>());
+        assert!(headless.is_plugin_added::<StageGameplayPlugin>());
+        assert!(normal.is_plugin_added::<StagePhysicsPlugin>());
+        assert!(headless.is_plugin_added::<StagePhysicsPlugin>());
+        assert_eq!(signature(&mut normal), signature(&mut headless));
+        // Both entry points install StagePhysicsPlugin. Additionally compare the
+        // actual fixed-step and physics/substep schedules without debug-name support.
+        for label in [
+            FixedPostUpdate.intern(),
+            PhysicsSchedule.intern(),
+            SubstepSchedule.intern(),
+        ] {
+            let types = |app: &mut App| {
+                let mut schedule = app
+                    .world_mut()
+                    .resource_mut::<Schedules>()
+                    .remove(label)
+                    .unwrap();
+                schedule.initialize(app.world_mut()).unwrap();
+                schedule
+                    .systems()
+                    .unwrap()
+                    .map(|(_, s)| s.system_type())
+                    .collect::<std::collections::HashSet<_>>()
+            };
+            let normal_types = types(&mut normal);
+            assert!(!normal_types.is_empty());
+            assert_eq!(normal_types, types(&mut headless));
+        }
+    }
+
+    #[test]
+    fn scaled_runs_are_deterministic_and_validate_scale_changes() {
+        let mut s = scenario(1);
+        s.viewport_scale = 0.75;
+        s.scale_changes.push(ScaleChange {
+            frame: 25,
+            scale: 1.5,
+        });
+        validate(&s).unwrap();
+        assert_eq!(
+            verify_seed(&s, 17).unwrap().execution_hash,
+            verify_seed(&s, 17).unwrap().execution_hash
+        );
+        s.viewport_scale = 0.0;
+        assert!(validate(&s).is_err());
+        s.viewport_scale = 1.0;
+        s.scale_changes[0].frame = s.max_frames;
+        assert!(validate(&s).is_err());
     }
     #[test]
     fn repeat_runs_have_identical_hashes_and_product_physics_moves_player() {

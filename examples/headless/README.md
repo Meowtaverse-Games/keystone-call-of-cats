@@ -13,13 +13,13 @@ env -u DISPLAY -u WAYLAND_DISPLAY target/release/keystone-cc \
   --headless-measure-reach --report target/reach-report.json
 
 python3 examples/headless/benchmark.py --jobs 24
+python3 examples/headless/measure-scales.py --jobs 6
 ```
 
 No window, renderer, audio device, Steam client, egui, VPL, external control server,
 settings file or save file is opened. The binary still compiles with the product's
 normal dependencies. Player/tile sprites use placeholder image/atlas handles; their
-transforms, colliders and physics are unchanged. A fixed 1800×1200 viewport with
-scale 1 supplies the product's design resolution. The product canvas is always
+transforms, colliders and physics are unchanged. A 1800×1200 design viewport with configurable scale (default 1) supplies the product's design resolution. The product canvas is always
 30×20 cells (60 px per cell); RON `map_size` specifies the interior and margins.
 
 Each world starts with Bevy's ordinary zero-delta initialization update, then
@@ -33,6 +33,8 @@ Unknown fields are errors. Paths are relative to the process working directory.
 
 | Field | Type / default | Meaning |
 | --- | --- | --- |
+| `viewport_scale` | positive finite number, 1.0 | Initial `ScaledViewport.scale`; also applied to the stage root |
+| `scale_changes` | array, `[]` | Entries `{ "frame": 105, "scale": 0.75 }`; simulate viewport resize before that update |
 | `stage_id` | integer 1–12 | Loads `assets/stages/stage-N.ron`; use exactly one stage selector |
 | `ron_path` | string | Alternative RON path; uses the same product generator |
 | `seed_start` | u64, required | First terrain seed |
@@ -55,7 +57,12 @@ execution remain unchanged. The headless Rhai interpreter rejects `timestamp()`
 (including dynamic calls) because it reads wall-clock time. Accepted keys: `ArrowLeft`, `ArrowRight`, `ArrowUp`, `KeyA`,
 `KeyD`, `KeyW`, `Space`. Pressed keys stay held until a release; edges clear every
 frame. Events sort by frame, retaining input array order within a frame.
-`start_frame` and all input frames must be below `max_frames`.
+`start_frame`, input frames, and scale-change frames must be below `max_frames`.
+Duplicate scale-change frames are rejected. `--viewport-scale S` overrides the initial
+scenario scale, and selects the scale for reach measurements (default 1.0).
+The root transform uses the same viewport operation as graphical play, centered
+at the world origin; the product itself still updates gravity, speed, and jump
+velocity. Resizing does not reset physics or repair product scale behavior.
 
 Keystone's current VM implements `rand` with an internal, unseedable RNG. This
 mode conservatively rejects the `rand` identifier (including in comments) with a
@@ -88,7 +95,9 @@ seed did not clear.
 
 ASCII is top-down; `*` solid, `#` boundary wall, `@` spawn, `S` stone, `G` goal,
 `O` obstacle, `?` dynamic solid, `.` empty. Trajectory cells use bottom-left origin
-on the full 30×20 canvas; world coordinates are pixels relative to its center.
+on the full 30×20 canvas; world coordinates are pixels relative to its center. Cells are obtained using the
+actual stage-root inverse transform, so viewport scaling is removed from cell
+coordinates. World px values retain scaling.
 Commands include zero-based `action_id`, `stone_index`, product debug command,
 `issued_frame`, nullable `completed_frame`, and `result` (`completed`, `blocked`,
 `pending`). Correlation IDs use existing product outcome messages without starting
@@ -121,3 +130,29 @@ The product currently assigns horizontal velocity immediately, so running does
 not build acceleration. Both viewport and tile scale remain fixed across these
 interior sizes. The result tests current product behavior, including collision
 geometry and the phase difference between `Update` and the fixed physics clock.
+
+
+## Viewport scale comparisons
+
+`measure-scales.py` runs 0.5, 0.75, 1.0, 1.25, 1.5, and 2.0. Each run includes
+all three map sizes and both directions and approaches. Individual reports retain
+all trials; `summary.json` retains every maximum and fixed-input comparison, plus
+`hypothesis_equal_cell_reach_across_scales`. Pixel distances use `60 * scale`.
+`examples/headless/reach-scale-summary.json` is the measured reference summary.
+
+The separate flat-floor probe uses identical input frames at every scale: move at
+60 (running) or 90 (standing), jump at 90, release jump at 91, stop at 180; observe
+through frame 239. It compares constant scale with a 1.0 baseline, and a resize
+from 1.0 to the requested scale at frame 105 during the jump. Results include
+jump success, apex frame/position/rise, six-frame-stable landing frame/position,
+apex and landing differences in cells, and the frame-105 position delta in cells
+and px. The excess cell delta subtracts ordinary motion in the baseline. The
+resize keeps the stage centered; OS window placement and letterboxing are not
+simulated. These measurements expose current behavior without changing it.
+
+The registration regression test builds `StageScenePlugin` without running its
+window/UI systems and compares it with the initialized headless app. It compares
+actual system TypeIds, membership in `StageSystemSet`, and dependency reachability
+(including within-set chains), plus fixed physics/physics/substep schedules.
+Both paths also install the shared gameplay and physics plugins. Tests do not
+require Bevy debug system names, a display server, or a renderer.
