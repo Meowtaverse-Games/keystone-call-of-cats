@@ -555,6 +555,8 @@ pub fn advance_stage_if_cleared(
         warn!("Stage clear: failed to save scripts: {err}");
     }
 
+    // Keep the next ID unlocked even at the catalog end so future stages are
+    // available to players who have already cleared the current final stage.
     progress.unlock_until(StageId(progression.current_stage_id().0 + 1));
 
     if progression.advance(&stage_catalog) {
@@ -762,6 +764,66 @@ mod tests {
         launch_profile::LaunchProfile,
     };
     use bevy_ecs::system::RunSystemOnce;
+
+    #[test]
+    fn advancing_from_last_catalog_stage_keeps_current_stage() {
+        let catalog = StageCatalog::load_from_assets();
+        let last = catalog.stages.last().unwrap();
+        let mut progression = StageProgressionState::default();
+        progression.select_stage(last);
+        progression.clear_reload();
+
+        assert!(!progression.advance(&catalog));
+        assert_eq!(progression.current_stage_id(), last.id);
+        assert!(!progression.take_pending_reload());
+    }
+
+    #[test]
+    fn clearing_catalog_stages_sets_feedback_and_unlocks_next_id() {
+        let catalog = StageCatalog::load_from_assets();
+        let last_id = catalog.stages.last().unwrap().id;
+        for stage in catalog.iter() {
+            let mut progression = StageProgressionState::default();
+            progression.select_stage(stage);
+            progression.clear_reload();
+            let mut world = World::new();
+            world.insert_resource(progression);
+            world.insert_resource(ScriptEditorState {
+                stage_cleared: true,
+                controls_enabled: true,
+                pending_player_reset: true,
+                ..default()
+            });
+            world.insert_resource(StageProgress::default());
+            world.insert_resource(catalog.clone());
+            // Without locale assets, tr returns the message key, identifying the
+            // feedback branch without requiring an asset server or rendering.
+            world.insert_resource(Localization::new());
+
+            world.run_system_once(advance_stage_if_cleared).unwrap();
+
+            let editor = world.resource::<ScriptEditorState>();
+            let progression = world.resource::<StageProgressionState>();
+            let expected_feedback = if stage.id == last_id {
+                assert_eq!(progression.current_stage_id(), last_id);
+                assert!(!progression.pending_reload);
+                "stage-ui-feedback-complete"
+            } else {
+                assert_eq!(progression.current_stage_id(), StageId(stage.id.0 + 1));
+                assert!(progression.pending_reload);
+                "stage-ui-feedback-advance"
+            };
+            assert_eq!(editor.last_run_feedback.as_deref(), Some(expected_feedback));
+            assert!(!editor.controls_enabled);
+            assert!(!editor.pending_player_reset);
+            assert!(!editor.stage_cleared);
+            assert!(
+                world
+                    .resource::<StageProgress>()
+                    .is_unlocked(StageId(stage.id.0 + 1))
+            );
+        }
+    }
 
     #[test]
     fn reload_system_invalidates_external_ownership_before_rebuilding_the_stage() {
