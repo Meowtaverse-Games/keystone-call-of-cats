@@ -9,7 +9,7 @@ use crate::{
 
 use super::ui::ScriptEditorState;
 
-const PLAYER_BASE_GRAVITY_SCALE: f32 = 80.0;
+pub(super) const PLAYER_BASE_GRAVITY_SCALE: f32 = 80.0;
 
 pub fn spawn_player(
     commands: &mut Commands,
@@ -148,7 +148,6 @@ type MovePlayerComponents<'w> = (
     &'w mut LinearVelocity,
     &'w mut PlayerMotion,
     &'w mut Sprite,
-    &'w mut GravityScale,
     Option<&'w CollisionLayers>,
 );
 
@@ -167,7 +166,6 @@ pub fn move_player(
         mut velocity,
         mut motion,
         mut sprite,
-        mut gravity_scale,
         collision_layers,
     )) = query.iter_mut().next()
     else {
@@ -183,10 +181,6 @@ pub fn move_player(
 
     let mut input_dir: f32 = 0.0;
     let scale_factor = viewport.scale;
-    let target_gravity = PLAYER_BASE_GRAVITY_SCALE * scale_factor;
-    if (gravity_scale.0 - target_gravity).abs() > f32::EPSILON {
-        gravity_scale.0 = target_gravity;
-    }
 
     if keyboard_input.any_pressed(vec![KeyCode::ArrowRight, KeyCode::KeyD]) {
         input_dir += 1.0;

@@ -70,6 +70,12 @@ impl Default for StoneCommandState {
 }
 
 impl StoneCommandState {
+    pub(super) fn rescale_world_distance(&mut self, ratio: f32) {
+        if let Some(StoneAction::Move(progress)) = &mut self.current {
+            progress.moved_distance *= ratio;
+        }
+    }
+
     pub(crate) fn is_busy(&self) -> bool {
         self.current.is_some() || !self.queue.is_empty() || !self.cooldown.is_finished()
     }
@@ -269,6 +275,7 @@ type StoneBehaviorQuery<'w, 's> = Query<
 
 #[derive(SystemParam)]
 pub(crate) struct StoneOutput<'w> {
+    viewport: Res<'w, crate::resources::design_resolution::ScaledViewport>,
     place_writer: MessageWriter<'w, StonePlaceRequestMessage>,
     external_outcomes: MessageWriter<'w, StoneExternalOutcomeMessage>,
 }
@@ -411,7 +418,8 @@ pub fn update_stone_behavior(
             match action {
                 StoneAction::Move(progress) => {
                     progress.timer.tick(time.delta());
-                    let world_scale = global_transform.scale().x;
+                    // GlobalTransform still has the previous root scale until PostUpdate.
+                    let world_scale = transform.scale.x * output.viewport.scale;
                     progress.moved_distance +=
                         progress.velocity.length() * time.delta_secs() * world_scale;
                     velocity.0 = progress.velocity * world_scale;
@@ -888,6 +896,9 @@ mod tests {
         .insert_resource(StageAudioHandles::new(Handle::default(), Handle::default()))
         .init_resource::<StageAudioState>()
         .insert_resource(GameSettings::default())
+        .insert_resource(crate::resources::design_resolution::ScaledViewport::new(
+            Vec2::ONE,
+        ))
         .insert_resource(crate::resources::launch_profile::LaunchProfile::default())
         .add_message::<StoneTickMessage>()
         .add_message::<StonePlaceRequestMessage>()
@@ -959,6 +970,9 @@ mod tests {
         .insert_resource(StageAudioHandles::new(Handle::default(), Handle::default()))
         .init_resource::<StageAudioState>()
         .insert_resource(GameSettings::default())
+        .insert_resource(crate::resources::design_resolution::ScaledViewport::new(
+            Vec2::ONE,
+        ))
         .insert_resource(crate::resources::launch_profile::LaunchProfile::default())
         .add_message::<StoneTickMessage>()
         .add_message::<StonePlaceRequestMessage>()
@@ -1021,6 +1035,9 @@ mod tests {
         .insert_resource(StageAudioHandles::new(Handle::default(), Handle::default()))
         .init_resource::<StageAudioState>()
         .insert_resource(GameSettings::default())
+        .insert_resource(crate::resources::design_resolution::ScaledViewport::new(
+            Vec2::ONE,
+        ))
         .insert_resource(crate::resources::launch_profile::LaunchProfile::default())
         .add_message::<StoneTickMessage>()
         .add_message::<StonePlaceRequestMessage>()

@@ -1039,6 +1039,115 @@ mod tests {
         s.scale_changes[0].frame = s.max_frames;
         assert!(validate(&s).is_err());
     }
+
+    #[test]
+    fn resize_rescales_disabled_player_once_and_preserves_local_goal_descent() {
+        use crate::scenes::stage::components::PlayerGoalDescent;
+        for scale in [0.5, 0.75, 1.25, 1.5, 2.0] {
+            let mut app = build_app(Map::synthetic(
+                (26, 10),
+                vec![((5, 3), TileKind::PlayerSpawn)],
+            ));
+            app.insert_resource(TimeUpdateStrategy::ManualDuration(Duration::ZERO));
+            let world = app.world_mut();
+            let player = world
+                .query_filtered::<Entity, With<Player>>()
+                .single(world)
+                .unwrap();
+            world.get_mut::<LinearVelocity>(player).unwrap().y = 100.0;
+            world.resource_mut::<ScaledViewport>().scale = scale;
+            assert!(!world.resource::<ScriptEditorState>().controls_enabled);
+            app.update();
+            assert_eq!(
+                app.world().get::<LinearVelocity>(player).unwrap().y,
+                100.0 * scale
+            );
+            assert_eq!(
+                app.world().get::<GravityScale>(player).unwrap().0,
+                80.0 * scale
+            );
+            app.update();
+            assert_eq!(
+                app.world().get::<LinearVelocity>(player).unwrap().y,
+                100.0 * scale
+            );
+
+            app.world_mut().entity_mut(player).insert((
+                LinearVelocity(Vec2::ZERO),
+                GravityScale(0.0),
+                PlayerGoalDescent {
+                    target_y: -1000.0,
+                    align_x: 0.0,
+                    speed: 32.0,
+                    original_memberships: LayerMask::ALL,
+                    original_filters: LayerMask::ALL,
+                    original_gravity: 80.0 * scale,
+                },
+            ));
+            app.world_mut().resource_mut::<ScaledViewport>().scale = 1.0;
+            app.insert_resource(TimeUpdateStrategy::ManualDuration(Duration::from_secs_f64(
+                1.0 / 60.0,
+            )));
+            let before = app.world().get::<Transform>(player).unwrap().translation.y;
+            app.update();
+            let world = app.world();
+            let descent = world.get::<PlayerGoalDescent>(player).unwrap();
+            assert!((descent.original_gravity - 80.0).abs() < 0.0001);
+            assert_eq!(world.get::<GravityScale>(player).unwrap().0, 0.0);
+            assert!(
+                (before - world.get::<Transform>(player).unwrap().translation.y - 32.0 / 60.0)
+                    .abs()
+                    < 0.001
+            );
+        }
+    }
+
+    #[test]
+    fn resizing_mid_command_preserves_stone_local_motion() {
+        use crate::util::script_types::MoveDirection;
+        let run = |scale: f32| {
+            let mut app = build_app(Map::synthetic(
+                (26, 10),
+                vec![((2, 3), TileKind::PlayerSpawn), ((10, 5), TileKind::Stone)],
+            ));
+            let world = app.world_mut();
+            world.resource_mut::<ScriptEditorState>().controls_enabled = true;
+            let stone = world
+                .query_filtered::<Entity, With<StoneRune>>()
+                .single(world)
+                .unwrap();
+            world
+                .get_mut::<systems::StoneCommandState>(stone)
+                .unwrap()
+                .queue
+                .push_back(ScriptCommand::Move(MoveDirection::Right));
+            let mut positions = vec![];
+            for frame in 0..90 {
+                if frame == 15 {
+                    app.world_mut().resource_mut::<ScaledViewport>().scale = scale;
+                }
+                app.update();
+                positions.push(
+                    app.world()
+                        .get::<Transform>(stone)
+                        .unwrap()
+                        .translation
+                        .truncate(),
+                );
+            }
+            positions
+        };
+        let baseline = run(1.0);
+        assert!(baseline[50].x > baseline[0].x);
+        for scale in [0.5, 0.75, 1.25, 1.5, 2.0] {
+            for (frame, (actual, expected)) in run(scale).iter().zip(&baseline).enumerate() {
+                assert!(
+                    actual.distance(*expected) < 0.01,
+                    "frame={frame} scale={scale} actual={actual:?} expected={expected:?}"
+                );
+            }
+        }
+    }
     #[test]
     fn repeat_runs_have_identical_hashes_and_product_physics_moves_player() {
         let s = scenario(1);

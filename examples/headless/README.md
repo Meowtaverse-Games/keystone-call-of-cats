@@ -166,7 +166,9 @@ Duplicate scale-change frames are rejected. `--viewport-scale S` overrides the i
 scenario scale, and selects the scale for reach measurements (default 1.0).
 The root transform uses the same viewport operation as graphical play, centered
 at the world origin; the product itself still updates gravity, speed, and jump
-velocity. Resizing does not reset physics or repair product scale behavior.
+velocity. Resizing does not reset physics: the shared product gameplay system
+converts carried world-space velocities and stone travel distances by the new/old
+root-scale ratio, including while player controls are disabled.
 
 Keystone's current VM implements `rand` with an internal, unseedable RNG. This
 mode conservatively rejects the `rand` identifier (including in comments) with a
@@ -275,7 +277,9 @@ jump success, apex frame/position/rise, six-frame-stable landing frame/position,
 apex and landing differences in cells, and the frame-105 position delta in cells
 and px. The excess cell delta subtracts ordinary motion in the baseline. The
 resize keeps the stage centered; OS window placement and letterboxing are not
-simulated. These measurements expose current behavior without changing it.
+simulated. The probe uses the same scenario `scale_changes` driver as verification
+and replay. A regression test checks apex rise and landing coordinates within
+0.01 cells for all five changes, map sizes, directions, and approaches.
 
 The registration regression test builds `StageScenePlugin` without running its
 window/UI systems and compares it with the initialized headless app. It compares
@@ -294,12 +298,15 @@ force these outcomes.
 
 The six-scale sweep (dev build) found one-cell steps and two-cell gaps for every
 map size, direction, and approach. Identical-input apex/landing positions differ
-by less than 0.00001 cells across constant scales. Mid-jump resizing changes the
-subsequent apex: relative to scale 1.0, resizing to 0.5 / 0.75 / 1.25 / 1.5 / 2.0
-changes peak rise by approximately +1.070887 / +0.277669 / -0.128340 / -0.197955 /
--0.267298 cells. The resize frame itself preserves normalized cell position
-apart from baseline motion, while world pixels change with the root scale.
-No correction to the product's viewport handling is included.
+by less than 0.00001 cells across constant scales. The shared gameplay system now
+converts world-space motion when the viewport scale changes. The updated summary
+records both `resize_apex_delta_cells` and `resize_landing_delta_cells`; the latter
+compares both coordinates of the six-frame-stable landing. World pixel positions
+change with the root scale while cell-space trajectories are preserved. Across
+all five mid-jump changes and twelve map/direction/approach combinations, the
+maximum apex-rise difference is 0.000003815 cells and the maximum landing-coordinate
+difference is 0.000001192 cells. All constant-scale probe observations and reach
+measurements match the previous reference summary exactly.
 
 
 The schema-2 release benchmark completed 1,000 seeds × 1,800 frames with `--jobs 24` in

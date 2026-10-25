@@ -7,6 +7,9 @@ mod schedule;
 mod stone;
 mod tiles;
 mod ui;
+mod viewport;
+
+pub use viewport::rescale_stage_motion;
 
 pub use {schedule::StageSystemSet, tiles::update_dynamic_solid};
 
