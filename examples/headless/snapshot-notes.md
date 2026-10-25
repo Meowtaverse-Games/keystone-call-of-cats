@@ -1,4 +1,4 @@
-# Headless checkpoint prototype (decision required)
+# Headless stepping session and checkpoint correctness oracle
 
 This PR provides an **exact replay-backed correctness oracle**, not an accelerated
 copy of a running Bevy/Avian world. `Session::snapshot()` owns an immutable input
@@ -130,14 +130,19 @@ six-scale reach summary. The frozen summary predates `player_physics` and
 `motion_reference` metadata already present on main; only those two additive keys
 are ignored when absent in the baseline. Every baseline value is compared exactly.
 
-## Next decision
+## Decision (2026-10-25)
 
-Keep this backend as a correctness oracle, but do not build A* on its performance.
-Authorize a separately scoped native checkpoint experiment that can expose the
-required system-local/private physics state (or a deterministic synchronous worker
-model with a supported checkpoint boundary). Retain the same tests to reject any
-partial-copy implementation. The 1,000 terrains / 5 minutes target is not established
-by this PR; the future agent's branching factor and depth also need measurement.
+- Keep this backend as a correctness oracle. Do not build search on its performance.
+- Do not build a native fast checkpoint now. It would need private Avian state,
+  Bevy system locals and message/change state to become copyable, which means a
+  broad and fragile change (for example, patching Avian).
+- The autonomous agent will not branch by restoring state. It plans a cell-level
+  route, verifies it with a fresh headless run, and replans after a failure. During
+  a run, a controller uses `Session::step` to observe the world each frame and react
+  (for example, wait for a stone before jumping).
+- If a native checkpoint is attempted later, keep these tests to reject any
+  partial-copy implementation. The 1,000 terrains / 5 minutes target will be
+  measured by the agent PR.
 
 ## Recorded result (2026-10-25)
 
