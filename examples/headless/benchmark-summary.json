@@ -2,17 +2,17 @@
   {
     "count": 1,
     "jobs": 1,
-    "process_wall_seconds": 0.38030287899891846,
-    "elapsed_seconds": 0.366160545,
+    "process_wall_seconds": 0.4522944549971726,
+    "elapsed_seconds": 0.433691983,
     "frames": 1800,
-    "frames_per_second": 4915.876449768775
+    "frames_per_second": 4150.411053367338
   },
   {
     "count": 1000,
     "jobs": 24,
-    "process_wall_seconds": 62.76975038199453,
-    "elapsed_seconds": 62.716021355,
+    "process_wall_seconds": 66.12924207500328,
+    "elapsed_seconds": 66.0615935,
     "frames": 1800000,
-    "frames_per_second": 28700.800227922875
+    "frames_per_second": 27247.29914363934
   }
 ]

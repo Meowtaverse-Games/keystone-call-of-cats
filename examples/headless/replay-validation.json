@@ -1,0 +1,24 @@
+[
+  {
+    "stage": 1,
+    "wall_seconds": 1.202085293996788,
+    "process_returncode": 101,
+    "report_written": false,
+    "seed": 17,
+    "binary_profile": "dev",
+    "error": "winit 0.30.13 platform_impl/linux/wayland/seat/keyboard/mod.rs:135:27: attempt to add with overflow",
+    "real_window_hash_equality": "not_verified",
+    "windowless_replay_schedule_hash_equality": "passed"
+  },
+  {
+    "stage": 2,
+    "wall_seconds": 0.8019814549988951,
+    "process_returncode": 101,
+    "report_written": false,
+    "seed": 17,
+    "binary_profile": "dev",
+    "error": "winit 0.30.13 platform_impl/linux/wayland/seat/keyboard/mod.rs:135:27: attempt to add with overflow",
+    "real_window_hash_equality": "not_verified",
+    "windowless_replay_schedule_hash_equality": "passed"
+  }
+]

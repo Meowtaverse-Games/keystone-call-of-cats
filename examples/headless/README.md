@@ -218,7 +218,7 @@ geometry and the phase difference between `Update` and the fixed physics clock.
 `measure-scales.py` runs 0.5, 0.75, 1.0, 1.25, 1.5, and 2.0. Each run includes
 all three map sizes and both directions and approaches. Individual reports retain
 all trials; `summary.json` retains every maximum and fixed-input comparison, plus
-`hypothesis_equal_cell_reach_across_scales`. Pixel distances use `60 * scale`.
+`hypothesis_equal_cell_reach_across_scales`. Pixel distances use each trial's measured `StageGridMetrics` tile size (currently `60 * scale`).
 `examples/headless/reach-scale-summary.json` is the measured reference summary.
 
 The separate flat-floor probe uses identical input frames at every scale: move at
@@ -256,8 +256,8 @@ apart from baseline motion, while world pixels change with the root scale.
 No correction to the product's viewport handling is included.
 
 
-The release benchmark completed 1,000 seeds × 1,800 frames with `--jobs 24` in
-62.770 seconds of process wall time (62.716 seconds simulation time; 28,700.8 FPS).
-One seed took 0.380 seconds wall time (0.366 seconds simulation; 4,915.9 FPS).
+The schema-2 release benchmark completed 1,000 seeds × 1,800 frames with `--jobs 24` in
+66.129 seconds of process wall time (66.062 seconds simulation time; 27,247.3 FPS).
+One seed took 0.452 seconds wall time (0.434 seconds simulation; 4,150.4 FPS).
 See `benchmark-summary.json`; regenerate with `python3 examples/headless/benchmark.py --jobs 24`.
 The 300-second target is met on this machine and is not a CI timing gate.
