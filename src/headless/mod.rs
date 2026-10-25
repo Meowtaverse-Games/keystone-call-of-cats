@@ -75,6 +75,9 @@ pub struct Scenario {
     #[serde(default)]
     pub seed_inputs: BTreeMap<u64, Vec<InputEvent>>,
     pub max_frames: u64,
+    /// Optional observation tail for the product goal descent (default: stop at goal).
+    #[serde(default)]
+    pub post_goal_frames: u64,
     #[serde(default = "default_stride")]
     pub trajectory_every: u64,
 }
@@ -676,7 +679,7 @@ impl SeedRun {
         let editor = world.resource::<ScriptEditorState>();
         if editor.stage_cleared {
             self.report.cleared = true;
-            self.report.goal_frame = Some(frame);
+            self.report.goal_frame.get_or_insert(frame);
             self.report.termination = "goal".into();
         } else if frame >= self.scenario.start_frame && !editor.controls_enabled {
             self.report.termination = "script_error".into();
@@ -688,7 +691,9 @@ impl SeedRun {
                 .clone()
                 .or_else(|| editor.last_run_feedback.clone());
         }
-        let ended = self.report.termination != "max_frames"
+        let ended = (self.report.termination != "max_frames"
+            && (self.report.termination != "goal"
+                || frame - self.report.goal_frame.unwrap() >= self.scenario.post_goal_frames))
             || self.report.frames == self.scenario.max_frames;
         if frame.is_multiple_of(self.scenario.trajectory_every) || ended {
             self.report.trajectory.push(point);
@@ -847,6 +852,31 @@ mod tests {
     fn scenario(stage: usize) -> Scenario {
         serde_json::from_value(serde_json::json!({"stage_id":stage,"seed_start":17,"seed_count":1,"max_frames":120,"inputs":[{"frame":2,"key":"ArrowRight","pressed":true},{"frame":20,"key":"Space","pressed":true}]})).unwrap()
     }
+    #[test]
+    fn default_player_motion_matches_pre_parameterization_baselines() {
+        let baseline: serde_json::Value = serde_json::from_str(
+            &fs::read_to_string("examples/headless/motion-baselines.json").unwrap(),
+        )
+        .unwrap();
+        for entry in baseline["scenarios"].as_array().unwrap() {
+            let path = entry["scenario"].as_str().unwrap();
+            let scenario: Scenario =
+                serde_json::from_str(&fs::read_to_string(path).unwrap()).unwrap();
+            let report = verify_seed(&scenario, 17).unwrap();
+            assert_eq!(
+                report.trajectory_hash,
+                entry["trajectory_hash"].as_str().unwrap(),
+                "{path}"
+            );
+            assert_eq!(report.frames, entry["frames"].as_u64().unwrap(), "{path}");
+            assert_eq!(
+                serde_json::to_value(report.goal_frame).unwrap(),
+                entry["goal_frame"],
+                "{path}"
+            );
+        }
+    }
+
     #[test]
     fn trajectory_hash_is_independent_of_batch_and_sample_stride() {
         let mut scenario = scenario(2);

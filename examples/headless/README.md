@@ -339,3 +339,25 @@ Both terminate with `max_frames`, as intended. No combined place-then-dig scenar
 was forced: Type4 permits place but not dig, and Type3 permits dig but not place.
 The component-lifecycle regression test covers removal/restoration of placed tiles
 without changing those product capability restrictions.
+
+## Player motion baselines
+
+`motion-baselines.json` fixes every-frame trajectory hashes measured before
+player parameterization, from main `14d8617ca764121eaa0e53055e4705deb90aad53`.
+The synthetic RON maps below live only in examples; product stages are unchanged.
+
+| Scenario | Input protocol (60 updates/s) |
+| --- | --- |
+| `motion-walk-stop.json` | Settle 60 frames; walk right until 120; observe rest through 359. |
+| `motion-standing-jump.json` | Settle; jump at 90, release at 91; no horizontal input. |
+| `motion-running-jump.json` | Right at 60; jump at 90, release at 91; stop at 180. |
+| `motion-fall.json` | Right at 60 off a two-cell ledge; stop at 220. |
+| `motion-wall-hit.json` | Right at 60 into a six-cell-high wall; release at 300. |
+| `motion-goal-descent.json` | Stage 1 inputs, then observe 320 frames after first goal contact. |
+
+`post_goal_frames` is optional (default 0). It extends observation after the first
+goal contact, bounded by `max_frames`, without changing any product gameplay.
+The descent example includes all 280 descent updates, the snap to the target and
+restored gravity. Existing Stage 1/2 scenarios still stop at first goal contact.
+`cargo test default_player_motion_matches_pre_parameterization_baselines` checks
+these six examples plus Stage 1 and Stage 2 against the recorded hashes.

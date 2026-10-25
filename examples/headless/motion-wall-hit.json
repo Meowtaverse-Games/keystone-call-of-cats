@@ -1,0 +1,19 @@
+{
+  "ron_path": "examples/headless/motion-wall.ron",
+  "seed_start": 17,
+  "seed_count": 1,
+  "max_frames": 360,
+  "trajectory_every": 10,
+  "inputs": [
+    {
+      "frame": 60,
+      "key": "ArrowRight",
+      "pressed": true
+    },
+    {
+      "frame": 300,
+      "key": "ArrowRight",
+      "pressed": false
+    }
+  ]
+}
