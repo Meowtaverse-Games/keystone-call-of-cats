@@ -1079,7 +1079,7 @@ fn command_help_args(language: Language) -> &'static [(&'static str, &'static st
             ("move-down", "move down"),
             ("move-right", "move right"),
             ("move-left", "move left"),
-            ("sleep-1", "sleep 1"),
+            ("sleep-1", "sleep 1<<dot>>0"),
             ("sleep-2x5", "sleep 2<<dot>>5"),
             ("place-right", "place right"),
         ],
@@ -1371,7 +1371,22 @@ pub fn handle_tutorial_overlay_input(
 
 #[cfg(test)]
 mod tests {
-    use super::ScriptEditorState;
+    use super::{Language, ScriptEditorState, command_help_args};
+    use crate::{
+        resources::script_engine::KeystoneScriptExecutor, util::script_types::ScriptStepper,
+    };
+
+    #[test]
+    fn keystone_command_help_examples_compile() {
+        let executor = KeystoneScriptExecutor::default();
+
+        for (key, example) in command_help_args(Language::Keystone) {
+            let source = example.replace("<<dot>>", ".");
+            if let Err(error) = executor.compile_step(&source, None) {
+                panic!("Keystone help example {key} ({source:?}) failed to compile: {error:?}");
+            }
+        }
+    }
 
     #[test]
     fn resize_buffers_preserves_saved_codes_and_normalizes_selection() {
