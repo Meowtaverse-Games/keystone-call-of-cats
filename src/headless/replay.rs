@@ -129,6 +129,7 @@ fn finish(world: &mut World, replay: &mut Replay) {
         );
         let seconds = replay.started.elapsed().as_secs_f64();
         let report = Report {
+            player_physics: world.resource::<PlayerPhysicsParams>().clone(),
             schema_version: 2,
             count: 1,
             cleared: usize::from(seed.cleared),
@@ -336,6 +337,7 @@ pub fn run(profile: &LaunchProfile) -> Result<()> {
         keystone_blocks::VisualProgrammingPlugin,
         crate::scenes::audio::AudioPlugin,
     ))
+    .insert_resource(scenario.player_physics.resolve()?)
     .insert_resource(WinitSettings::continuous())
     .insert_resource(Locale::new(unic_langid::langid!("en-US")))
     .insert_resource(LaunchProfile::default())
@@ -557,13 +559,18 @@ mod tests {
         for path in [
             "examples/headless/stage-1.json",
             "examples/headless/stage-2.json",
+            "examples/headless/motion-heavy-gravity.json",
         ] {
             let scenario: Scenario =
                 serde_json::from_str(&fs::read_to_string(path).unwrap()).unwrap();
             let expected = verify_seed(&scenario, 17).unwrap();
             let map = load_map(&scenario, 17).unwrap();
             let run = SeedRun::new(scenario.clone(), 17, &map).unwrap();
-            let mut app = build_app_at_scale(map, scenario.viewport_scale);
+            let mut app = build_app_with_physics(
+                map,
+                scenario.viewport_scale,
+                scenario.player_physics.resolve().unwrap(),
+            );
             app.insert_resource(Replay {
                 run: Some(run),
                 running: true,

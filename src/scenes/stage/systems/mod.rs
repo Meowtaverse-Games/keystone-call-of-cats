@@ -28,6 +28,7 @@ use crate::{
         chunk_grammar_map::{self, Map, TileKind},
         design_resolution::{LetterboxOffsets, ScaledViewport},
         file_storage::FileStorageResource,
+        player_physics::PlayerPhysicsParams,
         settings::GameSettings,
         stage_catalog::*,
         stage_progress::StageProgress,
@@ -145,6 +146,7 @@ pub(crate) fn spawn_stage(
     asset_store: &AssetStore,
     asset_server: &AssetServer,
     atlas_layouts: &mut Assets<TextureAtlasLayout>,
+    physics: &PlayerPhysicsParams,
 ) -> Entity {
     let stage_root = commands
         .spawn((
@@ -164,6 +166,7 @@ pub(crate) fn spawn_stage(
         asset_store,
         asset_server,
         atlas_layouts,
+        physics,
     );
 
     stage_root
@@ -178,6 +181,7 @@ fn populate_stage_contents(
     asset_store: &AssetStore,
     asset_server: &AssetServer,
     atlas_layouts: &mut Assets<TextureAtlasLayout>,
+    physics: &PlayerPhysicsParams,
 ) {
     tiles::spawn_tiles(commands, stage_root, tiled_map_assets, map, viewport);
 
@@ -200,8 +204,15 @@ fn populate_stage_contents(
         commands,
         stage_root,
         asset_store,
-        tile_position_to_world(player_position, real_tile_size, viewport_size, scale, 2.2),
+        tile_position_to_world(
+            player_position,
+            real_tile_size,
+            viewport_size,
+            scale,
+            physics.spawn_y_offset,
+        ),
         viewport.scale,
+        physics,
     );
 
     let stone_positions = map.tile_positions_multiple(TileKind::Stone);
@@ -326,6 +337,7 @@ fn cleanup_stage_entities(
 #[derive(SystemParam)]
 pub struct StageSetupParams<'w, 's> {
     asset_store: Res<'w, AssetStore>,
+    physics: Res<'w, PlayerPhysicsParams>,
     tiled_map_assets: Res<'w, TiledMapAssets>,
     viewport: Res<'w, ScaledViewport>,
     letterbox_offsets: Res<'w, LetterboxOffsets>,
@@ -512,6 +524,7 @@ pub fn setup(mut commands: Commands, mut params: StageSetupParams) {
         params.asset_store.as_ref(),
         params.asset_server.as_ref(),
         params.atlas_layouts.as_mut(),
+        &params.physics,
     );
 
     let tutorial_dialog = params
@@ -608,6 +621,7 @@ pub fn advance_stage_if_cleared(
 #[derive(SystemParam)]
 pub struct StageReloadParams<'w, 's> {
     asset_store: Res<'w, AssetStore>,
+    physics: Res<'w, PlayerPhysicsParams>,
     viewport: Res<'w, ScaledViewport>,
     letterbox_offsets: Res<'w, LetterboxOffsets>,
     asset_server: Res<'w, AssetServer>,
@@ -691,6 +705,7 @@ pub fn reload_stage_if_needed(mut commands: Commands, mut params: StageReloadPar
         params.asset_store.as_ref(),
         params.asset_server.as_ref(),
         params.atlas_layouts.as_mut(),
+        &params.physics,
     );
 
     if let Some(editor) = params.editor_state.as_deref_mut() {
@@ -907,6 +922,7 @@ mod tests {
         app.add_plugins(AssetPlugin::default())
             .init_asset::<TextureAtlasLayout>()
             .init_resource::<VplState>()
+            .insert_resource(PlayerPhysicsParams::embedded())
             .insert_resource(AssetStore::default())
             .insert_resource(ScaledViewport::new(Vec2::ONE))
             .insert_resource(LetterboxOffsets::default())

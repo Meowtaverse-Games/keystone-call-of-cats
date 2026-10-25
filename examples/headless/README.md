@@ -361,3 +361,72 @@ The descent example includes all 280 descent updates, the snap to the target and
 restored gravity. Existing Stage 1/2 scenarios still stop at first goal contact.
 `cargo test default_player_motion_matches_pre_parameterization_baselines` checks
 these six examples plus Stage 1 and Stage 2 against the recorded hashes.
+
+## Player physics configuration and overrides
+
+Product values are embedded from `assets/config/player_physics.ron`. A product
+configuration change requires a rebuild; no runtime file or hot reload is used.
+All fields keep their original units and multiplication order. Capsule values are
+multiplied by sprite scale, ground probes by player transform scale, and gravity,
+run velocity and jump velocity by viewport scale exactly as before. Goal descent
+speed and alignment remain stage-local; `goal_descent_frames` counts updates.
+The initial player Y adjustment is applied in the existing placement expression.
+
+A scenario may override any subset, without rebuilding:
+
+```json
+"player_physics": { "gravity_scale": 88.0 }
+```
+
+Omitted fields come from the embedded RON. Unknown fields, non-finite numbers,
+non-positive gravity/speeds/shape dimensions/probe distances and a zero descent
+frame count are rejected. Signed collider/placement offsets must be finite.
+JSON also rejects NaN/Infinity literals at parsing time. Verification and replay
+reports record the complete resolved `player_physics` at the report root
+(additive fields in schema 2), including values inherited from the product.
+
+```sh
+env -u DISPLAY -u WAYLAND_DISPLAY target/debug/keystone-cc \
+  --headless-verify examples/headless/motion-heavy-gravity.json \
+  --report target/heavy-gravity.json
+# On a machine with a working display:
+target/debug/keystone-cc --replay examples/headless/motion-heavy-gravity.json \
+  --seed 17 --report target/heavy-gravity-replay.json
+```
+
+`motion-heavy-gravity.json` repeats `motion-standing-jump.json` with gravity +10%.
+The windowless replay-schedule regression also runs this override and checks its
+trajectory against headless. Its measured jump rise and the one-cell step bound
+are checked by `stronger_gravity_reduces_jump_rise_with_the_same_one_cell_step_bound`.
+
+Reach reports include resolved `player_physics` and `motion_reference`:
+`ballistic_jump_height_cells`, `ballistic_time_to_apex_seconds`, and
+`run_speed_cells_per_second`. These are continuous ballistic reference values
+(using Avian's default 9.81 gravity and the measured local tile size); fixed-step
+integration, collider dimensions, ground probes and input timing determine the
+actual reach trials. They are never fed back into movement calculations.
+
+Headless stage IDs are accepted only when present in the embedded `StageCatalog`.
+Error messages include its range and exact IDs. Expanding the product catalog and
+embedded maps expands accepted IDs without changing the headless loader.
+The registration regression derives all normal stage systems from every schedule,
+excludes only five documented presentation/tutorial functions, and requires each
+remaining registration headlessly. It also derives the Update topology comparison
+from those registrations (including rescaling and stage progression), rather than
+maintaining a gameplay function list. Normal-play lifecycle systems are shared
+registrations gated by `GraphicalStageLifecycle`; seeded headless/replay drivers
+own their setup and completion. No normal progression or persistence runs in them.
+
+Measured at scale 1, seed 17, jump at frame 90 (rise measured from frame 89 to
+the every-frame apex):
+
+| Configuration | Gravity scale | Rise (cells) | Apex frame | Maximum step (cells) |
+| --- | --- | --- | --- | --- |
+| Embedded default | 80 | 1.525045649 | 119 | 1 |
+| `motion-heavy-gravity.json` | 88 | 1.385656738 | 117 | 1 |
+
+The step comparison uses the documented standing/right `(26, 10)` reach protocol
+and all five takeoff positions, testing step heights 0–5. The integer step bound
+stays one cell, while the smaller rise changes the trajectory hash from
+`fnv1a64-v1:a3552db409496309` to `fnv1a64-v1:c874d03e072f5121`.
+These observations describe this input protocol, not all possible routes.

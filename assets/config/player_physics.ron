@@ -1,0 +1,17 @@
+// Original product units, before sprite/viewport scaling.
+(
+    gravity_scale: 80.0,
+    speed: 120.0,
+    jump_speed: 380.0,
+    capsule_radius: 1.4,
+    capsule_length: 1.2,
+    capsule_center_y: -0.6,
+    ground_foot_offset: 12.3,
+    ground_cast_width: 8.0,
+    ground_cast_height: 0.4,
+    ground_cast_distance: 3.0,
+    goal_descent_speed: 32.0,
+    goal_align_x: 4.0,
+    spawn_y_offset: 2.2,
+    goal_descent_frames: 280,
+)
