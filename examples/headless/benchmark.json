@@ -1,5 +1,5 @@
 {
-  "stage_id": 1,
+  "ron_path": "examples/headless/fixtures/stage-1.ron",
   "seed_start": 0,
   "seed_count": 1000,
   "start_frame": 0,

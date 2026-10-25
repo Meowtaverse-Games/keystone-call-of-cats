@@ -27,6 +27,36 @@ advances by `Duration::from_secs_f64(1.0 / 60.0)` per update without sleeping.
 `Time<Fixed>` is not overridden. Frame 0 is the first timed update. Inputs are
 injected before that update; the product reads them in `Update` as usual.
 
+## Frozen regression terrain
+
+`fixtures/stage-1.ron`, `fixtures/stage-2.ron`, and `fixtures/stage-9.ron`
+are headless baseline terrain, managed separately from product stages. They are
+byte-for-byte copies of `assets/stages/stage-N.ron` at main
+`6d24d0f9fa3ed0b2abe13109bc8447639e2dca8f`. Do not refresh these fixtures when
+redesigning product stages; change them only as an intentional baseline change.
+
+| Fixture | SHA-256 (same as the source at that commit) |
+| --- | --- |
+| `fixtures/stage-1.ron` | `e2a1ab4ce437b73382ee3a33fcb4930ca5ec19dffa3f97d5022701c8548ce3df` |
+| `fixtures/stage-2.ron` | `5e6c6919731175db8d070e215ca020b53782f80f5a54f2022e0318624bc25270` |
+| `fixtures/stage-9.ron` | `c8c697d5404bad7a33019d1699091f4913224ed2835149e0087e8b898d5540d9` |
+
+`stage-1.json`, `stage-2.json`, `motion-goal-descent.json`, `dig.json`, and
+`benchmark.json`
+select these fixtures with `ron_path`. The other motion baseline scenarios already
+use dedicated example RON maps. Behavior/hash tests and replay comparisons use
+these fixed maps, while catalog integrity tests still load product stages.
+Paths are relative to the repository root, including for `--replay`.
+Trajectory baseline hashes stay unchanged. `execution_hash` includes scenario
+metadata, so switching the selector changes that hash; archived report execution
+hashes describe the original scenarios.
+
+All shipped Stage 1/2/9 scenarios now use **frozen baseline terrain**, including
+the replay examples below. To view current **product terrain**, make a separate
+scenario copy and replace `ron_path` with `"stage_id": 1` (or another catalog ID).
+`benchmark.json` also uses frozen terrain because `benchmark.py` checks its total
+frame count.
+
 ## Windowed scenario replay
 
 ```sh
@@ -325,7 +355,7 @@ env -u DISPLAY -u WAYLAND_DISPLAY target/release/keystone-cc \
 ```
 
 `place.json` uses the existing Type4 `tools/stage_sim/examples/ai-candidate.ron`
-without changing it and executes `place("up");`. `dig.json` uses main Stage 9
+without changing it and executes `place("up");`. `dig.json` uses the frozen Stage 9 fixture
 (Type3) and executes `dig("down");`. Both use seed 17, idle player input, and a
 180-frame limit; clearing the stage is not their purpose. Their reports demonstrate
 actual product commands and sampled platform/dug positions. A regression test also
@@ -344,7 +374,8 @@ without changing those product capability restrictions.
 
 `motion-baselines.json` fixes every-frame trajectory hashes measured before
 player parameterization, from main `14d8617ca764121eaa0e53055e4705deb90aad53`.
-The synthetic RON maps below live only in examples; product stages are unchanged.
+The synthetic RON maps below and the frozen Stage 1/2 fixtures live only in
+examples and are independent of product stage redesigns.
 
 | Scenario | Input protocol (60 updates/s) |
 | --- | --- |

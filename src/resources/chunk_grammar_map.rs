@@ -933,7 +933,7 @@ mod tests {
 
     #[test]
     fn seeded_generation_is_repeatable_and_unseeded_generation_remains_valid() {
-        let source = include_str!("../../assets/stages/stage-1.ron");
+        let source = include_str!("../../examples/headless/fixtures/stage-1.ron");
         let seeded = || super::generate_map_with_seed(ron::from_str(source).unwrap(), 1234);
         assert_eq!(super::ascii_map(&seeded()), super::ascii_map(&seeded()));
         for map in [

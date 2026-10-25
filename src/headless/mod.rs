@@ -887,8 +887,15 @@ pub fn run(profile: &LaunchProfile) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    fn scenario(stage: usize) -> Scenario {
+    fn product_stage_scenario(stage: usize) -> Scenario {
         serde_json::from_value(serde_json::json!({"stage_id":stage,"seed_start":17,"seed_count":1,"max_frames":120,"inputs":[{"frame":2,"key":"ArrowRight","pressed":true},{"frame":20,"key":"Space","pressed":true}]})).unwrap()
+    }
+    // Behavior regressions use frozen terrain; catalog tests exercise product stages.
+    fn fixture_scenario(stage: usize) -> Scenario {
+        let mut scenario = product_stage_scenario(stage);
+        scenario.stage_id = None;
+        scenario.ron_path = Some(format!("examples/headless/fixtures/stage-{stage}.ron").into());
+        scenario
     }
     #[test]
     fn default_player_motion_matches_pre_parameterization_baselines() {
@@ -917,7 +924,7 @@ mod tests {
 
     #[test]
     fn trajectory_hash_is_independent_of_batch_and_sample_stride() {
-        let mut scenario = scenario(2);
+        let mut scenario = fixture_scenario(2);
         let single = verify_seed(&scenario, 17).unwrap();
         scenario.seed_start = 0;
         scenario.seed_count = 1000;
@@ -929,7 +936,7 @@ mod tests {
     }
     #[test]
     fn snapshot_records_placed_and_dug_tiles_in_both_coordinate_spaces() {
-        let mut app = build_app(load_map(&scenario(2), 17).unwrap());
+        let mut app = build_app(load_map(&fixture_scenario(2), 17).unwrap());
         let position = player_position(&mut app).unwrap();
         let tile = app
             .world_mut()
@@ -1108,7 +1115,7 @@ mod tests {
             .add_plugins((StagePhysicsPlugin, StageScenePlugin));
         normal.finish();
         normal.cleanup();
-        let s = scenario(1);
+        let s = fixture_scenario(1);
         let mut headless = build_app(load_map(&s, 17).unwrap());
         assert!(normal.is_plugin_added::<StageGameplayPlugin>());
         assert!(headless.is_plugin_added::<StageGameplayPlugin>());
@@ -1269,13 +1276,13 @@ mod tests {
         normal.finish();
         normal.cleanup();
         check(&mut normal, true);
-        let mut headless = build_app(load_map(&scenario(1), 17).unwrap());
+        let mut headless = build_app(load_map(&fixture_scenario(1), 17).unwrap());
         check(&mut headless, false);
     }
 
     #[test]
     fn scaled_runs_are_deterministic_and_validate_scale_changes() {
-        let mut s = scenario(1);
+        let mut s = fixture_scenario(1);
         s.viewport_scale = 0.75;
         s.scale_changes.push(ScaleChange {
             frame: 25,
@@ -1483,7 +1490,7 @@ mod tests {
 
     #[test]
     fn repeat_runs_have_identical_hashes_and_product_physics_moves_player() {
-        let s = scenario(1);
+        let s = fixture_scenario(1);
         let a = verify_seed(&s, 17).unwrap();
         let b = verify_seed(&s, 17).unwrap();
         assert_eq!(
@@ -1500,7 +1507,7 @@ mod tests {
     }
     #[test]
     fn worker_count_does_not_change_results() {
-        let mut s = scenario(1);
+        let mut s = fixture_scenario(1);
         s.seed_count = 3;
         let serial = verify(&s, 1).unwrap();
         let parallel = verify(&s, 3).unwrap();
@@ -1544,7 +1551,7 @@ mod tests {
 
     #[test]
     fn non_yielding_rhai_is_a_deterministic_script_error() {
-        let mut s = scenario(2);
+        let mut s = fixture_scenario(2);
         s.programs.push(StoneProgram {
             stone_index: 0,
             language: Language::Rhai,
@@ -1593,13 +1600,13 @@ mod tests {
     fn scenario_stage_ids_follow_the_catalog_without_a_fixed_upper_bound() {
         let catalog = StageCatalog::load_from_assets();
         for stage in catalog.iter() {
-            assert!(scenario_map_path(&scenario(stage.id.0), &catalog).is_ok());
-            assert!(load_map(&scenario(stage.id.0), 17).is_ok());
+            assert!(scenario_map_path(&product_stage_scenario(stage.id.0), &catalog).is_ok());
+            assert!(load_map(&product_stage_scenario(stage.id.0), 17).is_ok());
         }
         let first = catalog.iter().map(|s| s.id.0).min().unwrap();
         let last = catalog.iter().map(|s| s.id.0).max().unwrap();
         for id in [first - 1, last + 1] {
-            let error = scenario_map_path(&scenario(id), &catalog)
+            let error = scenario_map_path(&product_stage_scenario(id), &catalog)
                 .unwrap_err()
                 .to_string();
             assert!(error.contains(&format!("{first}..={last}")), "{error}");
@@ -1615,18 +1622,18 @@ mod tests {
                     title: format!("Stage {id}"),
                     unlocked: true,
                 });
-            assert!(scenario_map_path(&scenario(id), &expanded).is_ok());
+            assert!(scenario_map_path(&product_stage_scenario(id), &expanded).is_ok());
         }
         let expanded_last = expanded.iter().map(|s| s.id.0).max().unwrap();
-        assert!(scenario_map_path(&scenario(expanded_last + 1), &expanded).is_err());
+        assert!(scenario_map_path(&product_stage_scenario(expanded_last + 1), &expanded).is_err());
         // A min/max range must not accidentally admit gaps in the catalog.
         expanded.stages.retain(|s| s.id.0 != first + 1);
-        assert!(scenario_map_path(&scenario(first + 1), &expanded).is_err());
+        assert!(scenario_map_path(&product_stage_scenario(first + 1), &expanded).is_err());
     }
 
     #[test]
     fn scenario_rejects_ambiguous_or_invalid_input() {
-        let mut s = scenario(1);
+        let mut s = fixture_scenario(1);
         s.trajectory_every = 0;
         assert!(validate(&s).is_err());
         s.trajectory_every = 1;
@@ -1637,7 +1644,7 @@ mod tests {
 
     #[test]
     fn scripts_use_product_capabilities_and_outcomes() {
-        let mut s = scenario(2);
+        let mut s = fixture_scenario(2);
         s.programs.push(StoneProgram {
             stone_index: 0,
             language: Language::Rhai,
