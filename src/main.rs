@@ -62,7 +62,9 @@ fn main() {
             }
             return;
         }
-        LaunchType::HeadlessVerify | LaunchType::HeadlessMeasureReach => {
+        LaunchType::HeadlessVerify
+        | LaunchType::HeadlessMeasureReach
+        | LaunchType::HeadlessMeasureSnapshot => {
             if let Err(error) = headless::run(&launch_profile) {
                 eprintln!("Headless verification failed: {error}");
                 std::process::exit(2);
