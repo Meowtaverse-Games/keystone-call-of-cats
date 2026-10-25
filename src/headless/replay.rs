@@ -184,50 +184,81 @@ fn after_frame(world: &mut World) {
         }
     });
 }
-fn result_ui(mut contexts: EguiContexts, replay: Res<Replay>) {
+#[derive(Resource, Default)]
+struct ReplayOverlay {
+    top_space: f32,
+}
+
+// Measure the actual text before painting: no fixed-width Area or stale Area size.
+fn paint_status(ctx: &egui::Context, panel: f32, text: String) -> egui::Rect {
+    let screen = ctx.content_rect();
+    let left = screen.left() + panel.clamp(0.0, screen.width() - 1.0);
+    let region = egui::Rect::from_min_max(egui::pos2(left, screen.top()), screen.max);
+    let painter = ctx
+        .layer_painter(egui::LayerId::new(
+            egui::Order::Foreground,
+            egui::Id::new("replay-result"),
+        ))
+        .with_clip_rect(region);
+    let color = ctx.global_style().visuals.text_color();
+    let galley = painter.layout(
+        text,
+        egui::FontId::proportional(14.0),
+        color,
+        (region.width() - 32.0).max(1.0),
+    );
+    let size = galley.size() + egui::vec2(16.0, 16.0);
+    let rect = egui::Rect::from_min_size(
+        egui::pos2(region.center().x - size.x * 0.5, screen.top() + 8.0),
+        size,
+    );
+    painter.rect_filled(rect, 4.0, ctx.global_style().visuals.window_fill());
+    painter.galley(rect.min + egui::vec2(8.0, 8.0), galley, color);
+    rect
+}
+fn result_ui(
+    mut contexts: EguiContexts,
+    replay: Res<Replay>,
+    offsets: Res<LetterboxOffsets>,
+    mut overlay: ResMut<ReplayOverlay>,
+) {
     if let Ok(ctx) = contexts.ctx_mut() {
-        egui::Area::new(egui::Id::new("replay-result"))
-            .anchor(egui::Align2::CENTER_TOP, [0.0, 12.0])
-            .order(egui::Order::Foreground)
-            .show(ctx, |ui| {
-                egui::Frame::popup(ui.style()).show(ui, |ui| {
-                    // Areas otherwise start narrow and wrap the status word by word.
-                    let width = (ctx.content_rect().width() - 48.0).clamp(1.0, 600.0);
-                    ui.set_width(width);
-                    if replay.finished {
-                        ui.label(&replay.status);
-                        ui.label("Close the window to exit.");
-                    } else if replay.running {
-                        ui.label(format!(
-                            "Scenario replay — frame {} (input locked)",
-                            replay.run.as_ref().unwrap().report.frames
-                        ));
-                    } else {
-                        ui.label("Loading scenario replay…");
-                    }
-                });
-            });
+        let text = if replay.finished {
+            format!("{}\nClose the window to exit.", replay.status)
+        } else if replay.running {
+            format!(
+                "Scenario replay — frame {} (input locked)",
+                replay.run.as_ref().unwrap().report.frames
+            )
+        } else {
+            "Loading scenario replay…".into()
+        };
+        let rect = paint_status(ctx, offsets.left, text);
+        overlay.top_space = rect.bottom() - ctx.content_rect().top() + 8.0;
     }
 }
 /// Fit the physical canvas into the area to the right of egui, using only
 /// camera projection and translation. Coordinates here are egui logical points.
-fn camera_framing(screen: Vec2, panel: f32, canvas: Vec2) -> Option<(Vec2, Vec2)> {
+fn camera_framing(screen: Vec2, panel: f32, canvas: Vec2, top: f32) -> Option<(Vec2, Vec2)> {
     if !screen.is_finite() || screen.min_element() <= 1.0 {
         return None;
     }
     let panel = panel.clamp(0.0, screen.x - 1.0);
     let margin = 16.0_f32.min((screen.x - panel) * 0.25).min(screen.y * 0.25);
-    let available = Vec2::new(screen.x - panel, screen.y) - Vec2::splat(2.0 * margin);
+    let top = top.clamp(0.0, screen.y - 1.0);
+    let margin = margin.min((screen.y - top) * 0.25);
+    let available = Vec2::new(screen.x - panel, screen.y - top) - Vec2::splat(2.0 * margin);
     let units_per_point = (canvas / available).max_element();
     Some((
         screen * units_per_point,
-        Vec2::new(-panel * 0.5 * units_per_point, 0.0),
+        Vec2::new(-panel * 0.5, top * 0.5) * units_per_point,
     ))
 }
 fn frame_replay_camera(
     mut contexts: EguiContexts,
     offsets: Res<LetterboxOffsets>,
     viewport: Res<ScaledViewport>,
+    overlay: Res<ReplayOverlay>,
     mut cameras: Query<(&mut Projection, &mut Transform), With<crate::MainCamera>>,
 ) {
     let Ok(ctx) = contexts.ctx_mut() else {
@@ -238,6 +269,7 @@ fn frame_replay_camera(
         Vec2::new(screen.x, screen.y),
         offsets.left,
         viewport.size * viewport.scale,
+        overlay.top_space,
     ) else {
         return;
     };
@@ -330,6 +362,7 @@ pub fn run(profile: &LaunchProfile) -> Result<()> {
     })
     .insert_resource(map)
     .init_resource::<LetterboxOffsets>()
+    .init_resource::<ReplayOverlay>()
     .init_resource::<AssetStore>()
     .init_resource::<PendingGroups>()
     .add_message::<LoadAssetGroup>()
@@ -456,7 +489,7 @@ mod tests {
                 for scale in [0.5, 0.75, 1.0, 1.25, 1.5, 2.0] {
                     let panel = screen.x * fraction;
                     let canvas = Vec2::new(1800.0, 1200.0) * scale;
-                    let (view, center) = camera_framing(screen, panel, canvas).unwrap();
+                    let (view, center) = camera_framing(screen, panel, canvas, 0.0).unwrap();
                     for corner in [Vec2::new(-0.5, -0.5), Vec2::new(0.5, 0.5)] {
                         let pixel = ((canvas * corner - center) / view + Vec2::splat(0.5)) * screen;
                         assert!(pixel.x >= panel && pixel.x <= screen.x);
@@ -465,7 +498,53 @@ mod tests {
                 }
             }
         }
-        assert!(camera_framing(Vec2::ZERO, 0.0, Vec2::ONE).is_none());
+        assert!(camera_framing(Vec2::ZERO, 0.0, Vec2::ONE, 0.0).is_none());
+    }
+    #[test]
+    fn status_fits_beside_panel_and_above_canvas_at_monitor_dpi_sizes() {
+        for screen in [
+            egui::vec2(1920.0, 1200.0) / 1.75,
+            egui::vec2(2560.0, 1440.0),
+            egui::vec2(1366.0, 768.0) / 1.25,
+        ] {
+            let ctx = egui::Context::default();
+            for fraction in [0.25, 0.4, 0.5] {
+                let panel = screen.x * fraction;
+                let mut widths = Vec::new();
+                let mut output = ctx.run_ui(
+                    egui::RawInput {
+                        screen_rect: Some(egui::Rect::from_min_size(egui::Pos2::ZERO, screen)),
+                        ..default()
+                    },
+                    |ui| {
+                        let ctx = ui.ctx();
+                        for text in [
+                            "Loading scenario replay…",
+                            "Scenario replay — frame 355 (input locked)",
+                            "Replay finished: goal | cleared=true | frames=788 | goal=Some(787)\nClose the window to exit.",
+                        ] {
+                            let rect = paint_status(ctx, panel, text.into());
+                            assert!(rect.left() >= panel && rect.right() <= screen.x);
+                            assert!(rect.top() >= 0.0 && rect.bottom() < screen.y);
+                            widths.push(rect.width());
+                            for scale in [0.5, 1.0, 2.0] {
+                                let canvas = Vec2::new(1800.0, 1200.0) * scale;
+                                let (view, center) = camera_framing(
+                                    Vec2::new(screen.x, screen.y), panel, canvas, rect.bottom() + 8.0,
+                                ).unwrap();
+                                let canvas_top = (0.5 - (canvas.y * 0.5 - center.y) / view.y) * screen.y;
+                                let canvas_bottom = (0.5 - (-canvas.y * 0.5 - center.y) / view.y) * screen.y;
+                                assert!(canvas_top > rect.bottom());
+                                assert!(canvas_bottom < screen.y);
+                            }
+                        }
+                    },
+                );
+                // No renderer in this layout-only test.
+                output.textures_delta.clear();
+                assert!(widths[0] < widths[1]);
+            }
+        }
     }
     #[test]
     fn storage_is_always_empty_and_never_persists() {

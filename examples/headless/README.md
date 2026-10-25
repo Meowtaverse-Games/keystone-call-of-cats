@@ -55,8 +55,11 @@ The replay window requests native maximization on startup: the OS fits it to the
 launch monitor's work area, accounting for DPI, taskbars and window decorations.
 Its restored size is 640×360 logical points; users can restore, resize, maximize,
 or close it normally. No monitor dimensions are used to change simulation settings.
-The result overlay uses up to 600 logical points of width (reduced for small windows)
-to keep the running status on one line and completion status plus exit hint on two.
+The result overlay is measured from its text each frame and centered in the region
+to the right of the reported editor-panel width. Short messages shrink to their
+content; long messages wrap within that region. The camera reserves the measured
+overlay height plus a gap above the canvas, so the status cannot cover its top row.
+Panel-width, status-text and window-size changes update both layouts each frame.
 **Physics viewport scale is fixed to the scenario's
 `viewport_scale` (default 1), including its explicit `scale_changes`.** The camera
 alone zooms out and shifts its view so the entire 30×20-cell canvas fits to the
@@ -95,10 +98,15 @@ schedule cycles. The stage appeared to the right of the editor panel.
 
 That check also found the old 1800×1200 logical window exceeded a 1920×1200 monitor
 at 175% DPI, and the result text wrapped word by word. Native maximization and an
-explicit result width address these display issues. **Claude will recheck the
-updated window sizing and text on Windows.** The tests check the maximization
-request and camera framing at representative 175%, 100% and 125% logical sizes;
-actual OS work-area placement requires the Windows visual check.
+explicit result width addressed those issues. Claude rechecked `95148e8` on
+Windows at 1920×1200 / 175%: maximization worked,
+the entire stage was visible, and both stages' headless/replay hashes still matched
+Linux. The status was partly hidden behind the panel because it was centered over
+the whole window. The measured, panel-relative overlay and reserved camera space
+now address that issue. **Claude will recheck this status layout on Windows.**
+Windowless tests measure the real egui text rectangles at representative 175%,
+100% and 125% logical sizes and panel widths of 25%, 40% and 50%, checking that
+they stay beside the panel and above the canvas, and short messages shrink.
 
 WSLg cannot run replay on this machine: debug panics in winit 0.30.13
 Wayland keyboard initialization (`attempt to add with overflow`); Claude also
