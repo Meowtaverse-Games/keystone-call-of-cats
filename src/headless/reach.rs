@@ -31,6 +31,7 @@ struct Trial {
     kind: &'static str,
     cells: isize,
     px: f32,
+    tile_px: f32,
     landed: bool,
     jumped: bool,
     peak_rise_px: f32,
@@ -155,6 +156,7 @@ fn trial(
         kind: if step { "step" } else { "gap" },
         cells,
         px: cells as f32 * tile,
+        tile_px: tile,
         landed,
         jumped,
         peak_rise_px: peak,
@@ -164,6 +166,7 @@ fn trial(
 pub(super) fn measure(scale: f32) -> Result<ReachReport> {
     let mut fixed_input_comparisons = vec![];
     let mut measurements = vec![];
+    let mut tile_px = 0.0;
     for size in [(26, 10), (28, 10), (28, 18)] {
         for left in [false, true] {
             for runup in [false, true] {
@@ -185,6 +188,7 @@ pub(super) fn measure(scale: f32) -> Result<ReachReport> {
                         .max()
                         .unwrap_or(-1)
                 };
+                tile_px = trials[0].tile_px;
                 let max_step = maximum("step");
                 let max_gap = maximum("gap");
                 measurements.push(Measurement {
@@ -192,9 +196,9 @@ pub(super) fn measure(scale: f32) -> Result<ReachReport> {
                     direction: if left { "left" } else { "right" },
                     approach: if runup { "running" } else { "standing" },
                     max_step_cells: max_step,
-                    max_step_px: max_step as f32 * 60.0 * scale,
+                    max_step_px: max_step as f32 * tile_px,
                     max_gap_cells: max_gap,
-                    max_gap_px: max_gap as f32 * 60.0 * scale,
+                    max_gap_px: max_gap as f32 * tile_px,
                     trials,
                 });
             }
@@ -213,7 +217,7 @@ pub(super) fn measure(scale: f32) -> Result<ReachReport> {
         viewport_scale: scale,
         fixed_input_comparisons,
         viewport_px: [1800.0, 1200.0],
-        tile_px: 60.0 * scale,
+        tile_px,
         hypothesis_equal_cell_reach: hypothesis,
         protocol: "60Hz; 30 settle frames; one jump at source coordinates 5.5/6/6.5/6.75/6.9 (ledge at 7); run-up from cell 3, or pre-position from cell 5 and stand for 30 frames; hold direction until one cell onto destination; six stable landing frames; 420-frame limit. Step candidates 0..5, gap candidates 0..8. Bounds apply only to this explicit input protocol, not an exhaustive reachability search. map_size is the interior; product canvas remains 30x20.",
         measurements,

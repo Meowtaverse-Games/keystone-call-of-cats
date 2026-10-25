@@ -1,4 +1,4 @@
-# Headless stage verification (schema version 1)
+# Headless stage verification and windowed replay (report schema version 2)
 
 Run from the repository root, after `cargo build --release`:
 
@@ -27,6 +27,67 @@ advances by `Duration::from_secs_f64(1.0 / 60.0)` per update without sleeping.
 `Time<Fixed>` is not overridden. Frame 0 is the first timed update. Inputs are
 injected before that update; the product reads them in `Update` as usual.
 
+## Windowed scenario replay
+
+```sh
+target/release/keystone-cc --replay examples/headless/stage-1.json --seed 17 \
+  --report target/stage-1-replay.json
+target/release/keystone-cc --replay examples/headless/stage-2.json --seed 17 \
+  --replay-speed 0.5 --report target/stage-2-replay.json
+```
+
+Replay opens the product window, renderer, player animation, audio, egui stage UI
+and VPL. It enters the selected seeded stage directly after loading real assets.
+Keyboard/mouse input to the simulation/editor is locked; only the scenario's input
+schedule drives the player. Close the window normally to exit. At goal, maximum
+frames or script error, physics and gameplay stop; the result and frame count stay
+on screen and are logged. The optional report is written at that point. Closing
+before completion does not write a completed report.
+
+Simulation updates use the same manual 1/60-second duration and default fixed clock
+as headless. Updates are paced by a monotonic clock to at most 60 per second,
+independent of monitor refresh; rendering too slowly slows playback rather than
+skipping simulation frames. `--replay-speed` (0.01–100, default 1) changes only this
+real-time pacing, never simulation delta. Asset loading uses zero simulation time;
+the first stage update is the same zero-delta bootstrap as headless.
+
+The initial window is 1800×1200. **Physics viewport scale is fixed to the scenario's
+`viewport_scale` (default 1), including its explicit `scale_changes`.** Resizing the
+real window does not alter that scale or world origin; it may crop/reframe the
+stage. Use identical scenario scale settings when comparing reports. `--seed`
+selects one seed, including its `seed_inputs` override, independently of the batch
+range. `--viewport-scale` is only a headless/reach override, not a replay option.
+
+Replay does not install the settings or progression/save plugins, Steam, or the
+external-control server. It uses default settings, empty script storage, and a
+no-op storage backend whose loads always return `None` and saves never persist.
+It never opens user save/config files. Normal launches retain their existing setup.
+The presentation systems are shared with normal play; simulation, program startup,
+input injection and observation share the headless driver. Both verification modes
+use deterministic Rhai synchronization and the same script restrictions below.
+
+Compare `seeds[0].trajectory_hash`, not `execution_hash`, when a batch run and a
+single-seed replay use different batch metadata. The hash includes every frame,
+not just the trajectory samples. The windowless replay-schedule test matches both example trajectories, commands and
+goal frames. The two permitted WSLg checks terminated in winit 0.30.13 Wayland
+keyboard initialization (`attempt to add with overflow`); real-window hash equality
+is **not yet verified**, and no replay reports were produced. See
+`replay-validation.json` for the attempts. The asset-root lookup observed in those
+attempts has been corrected to the repository `assets` directory.
+
+After generating both reports, compare the deterministic observations (wall time
+and FPS intentionally differ):
+
+```python
+import json
+from pathlib import Path
+for stage in (1, 2):
+    offline = json.loads(Path(f"target/stage-{stage}-report.json").read_text())["seeds"][0]
+    replay = json.loads(Path(f"target/stage-{stage}-replay.json").read_text())["seeds"][0]
+    for field in ("trajectory_hash", "trajectory", "commands", "goal_frame"):
+        assert offline[field] == replay[field], (stage, field)
+```
+
 ## Scenario JSON
 
 Unknown fields are errors. Paths are relative to the process working directory.
@@ -52,9 +113,9 @@ indices are errors. Product `ScriptExecutor` compilation and `StoneCapabilities`
 restrictions apply. Rhai uses the same interpreter with a blocking per-command
 handoff in this mode, so a 1ms UI timeout cannot change the emission frame under
 CPU load. Both resume notification and command reception rendezvous with the VM
-worker; a worker that has not yet started waiting cannot lose its resume signal. A headless-only 100,000-operation budget per step reports a script error
+worker; a worker that has not yet started waiting cannot lose its resume signal. A verification-only 100,000-operation budget per step reports a script error
 instead of hanging on a non-yielding Rhai loop. Normal interactive timeouts and
-execution remain unchanged. The headless Rhai interpreter rejects `timestamp()`
+execution remain unchanged. The verification Rhai interpreter rejects `timestamp()`
 (including dynamic calls) because it reads wall-clock time. Accepted keys: `ArrowLeft`, `ArrowRight`, `ArrowUp`, `KeyA`,
 `KeyD`, `KeyW`, `Space`. Pressed keys stay held until a release; edges clear every
 frame. Events sort by frame, retaining input array order within a frame.
@@ -84,12 +145,14 @@ uses its unchanged algorithm inline rather than through the shared async pool.
 `schema_version`, `seeds`, `count`, `cleared`, `frames`, `elapsed_seconds`, and
 `frames_per_second` comprise the report. Timing includes map generation, world
 construction, execution, and teardown; excludes report serialization/file output.
+For replay, timing spans timed playback only (including real-time pacing),
+excluding asset loading; it is not a headless throughput benchmark.
 The benchmark script also measures complete process wall time, and verifies that
 all 1,800,000 frames ran (idle input avoids early goal exits).
 
 Each seed contains `cleared`, nullable `goal_frame`, `frames`, `termination`
 (`goal`, `max_frames`, `compile_error`, `script_error`), nullable `error`,
-`terrain_ascii`, `terrain_hash`, `execution_hash`, `commands`, and `trajectory`.
+`terrain_ascii`, `terrain_hash`, `execution_hash`, `trajectory_hash`, `commands`, and `trajectory`.
 A failed compile or script is a reportable simulation outcome; malformed scenario
 or unreadable files cause exit 2. Successful report generation exits 0, even if a
 seed did not clear.
@@ -99,6 +162,23 @@ ASCII is top-down; `*` solid, `#` boundary wall, `@` spawn, `S` stone, `G` goal,
 on the full 30×20 canvas; world coordinates are pixels relative to its center. Cells are obtained using the
 actual stage-root inverse transform, so viewport scaling is removed from cell
 coordinates. World px values retain scaling.
+Schema 2 adds `stones`, `placed_tiles`, and `dug_tiles` to every trajectory sample.
+Each sample retains the player's `frame`, `cell: [x,y]`, and `world_px: [x,y]`.
+Each stone has `stone_index`, `cell`, and `world_px`. Placed/dug tiles have `cell`
+and `world_px`; these arrays are sorted by position and deduplicated. Dug tiles
+record the currently removed rocks at each sample, including unchanged ones;
+restored rocks disappear from that array. Stones sort by index. Coordinates come
+from the actual entities, with the same stage-root transform as the player.
+
+`trajectory_hash` covers all frames' player/stone/placed/dug positions plus command
+outcomes, goal frame, termination, error and executed frame count. It excludes
+scenario batch fields, sample stride, rendering and wall time, so it compares one
+seed across headless/replay and across batch sizes. `execution_hash` still includes
+the full scenario and internal player/stone velocities and obstacle state; its
+value changes with batch metadata and schema. Schema-1 report hashes are not
+comparable with schema-2 execution hashes. The separate reach report stays schema 1;
+its pixel maxima now use each trial's measured tile size rather than a literal.
+
 Commands include zero-based `action_id`, `stone_index`, product debug command,
 `issued_frame`, nullable `completed_frame`, and `result` (`completed`, `blocked`,
 `pending`). Correlation IDs use existing product outcome messages without starting

@@ -1,5 +1,6 @@
 //! Offline driver: all simulation is performed by the product's stage systems.
 mod reach;
+pub mod replay;
 
 use crate::util::script_types::{ScriptCommand, ScriptExecutionError, ScriptProgram, ScriptState};
 use crate::{
@@ -131,7 +132,21 @@ impl InputKey {
     }
 }
 #[derive(Serialize)]
+pub struct PositionSample {
+    pub cell: [i32; 2],
+    pub world_px: [f32; 2],
+}
+#[derive(Serialize)]
+pub struct StoneSample {
+    pub stone_index: usize,
+    #[serde(flatten)]
+    pub position: PositionSample,
+}
+#[derive(Serialize)]
 pub struct TrajectoryPoint {
+    pub stones: Vec<StoneSample>,
+    pub placed_tiles: Vec<PositionSample>,
+    pub dug_tiles: Vec<PositionSample>,
     pub frame: u64,
     pub cell: [i32; 2],
     pub world_px: [f32; 2],
@@ -147,6 +162,7 @@ pub struct SeedReport {
     pub terrain_ascii: String,
     pub terrain_hash: String,
     pub execution_hash: String,
+    pub trajectory_hash: String,
     pub commands: Vec<CommandResult>,
     pub trajectory: Vec<TrajectoryPoint>,
 }
@@ -369,8 +385,7 @@ fn load_map(scenario: &Scenario, seed: u64) -> Result<Map> {
     Ok(chunk_grammar_map::generate_map_with_seed(config, seed))
 }
 
-fn start_programs(app: &mut App, scenario: &Scenario) -> Result<()> {
-    let world = app.world_mut();
+fn start_programs(world: &mut World, scenario: &Scenario) -> Result<()> {
     let mut stones: Vec<_> = world
         .query_filtered::<(&StoneIndex, &StoneType), With<StoneRune>>()
         .iter(world)
@@ -462,7 +477,9 @@ pub(super) fn player_position(app: &mut App) -> Option<Vec2> {
 }
 /// Canvas coordinates before viewport scaling, including the map's boundary margin.
 fn stage_cell_position(app: &mut App, position: Vec2) -> Vec2 {
-    let world = app.world_mut();
+    cell_position(app.world_mut(), position)
+}
+fn cell_position(world: &mut World, position: Vec2) -> Vec2 {
     let root = world
         .query_filtered::<&GlobalTransform, With<StageRoot>>()
         .single(world)
@@ -474,10 +491,15 @@ fn stage_cell_position(app: &mut App, position: Vec2) -> Vec2 {
     let metrics = world.resource::<StageGridMetrics>();
     (local.truncate() + metrics.viewport_size * 0.5) / metrics.local_tile_size
 }
-fn snapshot(app: &mut App, frame: u64, digest: &mut Digest) -> Result<TrajectoryPoint> {
-    let position = player_position(app).ok_or("Player was not spawned")?;
+fn snapshot(world: &mut World, frame: u64, digest: &mut Digest) -> Result<TrajectoryPoint> {
+    let position = world
+        .query_filtered::<&GlobalTransform, With<Player>>()
+        .iter(world)
+        .next()
+        .ok_or("Player was not spawned")?
+        .translation()
+        .truncate();
     digest.add(&frame.to_le_bytes());
-    let world = app.world_mut();
     let mut bodies: Vec<_> = world
         .query::<(
             &GlobalTransform,
@@ -521,78 +543,141 @@ fn snapshot(app: &mut App, frame: u64, digest: &mut Digest) -> Result<Trajectory
         digest.add(&elapsed.to_le_bytes());
         digest.add(&[u8::from(collider)]);
     }
-    let cell = stage_cell_position(app, position).floor().as_ivec2();
+    let mut stones: Vec<_> = world
+        .query::<(&StoneIndex, &GlobalTransform)>()
+        .iter(world)
+        .map(|(i, t)| (i.0, t.translation().truncate()))
+        .collect();
+    stones.sort_by_key(|s| s.0);
+    let stones = stones
+        .into_iter()
+        .map(|(stone_index, p)| StoneSample {
+            stone_index,
+            position: position_sample(world, p),
+        })
+        .collect();
+    let placed_tiles = tile_samples::<systems::PlacedTile>(world);
+    let dug_tiles = tile_samples::<crate::scenes::stage::components::DugTile>(world);
+    let cell = cell_position(world, position).floor().as_ivec2();
     Ok(TrajectoryPoint {
+        stones,
+        placed_tiles,
+        dug_tiles,
         frame,
         cell: [cell.x, cell.y],
         world_px: [position.x, position.y],
     })
 }
 
-fn verify_seed(scenario: &Scenario, seed: u64) -> Result<SeedReport> {
-    let map = load_map(scenario, seed)?;
-    let ascii = chunk_grammar_map::ascii_map(&map);
-    let mut digest = Digest::new();
-    digest.add(&serde_json::to_vec(scenario)?);
-    digest.add(&seed.to_le_bytes());
-    digest.add(ascii.as_bytes());
-    let mut app = build_app_at_scale(map, scenario.viewport_scale);
-    let mut report = SeedReport {
-        seed,
-        cleared: false,
-        goal_frame: None,
-        frames: 0,
-        termination: "max_frames".into(),
-        error: None,
-        terrain_hash: hash(ascii.as_bytes()),
-        terrain_ascii: ascii,
-        execution_hash: String::new(),
-        commands: vec![],
-        trajectory: vec![],
-    };
-    let mut inputs = scenario
-        .seed_inputs
-        .get(&seed)
-        .unwrap_or(&scenario.inputs)
-        .clone();
-    inputs.sort_by_key(|e| e.frame);
-    let mut cursor = 0;
-    for frame in 0..scenario.max_frames {
-        app.world_mut().resource_mut::<Observation>().frame = frame;
-        for change in scenario.scale_changes.iter().filter(|c| c.frame == frame) {
-            app.world_mut().resource_mut::<ScaledViewport>().scale = change.scale;
-        }
-        if frame == scenario.start_frame
-            && let Err(error) = start_programs(&mut app, scenario)
+fn position_sample(world: &mut World, position: Vec2) -> PositionSample {
+    PositionSample {
+        cell: cell_position(world, position).floor().as_ivec2().to_array(),
+        world_px: position.to_array(),
+    }
+}
+fn tile_samples<C: Component>(world: &mut World) -> Vec<PositionSample> {
+    let mut positions: Vec<_> = world
+        .query_filtered::<&GlobalTransform, With<C>>()
+        .iter(world)
+        .map(|t| t.translation().truncate())
+        .collect();
+    positions.sort_by(|a, b| a.x.total_cmp(&b.x).then(a.y.total_cmp(&b.y)));
+    positions.dedup();
+    positions
+        .into_iter()
+        .map(|p| position_sample(world, p))
+        .collect()
+}
+
+/// Identical input, VM startup and observation for offline and windowed execution.
+struct SeedRun {
+    scenario: Scenario,
+    report: SeedReport,
+    digest: Digest,
+    trajectory_digest: Digest,
+    inputs: Vec<InputEvent>,
+    cursor: usize,
+    keys: ButtonInput<KeyCode>,
+}
+impl SeedRun {
+    fn new(scenario: Scenario, seed: u64, map: &Map) -> Result<Self> {
+        let ascii = chunk_grammar_map::ascii_map(map);
+        let mut digest = Digest::new();
+        digest.add(&serde_json::to_vec(&scenario)?);
+        digest.add(&seed.to_le_bytes());
+        digest.add(ascii.as_bytes());
+        let mut inputs = scenario
+            .seed_inputs
+            .get(&seed)
+            .unwrap_or(&scenario.inputs)
+            .clone();
+        inputs.sort_by_key(|e| e.frame);
+        Ok(Self {
+            scenario,
+            digest,
+            trajectory_digest: Digest::new(),
+            inputs,
+            cursor: 0,
+            keys: ButtonInput::default(),
+            report: SeedReport {
+                seed,
+                cleared: false,
+                goal_frame: None,
+                frames: 0,
+                termination: "max_frames".into(),
+                error: None,
+                terrain_hash: hash(ascii.as_bytes()),
+                terrain_ascii: ascii,
+                execution_hash: String::new(),
+                trajectory_hash: String::new(),
+                commands: vec![],
+                trajectory: vec![],
+            },
+        })
+    }
+    fn before_frame(&mut self, world: &mut World) -> bool {
+        let frame = self.report.frames;
+        world.resource_mut::<Observation>().frame = frame;
+        for change in self
+            .scenario
+            .scale_changes
+            .iter()
+            .filter(|c| c.frame == frame)
         {
-            report.termination = "compile_error".into();
-            report.error = Some(error.to_string());
-            break;
+            world.resource_mut::<ScaledViewport>().scale = change.scale;
         }
+        if frame == self.scenario.start_frame
+            && let Err(error) = start_programs(world, &self.scenario)
         {
-            let mut keys = app.world_mut().resource_mut::<ButtonInput<KeyCode>>();
-            keys.clear(); // Clear edges, preserve held keys. No InputPlugin overwrites injection.
-            while let Some(event) = inputs.get(cursor).filter(|e| e.frame == frame) {
-                if event.pressed {
-                    keys.press(event.key.code());
-                } else {
-                    keys.release(event.key.code());
-                }
-                cursor += 1;
+            self.report.termination = "compile_error".into();
+            self.report.error = Some(error.to_string());
+            return false;
+        }
+        self.keys.clear();
+        while let Some(event) = self.inputs.get(self.cursor).filter(|e| e.frame == frame) {
+            if event.pressed {
+                self.keys.press(event.key.code());
+            } else {
+                self.keys.release(event.key.code());
             }
+            self.cursor += 1;
         }
-        app.update();
-        report.frames += 1;
-        let point = snapshot(&mut app, frame, &mut digest)?;
-        let editor = app.world().resource::<ScriptEditorState>();
+        *world.resource_mut::<ButtonInput<KeyCode>>() = self.keys.clone();
+        true
+    }
+    fn after_frame(&mut self, world: &mut World) -> Result<bool> {
+        let frame = self.report.frames;
+        self.report.frames += 1;
+        let point = snapshot(world, frame, &mut self.digest)?;
+        self.trajectory_digest.add(&serde_json::to_vec(&point)?);
+        let editor = world.resource::<ScriptEditorState>();
         if editor.stage_cleared {
-            report.cleared = true;
-            report.goal_frame = Some(frame);
-            report.termination = "goal".into();
-        } else if frame >= scenario.start_frame && !editor.controls_enabled {
-            report.termination = "script_error".into();
-            report.error = app
-                .world()
+            self.report.cleared = true;
+            self.report.goal_frame = Some(frame);
+            self.report.termination = "goal".into();
+        } else if frame >= self.scenario.start_frame && !editor.controls_enabled {
+            self.report.termination = "script_error".into();
+            self.report.error = world
                 .resource::<Observation>()
                 .runtime_error
                 .lock()
@@ -600,18 +685,39 @@ fn verify_seed(scenario: &Scenario, seed: u64) -> Result<SeedReport> {
                 .clone()
                 .or_else(|| editor.last_run_feedback.clone());
         }
-        let ended = report.termination != "max_frames" || frame + 1 == scenario.max_frames;
-        if frame % scenario.trajectory_every == 0 || ended {
-            report.trajectory.push(point);
+        let ended = self.report.termination != "max_frames"
+            || self.report.frames == self.scenario.max_frames;
+        if frame.is_multiple_of(self.scenario.trajectory_every) || ended {
+            self.report.trajectory.push(point);
         }
-        if ended {
+        Ok(ended)
+    }
+    fn finish(mut self, world: &mut World) -> Result<SeedReport> {
+        self.report.commands = std::mem::take(&mut world.resource_mut::<Observation>().commands);
+        self.trajectory_digest.add(&serde_json::to_vec(&(
+            &self.report.commands,
+            self.report.goal_frame,
+            self.report.frames,
+            &self.report.termination,
+            &self.report.error,
+        ))?);
+        self.report.trajectory_hash = self.trajectory_digest.hex();
+        self.digest.add(&serde_json::to_vec(&self.report)?);
+        self.report.execution_hash = self.digest.hex();
+        Ok(self.report)
+    }
+}
+fn verify_seed(scenario: &Scenario, seed: u64) -> Result<SeedReport> {
+    let map = load_map(scenario, seed)?;
+    let mut run = SeedRun::new(scenario.clone(), seed, &map)?;
+    let mut app = build_app_at_scale(map, scenario.viewport_scale);
+    while run.before_frame(app.world_mut()) {
+        app.update();
+        if run.after_frame(app.world_mut())? {
             break;
         }
     }
-    report.commands = std::mem::take(&mut app.world_mut().resource_mut::<Observation>().commands);
-    digest.add(&serde_json::to_vec(&report)?);
-    report.execution_hash = digest.hex();
-    Ok(report)
+    run.finish(app.world_mut())
 }
 fn validate(scenario: &Scenario) -> Result<()> {
     if !valid_scale(scenario.viewport_scale)
@@ -692,7 +798,7 @@ fn verify(scenario: &Scenario, jobs: usize) -> Result<Report> {
     let seconds = started.elapsed().as_secs_f64();
     let frames = seeds.iter().map(|s| s.frames).sum();
     Ok(Report {
-        schema_version: 1,
+        schema_version: 2,
         count: seeds.len(),
         cleared: seeds.iter().filter(|s| s.cleared).count(),
         frames,
@@ -737,6 +843,36 @@ mod tests {
     use super::*;
     fn scenario(stage: usize) -> Scenario {
         serde_json::from_value(serde_json::json!({"stage_id":stage,"seed_start":17,"seed_count":1,"max_frames":120,"inputs":[{"frame":2,"key":"ArrowRight","pressed":true},{"frame":20,"key":"Space","pressed":true}]})).unwrap()
+    }
+    #[test]
+    fn trajectory_hash_is_independent_of_batch_and_sample_stride() {
+        let mut scenario = scenario(2);
+        let single = verify_seed(&scenario, 17).unwrap();
+        scenario.seed_start = 0;
+        scenario.seed_count = 1000;
+        scenario.trajectory_every = 37;
+        let batch = verify_seed(&scenario, 17).unwrap();
+        assert_eq!(single.trajectory_hash, batch.trajectory_hash);
+        assert_ne!(single.execution_hash, batch.execution_hash);
+        assert!(!single.trajectory[0].stones.is_empty());
+    }
+    #[test]
+    fn snapshot_records_placed_and_dug_tiles_in_both_coordinate_spaces() {
+        let mut app = build_app(load_map(&scenario(2), 17).unwrap());
+        let position = player_position(&mut app).unwrap();
+        app.world_mut().spawn((
+            crate::scenes::stage::components::DugTile {
+                collider: Collider::rectangle(1.0, 1.0),
+            },
+            systems::PlacedTile,
+            GlobalTransform::from_translation(position.extend(0.0)),
+        ));
+        let point = snapshot(app.world_mut(), 0, &mut Digest::new()).unwrap();
+        assert_eq!(point.placed_tiles.len(), 1);
+        assert_eq!(point.dug_tiles.len(), 1);
+        assert_eq!(point.dug_tiles[0].cell, point.cell);
+        assert_eq!(point.placed_tiles[0].cell, point.cell);
+        assert_eq!(point.placed_tiles[0].world_px, point.world_px);
     }
     #[test]
     fn graphical_and_headless_register_the_same_gameplay_and_physics() {

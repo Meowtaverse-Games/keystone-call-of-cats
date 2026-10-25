@@ -4,7 +4,7 @@ pub mod assets;
 pub mod audio;
 pub mod options;
 
-mod boot;
+pub(crate) mod boot;
 use boot::BootPlugin;
 
 mod select_stage;

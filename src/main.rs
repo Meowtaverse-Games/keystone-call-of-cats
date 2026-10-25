@@ -55,6 +55,13 @@ fn main() {
         println!("Launch profile: {:?}", launch_profile);
     }
     match launch_profile.launch_type {
+        LaunchType::Replay => {
+            if let Err(error) = headless::replay::run(&launch_profile) {
+                eprintln!("Scenario replay failed: {error}");
+                std::process::exit(2);
+            }
+            return;
+        }
         LaunchType::HeadlessVerify | LaunchType::HeadlessMeasureReach => {
             if let Err(error) = headless::run(&launch_profile) {
                 eprintln!("Headless verification failed: {error}");

@@ -14,7 +14,7 @@ impl Plugin for StageScenePlugin {
         // SystemSetの順序関係を設定
         systems::StageSystemSet::configure_sets(app);
 
-        app.add_plugins(StageGameplayPlugin)
+        app.add_plugins((StageGameplayPlugin, StagePresentationPlugin))
             .add_systems(OnEnter(GameState::Stage), systems::setup)
             .add_systems(
                 OnEnter(GameState::Stage),
@@ -52,13 +52,6 @@ impl Plugin for StageScenePlugin {
                     .run_if(resource_exists::<crate::resources::external_control::ExternalControlBridge>)
                     .run_if(in_state(GameState::Stage)),
             )
-            // Animation: アニメーション更新
-            .add_systems(
-                Update,
-                systems::animate_player
-                    .in_set(systems::StageSystemSet::Animation)
-                    .run_if(in_state(GameState::Stage)),
-            )
             .add_systems(Update, systems::handle_tutorial_overlay_input.in_set(systems::StageSystemSet::Input).run_if(in_state(GameState::Stage)))
             .add_systems(Update, systems::update_stage_root.in_set(systems::StageSystemSet::Movement).run_if(in_state(GameState::Stage)))
             // Progression: ステージ進行処理
@@ -70,20 +63,6 @@ impl Plugin for StageScenePlugin {
                 )
                     .chain()
                     .in_set(systems::StageSystemSet::Progression)
-                    .run_if(in_state(GameState::Stage)),
-            )
-            // Audio: 音声処理（Movementの後、他のシステムと並列実行可能）
-            .add_systems(
-                Update,
-                systems::update_stage_color_grading
-                    .in_set(systems::StageSystemSet::Audio)
-                    .run_if(in_state(GameState::Stage)),
-            )
-            // UI: UI更新（最後に実行）
-            .add_systems(
-                EguiPrimaryContextPass,
-                systems::ui
-                    .in_set(systems::StageSystemSet::UI)
                     .run_if(in_state(GameState::Stage)),
             );
     }
@@ -170,10 +149,42 @@ impl Plugin for StageGameplayPlugin {
 }
 
 /// Identical physics and timed terrain registration for both launch configurations.
+#[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
+pub struct TimedTerrain;
+
 pub struct StagePhysicsPlugin;
 impl Plugin for StagePhysicsPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(avian2d::prelude::PhysicsPlugins::default())
-            .add_systems(Update, systems::update_dynamic_solid);
+            .add_systems(Update, systems::update_dynamic_solid.in_set(TimedTerrain));
+    }
+}
+
+/// The real stage animation, color grading and egui UI, also used by replay.
+pub struct StagePresentationPlugin;
+impl Plugin for StagePresentationPlugin {
+    fn build(&self, app: &mut App) {
+        app
+            // Animation: アニメーション更新
+            .add_systems(
+                Update,
+                systems::animate_player
+                    .in_set(systems::StageSystemSet::Animation)
+                    .run_if(in_state(GameState::Stage)),
+            )
+            // Audio: 音声処理（Movementの後、他のシステムと並列実行可能）
+            .add_systems(
+                Update,
+                systems::update_stage_color_grading
+                    .in_set(systems::StageSystemSet::Audio)
+                    .run_if(in_state(GameState::Stage)),
+            )
+            // UI: UI更新（最後に実行）
+            .add_systems(
+                EguiPrimaryContextPass,
+                systems::ui
+                    .in_set(systems::StageSystemSet::UI)
+                    .run_if(in_state(GameState::Stage)),
+            );
     }
 }

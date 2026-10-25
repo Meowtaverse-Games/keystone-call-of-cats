@@ -10,12 +10,15 @@ pub enum LaunchType {
     Normal,
     ShowChunkGrammarAsciiMap,
     HeadlessVerify,
+    Replay,
     HeadlessMeasureReach,
     SteamAppInfo,
 }
 
 #[derive(Resource, Clone, Default)]
 pub struct LaunchProfile {
+    pub replay_seed: Option<u64>,
+    pub replay_speed: Option<f64>,
     pub headless_scenario: Option<PathBuf>,
     pub headless_report: Option<PathBuf>,
     pub headless_jobs: Option<usize>,
@@ -71,6 +74,24 @@ impl LaunchProfile {
         while index < args.len() {
             let arg = args[index].as_str();
             match arg {
+                "--replay" => {
+                    launch_profile.launch_type = LaunchType::Replay;
+                    launch_profile.headless_scenario = args.get(index + 1).map(PathBuf::from);
+                    index += 1;
+                    changed = true;
+                }
+                "--seed" => {
+                    launch_profile.replay_seed = args.get(index + 1).and_then(|s| s.parse().ok());
+                    index += 1;
+                }
+                "--replay-speed" => {
+                    launch_profile.replay_speed = Some(
+                        args.get(index + 1)
+                            .and_then(|s| s.parse().ok())
+                            .unwrap_or(f64::NAN),
+                    );
+                    index += 1;
+                }
                 "--headless-verify" => {
                     launch_profile.launch_type = LaunchType::HeadlessVerify;
                     launch_profile.headless_scenario = args.get(index + 1).map(PathBuf::from);
@@ -214,6 +235,28 @@ mod tests {
 
     use super::LaunchProfile;
 
+    #[test]
+    fn replay_parses_seed_speed_and_optional_report() {
+        let profile = LaunchProfile::from_args(
+            &[
+                "game",
+                "--replay",
+                "scenario.json",
+                "--seed",
+                "17",
+                "--replay-speed",
+                "0.5",
+                "--report",
+                "report.json",
+            ]
+            .map(str::to_owned),
+        );
+        assert!(matches!(profile.launch_type, super::LaunchType::Replay));
+        assert_eq!(profile.replay_seed, Some(17));
+        assert_eq!(profile.replay_speed, Some(0.5));
+        assert_eq!(profile.headless_report, Some(PathBuf::from("report.json")));
+        assert!(!profile.external_control);
+    }
     #[test]
     fn headless_modes_parse_without_enabling_other_services() {
         let args = [
