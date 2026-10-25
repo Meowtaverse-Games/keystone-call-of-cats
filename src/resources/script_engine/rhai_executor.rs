@@ -786,6 +786,21 @@ mod tests {
         );
     }
 
+    #[test]
+    fn place_up_emits_only_when_the_capability_is_allowed() {
+        let executor = RhaiScriptExecutor::new();
+        let type4 = allowed(&["move", "is_touched", "is_empty", "place"]);
+        assert!(matches!(
+            executor.run("place(\"up\");", Some(&type4)),
+            Ok(commands) if matches!(commands.as_slice(), [ScriptCommand::Place(MoveDirection::Top)])
+        ));
+        assert!(
+            executor
+                .compile_step("place(\"up\");", Some(&allowed(&["move"])))
+                .is_err()
+        );
+    }
+
     fn next_command_within(
         program: &mut dyn ScriptProgram,
         state: &ScriptState,
