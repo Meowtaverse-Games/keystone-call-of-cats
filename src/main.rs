@@ -63,6 +63,7 @@ fn main() {
             return;
         }
         LaunchType::HeadlessVerify
+        | LaunchType::HeadlessAgent
         | LaunchType::HeadlessMeasureReach
         | LaunchType::HeadlessMeasureSnapshot => {
             if let Err(error) = headless::run(&launch_profile) {
