@@ -51,7 +51,13 @@ skipping simulation frames. `--replay-speed` (0.01–100, default 1) changes onl
 real-time pacing, never simulation delta. Asset loading uses zero simulation time;
 the first stage update is the same zero-delta bootstrap as headless.
 
-The initial window is 1800×1200. **Physics viewport scale is fixed to the scenario's
+The replay window requests native maximization on startup: the OS fits it to the
+launch monitor's work area, accounting for DPI, taskbars and window decorations.
+Its restored size is 640×360 logical points; users can restore, resize, maximize,
+or close it normally. No monitor dimensions are used to change simulation settings.
+The result overlay uses up to 600 logical points of width (reduced for small windows)
+to keep the running status on one line and completion status plus exit hint on two.
+**Physics viewport scale is fixed to the scenario's
 `viewport_scale` (default 1), including its explicit `scale_changes`.** The camera
 alone zooms out and shifts its view so the entire 30×20-cell canvas fits to the
 right of the opaque editor panel, with a small margin. The stage root, physical
@@ -78,8 +84,23 @@ use deterministic Rhai synchronization and the same script restrictions below.
 Compare `seeds[0].trajectory_hash`, not `execution_hash`, when a batch run and a
 single-seed replay use different batch metadata. The hash includes every frame,
 not just the trajectory samples. The windowless replay-schedule test matches both example trajectories, commands and
-goal frames. **Real-window equality and visual framing will be checked by Claude
-on Windows.** WSLg cannot run replay on this machine: debug panics in winit 0.30.13
+goal frames. Claude verified native Windows release/default-features at `b6dbaed`:
+both headless and windowed replay matched Linux for seed 17, without panics or
+schedule cycles. The stage appeared to the right of the editor panel.
+
+| Scenario | Windows headless / replay and Linux trajectory hash | Goal frame |
+| --- | --- | --- |
+| Stage 1 | `fnv1a64-v1:8f5d6c37b6efc4fe` | 787 |
+| Stage 2 | `fnv1a64-v1:eb1f870862eed1bc` | 1087 |
+
+That check also found the old 1800×1200 logical window exceeded a 1920×1200 monitor
+at 175% DPI, and the result text wrapped word by word. Native maximization and an
+explicit result width address these display issues. **Claude will recheck the
+updated window sizing and text on Windows.** The tests check the maximization
+request and camera framing at representative 175%, 100% and 125% logical sizes;
+actual OS work-area placement requires the Windows visual check.
+
+WSLg cannot run replay on this machine: debug panics in winit 0.30.13
 Wayland keyboard initialization (`attempt to add with overflow`); Claude also
 confirmed release exits with Wayland `Broken pipe` after creating a window, while
 X11 cannot start because `libxkbcommon-x11` is missing. No windows were opened for

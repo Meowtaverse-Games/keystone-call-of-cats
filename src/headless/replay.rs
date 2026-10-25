@@ -191,6 +191,9 @@ fn result_ui(mut contexts: EguiContexts, replay: Res<Replay>) {
             .order(egui::Order::Foreground)
             .show(ctx, |ui| {
                 egui::Frame::popup(ui.style()).show(ui, |ui| {
+                    // Areas otherwise start narrow and wrap the status word by word.
+                    let width = (ctx.content_rect().width() - 48.0).clamp(1.0, 600.0);
+                    ui.set_width(width);
                     if replay.finished {
                         ui.label(&replay.status);
                         ui.label("Close the window to exit.");
@@ -251,6 +254,19 @@ fn frame_replay_camera(
     }
 }
 
+// Let the window manager account for monitor DPI, decorations and taskbars.
+// A modest restore size also avoids requesting an oversized initial surface.
+fn replay_window() -> Window {
+    let mut window = Window {
+        title: "Keystone — scenario replay".into(),
+        resolution: (640, 360).into(),
+        present_mode: PresentMode::AutoNoVsync,
+        ..default()
+    };
+    window.set_maximized(true);
+    window
+}
+
 pub fn run(profile: &LaunchProfile) -> Result<()> {
     let source = profile
         .headless_scenario
@@ -273,12 +289,7 @@ pub fn run(profile: &LaunchProfile) -> Result<()> {
                 ..default()
             })
             .set(WindowPlugin {
-                primary_window: Some(Window {
-                    title: "Keystone — scenario replay".into(),
-                    resolution: (1800, 1200).into(),
-                    present_mode: PresentMode::AutoNoVsync,
-                    ..default()
-                }),
+                primary_window: Some(replay_window()),
                 ..default()
             })
             .set(ImagePlugin::default_nearest()),
@@ -423,11 +434,23 @@ fn configure_freeze(app: &mut App) {
 mod tests {
     use super::*;
     #[test]
+    fn replay_requests_native_maximization() {
+        let mut window = replay_window();
+        assert_eq!(window.internal.take_maximize_request(), Some(true));
+        assert_eq!(window.resolution.width(), 640.0);
+        assert_eq!(window.resolution.height(), 360.0);
+    }
+    #[test]
     fn camera_fits_full_canvas_beside_panel_at_every_size_and_scale() {
         for screen in [
             Vec2::new(1800.0, 1200.0),
             Vec2::new(900.0, 600.0),
             Vec2::new(2400.0, 1000.0),
+            // Representative monitor sizes / OS DPI scales. Native maximization
+            // supplies the actual client area; framing also tolerates smaller areas.
+            Vec2::new(1920.0, 1200.0) / 1.75,
+            Vec2::new(2560.0, 1440.0),
+            Vec2::new(1366.0, 768.0) / 1.25,
         ] {
             for fraction in [0.125, 0.25, 0.5] {
                 for scale in [0.5, 0.75, 1.0, 1.25, 1.5, 2.0] {
