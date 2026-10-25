@@ -126,7 +126,9 @@ validation. Small measured advantages are noise. Full-replay benchmarks retain
 script tracing too, so they compare the same instrumented Session driver; ordinary
 `--headless-verify` can be faster. The separate baseline script runs the unchanged
 verification CLI for all eight motion cases and stages 1/2, and compares the entire
-six-scale reach summary.
+six-scale reach summary. The frozen summary predates `player_physics` and
+`motion_reference` metadata already present on main; only those two additive keys
+are ignored when absent in the baseline. Every baseline value is compared exactly.
 
 ## Next decision
 
@@ -136,3 +138,33 @@ required system-local/private physics state (or a deterministic synchronous work
 model with a supported checkpoint boundary). Retain the same tests to reject any
 partial-copy implementation. The 1,000 terrains / 5 minutes target is not established
 by this PR; the future agent's branching factor and depth also need measurement.
+
+## Recorded result (2026-10-25)
+
+All 116 tests passed, including seven checkpoint tests. Formatting and Clippy with
+`-D warnings` passed. The verification CLI preserved all eight frozen motion hashes,
+both stage example hashes, and every existing value in the six-scale reach summary.
+
+2026-10-25、AMD Ryzen AI 9 HX 370 w/ Radeon 890M、Linux-6.18.33.2-microsoft-standard-WSL2-x86_64-with-glibc2.39、rustc 1.99.1 (58cf8f9c3 2026-10-13)。`cargo build --release --locked -j 4`（既定 release: opt-level=3 / LTO / codegen-units=1）後、他の検証・ビルド終了後に測定。全5ケース成功。各行20サンプル。
+
+| ケース | frame | 保存 bytes | 保存 µs 平均/最大 | 復元 µs 平均/最大 | 先頭から再生 µs 平均/最大 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| no-code | 10 | 3679 | 246.8 / 742.2 | 23887.9 / 31885.4 | 24966.0 / 31476.3 |
+| no-code | 100 | 20870 | 330.7 / 642.4 | 52383.7 / 69031.1 | 53060.4 / 73406.4 |
+| no-code | 1000 | 192770 | 2165.5 / 7281.2 | 359009.6 / 411372.7 | 357560.2 / 448850.9 |
+| rhai-dig | 10 | 2658 | 250.9 / 508.3 | 21818.9 / 32853.7 | 22027.1 / 39478.9 |
+| rhai-dig | 100 | 3277 | 377.3 / 737.7 | 51823.0 / 64200.8 | 50381.6 / 64347.3 |
+| rhai-dig | 1000 | 173805 | 2348.9 / 7852.2 | 349625.5 / 485967.0 | 345454.8 / 412309.8 |
+| keystone-dig | 10 | 2648 | 148.1 / 311.0 | 16313.1 / 18077.4 | 16729.2 / 19248.7 |
+| keystone-dig | 100 | 3268 | 230.4 / 393.9 | 45235.0 / 50350.9 | 44696.8 / 51477.5 |
+| keystone-dig | 1000 | 173796 | 2003.4 / 3443.8 | 333279.5 / 363463.1 | 338355.0 / 387510.5 |
+| rhai-place | 10 | 2068 | 220.7 / 725.4 | 20507.4 / 22740.7 | 18424.4 / 24250.8 |
+| rhai-place | 100 | 2478 | 316.9 / 695.2 | 53477.7 / 68689.3 | 52668.1 / 70622.0 |
+| rhai-place | 1000 | 161839 | 1897.9 / 3521.7 | 339100.5 / 395903.5 | 328572.7 / 376304.0 |
+| keystone-place | 10 | 2056 | 183.1 / 324.8 | 18221.4 / 23027.1 | 17466.0 / 19623.4 |
+| keystone-place | 100 | 2466 | 290.2 / 706.4 | 52545.8 / 76873.9 | 50729.2 / 79034.4 |
+| keystone-place | 1000 | 161827 | 1923.3 / 2955.8 | 338866.6 / 434047.5 | 338085.2 / 459936.8 |
+
+Raw measurements: `snapshot-benchmark-summary.json`. These timings show the cost of
+the replay oracle, not an accelerated native world snapshot. Differences between
+restore and replay are not a crossover; both perform the entire simulation prefix.

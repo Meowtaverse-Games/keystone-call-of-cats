@@ -33,5 +33,12 @@ subprocess.run(['python3', 'examples/headless/measure-scales.py', '--binary', ar
                 '--output', str(output / 'reach')], env=env, check=True)
 actual = json.loads((output / 'reach' / 'summary.json').read_text())
 expected = json.loads(Path('examples/headless/reach-scale-summary.json').read_text())
+# The frozen reach summary predates the physics-parameter metadata added on main.
+# Ignore only those additive metadata keys when absent in the frozen file; compare
+# every recorded measurement, coordinate, frame and other key exactly.
+for measured, frozen in zip(actual['reports'], expected['reports']):
+    for key in ('player_physics', 'motion_reference'):
+        if key not in frozen:
+            measured.pop(key, None)
 assert actual == expected, 'Reach summary changed'
 print('All motion/stage hashes and all reach summary values unchanged')
