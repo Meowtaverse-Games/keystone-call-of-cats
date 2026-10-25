@@ -115,3 +115,51 @@ fn build_stage_meta(entries: Vec<RonStageEntry>) -> Vec<StageMeta> {
         })
         .collect()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::{collections::HashSet, fs, path::Path};
+
+    #[test]
+    fn every_catalog_stage_loads_its_embedded_map() {
+        for stage in StageCatalog::load_from_assets().iter() {
+            stage.load_map();
+        }
+    }
+
+    #[test]
+    fn every_stage_ron_is_listed() {
+        let catalog = StageCatalog::load_from_assets();
+        let listed_ids: HashSet<_> = catalog.iter().map(|stage| stage.id.0).collect();
+        let stage_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("assets/stages");
+        for entry in fs::read_dir(stage_dir).unwrap() {
+            let entry = entry.unwrap();
+            let name = entry.file_name();
+            let name = name.to_str().unwrap();
+            if let Some(id) = name
+                .strip_prefix("stage-")
+                .and_then(|name| name.strip_suffix(".ron"))
+                .and_then(|id| id.parse::<usize>().ok())
+            {
+                assert!(listed_ids.contains(&id), "Unlisted stage file: {name}");
+            }
+        }
+    }
+
+    #[test]
+    fn catalog_ids_are_unique_and_sequential_from_one() {
+        let catalog = StageCatalog::load_from_assets();
+        assert!(!catalog.stages.is_empty());
+        for (index, stage) in catalog.iter().enumerate() {
+            assert_eq!(stage.id, StageId(index + 1));
+        }
+    }
+
+    #[test]
+    fn last_catalog_stage_has_no_next_stage() {
+        let catalog = StageCatalog::load_from_assets();
+        let last = catalog.stages.last().unwrap();
+        assert!(catalog.next_stage(last.id).is_none());
+    }
+}
