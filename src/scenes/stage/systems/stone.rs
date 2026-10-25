@@ -429,14 +429,17 @@ pub fn update_stone_behavior(
                     let is_colliding = if dir.length_squared() > 0.0 {
                         let ray_dir = Dir2::new(dir).unwrap_or(Dir2::X);
                         let origin = global_transform.translation().truncate();
-                        let check_dist = STONE_COLLIDER_RADIUS * world_scale + 2.0;
+                        // Match the query origin and collider world, which still use the
+                        // previous root scale until PostUpdate propagates the resize.
+                        let cast_radius = STONE_COLLIDER_RADIUS * global_transform.scale().x;
+                        let check_dist = cast_radius + 2.0;
                         let mut excluded_entities = vec![entity];
                         excluded_entities.extend(players.iter());
                         let filter = SpatialQueryFilter::from_mask(LayerMask::ALL)
                             .with_excluded_entities(excluded_entities);
 
                         // Use shape cast with a circle matching the stone's collider
-                        let cast_shape = Collider::circle(STONE_COLLIDER_RADIUS * world_scale);
+                        let cast_shape = Collider::circle(cast_radius);
                         let cast_config = ShapeCastConfig::from_max_distance(check_dist);
                         let hit = spatial.cast_shape(
                             &cast_shape,
@@ -458,14 +461,10 @@ pub fn update_stone_behavior(
                             // Draw the circle shape at origin and destination
                             gizmos.circle_2d(
                                 Isometry2d::from_translation(origin),
-                                STONE_COLLIDER_RADIUS * world_scale,
+                                cast_radius,
                                 color,
                             );
-                            gizmos.circle_2d(
-                                Isometry2d::from_translation(end),
-                                STONE_COLLIDER_RADIUS * world_scale,
-                                color,
-                            );
+                            gizmos.circle_2d(Isometry2d::from_translation(end), cast_radius, color);
                             gizmos.line_2d(origin, end, color);
                         }
 

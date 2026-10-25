@@ -1149,6 +1149,78 @@ mod tests {
         }
     }
     #[test]
+    fn resizing_mid_command_preserves_stone_motion_above_floor() {
+        use crate::util::script_types::MoveDirection;
+        let run = |direction, scale: f32| {
+            let mut tiles = vec![((2, 6), TileKind::PlayerSpawn), ((10, 5), TileKind::Stone)];
+            tiles.extend((0..26).map(|x| ((x, 4), TileKind::Solid)));
+            let mut map = Map::synthetic((26, 10), tiles);
+            map.simulation_seed = Some(0);
+            let mut app = build_app(map);
+            let world = app.world_mut();
+            world.resource_mut::<ScriptEditorState>().controls_enabled = true;
+            let stone = world
+                .query_filtered::<Entity, With<StoneRune>>()
+                .single(world)
+                .unwrap();
+            let start = world
+                .get::<Transform>(stone)
+                .unwrap()
+                .translation
+                .truncate();
+            world
+                .get_mut::<systems::StoneCommandState>(stone)
+                .unwrap()
+                .queue
+                .push_back(ScriptCommand::Move(direction));
+            for frame in 0..90 {
+                if frame == 15 {
+                    app.world_mut().resource_mut::<ScaledViewport>().scale = scale;
+                }
+                app.update();
+            }
+            let world = app.world();
+            assert!(
+                !world
+                    .get::<systems::StoneCommandState>(stone)
+                    .unwrap()
+                    .is_busy()
+            );
+            assert_eq!(world.get::<LinearVelocity>(stone).unwrap().0, Vec2::ZERO);
+            (
+                start,
+                world
+                    .get::<Transform>(stone)
+                    .unwrap()
+                    .translation
+                    .truncate(),
+            )
+        };
+        let mut differences = vec![];
+        for direction in [MoveDirection::Right, MoveDirection::Top] {
+            let (start, baseline) = run(direction, 1.0);
+            assert!(
+                baseline.distance(start) > 30.0,
+                "baseline must complete a move"
+            );
+            for scale in [0.5, 1.5, 1.75, 2.0, 3.0] {
+                let (_, actual) = run(direction, scale);
+                let difference = actual.distance(baseline);
+                eprintln!(
+                    "floor resize direction={direction:?} scale={scale} baseline={baseline:?} actual={actual:?} endpoint_delta_px={difference:.9}"
+                );
+                differences.push((direction, scale, difference));
+            }
+        }
+        assert!(
+            differences
+                .iter()
+                .all(|(_, _, difference)| *difference < 1.0),
+            "floor-adjacent moves must preserve their local endpoint within 1 px: {differences:?}"
+        );
+    }
+
+    #[test]
     fn repeat_runs_have_identical_hashes_and_product_physics_moves_player() {
         let s = scenario(1);
         let a = verify_seed(&s, 17).unwrap();
