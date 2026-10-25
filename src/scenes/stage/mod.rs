@@ -73,6 +73,7 @@ pub struct StageGameplayPlugin;
 impl Plugin for StageGameplayPlugin {
     fn build(&self, app: &mut App) {
         systems::StageSystemSet::configure_sets(app);
+        app.insert_resource(crate::resources::player_physics::PlayerPhysicsParams::embedded());
         app.init_resource::<systems::StageProgressionState>()
             .add_message::<systems::StoneCommandMessage>()
             .add_message::<systems::StoneAppendCommandMessage>()

@@ -1,0 +1,29 @@
+{
+  "ron_path": "examples/headless/motion-flat.ron",
+  "seed_start": 17,
+  "seed_count": 1,
+  "max_frames": 360,
+  "trajectory_every": 10,
+  "inputs": [
+    {
+      "frame": 60,
+      "key": "ArrowRight",
+      "pressed": true
+    },
+    {
+      "frame": 90,
+      "key": "Space",
+      "pressed": true
+    },
+    {
+      "frame": 91,
+      "key": "Space",
+      "pressed": false
+    },
+    {
+      "frame": 180,
+      "key": "ArrowRight",
+      "pressed": false
+    }
+  ]
+}

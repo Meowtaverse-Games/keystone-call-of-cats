@@ -3,11 +3,13 @@ use bevy::prelude::*;
 
 use crate::{resources::design_resolution::ScaledViewport, scenes::stage::components::*};
 
-use super::{StoneCommandState, player::PLAYER_BASE_GRAVITY_SCALE};
+use super::StoneCommandState;
+use crate::resources::player_physics::PlayerPhysicsParams;
 
 /// Run before the root adopts the new scale and before movement writes velocities.
 pub fn rescale_stage_motion(
     viewport: Res<ScaledViewport>,
+    physics: Res<PlayerPhysicsParams>,
     roots: Query<(Entity, &Transform), With<StageRoot>>,
     mut velocities: Query<(&ChildOf, &mut LinearVelocity)>,
     mut players: Query<(&ChildOf, &mut GravityScale, Option<&mut PlayerGoalDescent>), With<Player>>,
@@ -37,7 +39,7 @@ pub fn rescale_stage_motion(
                     descent.original_gravity *= ratio;
                 }
             } else {
-                let target = PLAYER_BASE_GRAVITY_SCALE * viewport.scale;
+                let target = physics.gravity_scale * viewport.scale;
                 if gravity.0 != target {
                     gravity.0 = target;
                 }

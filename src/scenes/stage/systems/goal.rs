@@ -3,7 +3,10 @@ use bevy::prelude::*;
 use bevy_fluent::prelude::Localization;
 
 use crate::{
-    resources::{design_resolution::ScaledViewport, settings::GameSettings, tiled::*},
+    resources::{
+        design_resolution::ScaledViewport, player_physics::PlayerPhysicsParams,
+        settings::GameSettings, tiled::*,
+    },
     scenes::stage::components::*,
     util::localization::tr,
 };
@@ -11,7 +14,6 @@ use crate::{
 use super::{StageAudioHandles, StageAudioState, ui::ScriptEditorState};
 
 const GOAL_OBJECT_ID: u32 = 178;
-const GOAL_DESCENT_SPEED: f32 = 32.0;
 
 pub fn spawn_goal(
     commands: &mut Commands,
@@ -60,8 +62,10 @@ type GoalCheckPlayer<'w> = (
     &'w CollidingEntities,
 );
 
+#[allow(clippy::too_many_arguments)]
 pub fn check_goal_completion(
     mut commands: Commands,
+    physics: Res<PlayerPhysicsParams>,
     mut editor_state: ResMut<ScriptEditorState>,
     mut player_query: Query<GoalCheckPlayer<'_>, With<Player>>,
     goals: Query<(&Transform, &Goal)>,
@@ -123,7 +127,7 @@ pub fn check_goal_completion(
             warn!("Goal completion: failed to find target Y (no tiles?)");
             continue;
         };
-        let align_x = goal_pos.translation.x + 4.0;
+        let align_x = goal_pos.translation.x + physics.goal_align_x;
         let original_memberships = layers.memberships;
         let original_filters = layers.filters;
         commands.entity(player_entity).insert((
@@ -131,7 +135,7 @@ pub fn check_goal_completion(
             PlayerGoalDescent {
                 target_y,
                 align_x,
-                speed: GOAL_DESCENT_SPEED,
+                speed: physics.goal_descent_speed,
                 original_memberships,
                 original_filters,
                 original_gravity: gravity.0,

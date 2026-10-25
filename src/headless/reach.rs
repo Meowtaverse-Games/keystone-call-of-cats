@@ -5,6 +5,9 @@ use serde::Serialize;
 #[derive(Serialize)]
 pub(super) struct ReachReport {
     schema_version: u32,
+    player_physics: PlayerPhysicsParams,
+    /// Ballistic reference only; never used to drive product motion.
+    motion_reference: MotionReference,
     viewport_scale: f32,
     fixed_input_comparisons: Vec<ScaleComparison>,
     viewport_px: [f32; 2],
@@ -13,6 +16,25 @@ pub(super) struct ReachReport {
     protocol: &'static str,
     measurements: Vec<Measurement>,
 }
+#[derive(Serialize)]
+struct MotionReference {
+    ballistic_jump_height_cells: f32,
+    ballistic_time_to_apex_seconds: f32,
+    run_speed_cells_per_second: f32,
+}
+impl MotionReference {
+    fn new(physics: &PlayerPhysicsParams, local_tile_px: f32) -> Self {
+        let gravity = Gravity::default().0.y.abs() * physics.gravity_scale;
+        Self {
+            ballistic_jump_height_cells: physics.jump_speed * physics.jump_speed
+                / (2.0 * gravity)
+                / local_tile_px,
+            ballistic_time_to_apex_seconds: physics.jump_speed / gravity,
+            run_speed_cells_per_second: physics.speed / local_tile_px,
+        }
+    }
+}
+
 #[derive(Serialize)]
 struct Measurement {
     map_size: [isize; 2],
@@ -46,6 +68,7 @@ fn trial(
     cells: isize,
     takeoff_cell: f32,
     scale: f32,
+    physics: &PlayerPhysicsParams,
 ) -> Result<Trial> {
     // Bottom-up interior cells. A fixed source edge and mirrored destination make
     // the two directions comparable without teleporting or changing any physics.
@@ -68,7 +91,7 @@ fn trial(
     let mut map = Map::synthetic(size, tiles);
     map.simulation_seed = Some(0);
     let margin = map.boundary_margin;
-    let mut app = build_app_at_scale(map, scale);
+    let mut app = build_app_with_physics(map, scale, physics.clone());
     app.world_mut()
         .resource_mut::<ScriptEditorState>()
         .controls_enabled = true;
@@ -164,6 +187,7 @@ fn trial(
     })
 }
 pub(super) fn measure(scale: f32) -> Result<ReachReport> {
+    let physics = PlayerPhysicsParams::embedded();
     let mut fixed_input_comparisons = vec![];
     let mut measurements = vec![];
     let mut tile_px = 0.0;
@@ -176,7 +200,9 @@ pub(super) fn measure(scale: f32) -> Result<ReachReport> {
                 for step in [true, false] {
                     for cells in 0..=if step { 5 } else { 8 } {
                         for takeoff in [5.5, 6.0, 6.5, 6.75, 6.9] {
-                            trials.push(trial(size, left, runup, step, cells, takeoff, scale)?);
+                            trials.push(trial(
+                                size, left, runup, step, cells, takeoff, scale, &physics,
+                            )?);
                         }
                     }
                 }
@@ -214,6 +240,8 @@ pub(super) fn measure(scale: f32) -> Result<ReachReport> {
     });
     Ok(ReachReport {
         schema_version: 1,
+        motion_reference: MotionReference::new(&physics, tile_px / scale),
+        player_physics: physics,
         viewport_scale: scale,
         fixed_input_comparisons,
         viewport_px: [1800.0, 1200.0],
@@ -429,5 +457,65 @@ mod tests {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod physics_override_tests {
+    use super::*;
+
+    #[test]
+    fn stronger_gravity_reduces_jump_rise_with_the_same_one_cell_step_bound() {
+        let baseline = PlayerPhysicsParams::embedded();
+        let stronger = PlayerPhysicsOverrides {
+            gravity_scale: Some(88.0),
+            ..Default::default()
+        }
+        .resolve()
+        .unwrap();
+        let mut maxima = vec![];
+        for physics in [&baseline, &stronger] {
+            let mut max_step = -1;
+            for cells in 0..=5 {
+                for takeoff in [5.5, 6.0, 6.5, 6.75, 6.9] {
+                    let result =
+                        trial((26, 10), false, false, true, cells, takeoff, 1.0, physics).unwrap();
+                    if result.landed {
+                        max_step = max_step.max(cells);
+                    }
+                }
+            }
+            maxima.push(max_step);
+        }
+        assert_eq!(maxima, [1, 1]);
+        let default: Scenario = serde_json::from_str(
+            &fs::read_to_string("examples/headless/motion-standing-jump.json").unwrap(),
+        )
+        .unwrap();
+        let mut heavy = default.clone();
+        heavy.player_physics.gravity_scale = Some(88.0);
+        let peak = |mut scenario: Scenario| {
+            scenario.trajectory_every = 1;
+            let result = verify(&scenario, 1).unwrap();
+            assert_eq!(
+                result.player_physics,
+                scenario.player_physics.resolve().unwrap()
+            );
+            let points = &result.seeds[0].trajectory;
+            let floor = points.iter().find(|p| p.frame == 89).unwrap().world_px[1];
+            points
+                .iter()
+                .filter(|p| p.frame >= 90)
+                .map(|p| p.world_px[1] - floor)
+                .fold(0.0, f32::max)
+                / 60.0
+        };
+        let normal_peak = peak(default);
+        let heavy_peak = peak(heavy);
+        println!(
+            "Standing jump rise (cells): default={normal_peak}, gravity+10%={heavy_peak}; step bounds={maxima:?}"
+        );
+        assert!(heavy_peak < normal_peak * 0.95);
+        assert!(heavy_peak > normal_peak * 0.85);
     }
 }
