@@ -409,13 +409,18 @@ actual reach trials. They are never fed back into movement calculations.
 Headless stage IDs are accepted only when present in the embedded `StageCatalog`.
 Error messages include its range and exact IDs. Expanding the product catalog and
 embedded maps expands accepted IDs without changing the headless loader.
-The registration regression derives all normal stage systems from every schedule,
-excludes only five documented presentation/tutorial functions, and requires each
-remaining registration headlessly. It also derives the Update topology comparison
-from those registrations (including rescaling and stage progression), rather than
-maintaining a gameplay function list. Normal-play lifecycle systems are shared
-registrations gated by `GraphicalStageLifecycle`; seeded headless/replay drivers
-own their setup and completion. No normal progression or persistence runs in them.
+The registration regression derives all normal stage systems from every schedule.
+A single commented allowlist identifies presentation/tutorial functions and the
+normal-only stage/window/external-control lifecycle; all remaining registrations
+must exist headlessly, even when normal registration has a run condition. Failure
+messages include both system names and TypeIds. Normal-only systems stay in
+`StageScenePlugin` in their original registration order, without hidden disabling
+conditions in the shared gameplay plugin. Seeded headless/replay drivers own their
+setup and completion. No normal progression or persistence runs in them.
+The Update topology comparison still derives its gameplay systems from actual
+registration. A separate regression pins the base execution order of conflicting
+reset, dynamic-terrain, rescaling, root-motion and external-input system pairs in
+both normal and headless configurations.
 
 Measured at scale 1, seed 17, jump at frame 90 (rise measured from frame 89 to
 the every-frame apex):

@@ -8,87 +8,64 @@ pub mod systems;
 
 pub use systems::StageProgressionState;
 
-/// Only normal play owns stage selection, reloads and persistence. Headless and
-/// replay register the same lifecycle systems but use their own seeded drivers.
-#[derive(Resource, Default)]
-struct GraphicalStageLifecycle;
-
 pub struct StageScenePlugin;
 impl Plugin for StageScenePlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<GraphicalStageLifecycle>()
-            .add_plugins((StageGameplayPlugin, StagePresentationPlugin))
+        // SystemSetの順序関係を設定
+        systems::StageSystemSet::configure_sets(app);
+
+        app.add_plugins((StageGameplayPlugin, StagePresentationPlugin))
+            .add_systems(OnEnter(GameState::Stage), systems::setup)
+            .add_systems(
+                OnEnter(GameState::Stage),
+                crate::resources::external_control::invalidate_external_generation
+                    .run_if(resource_exists::<crate::resources::external_control::ExternalControlState>),
+            )
             .add_systems(
                 Update,
                 tick_pending_tutorial.run_if(in_state(GameState::Stage)),
             )
             .add_systems(
+                OnEnter(GameState::Stage),
+                crate::systems::engine::friction::apply_zero_friction_to_rigid_bodies
+                    .after(systems::setup),
+            )
+            .add_systems(
+                OnExit(GameState::Stage),
+                (
+                    systems::cleanup,
+                    crate::resources::external_control::invalidate_external_generation
+                        .run_if(resource_exists::<crate::resources::external_control::ExternalControlState>),
+                ),
+            )
+            .add_systems(
                 Update,
-                systems::handle_tutorial_overlay_input
+                crate::resources::external_control::drain_external_commands
                     .in_set(systems::StageSystemSet::Input)
+                    .run_if(resource_exists::<crate::resources::external_control::ExternalControlBridge>)
+                    .run_if(in_state(GameState::Stage)),
+            )
+            .add_systems(
+                Update,
+                crate::resources::external_control::publish_external_snapshot
+                    .after(systems::update_stone_behavior)
+                    .run_if(resource_exists::<crate::resources::external_control::ExternalControlBridge>)
+                    .run_if(in_state(GameState::Stage)),
+            )
+            .add_systems(Update, systems::handle_tutorial_overlay_input.in_set(systems::StageSystemSet::Input).run_if(in_state(GameState::Stage)))
+            .add_systems(Update, systems::update_stage_root.in_set(systems::StageSystemSet::Movement).run_if(in_state(GameState::Stage)))
+            // Progression: ステージ進行処理
+            .add_systems(
+                Update,
+                (
+                    systems::advance_stage_if_cleared,
+                    systems::reload_stage_if_needed,
+                )
+                    .chain()
+                    .in_set(systems::StageSystemSet::Progression)
                     .run_if(in_state(GameState::Stage)),
             );
     }
-}
-
-fn register_stage_lifecycle(app: &mut App) {
-    app.add_systems(
-        OnEnter(GameState::Stage),
-        systems::setup.run_if(resource_exists::<GraphicalStageLifecycle>),
-    )
-    .add_systems(
-        OnEnter(GameState::Stage),
-        crate::resources::external_control::invalidate_external_generation
-            .run_if(resource_exists::<crate::resources::external_control::ExternalControlState>),
-    )
-    .add_systems(
-        OnEnter(GameState::Stage),
-        crate::systems::engine::friction::apply_zero_friction_to_rigid_bodies
-            .after(systems::setup)
-            .run_if(resource_exists::<GraphicalStageLifecycle>),
-    )
-    .add_systems(
-        OnExit(GameState::Stage),
-        (
-            systems::cleanup.run_if(resource_exists::<GraphicalStageLifecycle>),
-            crate::resources::external_control::invalidate_external_generation.run_if(
-                resource_exists::<crate::resources::external_control::ExternalControlState>,
-            ),
-        ),
-    )
-    .add_systems(
-        Update,
-        crate::resources::external_control::drain_external_commands
-            .in_set(systems::StageSystemSet::Input)
-            .run_if(resource_exists::<crate::resources::external_control::ExternalControlBridge>)
-            .run_if(in_state(GameState::Stage)),
-    )
-    .add_systems(
-        Update,
-        crate::resources::external_control::publish_external_snapshot
-            .after(systems::update_stone_behavior)
-            .run_if(resource_exists::<crate::resources::external_control::ExternalControlBridge>)
-            .run_if(in_state(GameState::Stage)),
-    )
-    .add_systems(
-        Update,
-        systems::update_stage_root
-            .run_if(resource_exists::<GraphicalStageLifecycle>)
-            .in_set(systems::StageSystemSet::Movement)
-            .run_if(in_state(GameState::Stage)),
-    )
-    // Progression: ステージ進行処理
-    .add_systems(
-        Update,
-        (
-            systems::advance_stage_if_cleared,
-            systems::reload_stage_if_needed,
-        )
-            .chain()
-            .run_if(resource_exists::<GraphicalStageLifecycle>)
-            .in_set(systems::StageSystemSet::Progression)
-            .run_if(in_state(GameState::Stage)),
-    );
 }
 
 /// Product gameplay registration shared by graphical play and headless verification.
@@ -97,7 +74,6 @@ impl Plugin for StageGameplayPlugin {
     fn build(&self, app: &mut App) {
         systems::StageSystemSet::configure_sets(app);
         app.insert_resource(crate::resources::player_physics::PlayerPhysicsParams::embedded());
-        register_stage_lifecycle(app);
         app.init_resource::<systems::StageProgressionState>()
             .add_message::<systems::StoneCommandMessage>()
             .add_message::<systems::StoneAppendCommandMessage>()

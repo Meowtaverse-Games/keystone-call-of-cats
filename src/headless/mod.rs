@@ -983,9 +983,10 @@ mod tests {
             }
             false
         }
-        // Keep this list limited to presentation: every other normal stage
-        // system (in every schedule) must be registered headlessly as well.
-        let presentation_only = [
+        // The only exclusions from normal registration. Keep normal-only
+        // systems in StageScenePlugin (in the original order), not in the shared
+        // plugin behind conditions that silently disable them headlessly.
+        let normal_only = [
             // Changes sprite frames/timers, never colliders or player motion.
             IntoSystem::into_system(systems::animate_player).system_type(),
             // Camera color grading only.
@@ -996,11 +997,37 @@ mod tests {
             IntoSystem::into_system(systems::tick_pending_tutorial).system_type(),
             // Dismisses tutorial overlays via keyboard, absent in seeded runs.
             IntoSystem::into_system(systems::handle_tutorial_overlay_input).system_type(),
+            // Normal setup loads the selected stage/UI; headless uses seeded startup setup.
+            IntoSystem::into_system(systems::setup).system_type(),
+            // Normal OnEnter friction is replaced by headless Startup friction after seeded setup.
+            IntoSystem::into_system(
+                crate::systems::engine::friction::apply_zero_friction_to_rigid_bodies,
+            )
+            .system_type(),
+            // Normal OnExit cleanup; each headless seed drops its entire World instead.
+            IntoSystem::into_system(systems::cleanup).system_type(),
+            // Normal root includes window/letterbox offsets; headless uses update_headless_root.
+            IntoSystem::into_system(systems::update_stage_root).system_type(),
+            // Normal progression unlocks/saves stages; headless stops at the scenario boundary.
+            IntoSystem::into_system(systems::advance_stage_if_cleared).system_type(),
+            // Normal reload follows stage selection; headless constructs a fresh seeded World.
+            IntoSystem::into_system(systems::reload_stage_if_needed).system_type(),
+            // External session ownership exists only with the normal-play control service.
+            IntoSystem::into_system(
+                crate::resources::external_control::invalidate_external_generation,
+            )
+            .system_type(),
+            // Offline scenario input replaces commands from the normal-play HTTP bridge.
+            IntoSystem::into_system(crate::resources::external_control::drain_external_commands)
+                .system_type(),
+            // Offline trajectory reports replace snapshots for normal-play external clients.
+            IntoSystem::into_system(crate::resources::external_control::publish_external_snapshot)
+                .system_type(),
         ];
         fn registered(
             app: &mut App,
             label: bevy::ecs::schedule::InternedScheduleLabel,
-        ) -> Vec<std::any::TypeId> {
+        ) -> Vec<(std::any::TypeId, String)> {
             let Some(mut schedule) = app.world_mut().resource_mut::<Schedules>().remove(label)
             else {
                 return vec![];
@@ -1011,8 +1038,8 @@ mod tests {
                 .unwrap()
                 // Bevy inserts synchronization nodes after registration; their
                 // count depends on presentation-only deferred commands too.
-                .map(|(_, system)| system.system_type())
-                .filter(|id| *id != std::any::TypeId::of::<ApplyDeferred>())
+                .map(|(_, system)| (system.system_type(), system.name().to_string()))
+                .filter(|(id, _)| *id != std::any::TypeId::of::<ApplyDeferred>())
                 .collect();
             app.world_mut().resource_mut::<Schedules>().insert(schedule);
             ids
@@ -1096,21 +1123,26 @@ mod tests {
         for label in labels {
             let normal_ids = registered(&mut normal, label);
             let mut headless_ids = registered(&mut headless, label);
-            for id in normal_ids
+            for (id, name) in normal_ids
                 .into_iter()
-                .filter(|id| !presentation_only.contains(id))
+                .filter(|(id, _)| !normal_only.contains(id))
             {
                 let index = headless_ids
                     .iter()
-                    .position(|actual| *actual == id)
+                    .position(|(actual, _)| *actual == id)
                     .unwrap_or_else(|| {
-                        panic!("Normal system {id:?} missing from headless schedule {label:?}")
+                        panic!(
+                            "Normal system {name} ({id:?}) missing from headless schedule {label:?}"
+                        )
                     });
                 headless_ids.swap_remove(index);
             }
         }
-        let mut core = registered(&mut normal, Update.intern());
-        core.retain(|id| !presentation_only.contains(id));
+        let mut core: Vec<_> = registered(&mut normal, Update.intern())
+            .into_iter()
+            .map(|(id, _)| id)
+            .filter(|id| !normal_only.contains(id))
+            .collect();
         core.sort();
         core.dedup();
         assert_eq!(
@@ -1141,6 +1173,104 @@ mod tests {
             assert!(!normal_types.is_empty());
             assert_eq!(normal_types, types(&mut headless));
         }
+    }
+
+    #[test]
+    fn stage_update_preserves_base_order_for_conflicting_systems() {
+        use crate::scenes::stage::StageScenePlugin;
+        use bevy::ecs::system::{IntoSystem, System};
+
+        fn check(app: &mut App, graphical: bool) {
+            let mut schedule = app
+                .world_mut()
+                .resource_mut::<Schedules>()
+                .remove(Update)
+                .unwrap();
+            schedule.initialize(app.world_mut()).unwrap();
+            let ordered: Vec<_> = schedule
+                .systems()
+                .unwrap()
+                .map(|(_, system)| system.system_type())
+                .collect();
+            // These pairs were unordered conflicts in base 32a49ac. Pin the
+            // executor's actual order without adding production dependencies
+            // (which would themselves rebuild/reorder the schedule).
+            macro_rules! before {
+                ($first:path, $second:path) => {{
+                    let first = IntoSystem::into_system($first).system_type();
+                    let second = IntoSystem::into_system($second).system_type();
+                    let a = ordered
+                        .iter()
+                        .position(|id| *id == first)
+                        .expect(stringify!($first));
+                    let b = ordered
+                        .iter()
+                        .position(|id| *id == second)
+                        .expect(stringify!($second));
+                    assert!(
+                        a < b,
+                        "base order changed (graphical={}): {} must precede {}",
+                        graphical,
+                        stringify!($first),
+                        stringify!($second)
+                    );
+                }};
+            }
+            before!(
+                systems::rescale_stage_motion,
+                systems::reset_player_position
+            );
+            before!(systems::rescale_stage_motion, systems::reset_stone_position);
+            before!(systems::rescale_stage_motion, systems::tick_script_program);
+            before!(systems::move_player, systems::update_stone_behavior);
+            if graphical {
+                before!(
+                    systems::handle_stone_messages,
+                    crate::resources::external_control::drain_external_commands
+                );
+                before!(
+                    systems::handle_stone_append_messages,
+                    crate::resources::external_control::drain_external_commands
+                );
+                before!(systems::reset_stone_position, systems::update_dynamic_solid);
+                before!(
+                    systems::reset_player_position,
+                    systems::update_dynamic_solid
+                );
+                before!(
+                    systems::update_stone_behavior,
+                    systems::update_dynamic_solid
+                );
+                before!(systems::update_stone_behavior, systems::update_stage_root);
+                before!(systems::update_dynamic_solid, systems::update_stage_root);
+            } else {
+                before!(
+                    systems::rescale_stage_motion,
+                    systems::handle_stone_messages
+                );
+                before!(
+                    systems::rescale_stage_motion,
+                    systems::handle_stone_append_messages
+                );
+                before!(systems::update_dynamic_solid, systems::reset_stone_position);
+                before!(
+                    systems::update_dynamic_solid,
+                    systems::reset_player_position
+                );
+                before!(systems::update_dynamic_solid, update_headless_root);
+                before!(systems::update_stone_behavior, update_headless_root);
+            }
+        }
+        let mut normal = App::new();
+        normal
+            .add_plugins((MinimalPlugins, TransformPlugin, StatesPlugin))
+            .init_state::<GameState>()
+            .add_plugins((StagePhysicsPlugin, StageScenePlugin));
+        normal.finish();
+        normal.cleanup();
+        check(&mut normal, true);
+        let mut headless = build_app(load_map(&scenario(1), 17).unwrap());
+        check(&mut headless, false);
     }
 
     #[test]
