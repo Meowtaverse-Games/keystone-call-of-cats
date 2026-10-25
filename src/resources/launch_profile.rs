@@ -9,11 +9,20 @@ pub enum LaunchType {
     #[default]
     Normal,
     ShowChunkGrammarAsciiMap,
+    HeadlessVerify,
+    Replay,
+    HeadlessMeasureReach,
     SteamAppInfo,
 }
 
 #[derive(Resource, Clone, Default)]
 pub struct LaunchProfile {
+    pub replay_seed: Option<u64>,
+    pub replay_speed: Option<f64>,
+    pub headless_scenario: Option<PathBuf>,
+    pub headless_report: Option<PathBuf>,
+    pub headless_jobs: Option<usize>,
+    pub headless_viewport_scale: Option<f32>,
     pub changed: bool,
     pub launch_type: LaunchType,
     pub skip_boot: bool,
@@ -65,6 +74,54 @@ impl LaunchProfile {
         while index < args.len() {
             let arg = args[index].as_str();
             match arg {
+                "--replay" => {
+                    launch_profile.launch_type = LaunchType::Replay;
+                    launch_profile.headless_scenario = args.get(index + 1).map(PathBuf::from);
+                    index += 1;
+                    changed = true;
+                }
+                "--seed" => {
+                    launch_profile.replay_seed = args.get(index + 1).and_then(|s| s.parse().ok());
+                    index += 1;
+                }
+                "--replay-speed" => {
+                    launch_profile.replay_speed = Some(
+                        args.get(index + 1)
+                            .and_then(|s| s.parse().ok())
+                            .unwrap_or(f64::NAN),
+                    );
+                    index += 1;
+                }
+                "--headless-verify" => {
+                    launch_profile.launch_type = LaunchType::HeadlessVerify;
+                    launch_profile.headless_scenario = args.get(index + 1).map(PathBuf::from);
+                    index += 1;
+                    changed = true;
+                }
+                "--headless-measure-reach" => {
+                    launch_profile.launch_type = LaunchType::HeadlessMeasureReach;
+                    changed = true;
+                }
+                "--report" => {
+                    launch_profile.headless_report = args.get(index + 1).map(PathBuf::from);
+                    index += 1;
+                }
+                "--viewport-scale" => {
+                    launch_profile.headless_viewport_scale = Some(
+                        args.get(index + 1)
+                            .and_then(|s| s.parse().ok())
+                            .unwrap_or(f32::NAN),
+                    );
+                    index += 1;
+                }
+                "--jobs" => {
+                    launch_profile.headless_jobs = Some(
+                        args.get(index + 1)
+                            .and_then(|s| s.parse().ok())
+                            .unwrap_or(0),
+                    );
+                    index += 1;
+                }
                 "--show-chunk-grammar-ascii-map" => {
                     launch_profile.launch_type = LaunchType::ShowChunkGrammarAsciiMap;
                     changed = true;
@@ -177,6 +234,65 @@ mod tests {
     use std::path::PathBuf;
 
     use super::LaunchProfile;
+
+    #[test]
+    fn replay_parses_seed_speed_and_optional_report() {
+        let profile = LaunchProfile::from_args(
+            &[
+                "game",
+                "--replay",
+                "scenario.json",
+                "--seed",
+                "17",
+                "--replay-speed",
+                "0.5",
+                "--report",
+                "report.json",
+            ]
+            .map(str::to_owned),
+        );
+        assert!(matches!(profile.launch_type, super::LaunchType::Replay));
+        assert_eq!(profile.replay_seed, Some(17));
+        assert_eq!(profile.replay_speed, Some(0.5));
+        assert_eq!(profile.headless_report, Some(PathBuf::from("report.json")));
+        assert!(!profile.external_control);
+    }
+    #[test]
+    fn headless_modes_parse_without_enabling_other_services() {
+        let args = [
+            "game",
+            "--headless-verify",
+            "scenario.json",
+            "--report",
+            "report.json",
+            "--jobs",
+            "4",
+        ]
+        .map(str::to_owned);
+        let profile = LaunchProfile::from_args(&args);
+        assert!(matches!(
+            profile.launch_type,
+            super::LaunchType::HeadlessVerify
+        ));
+        assert_eq!(profile.headless_jobs, Some(4));
+        assert_eq!(
+            profile.headless_scenario,
+            Some(PathBuf::from("scenario.json"))
+        );
+        assert_eq!(profile.headless_report, Some(PathBuf::from("report.json")));
+        assert!(!profile.external_control);
+        assert!(!profile.ci_smoke_enabled());
+        let args =
+            ["game", "--headless-measure-reach", "--report", "reach.json"].map(str::to_owned);
+        assert!(matches!(
+            LaunchProfile::from_args(&args).launch_type,
+            super::LaunchType::HeadlessMeasureReach
+        ));
+        assert!(matches!(
+            LaunchProfile::from_args(&["game".into()]).launch_type,
+            super::LaunchType::Normal
+        ));
+    }
 
     #[test]
     fn parses_ci_smoke_report_path() {
