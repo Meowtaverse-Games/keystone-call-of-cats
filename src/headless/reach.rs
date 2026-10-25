@@ -238,6 +238,7 @@ struct ScaleComparison {
     constant_landing_delta_cells: Option<[f32; 2]>,
     resize_apex_delta_cells: f32,
     resize_apex_position_delta_cells: [f32; 2],
+    resize_landing_delta_cells: Option<[f32; 2]>,
     resize_frame_excess_delta_cells: [f32; 2],
 }
 #[derive(Serialize)]
@@ -275,15 +276,20 @@ fn probe(
     ));
     let mut map = Map::synthetic(size, tiles);
     map.simulation_seed = Some(0);
+    // Exercise the scenario driver's scale_changes and input injection, as replay does.
+    let scenario = serde_json::from_value(serde_json::json!({
+        "viewport_scale": initial,
+        "scale_changes": [{"frame": 105, "scale": changed}],
+        "seed_start": 0, "seed_count": 1, "max_frames": 240,
+        "inputs": [
+            {"frame": if runup {60} else {90}, "key": if left {"ArrowLeft"} else {"ArrowRight"}, "pressed": true},
+            {"frame": 90, "key": "Space", "pressed": true},
+            {"frame": 91, "key": "Space", "pressed": false},
+            {"frame": 180, "key": if left {"ArrowLeft"} else {"ArrowRight"}, "pressed": false}
+        ]
+    }))?;
+    let mut run = SeedRun::new(scenario, 0, &map)?;
     let mut app = build_app_at_scale(map, initial);
-    app.world_mut()
-        .resource_mut::<ScriptEditorState>()
-        .controls_enabled = true;
-    let key = if left {
-        KeyCode::ArrowLeft
-    } else {
-        KeyCode::ArrowRight
-    };
     let mut result = JumpProbe {
         initial_scale: initial,
         scale_after_frame_105: changed,
@@ -307,24 +313,9 @@ fn probe(
         if frame == 90 {
             origin = stage_cell_position(&mut app, before);
         }
-        if frame == 105 {
-            app.world_mut().resource_mut::<ScaledViewport>().scale = changed;
-        }
-        let mut keys = app.world_mut().resource_mut::<ButtonInput<KeyCode>>();
-        keys.clear();
-        if frame == if runup { 60 } else { 90 } {
-            keys.press(key);
-        }
-        if frame == 90 {
-            keys.press(KeyCode::Space);
-        }
-        if frame == 91 {
-            keys.release(KeyCode::Space);
-        }
-        if frame == 180 {
-            keys.release(key);
-        }
+        assert!(run.before_frame(app.world_mut()));
         app.update();
+        run.after_frame(app.world_mut())?;
         let pos = player_position(&mut app).unwrap();
         let cell = stage_cell_position(&mut app, pos);
         if frame == 105 {
@@ -392,6 +383,10 @@ fn compare_scale(
         resize_apex_position_delta_cells: (Vec2::from_array(resize.apex_cell)
             - Vec2::from_array(baseline.apex_cell))
         .to_array(),
+        resize_landing_delta_cells: resize
+            .landing_cell
+            .zip(baseline.landing_cell)
+            .map(|(a, b)| [a[0] - b[0], a[1] - b[1]]),
         resize_frame_excess_delta_cells: [
             resize.resize_frame_delta_cells[0] - baseline.resize_frame_delta_cells[0],
             resize.resize_frame_delta_cells[1] - baseline.resize_frame_delta_cells[1],
@@ -400,4 +395,39 @@ fn compare_scale(
         constant_scale: constant,
         resize_during_jump: resize,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn midair_scale_changes_preserve_cell_apex_and_landing() {
+        for size in [(26, 10), (28, 10), (28, 18)] {
+            for left in [false, true] {
+                for runup in [false, true] {
+                    for scale in [0.5, 0.75, 1.25, 1.5, 2.0] {
+                        let comparison = compare_scale(size, left, runup, scale).unwrap();
+                        assert!(comparison.baseline.jumped);
+                        assert!(comparison.resize_during_jump.jumped);
+                        assert!(
+                            comparison.resize_apex_delta_cells.abs() < 0.01,
+                            "size={size:?} left={left} runup={runup} scale={scale}: apex {}",
+                            comparison.resize_apex_delta_cells
+                        );
+                        for delta in comparison.resize_landing_delta_cells.expect("must land") {
+                            assert!(
+                                delta.abs() < 0.01,
+                                "size={size:?} left={left} runup={runup} scale={scale}: landing {delta}"
+                            );
+                        }
+                        assert_eq!(
+                            comparison.baseline.landing_frame,
+                            comparison.resize_during_jump.landing_frame
+                        );
+                    }
+                }
+            }
+        }
+    }
 }

@@ -85,32 +85,32 @@
             10
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": 1.0708866119384766,
+          "resize_apex_delta_cells": 0.0,
           "resize_apex_position_delta_cells": [
-            0.4375,
-            1.0708866119384766
+            0.0,
+            0.0
           ],
           "resize_during_jump": {
             "apex_cell": [
-              8.90625,
-              10.01777172088623
+              8.46875,
+              8.946885108947754
             ],
-            "apex_frame": 133,
-            "apex_rise_cells": 2.5959324836730957,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250458717346191,
             "apex_world_px": [
-              -182.8125,
-              0.5331294536590576
+              -195.9375,
+              -31.593456268310547
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              10.375,
-              7.421842098236084
+              9.625,
+              7.421841621398926
             ],
-            "landing_frame": 177,
+            "landing_frame": 154,
             "landing_world_px": [
-              -138.75,
-              -77.34474182128906
+              -161.25,
+              -77.34475708007812
             ],
             "resize_frame_delta_cells": [
               0.03125,
@@ -123,6 +123,10 @@
             "scale_after_frame_105": 0.5
           },
           "resize_frame_excess_delta_cells": [
+            0.0,
+            0.0
+          ],
+          "resize_landing_delta_cells": [
             0.0,
             0.0
           ]
@@ -208,32 +212,32 @@
             10
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": 1.0708866119384766,
+          "resize_apex_delta_cells": 0.0,
           "resize_apex_position_delta_cells": [
-            0.4375,
-            1.0708866119384766
+            0.0,
+            0.0
           ],
           "resize_during_jump": {
             "apex_cell": [
-              7.90625,
-              10.01777172088623
+              7.46875,
+              8.946885108947754
             ],
-            "apex_frame": 133,
-            "apex_rise_cells": 2.5959324836730957,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250458717346191,
             "apex_world_px": [
-              -212.8125,
-              0.5331370830535889
+              -225.9375,
+              -31.593448638916016
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              9.375,
-              7.421842098236084
+              8.625,
+              7.421841621398926
             ],
-            "landing_frame": 177,
+            "landing_frame": 154,
             "landing_world_px": [
-              -168.75,
-              -77.34474182128906
+              -191.25,
+              -77.34475708007812
             ],
             "resize_frame_delta_cells": [
               0.03125,
@@ -246,6 +250,10 @@
             "scale_after_frame_105": 0.5
           },
           "resize_frame_excess_delta_cells": [
+            0.0,
+            0.0
+          ],
+          "resize_landing_delta_cells": [
             0.0,
             0.0
           ]
@@ -331,32 +339,32 @@
             10
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": 1.0708866119384766,
+          "resize_apex_delta_cells": 0.0,
           "resize_apex_position_delta_cells": [
-            -0.4375,
-            1.0708866119384766
+            0.0,
+            0.0
           ],
           "resize_during_jump": {
             "apex_cell": [
-              21.09375,
-              10.01777172088623
+              21.53125,
+              8.946885108947754
             ],
-            "apex_frame": 133,
-            "apex_rise_cells": 2.5959324836730957,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250458717346191,
             "apex_world_px": [
-              182.8125,
-              0.5331294536590576
+              195.9375,
+              -31.593456268310547
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              19.625,
-              7.421842098236084
+              20.375,
+              7.421841621398926
             ],
-            "landing_frame": 177,
+            "landing_frame": 154,
             "landing_world_px": [
-              138.75,
-              -77.34474182128906
+              161.25,
+              -77.34475708007812
             ],
             "resize_frame_delta_cells": [
               -0.03125,
@@ -369,6 +377,10 @@
             "scale_after_frame_105": 0.5
           },
           "resize_frame_excess_delta_cells": [
+            0.0,
+            0.0
+          ],
+          "resize_landing_delta_cells": [
             0.0,
             0.0
           ]
@@ -454,32 +466,32 @@
             10
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": 1.0708866119384766,
+          "resize_apex_delta_cells": 0.0,
           "resize_apex_position_delta_cells": [
-            -0.4375,
-            1.0708866119384766
+            0.0,
+            0.0
           ],
           "resize_during_jump": {
             "apex_cell": [
-              22.09375,
-              10.01777172088623
+              22.53125,
+              8.946885108947754
             ],
-            "apex_frame": 133,
-            "apex_rise_cells": 2.5959324836730957,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250458717346191,
             "apex_world_px": [
-              212.8125,
-              0.5331370830535889
+              225.9375,
+              -31.593448638916016
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              20.625,
-              7.421842098236084
+              21.375,
+              7.421862602233887
             ],
-            "landing_frame": 177,
+            "landing_frame": 154,
             "landing_world_px": [
-              168.75,
-              -77.34474182128906
+              191.25,
+              -77.34412384033203
             ],
             "resize_frame_delta_cells": [
               -0.03125,
@@ -492,6 +504,10 @@
             "scale_after_frame_105": 0.5
           },
           "resize_frame_excess_delta_cells": [
+            0.0,
+            0.0
+          ],
+          "resize_landing_delta_cells": [
             0.0,
             0.0
           ]
@@ -577,32 +593,32 @@
             10
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": 1.0708866119384766,
+          "resize_apex_delta_cells": 0.0,
           "resize_apex_position_delta_cells": [
-            0.4375,
-            1.0708866119384766
+            0.0,
+            0.0
           ],
           "resize_during_jump": {
             "apex_cell": [
-              7.90625,
-              10.01777172088623
+              7.46875,
+              8.946885108947754
             ],
-            "apex_frame": 133,
-            "apex_rise_cells": 2.5959324836730957,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250458717346191,
             "apex_world_px": [
-              -212.8125,
-              0.5331294536590576
+              -225.9375,
+              -31.593456268310547
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              9.375,
-              7.421863079071045
+              8.625,
+              7.421841621398926
             ],
-            "landing_frame": 177,
+            "landing_frame": 154,
             "landing_world_px": [
-              -168.75,
-              -77.34410095214844
+              -191.25,
+              -77.34475708007812
             ],
             "resize_frame_delta_cells": [
               0.03125,
@@ -615,6 +631,10 @@
             "scale_after_frame_105": 0.5
           },
           "resize_frame_excess_delta_cells": [
+            0.0,
+            0.0
+          ],
+          "resize_landing_delta_cells": [
             0.0,
             0.0
           ]
@@ -700,32 +720,32 @@
             10
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": 1.0708866119384766,
+          "resize_apex_delta_cells": 0.0,
           "resize_apex_position_delta_cells": [
-            0.4375,
-            1.0708866119384766
+            0.0,
+            0.0
           ],
           "resize_during_jump": {
             "apex_cell": [
-              6.90625,
-              10.01777172088623
+              6.46875,
+              8.946885108947754
             ],
-            "apex_frame": 133,
-            "apex_rise_cells": 2.5959324836730957,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250458717346191,
             "apex_world_px": [
-              -242.8125,
-              0.5331370830535889
+              -255.9375,
+              -31.593448638916016
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              8.375,
-              7.421842098236084
+              7.625,
+              7.421841621398926
             ],
-            "landing_frame": 177,
+            "landing_frame": 154,
             "landing_world_px": [
-              -198.75,
-              -77.34474182128906
+              -221.25,
+              -77.34475708007812
             ],
             "resize_frame_delta_cells": [
               0.03125,
@@ -738,6 +758,10 @@
             "scale_after_frame_105": 0.5
           },
           "resize_frame_excess_delta_cells": [
+            0.0,
+            0.0
+          ],
+          "resize_landing_delta_cells": [
             0.0,
             0.0
           ]
@@ -823,32 +847,32 @@
             10
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": 1.0708866119384766,
+          "resize_apex_delta_cells": 0.0,
           "resize_apex_position_delta_cells": [
-            -0.4375,
-            1.0708866119384766
+            0.0,
+            0.0
           ],
           "resize_during_jump": {
             "apex_cell": [
-              22.09375,
-              10.01777172088623
+              22.53125,
+              8.946885108947754
             ],
-            "apex_frame": 133,
-            "apex_rise_cells": 2.5959324836730957,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250458717346191,
             "apex_world_px": [
-              212.8125,
-              0.5331294536590576
+              225.9375,
+              -31.593456268310547
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              20.625,
-              7.421842098236084
+              21.375,
+              7.421841621398926
             ],
-            "landing_frame": 177,
+            "landing_frame": 154,
             "landing_world_px": [
-              168.75,
-              -77.34474182128906
+              191.25,
+              -77.34475708007812
             ],
             "resize_frame_delta_cells": [
               -0.03125,
@@ -861,6 +885,10 @@
             "scale_after_frame_105": 0.5
           },
           "resize_frame_excess_delta_cells": [
+            0.0,
+            0.0
+          ],
+          "resize_landing_delta_cells": [
             0.0,
             0.0
           ]
@@ -946,32 +974,32 @@
             10
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": 1.0708866119384766,
+          "resize_apex_delta_cells": 0.0,
           "resize_apex_position_delta_cells": [
-            -0.4375,
-            1.0708866119384766
+            0.0,
+            0.0
           ],
           "resize_during_jump": {
             "apex_cell": [
-              23.09375,
-              10.01777172088623
+              23.53125,
+              8.946885108947754
             ],
-            "apex_frame": 133,
-            "apex_rise_cells": 2.5959324836730957,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250458717346191,
             "apex_world_px": [
-              242.8125,
-              0.5331370830535889
+              255.9375,
+              -31.593448638916016
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              21.625,
-              7.421842098236084
+              22.375,
+              7.421841621398926
             ],
-            "landing_frame": 177,
+            "landing_frame": 154,
             "landing_world_px": [
-              198.75,
-              -77.34474182128906
+              221.25,
+              -77.34475708007812
             ],
             "resize_frame_delta_cells": [
               -0.03125,
@@ -984,6 +1012,10 @@
             "scale_after_frame_105": 0.5
           },
           "resize_frame_excess_delta_cells": [
+            0.0,
+            0.0
+          ],
+          "resize_landing_delta_cells": [
             0.0,
             0.0
           ]
@@ -1069,32 +1101,32 @@
             18
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": 1.0708856582641602,
+          "resize_apex_delta_cells": 0.0,
           "resize_apex_position_delta_cells": [
-            0.4375,
-            1.0708856582641602
+            0.0,
+            0.0
           ],
           "resize_during_jump": {
             "apex_cell": [
-              7.90625,
-              6.017771244049072
+              7.46875,
+              4.946885585784912
             ],
-            "apex_frame": 133,
-            "apex_rise_cells": 2.5959317684173584,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250461101531982,
             "apex_world_px": [
-              -212.8125,
-              -119.46685791015625
+              -225.9375,
+              -151.5934295654297
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              9.375,
-              3.421841859817505
+              8.625,
+              3.4218413829803467
             ],
-            "landing_frame": 177,
+            "landing_frame": 154,
             "landing_world_px": [
-              -168.75,
-              -197.34474182128906
+              -191.25,
+              -197.34475708007812
             ],
             "resize_frame_delta_cells": [
               0.03125,
@@ -1107,6 +1139,10 @@
             "scale_after_frame_105": 0.5
           },
           "resize_frame_excess_delta_cells": [
+            0.0,
+            0.0
+          ],
+          "resize_landing_delta_cells": [
             0.0,
             0.0
           ]
@@ -1192,32 +1228,32 @@
             18
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": 1.0708856582641602,
+          "resize_apex_delta_cells": 0.0,
           "resize_apex_position_delta_cells": [
-            0.4375,
-            1.0708856582641602
+            0.0,
+            0.0
           ],
           "resize_during_jump": {
             "apex_cell": [
-              6.90625,
-              6.017789840698242
+              6.46875,
+              4.946904182434082
             ],
-            "apex_frame": 133,
-            "apex_rise_cells": 2.5959322452545166,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250465869903564,
             "apex_world_px": [
-              -242.8125,
-              -119.46630859375
+              -255.9375,
+              -151.59288024902344
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              8.375,
-              3.421841859817505
+              7.625,
+              3.4218413829803467
             ],
-            "landing_frame": 177,
+            "landing_frame": 154,
             "landing_world_px": [
-              -198.75,
-              -197.34474182128906
+              -221.25,
+              -197.34475708007812
             ],
             "resize_frame_delta_cells": [
               0.03125,
@@ -1230,6 +1266,10 @@
             "scale_after_frame_105": 0.5
           },
           "resize_frame_excess_delta_cells": [
+            0.0,
+            0.0
+          ],
+          "resize_landing_delta_cells": [
             0.0,
             0.0
           ]
@@ -1315,32 +1355,32 @@
             18
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": 1.0708856582641602,
+          "resize_apex_delta_cells": 0.0,
           "resize_apex_position_delta_cells": [
-            -0.4375,
-            1.0708856582641602
+            0.0,
+            0.0
           ],
           "resize_during_jump": {
             "apex_cell": [
-              22.09375,
-              6.017789840698242
+              22.53125,
+              4.946904182434082
             ],
-            "apex_frame": 133,
-            "apex_rise_cells": 2.5959322452545166,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250465869903564,
             "apex_world_px": [
-              212.8125,
-              -119.46630859375
+              225.9375,
+              -151.59288024902344
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              20.625,
-              3.421863317489624
+              21.375,
+              3.4218413829803467
             ],
-            "landing_frame": 177,
+            "landing_frame": 154,
             "landing_world_px": [
-              168.75,
-              -197.34410095214844
+              191.25,
+              -197.34475708007812
             ],
             "resize_frame_delta_cells": [
               -0.03125,
@@ -1353,6 +1393,10 @@
             "scale_after_frame_105": 0.5
           },
           "resize_frame_excess_delta_cells": [
+            0.0,
+            0.0
+          ],
+          "resize_landing_delta_cells": [
             0.0,
             0.0
           ]
@@ -1438,32 +1482,32 @@
             18
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": 1.0708856582641602,
+          "resize_apex_delta_cells": 0.0,
           "resize_apex_position_delta_cells": [
-            -0.4375,
-            1.0708856582641602
+            0.0,
+            0.0
           ],
           "resize_during_jump": {
             "apex_cell": [
-              23.09375,
-              6.017789840698242
+              23.53125,
+              4.946904182434082
             ],
-            "apex_frame": 133,
-            "apex_rise_cells": 2.5959322452545166,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250465869903564,
             "apex_world_px": [
-              242.8125,
-              -119.46630859375
+              255.9375,
+              -151.59288024902344
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              21.625,
-              3.421841859817505
+              22.375,
+              3.4218623638153076
             ],
-            "landing_frame": 177,
+            "landing_frame": 154,
             "landing_world_px": [
-              198.75,
-              -197.34474182128906
+              221.25,
+              -197.34413146972656
             ],
             "resize_frame_delta_cells": [
               -0.03125,
@@ -1476,6 +1520,10 @@
             "scale_after_frame_105": 0.5
           },
           "resize_frame_excess_delta_cells": [
+            0.0,
+            0.0
+          ],
+          "resize_landing_delta_cells": [
             0.0,
             0.0
           ]
@@ -1720,32 +1768,32 @@
             10
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": 0.27766895294189453,
+          "resize_apex_delta_cells": -9.5367431640625e-07,
           "resize_apex_position_delta_cells": [
-            0.15625,
-            0.27766895294189453
+            0.0,
+            -9.5367431640625e-07
           ],
           "resize_during_jump": {
             "apex_cell": [
-              8.625,
-              9.224554061889648
+              8.46875,
+              8.946884155273438
             ],
-            "apex_frame": 124,
-            "apex_rise_cells": 1.8027148246765137,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250449180603027,
             "apex_world_px": [
-              -286.875,
-              -34.89506530761719
+              -293.90625,
+              -47.39020538330078
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              9.84375,
-              7.421842575073242
+              9.625,
+              7.421841621398926
             ],
-            "landing_frame": 161,
+            "landing_frame": 154,
             "landing_world_px": [
-              -232.03125,
-              -116.01708984375
+              -241.875,
+              -116.01713562011719
             ],
             "resize_frame_delta_cells": [
               0.03125,
@@ -1758,6 +1806,10 @@
             "scale_after_frame_105": 0.75
           },
           "resize_frame_excess_delta_cells": [
+            0.0,
+            0.0
+          ],
+          "resize_landing_delta_cells": [
             0.0,
             0.0
           ]
@@ -1843,32 +1895,32 @@
             10
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": 0.27766895294189453,
+          "resize_apex_delta_cells": -9.5367431640625e-07,
           "resize_apex_position_delta_cells": [
-            0.15625,
-            0.27766895294189453
+            0.0,
+            -9.5367431640625e-07
           ],
           "resize_during_jump": {
             "apex_cell": [
-              7.625,
-              9.224554061889648
+              7.46875,
+              8.946884155273438
             ],
-            "apex_frame": 124,
-            "apex_rise_cells": 1.8027148246765137,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250449180603027,
             "apex_world_px": [
-              -331.875,
-              -34.895057678222656
+              -338.90625,
+              -47.39019775390625
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              8.84375,
-              7.421842575073242
+              8.625,
+              7.421841621398926
             ],
-            "landing_frame": 161,
+            "landing_frame": 154,
             "landing_world_px": [
-              -277.03125,
-              -116.01708984375
+              -286.875,
+              -116.01713562011719
             ],
             "resize_frame_delta_cells": [
               0.03125,
@@ -1881,6 +1933,10 @@
             "scale_after_frame_105": 0.75
           },
           "resize_frame_excess_delta_cells": [
+            0.0,
+            0.0
+          ],
+          "resize_landing_delta_cells": [
             0.0,
             0.0
           ]
@@ -1966,32 +2022,32 @@
             10
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": 0.27766895294189453,
+          "resize_apex_delta_cells": -9.5367431640625e-07,
           "resize_apex_position_delta_cells": [
-            -0.15625,
-            0.27766895294189453
+            0.0,
+            -9.5367431640625e-07
           ],
           "resize_during_jump": {
             "apex_cell": [
-              21.375,
-              9.224554061889648
+              21.53125,
+              8.946884155273438
             ],
-            "apex_frame": 124,
-            "apex_rise_cells": 1.8027148246765137,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250449180603027,
             "apex_world_px": [
-              286.875,
-              -34.89506530761719
+              293.90625,
+              -47.39020538330078
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              20.15625,
-              7.421842575073242
+              20.375,
+              7.421841621398926
             ],
-            "landing_frame": 161,
+            "landing_frame": 154,
             "landing_world_px": [
-              232.03125,
-              -116.01708984375
+              241.875,
+              -116.01713562011719
             ],
             "resize_frame_delta_cells": [
               -0.03125,
@@ -2004,6 +2060,10 @@
             "scale_after_frame_105": 0.75
           },
           "resize_frame_excess_delta_cells": [
+            0.0,
+            0.0
+          ],
+          "resize_landing_delta_cells": [
             0.0,
             0.0
           ]
@@ -2089,32 +2149,32 @@
             10
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": 0.27766895294189453,
+          "resize_apex_delta_cells": -9.5367431640625e-07,
           "resize_apex_position_delta_cells": [
-            -0.15625,
-            0.27766895294189453
+            0.0,
+            -9.5367431640625e-07
           ],
           "resize_during_jump": {
             "apex_cell": [
-              22.375,
-              9.224554061889648
+              22.53125,
+              8.946884155273438
             ],
-            "apex_frame": 124,
-            "apex_rise_cells": 1.8027148246765137,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250449180603027,
             "apex_world_px": [
-              331.875,
-              -34.895057678222656
+              338.90625,
+              -47.39019775390625
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              21.15625,
-              7.421864032745361
+              21.375,
+              7.4218621253967285
             ],
-            "landing_frame": 161,
+            "landing_frame": 154,
             "landing_world_px": [
-              277.03125,
-              -116.01612854003906
+              286.875,
+              -116.01619720458984
             ],
             "resize_frame_delta_cells": [
               -0.03125,
@@ -2129,6 +2189,10 @@
           "resize_frame_excess_delta_cells": [
             0.0,
             0.0
+          ],
+          "resize_landing_delta_cells": [
+            0.0,
+            -4.76837158203125e-07
           ]
         },
         {
@@ -2212,32 +2276,32 @@
             10
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": 0.27766895294189453,
+          "resize_apex_delta_cells": -9.5367431640625e-07,
           "resize_apex_position_delta_cells": [
-            0.15625,
-            0.27766895294189453
+            0.0,
+            -9.5367431640625e-07
           ],
           "resize_during_jump": {
             "apex_cell": [
-              7.625,
-              9.224554061889648
+              7.46875,
+              8.946884155273438
             ],
-            "apex_frame": 124,
-            "apex_rise_cells": 1.8027148246765137,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250449180603027,
             "apex_world_px": [
-              -331.875,
-              -34.89506530761719
+              -338.90625,
+              -47.39020538330078
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              8.84375,
-              7.421842575073242
+              8.625,
+              7.421841621398926
             ],
-            "landing_frame": 161,
+            "landing_frame": 154,
             "landing_world_px": [
-              -277.03125,
-              -116.01708984375
+              -286.875,
+              -116.01713562011719
             ],
             "resize_frame_delta_cells": [
               0.03125,
@@ -2250,6 +2314,10 @@
             "scale_after_frame_105": 0.75
           },
           "resize_frame_excess_delta_cells": [
+            0.0,
+            0.0
+          ],
+          "resize_landing_delta_cells": [
             0.0,
             0.0
           ]
@@ -2335,32 +2403,32 @@
             10
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": 0.27766895294189453,
+          "resize_apex_delta_cells": -9.5367431640625e-07,
           "resize_apex_position_delta_cells": [
-            0.15625,
-            0.27766895294189453
+            0.0,
+            -9.5367431640625e-07
           ],
           "resize_during_jump": {
             "apex_cell": [
-              6.625,
-              9.224554061889648
+              6.46875,
+              8.946884155273438
             ],
-            "apex_frame": 124,
-            "apex_rise_cells": 1.8027148246765137,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250449180603027,
             "apex_world_px": [
-              -376.875,
-              -34.895057678222656
+              -383.90625,
+              -47.39019775390625
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              7.84375,
-              7.421842575073242
+              7.625,
+              7.421841621398926
             ],
-            "landing_frame": 161,
+            "landing_frame": 154,
             "landing_world_px": [
-              -322.03125,
-              -116.01708984375
+              -331.875,
+              -116.01713562011719
             ],
             "resize_frame_delta_cells": [
               0.03125,
@@ -2373,6 +2441,10 @@
             "scale_after_frame_105": 0.75
           },
           "resize_frame_excess_delta_cells": [
+            0.0,
+            0.0
+          ],
+          "resize_landing_delta_cells": [
             0.0,
             0.0
           ]
@@ -2458,32 +2530,32 @@
             10
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": 0.27766895294189453,
+          "resize_apex_delta_cells": -9.5367431640625e-07,
           "resize_apex_position_delta_cells": [
-            -0.15625,
-            0.27766895294189453
+            0.0,
+            -9.5367431640625e-07
           ],
           "resize_during_jump": {
             "apex_cell": [
-              22.375,
-              9.224554061889648
+              22.53125,
+              8.946884155273438
             ],
-            "apex_frame": 124,
-            "apex_rise_cells": 1.8027148246765137,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250449180603027,
             "apex_world_px": [
-              331.875,
-              -34.89506530761719
+              338.90625,
+              -47.39020538330078
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              21.15625,
-              7.421842575073242
+              21.375,
+              7.421841621398926
             ],
-            "landing_frame": 161,
+            "landing_frame": 154,
             "landing_world_px": [
-              277.03125,
-              -116.01708984375
+              286.875,
+              -116.01713562011719
             ],
             "resize_frame_delta_cells": [
               -0.03125,
@@ -2496,6 +2568,10 @@
             "scale_after_frame_105": 0.75
           },
           "resize_frame_excess_delta_cells": [
+            0.0,
+            0.0
+          ],
+          "resize_landing_delta_cells": [
             0.0,
             0.0
           ]
@@ -2581,32 +2657,32 @@
             10
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": 0.27766895294189453,
+          "resize_apex_delta_cells": -9.5367431640625e-07,
           "resize_apex_position_delta_cells": [
-            -0.15625,
-            0.27766895294189453
+            0.0,
+            -9.5367431640625e-07
           ],
           "resize_during_jump": {
             "apex_cell": [
-              23.375,
-              9.224554061889648
+              23.53125,
+              8.946884155273438
             ],
-            "apex_frame": 124,
-            "apex_rise_cells": 1.8027148246765137,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250449180603027,
             "apex_world_px": [
-              376.875,
-              -34.895057678222656
+              383.90625,
+              -47.39019775390625
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              22.15625,
-              7.421842575073242
+              22.375,
+              7.421841621398926
             ],
-            "landing_frame": 161,
+            "landing_frame": 154,
             "landing_world_px": [
-              322.03125,
-              -116.01708984375
+              331.875,
+              -116.01713562011719
             ],
             "resize_frame_delta_cells": [
               -0.03125,
@@ -2619,6 +2695,10 @@
             "scale_after_frame_105": 0.75
           },
           "resize_frame_excess_delta_cells": [
+            0.0,
+            0.0
+          ],
+          "resize_landing_delta_cells": [
             0.0,
             0.0
           ]
@@ -2704,32 +2784,32 @@
             18
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": 0.2776656150817871,
+          "resize_apex_delta_cells": -3.337860107421875e-06,
           "resize_apex_position_delta_cells": [
-            0.15625,
-            0.2776656150817871
+            0.0,
+            -3.337860107421875e-06
           ],
           "resize_during_jump": {
             "apex_cell": [
-              7.625,
-              5.224551200866699
+              7.46875,
+              4.946882247924805
             ],
-            "apex_frame": 124,
-            "apex_rise_cells": 1.8027117252349854,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250427722930908,
             "apex_world_px": [
-              -331.875,
-              -214.8951873779297
+              -338.90625,
+              -227.3903045654297
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              8.84375,
-              3.421842336654663
+              8.625,
+              3.4218409061431885
             ],
-            "landing_frame": 161,
+            "landing_frame": 154,
             "landing_world_px": [
-              -277.03125,
-              -296.01708984375
+              -286.875,
+              -296.01715087890625
             ],
             "resize_frame_delta_cells": [
               0.03125,
@@ -2744,6 +2824,10 @@
           "resize_frame_excess_delta_cells": [
             0.0,
             0.0
+          ],
+          "resize_landing_delta_cells": [
+            0.0,
+            -4.76837158203125e-07
           ]
         },
         {
@@ -2827,32 +2911,32 @@
             18
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": 0.2776656150817871,
+          "resize_apex_delta_cells": -3.814697265625e-06,
           "resize_apex_position_delta_cells": [
-            0.15625,
-            0.2776656150817871
+            0.0,
+            -3.814697265625e-06
           ],
           "resize_during_jump": {
             "apex_cell": [
-              6.625,
-              5.224569797515869
+              6.46875,
+              4.946900367736816
             ],
-            "apex_frame": 124,
-            "apex_rise_cells": 1.8027122020721436,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250427722930908,
             "apex_world_px": [
-              -376.875,
-              -214.8943634033203
+              -383.90625,
+              -227.3894805908203
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              7.84375,
-              3.421842336654663
+              7.625,
+              3.4218409061431885
             ],
-            "landing_frame": 161,
+            "landing_frame": 154,
             "landing_world_px": [
-              -322.03125,
-              -296.01708984375
+              -331.875,
+              -296.01715087890625
             ],
             "resize_frame_delta_cells": [
               0.03125,
@@ -2867,6 +2951,10 @@
           "resize_frame_excess_delta_cells": [
             0.0,
             0.0
+          ],
+          "resize_landing_delta_cells": [
+            0.0,
+            -4.76837158203125e-07
           ]
         },
         {
@@ -2950,32 +3038,32 @@
             18
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": 0.2776656150817871,
+          "resize_apex_delta_cells": -3.814697265625e-06,
           "resize_apex_position_delta_cells": [
-            -0.15625,
-            0.2776656150817871
+            0.0,
+            -3.814697265625e-06
           ],
           "resize_during_jump": {
             "apex_cell": [
-              22.375,
-              5.224569797515869
+              22.53125,
+              4.946900367736816
             ],
-            "apex_frame": 124,
-            "apex_rise_cells": 1.8027122020721436,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250427722930908,
             "apex_world_px": [
-              331.875,
-              -214.8943634033203
+              338.90625,
+              -227.3894805908203
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              21.15625,
-              3.421842336654663
+              21.375,
+              3.4218409061431885
             ],
-            "landing_frame": 161,
+            "landing_frame": 154,
             "landing_world_px": [
-              277.03125,
-              -296.01708984375
+              286.875,
+              -296.01715087890625
             ],
             "resize_frame_delta_cells": [
               -0.03125,
@@ -2990,6 +3078,10 @@
           "resize_frame_excess_delta_cells": [
             0.0,
             0.0
+          ],
+          "resize_landing_delta_cells": [
+            0.0,
+            -4.76837158203125e-07
           ]
         },
         {
@@ -3073,32 +3165,32 @@
             18
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": 0.2776656150817871,
+          "resize_apex_delta_cells": -3.814697265625e-06,
           "resize_apex_position_delta_cells": [
-            -0.15625,
-            0.2776656150817871
+            0.0,
+            -3.814697265625e-06
           ],
           "resize_during_jump": {
             "apex_cell": [
-              23.375,
-              5.224569797515869
+              23.53125,
+              4.946900367736816
             ],
-            "apex_frame": 124,
-            "apex_rise_cells": 1.8027122020721436,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250427722930908,
             "apex_world_px": [
-              376.875,
-              -214.8943634033203
+              383.90625,
+              -227.3894805908203
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              22.15625,
-              3.421863317489624
+              22.375,
+              3.421861171722412
             ],
-            "landing_frame": 161,
+            "landing_frame": 154,
             "landing_world_px": [
-              322.03125,
-              -296.0161437988281
+              331.875,
+              -296.0162353515625
             ],
             "resize_frame_delta_cells": [
               -0.03125,
@@ -3113,6 +3205,10 @@
           "resize_frame_excess_delta_cells": [
             0.0,
             0.0
+          ],
+          "resize_landing_delta_cells": [
+            0.0,
+            -1.1920928955078125e-06
           ]
         }
       ],
@@ -3395,6 +3491,10 @@
           "resize_frame_excess_delta_cells": [
             0.0,
             0.0
+          ],
+          "resize_landing_delta_cells": [
+            0.0,
+            0.0
           ]
         },
         {
@@ -3516,6 +3616,10 @@
             "scale_after_frame_105": 1.0
           },
           "resize_frame_excess_delta_cells": [
+            0.0,
+            0.0
+          ],
+          "resize_landing_delta_cells": [
             0.0,
             0.0
           ]
@@ -3641,6 +3745,10 @@
           "resize_frame_excess_delta_cells": [
             0.0,
             0.0
+          ],
+          "resize_landing_delta_cells": [
+            0.0,
+            0.0
           ]
         },
         {
@@ -3764,6 +3872,10 @@
           "resize_frame_excess_delta_cells": [
             0.0,
             0.0
+          ],
+          "resize_landing_delta_cells": [
+            0.0,
+            0.0
           ]
         },
         {
@@ -3885,6 +3997,10 @@
             "scale_after_frame_105": 1.0
           },
           "resize_frame_excess_delta_cells": [
+            0.0,
+            0.0
+          ],
+          "resize_landing_delta_cells": [
             0.0,
             0.0
           ]
@@ -4010,6 +4126,10 @@
           "resize_frame_excess_delta_cells": [
             0.0,
             0.0
+          ],
+          "resize_landing_delta_cells": [
+            0.0,
+            0.0
           ]
         },
         {
@@ -4133,6 +4253,10 @@
           "resize_frame_excess_delta_cells": [
             0.0,
             0.0
+          ],
+          "resize_landing_delta_cells": [
+            0.0,
+            0.0
           ]
         },
         {
@@ -4254,6 +4378,10 @@
             "scale_after_frame_105": 1.0
           },
           "resize_frame_excess_delta_cells": [
+            0.0,
+            0.0
+          ],
+          "resize_landing_delta_cells": [
             0.0,
             0.0
           ]
@@ -4379,6 +4507,10 @@
           "resize_frame_excess_delta_cells": [
             0.0,
             0.0
+          ],
+          "resize_landing_delta_cells": [
+            0.0,
+            0.0
           ]
         },
         {
@@ -4500,6 +4632,10 @@
             "scale_after_frame_105": 1.0
           },
           "resize_frame_excess_delta_cells": [
+            0.0,
+            0.0
+          ],
+          "resize_landing_delta_cells": [
             0.0,
             0.0
           ]
@@ -4625,6 +4761,10 @@
           "resize_frame_excess_delta_cells": [
             0.0,
             0.0
+          ],
+          "resize_landing_delta_cells": [
+            0.0,
+            0.0
           ]
         },
         {
@@ -4746,6 +4886,10 @@
             "scale_after_frame_105": 1.0
           },
           "resize_frame_excess_delta_cells": [
+            0.0,
+            0.0
+          ],
+          "resize_landing_delta_cells": [
             0.0,
             0.0
           ]
@@ -4990,32 +5134,32 @@
             10
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": -0.1283397674560547,
+          "resize_apex_delta_cells": -9.5367431640625e-07,
           "resize_apex_position_delta_cells": [
-            -0.09375,
-            -0.1283397674560547
+            0.0,
+            -9.5367431640625e-07
           ],
           "resize_during_jump": {
             "apex_cell": [
-              8.375,
-              8.8185453414917
+              8.46875,
+              8.946884155273438
             ],
-            "apex_frame": 117,
-            "apex_rise_cells": 1.3967061042785645,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250449180603027,
             "apex_world_px": [
-              -496.875,
-              -88.60907745361328
+              -489.84375,
+              -78.98371887207031
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              9.5,
-              7.421840190887451
+              9.625,
+              7.421841621398926
             ],
-            "landing_frame": 150,
+            "landing_frame": 154,
             "landing_world_px": [
-              -412.5,
-              -193.3619384765625
+              -403.125,
+              -193.3618927001953
             ],
             "resize_frame_delta_cells": [
               0.03125,
@@ -5028,6 +5172,10 @@
             "scale_after_frame_105": 1.25
           },
           "resize_frame_excess_delta_cells": [
+            0.0,
+            0.0
+          ],
+          "resize_landing_delta_cells": [
             0.0,
             0.0
           ]
@@ -5113,32 +5261,32 @@
             10
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": -0.1283397674560547,
+          "resize_apex_delta_cells": -9.5367431640625e-07,
           "resize_apex_position_delta_cells": [
-            -0.09375,
-            -0.1283397674560547
+            0.0,
+            -9.5367431640625e-07
           ],
           "resize_during_jump": {
             "apex_cell": [
-              7.375,
-              8.8185453414917
+              7.46875,
+              8.946884155273438
             ],
-            "apex_frame": 117,
-            "apex_rise_cells": 1.3967061042785645,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250449180603027,
             "apex_world_px": [
-              -571.875,
-              -88.60905456542969
+              -564.84375,
+              -78.98370361328125
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              8.5,
-              7.421840190887451
+              8.625,
+              7.421841621398926
             ],
-            "landing_frame": 150,
+            "landing_frame": 154,
             "landing_world_px": [
-              -487.5,
-              -193.3619384765625
+              -478.125,
+              -193.3618927001953
             ],
             "resize_frame_delta_cells": [
               0.03125,
@@ -5151,6 +5299,10 @@
             "scale_after_frame_105": 1.25
           },
           "resize_frame_excess_delta_cells": [
+            0.0,
+            0.0
+          ],
+          "resize_landing_delta_cells": [
             0.0,
             0.0
           ]
@@ -5236,32 +5388,32 @@
             10
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": -0.1283397674560547,
+          "resize_apex_delta_cells": -9.5367431640625e-07,
           "resize_apex_position_delta_cells": [
-            0.09375,
-            -0.1283397674560547
+            0.0,
+            -9.5367431640625e-07
           ],
           "resize_during_jump": {
             "apex_cell": [
-              21.625,
-              8.8185453414917
+              21.53125,
+              8.946884155273438
             ],
-            "apex_frame": 117,
-            "apex_rise_cells": 1.3967061042785645,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250449180603027,
             "apex_world_px": [
-              496.875,
-              -88.60907745361328
+              489.84375,
+              -78.98371887207031
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              20.5,
-              7.421840190887451
+              20.375,
+              7.421841621398926
             ],
-            "landing_frame": 150,
+            "landing_frame": 154,
             "landing_world_px": [
-              412.5,
-              -193.3619384765625
+              403.125,
+              -193.3618927001953
             ],
             "resize_frame_delta_cells": [
               -0.03125,
@@ -5274,6 +5426,10 @@
             "scale_after_frame_105": 1.25
           },
           "resize_frame_excess_delta_cells": [
+            0.0,
+            0.0
+          ],
+          "resize_landing_delta_cells": [
             0.0,
             0.0
           ]
@@ -5359,32 +5515,32 @@
             10
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": -0.1283397674560547,
+          "resize_apex_delta_cells": -9.5367431640625e-07,
           "resize_apex_position_delta_cells": [
-            0.09375,
-            -0.1283397674560547
+            0.0,
+            -9.5367431640625e-07
           ],
           "resize_during_jump": {
             "apex_cell": [
-              22.625,
-              8.8185453414917
+              22.53125,
+              8.946884155273438
             ],
-            "apex_frame": 117,
-            "apex_rise_cells": 1.3967061042785645,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250449180603027,
             "apex_world_px": [
-              571.875,
-              -88.60905456542969
+              564.84375,
+              -78.98370361328125
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              21.5,
-              7.42186164855957
+              21.375,
+              7.4218621253967285
             ],
-            "landing_frame": 150,
+            "landing_frame": 154,
             "landing_world_px": [
-              487.5,
-              -193.36036682128906
+              478.125,
+              -193.36032104492188
             ],
             "resize_frame_delta_cells": [
               -0.03125,
@@ -5399,6 +5555,10 @@
           "resize_frame_excess_delta_cells": [
             0.0,
             0.0
+          ],
+          "resize_landing_delta_cells": [
+            0.0,
+            -4.76837158203125e-07
           ]
         },
         {
@@ -5482,32 +5642,32 @@
             10
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": -0.1283397674560547,
+          "resize_apex_delta_cells": -9.5367431640625e-07,
           "resize_apex_position_delta_cells": [
-            -0.09375,
-            -0.1283397674560547
+            0.0,
+            -9.5367431640625e-07
           ],
           "resize_during_jump": {
             "apex_cell": [
-              7.375,
-              8.8185453414917
+              7.46875,
+              8.946884155273438
             ],
-            "apex_frame": 117,
-            "apex_rise_cells": 1.3967061042785645,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250449180603027,
             "apex_world_px": [
-              -571.875,
-              -88.60907745361328
+              -564.84375,
+              -78.98371887207031
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              8.5,
-              7.421840190887451
+              8.625,
+              7.421841621398926
             ],
-            "landing_frame": 150,
+            "landing_frame": 154,
             "landing_world_px": [
-              -487.5,
-              -193.3619384765625
+              -478.125,
+              -193.3618927001953
             ],
             "resize_frame_delta_cells": [
               0.03125,
@@ -5520,6 +5680,10 @@
             "scale_after_frame_105": 1.25
           },
           "resize_frame_excess_delta_cells": [
+            0.0,
+            0.0
+          ],
+          "resize_landing_delta_cells": [
             0.0,
             0.0
           ]
@@ -5605,32 +5769,32 @@
             10
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": -0.1283397674560547,
+          "resize_apex_delta_cells": -9.5367431640625e-07,
           "resize_apex_position_delta_cells": [
-            -0.09375,
-            -0.1283397674560547
+            0.0,
+            -9.5367431640625e-07
           ],
           "resize_during_jump": {
             "apex_cell": [
-              6.375,
-              8.8185453414917
+              6.46875,
+              8.946884155273438
             ],
-            "apex_frame": 117,
-            "apex_rise_cells": 1.3967061042785645,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250449180603027,
             "apex_world_px": [
-              -646.875,
-              -88.60905456542969
+              -639.84375,
+              -78.98370361328125
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              7.5,
-              7.421840190887451
+              7.625,
+              7.421841621398926
             ],
-            "landing_frame": 150,
+            "landing_frame": 154,
             "landing_world_px": [
-              -562.5,
-              -193.3619384765625
+              -553.125,
+              -193.3618927001953
             ],
             "resize_frame_delta_cells": [
               0.03125,
@@ -5643,6 +5807,10 @@
             "scale_after_frame_105": 1.25
           },
           "resize_frame_excess_delta_cells": [
+            0.0,
+            0.0
+          ],
+          "resize_landing_delta_cells": [
             0.0,
             0.0
           ]
@@ -5728,32 +5896,32 @@
             10
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": -0.1283397674560547,
+          "resize_apex_delta_cells": -9.5367431640625e-07,
           "resize_apex_position_delta_cells": [
-            0.09375,
-            -0.1283397674560547
+            0.0,
+            -9.5367431640625e-07
           ],
           "resize_during_jump": {
             "apex_cell": [
-              22.625,
-              8.8185453414917
+              22.53125,
+              8.946884155273438
             ],
-            "apex_frame": 117,
-            "apex_rise_cells": 1.3967061042785645,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250449180603027,
             "apex_world_px": [
-              571.875,
-              -88.60907745361328
+              564.84375,
+              -78.98371887207031
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              21.5,
-              7.421840190887451
+              21.375,
+              7.421841621398926
             ],
-            "landing_frame": 150,
+            "landing_frame": 154,
             "landing_world_px": [
-              487.5,
-              -193.3619384765625
+              478.125,
+              -193.3618927001953
             ],
             "resize_frame_delta_cells": [
               -0.03125,
@@ -5766,6 +5934,10 @@
             "scale_after_frame_105": 1.25
           },
           "resize_frame_excess_delta_cells": [
+            0.0,
+            0.0
+          ],
+          "resize_landing_delta_cells": [
             0.0,
             0.0
           ]
@@ -5851,32 +6023,32 @@
             10
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": -0.1283397674560547,
+          "resize_apex_delta_cells": -9.5367431640625e-07,
           "resize_apex_position_delta_cells": [
-            0.09375,
-            -0.1283397674560547
+            0.0,
+            -9.5367431640625e-07
           ],
           "resize_during_jump": {
             "apex_cell": [
-              23.625,
-              8.8185453414917
+              23.53125,
+              8.946884155273438
             ],
-            "apex_frame": 117,
-            "apex_rise_cells": 1.3967061042785645,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250449180603027,
             "apex_world_px": [
-              646.875,
-              -88.60905456542969
+              639.84375,
+              -78.98370361328125
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              22.5,
-              7.421840190887451
+              22.375,
+              7.421841621398926
             ],
-            "landing_frame": 150,
+            "landing_frame": 154,
             "landing_world_px": [
-              562.5,
-              -193.3619384765625
+              553.125,
+              -193.3618927001953
             ],
             "resize_frame_delta_cells": [
               -0.03125,
@@ -5889,6 +6061,10 @@
             "scale_after_frame_105": 1.25
           },
           "resize_frame_excess_delta_cells": [
+            0.0,
+            0.0
+          ],
+          "resize_landing_delta_cells": [
             0.0,
             0.0
           ]
@@ -5974,32 +6150,32 @@
             18
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": -0.1283411979675293,
+          "resize_apex_delta_cells": 1.430511474609375e-06,
           "resize_apex_position_delta_cells": [
-            -0.09375,
-            -0.1283411979675293
+            0.0,
+            1.430511474609375e-06
           ],
           "resize_during_jump": {
             "apex_cell": [
-              7.375,
-              4.818544387817383
+              7.46875,
+              4.946887016296387
             ],
-            "apex_frame": 117,
-            "apex_rise_cells": 1.396704912185669,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250475406646729,
             "apex_world_px": [
-              -571.875,
-              -388.6091613769531
+              -564.84375,
+              -378.98345947265625
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              8.5,
-              3.4218409061431885
+              8.625,
+              3.4218413829803467
             ],
-            "landing_frame": 150,
+            "landing_frame": 154,
             "landing_world_px": [
-              -487.5,
-              -493.3619384765625
+              -478.125,
+              -493.36187744140625
             ],
             "resize_frame_delta_cells": [
               0.03125,
@@ -6012,6 +6188,10 @@
             "scale_after_frame_105": 1.25
           },
           "resize_frame_excess_delta_cells": [
+            0.0,
+            0.0
+          ],
+          "resize_landing_delta_cells": [
             0.0,
             0.0
           ]
@@ -6097,32 +6277,32 @@
             18
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": -0.1283411979675293,
+          "resize_apex_delta_cells": 0.0,
           "resize_apex_position_delta_cells": [
-            -0.09375,
-            -0.1283411979675293
+            0.0,
+            0.0
           ],
           "resize_during_jump": {
             "apex_cell": [
-              6.375,
-              4.818562984466553
+              6.46875,
+              4.946904182434082
             ],
-            "apex_frame": 117,
-            "apex_rise_cells": 1.3967053890228271,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250465869903564,
             "apex_world_px": [
-              -646.875,
-              -388.6077880859375
+              -639.84375,
+              -378.9822082519531
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              7.5,
-              3.4218409061431885
+              7.625,
+              3.4218413829803467
             ],
-            "landing_frame": 150,
+            "landing_frame": 154,
             "landing_world_px": [
-              -562.5,
-              -493.3619384765625
+              -553.125,
+              -493.36187744140625
             ],
             "resize_frame_delta_cells": [
               0.03125,
@@ -6135,6 +6315,10 @@
             "scale_after_frame_105": 1.25
           },
           "resize_frame_excess_delta_cells": [
+            0.0,
+            0.0
+          ],
+          "resize_landing_delta_cells": [
             0.0,
             0.0
           ]
@@ -6220,32 +6404,32 @@
             18
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": -0.1283411979675293,
+          "resize_apex_delta_cells": 0.0,
           "resize_apex_position_delta_cells": [
-            0.09375,
-            -0.1283411979675293
+            0.0,
+            0.0
           ],
           "resize_during_jump": {
             "apex_cell": [
-              22.625,
-              4.818562984466553
+              22.53125,
+              4.946904182434082
             ],
-            "apex_frame": 117,
-            "apex_rise_cells": 1.3967053890228271,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250465869903564,
             "apex_world_px": [
-              571.875,
-              -388.6077880859375
+              564.84375,
+              -378.9822082519531
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              21.5,
-              3.4218409061431885
+              21.375,
+              3.4218413829803467
             ],
-            "landing_frame": 150,
+            "landing_frame": 154,
             "landing_world_px": [
-              487.5,
-              -493.3619384765625
+              478.125,
+              -493.36187744140625
             ],
             "resize_frame_delta_cells": [
               -0.03125,
@@ -6258,6 +6442,10 @@
             "scale_after_frame_105": 1.25
           },
           "resize_frame_excess_delta_cells": [
+            0.0,
+            0.0
+          ],
+          "resize_landing_delta_cells": [
             0.0,
             0.0
           ]
@@ -6343,31 +6531,31 @@
             18
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": -0.1283411979675293,
+          "resize_apex_delta_cells": 0.0,
           "resize_apex_position_delta_cells": [
-            0.09375,
-            -0.1283411979675293
+            0.0,
+            0.0
           ],
           "resize_during_jump": {
             "apex_cell": [
-              23.625,
-              4.818562984466553
+              23.53125,
+              4.946904182434082
             ],
-            "apex_frame": 117,
-            "apex_rise_cells": 1.3967053890228271,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250465869903564,
             "apex_world_px": [
-              646.875,
-              -388.6077880859375
+              639.84375,
+              -378.9822082519531
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              22.5,
+              22.375,
               3.4218618869781494
             ],
-            "landing_frame": 150,
+            "landing_frame": 154,
             "landing_world_px": [
-              562.5,
+              553.125,
               -493.3603515625
             ],
             "resize_frame_delta_cells": [
@@ -6383,6 +6571,10 @@
           "resize_frame_excess_delta_cells": [
             0.0,
             0.0
+          ],
+          "resize_landing_delta_cells": [
+            0.0,
+            -4.76837158203125e-07
           ]
         }
       ],
@@ -6625,32 +6817,32 @@
             10
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": -0.19795513153076172,
+          "resize_apex_delta_cells": -9.5367431640625e-07,
           "resize_apex_position_delta_cells": [
-            -0.15625,
-            -0.19795513153076172
+            0.0,
+            -9.5367431640625e-07
           ],
           "resize_during_jump": {
             "apex_cell": [
-              8.3125,
-              8.748929977416992
+              8.46875,
+              8.946884155273438
             ],
-            "apex_frame": 115,
-            "apex_rise_cells": 1.3270907402038574,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250449180603027,
             "apex_world_px": [
-              -601.875,
-              -112.59634399414062
+              -587.8125,
+              -94.78041076660156
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              9.375,
-              7.421842575073242
+              9.625,
+              7.421841144561768
             ],
-            "landing_frame": 147,
+            "landing_frame": 154,
             "landing_world_px": [
-              -506.25,
-              -232.0341796875
+              -483.75,
+              -232.0343017578125
             ],
             "resize_frame_delta_cells": [
               0.03125,
@@ -6665,6 +6857,10 @@
           "resize_frame_excess_delta_cells": [
             0.0,
             0.0
+          ],
+          "resize_landing_delta_cells": [
+            0.0,
+            -4.76837158203125e-07
           ]
         },
         {
@@ -6748,32 +6944,32 @@
             10
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": -0.19795513153076172,
+          "resize_apex_delta_cells": -9.5367431640625e-07,
           "resize_apex_position_delta_cells": [
-            -0.15625,
-            -0.19795513153076172
+            0.0,
+            -9.5367431640625e-07
           ],
           "resize_during_jump": {
             "apex_cell": [
-              7.3125,
-              8.748929977416992
+              7.46875,
+              8.946884155273438
             ],
-            "apex_frame": 115,
-            "apex_rise_cells": 1.3270907402038574,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250449180603027,
             "apex_world_px": [
-              -691.875,
-              -112.5963363647461
+              -677.8125,
+              -94.7803955078125
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              8.375,
-              7.421842575073242
+              8.625,
+              7.421841144561768
             ],
-            "landing_frame": 147,
+            "landing_frame": 154,
             "landing_world_px": [
-              -596.25,
-              -232.0341796875
+              -573.75,
+              -232.0343017578125
             ],
             "resize_frame_delta_cells": [
               0.03125,
@@ -6788,6 +6984,10 @@
           "resize_frame_excess_delta_cells": [
             0.0,
             0.0
+          ],
+          "resize_landing_delta_cells": [
+            0.0,
+            -4.76837158203125e-07
           ]
         },
         {
@@ -6871,32 +7071,32 @@
             10
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": -0.19795513153076172,
+          "resize_apex_delta_cells": -9.5367431640625e-07,
           "resize_apex_position_delta_cells": [
-            0.15625,
-            -0.19795513153076172
+            0.0,
+            -9.5367431640625e-07
           ],
           "resize_during_jump": {
             "apex_cell": [
-              21.6875,
-              8.748929977416992
+              21.53125,
+              8.946884155273438
             ],
-            "apex_frame": 115,
-            "apex_rise_cells": 1.3270907402038574,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250449180603027,
             "apex_world_px": [
-              601.875,
-              -112.59634399414062
+              587.8125,
+              -94.78041076660156
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              20.625,
-              7.421842575073242
+              20.375,
+              7.421841144561768
             ],
-            "landing_frame": 147,
+            "landing_frame": 154,
             "landing_world_px": [
-              506.25,
-              -232.0341796875
+              483.75,
+              -232.0343017578125
             ],
             "resize_frame_delta_cells": [
               -0.03125,
@@ -6911,6 +7111,10 @@
           "resize_frame_excess_delta_cells": [
             0.0,
             0.0
+          ],
+          "resize_landing_delta_cells": [
+            0.0,
+            -4.76837158203125e-07
           ]
         },
         {
@@ -6994,32 +7198,32 @@
             10
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": -0.19795513153076172,
+          "resize_apex_delta_cells": -9.5367431640625e-07,
           "resize_apex_position_delta_cells": [
-            0.15625,
-            -0.19795513153076172
+            0.0,
+            -9.5367431640625e-07
           ],
           "resize_during_jump": {
             "apex_cell": [
-              22.6875,
-              8.748929977416992
+              22.53125,
+              8.946884155273438
             ],
-            "apex_frame": 115,
-            "apex_rise_cells": 1.3270907402038574,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250449180603027,
             "apex_world_px": [
-              691.875,
-              -112.5963363647461
+              677.8125,
+              -94.7803955078125
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              21.625,
-              7.421864032745361
+              21.375,
+              7.4218621253967285
             ],
-            "landing_frame": 147,
+            "landing_frame": 154,
             "landing_world_px": [
-              596.25,
-              -232.03225708007812
+              573.75,
+              -232.0323944091797
             ],
             "resize_frame_delta_cells": [
               -0.03125,
@@ -7034,6 +7238,10 @@
           "resize_frame_excess_delta_cells": [
             0.0,
             0.0
+          ],
+          "resize_landing_delta_cells": [
+            0.0,
+            -4.76837158203125e-07
           ]
         },
         {
@@ -7117,32 +7325,32 @@
             10
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": -0.19795513153076172,
+          "resize_apex_delta_cells": -9.5367431640625e-07,
           "resize_apex_position_delta_cells": [
-            -0.15625,
-            -0.19795513153076172
+            0.0,
+            -9.5367431640625e-07
           ],
           "resize_during_jump": {
             "apex_cell": [
-              7.3125,
-              8.748929977416992
+              7.46875,
+              8.946884155273438
             ],
-            "apex_frame": 115,
-            "apex_rise_cells": 1.3270907402038574,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250449180603027,
             "apex_world_px": [
-              -691.875,
-              -112.59634399414062
+              -677.8125,
+              -94.78041076660156
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              8.375,
-              7.421842575073242
+              8.625,
+              7.421841144561768
             ],
-            "landing_frame": 147,
+            "landing_frame": 154,
             "landing_world_px": [
-              -596.25,
-              -232.0341796875
+              -573.75,
+              -232.0343017578125
             ],
             "resize_frame_delta_cells": [
               0.03125,
@@ -7157,6 +7365,10 @@
           "resize_frame_excess_delta_cells": [
             0.0,
             0.0
+          ],
+          "resize_landing_delta_cells": [
+            0.0,
+            -4.76837158203125e-07
           ]
         },
         {
@@ -7240,32 +7452,32 @@
             10
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": -0.19795513153076172,
+          "resize_apex_delta_cells": -9.5367431640625e-07,
           "resize_apex_position_delta_cells": [
-            -0.15625,
-            -0.19795513153076172
+            0.0,
+            -9.5367431640625e-07
           ],
           "resize_during_jump": {
             "apex_cell": [
-              6.3125,
-              8.748929977416992
+              6.46875,
+              8.946884155273438
             ],
-            "apex_frame": 115,
-            "apex_rise_cells": 1.3270907402038574,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250449180603027,
             "apex_world_px": [
-              -781.875,
-              -112.5963363647461
+              -767.8125,
+              -94.7803955078125
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              7.375,
-              7.421842575073242
+              7.625,
+              7.421841144561768
             ],
-            "landing_frame": 147,
+            "landing_frame": 154,
             "landing_world_px": [
-              -686.25,
-              -232.0341796875
+              -663.75,
+              -232.0343017578125
             ],
             "resize_frame_delta_cells": [
               0.03125,
@@ -7280,6 +7492,10 @@
           "resize_frame_excess_delta_cells": [
             0.0,
             0.0
+          ],
+          "resize_landing_delta_cells": [
+            0.0,
+            -4.76837158203125e-07
           ]
         },
         {
@@ -7363,32 +7579,32 @@
             10
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": -0.19795513153076172,
+          "resize_apex_delta_cells": -9.5367431640625e-07,
           "resize_apex_position_delta_cells": [
-            0.15625,
-            -0.19795513153076172
+            0.0,
+            -9.5367431640625e-07
           ],
           "resize_during_jump": {
             "apex_cell": [
-              22.6875,
-              8.748929977416992
+              22.53125,
+              8.946884155273438
             ],
-            "apex_frame": 115,
-            "apex_rise_cells": 1.3270907402038574,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250449180603027,
             "apex_world_px": [
-              691.875,
-              -112.59634399414062
+              677.8125,
+              -94.78041076660156
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              21.625,
-              7.421842575073242
+              21.375,
+              7.421841144561768
             ],
-            "landing_frame": 147,
+            "landing_frame": 154,
             "landing_world_px": [
-              596.25,
-              -232.0341796875
+              573.75,
+              -232.0343017578125
             ],
             "resize_frame_delta_cells": [
               -0.03125,
@@ -7403,6 +7619,10 @@
           "resize_frame_excess_delta_cells": [
             0.0,
             0.0
+          ],
+          "resize_landing_delta_cells": [
+            0.0,
+            -4.76837158203125e-07
           ]
         },
         {
@@ -7486,32 +7706,32 @@
             10
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": -0.19795513153076172,
+          "resize_apex_delta_cells": -9.5367431640625e-07,
           "resize_apex_position_delta_cells": [
-            0.15625,
-            -0.19795513153076172
+            0.0,
+            -9.5367431640625e-07
           ],
           "resize_during_jump": {
             "apex_cell": [
-              23.6875,
-              8.748929977416992
+              23.53125,
+              8.946884155273438
             ],
-            "apex_frame": 115,
-            "apex_rise_cells": 1.3270907402038574,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250449180603027,
             "apex_world_px": [
-              781.875,
-              -112.5963363647461
+              767.8125,
+              -94.7803955078125
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              22.625,
-              7.421842575073242
+              22.375,
+              7.421841144561768
             ],
-            "landing_frame": 147,
+            "landing_frame": 154,
             "landing_world_px": [
-              686.25,
-              -232.0341796875
+              663.75,
+              -232.0343017578125
             ],
             "resize_frame_delta_cells": [
               -0.03125,
@@ -7526,6 +7746,10 @@
           "resize_frame_excess_delta_cells": [
             0.0,
             0.0
+          ],
+          "resize_landing_delta_cells": [
+            0.0,
+            -4.76837158203125e-07
           ]
         },
         {
@@ -7609,32 +7833,32 @@
             18
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": -0.19795799255371094,
+          "resize_apex_delta_cells": -3.337860107421875e-06,
           "resize_apex_position_delta_cells": [
-            -0.15625,
-            -0.19795799255371094
+            0.0,
+            -3.337860107421875e-06
           ],
           "resize_during_jump": {
             "apex_cell": [
-              7.3125,
-              4.748927593231201
+              7.46875,
+              4.946882247924805
             ],
-            "apex_frame": 115,
-            "apex_rise_cells": 1.3270881175994873,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250427722930908,
             "apex_world_px": [
-              -691.875,
-              -472.59649658203125
+              -677.8125,
+              -454.7806091308594
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              8.375,
-              3.4218430519104004
+              8.625,
+              3.4218409061431885
             ],
-            "landing_frame": 147,
+            "landing_frame": 154,
             "landing_world_px": [
-              -596.25,
-              -592.0341186523438
+              -573.75,
+              -592.0343017578125
             ],
             "resize_frame_delta_cells": [
               0.03125,
@@ -7649,6 +7873,10 @@
           "resize_frame_excess_delta_cells": [
             0.0,
             0.0
+          ],
+          "resize_landing_delta_cells": [
+            0.0,
+            -4.76837158203125e-07
           ]
         },
         {
@@ -7732,32 +7960,32 @@
             18
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": -0.19795799255371094,
+          "resize_apex_delta_cells": -3.814697265625e-06,
           "resize_apex_position_delta_cells": [
-            -0.15625,
-            -0.19795799255371094
+            0.0,
+            -3.814697265625e-06
           ],
           "resize_during_jump": {
             "apex_cell": [
-              6.3125,
-              4.748946189880371
+              6.46875,
+              4.946900367736816
             ],
-            "apex_frame": 115,
-            "apex_rise_cells": 1.3270885944366455,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250427722930908,
             "apex_world_px": [
-              -781.875,
-              -472.5948486328125
+              -767.8125,
+              -454.7789611816406
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              7.375,
-              3.4218430519104004
+              7.625,
+              3.4218409061431885
             ],
-            "landing_frame": 147,
+            "landing_frame": 154,
             "landing_world_px": [
-              -686.25,
-              -592.0341186523438
+              -663.75,
+              -592.0343017578125
             ],
             "resize_frame_delta_cells": [
               0.03125,
@@ -7772,6 +8000,10 @@
           "resize_frame_excess_delta_cells": [
             0.0,
             0.0
+          ],
+          "resize_landing_delta_cells": [
+            0.0,
+            -4.76837158203125e-07
           ]
         },
         {
@@ -7855,32 +8087,32 @@
             18
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": -0.19795799255371094,
+          "resize_apex_delta_cells": -3.814697265625e-06,
           "resize_apex_position_delta_cells": [
-            0.15625,
-            -0.19795799255371094
+            0.0,
+            -3.814697265625e-06
           ],
           "resize_during_jump": {
             "apex_cell": [
-              22.6875,
-              4.748946189880371
+              22.53125,
+              4.946900367736816
             ],
-            "apex_frame": 115,
-            "apex_rise_cells": 1.3270885944366455,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250427722930908,
             "apex_world_px": [
-              691.875,
-              -472.5948486328125
+              677.8125,
+              -454.7789611816406
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              21.625,
-              3.4218430519104004
+              21.375,
+              3.4218409061431885
             ],
-            "landing_frame": 147,
+            "landing_frame": 154,
             "landing_world_px": [
-              596.25,
-              -592.0341186523438
+              573.75,
+              -592.0343017578125
             ],
             "resize_frame_delta_cells": [
               -0.03125,
@@ -7895,6 +8127,10 @@
           "resize_frame_excess_delta_cells": [
             0.0,
             0.0
+          ],
+          "resize_landing_delta_cells": [
+            0.0,
+            -4.76837158203125e-07
           ]
         },
         {
@@ -7978,32 +8214,32 @@
             18
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": -0.19795799255371094,
+          "resize_apex_delta_cells": -3.814697265625e-06,
           "resize_apex_position_delta_cells": [
-            0.15625,
-            -0.19795799255371094
+            0.0,
+            -3.814697265625e-06
           ],
           "resize_during_jump": {
             "apex_cell": [
-              23.6875,
-              4.748946189880371
+              23.53125,
+              4.946900367736816
             ],
-            "apex_frame": 115,
-            "apex_rise_cells": 1.3270885944366455,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250427722930908,
             "apex_world_px": [
-              781.875,
-              -472.5948486328125
+              767.8125,
+              -454.7789611816406
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              22.625,
-              3.421863317489624
+              22.375,
+              3.421861171722412
             ],
-            "landing_frame": 147,
+            "landing_frame": 154,
             "landing_world_px": [
-              686.25,
-              -592.0322875976562
+              663.75,
+              -592.032470703125
             ],
             "resize_frame_delta_cells": [
               -0.03125,
@@ -8018,6 +8254,10 @@
           "resize_frame_excess_delta_cells": [
             0.0,
             0.0
+          ],
+          "resize_landing_delta_cells": [
+            0.0,
+            -1.1920928955078125e-06
           ]
         }
       ],
@@ -8260,32 +8500,32 @@
             10
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": -0.26729774475097656,
+          "resize_apex_delta_cells": 0.0,
           "resize_apex_position_delta_cells": [
-            -0.25,
-            -0.26729774475097656
+            0.0,
+            0.0
           ],
           "resize_during_jump": {
             "apex_cell": [
-              8.21875,
-              8.679587364196777
+              8.46875,
+              8.946885108947754
             ],
-            "apex_frame": 112,
-            "apex_rise_cells": 1.2577481269836426,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250458717346191,
             "apex_world_px": [
-              -813.75,
-              -158.44944763183594
+              -783.75,
+              -126.37382507324219
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              9.28125,
-              7.421842575073242
+              9.625,
+              7.421841621398926
             ],
-            "landing_frame": 144,
+            "landing_frame": 154,
             "landing_world_px": [
-              -686.25,
-              -309.3789367675781
+              -645.0,
+              -309.3790283203125
             ],
             "resize_frame_delta_cells": [
               0.03125,
@@ -8298,6 +8538,10 @@
             "scale_after_frame_105": 2.0
           },
           "resize_frame_excess_delta_cells": [
+            0.0,
+            0.0
+          ],
+          "resize_landing_delta_cells": [
             0.0,
             0.0
           ]
@@ -8383,32 +8627,32 @@
             10
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": -0.26729774475097656,
+          "resize_apex_delta_cells": 0.0,
           "resize_apex_position_delta_cells": [
-            -0.25,
-            -0.26729774475097656
+            0.0,
+            0.0
           ],
           "resize_during_jump": {
             "apex_cell": [
-              7.21875,
-              8.679587364196777
+              7.46875,
+              8.946885108947754
             ],
-            "apex_frame": 112,
-            "apex_rise_cells": 1.2577481269836426,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250458717346191,
             "apex_world_px": [
-              -933.75,
-              -158.4494171142578
+              -903.75,
+              -126.37379455566406
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              8.28125,
-              7.421842575073242
+              8.625,
+              7.421841621398926
             ],
-            "landing_frame": 144,
+            "landing_frame": 154,
             "landing_world_px": [
-              -806.25,
-              -309.3789367675781
+              -765.0,
+              -309.3790283203125
             ],
             "resize_frame_delta_cells": [
               0.03125,
@@ -8421,6 +8665,10 @@
             "scale_after_frame_105": 2.0
           },
           "resize_frame_excess_delta_cells": [
+            0.0,
+            0.0
+          ],
+          "resize_landing_delta_cells": [
             0.0,
             0.0
           ]
@@ -8506,32 +8754,32 @@
             10
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": -0.26729774475097656,
+          "resize_apex_delta_cells": 0.0,
           "resize_apex_position_delta_cells": [
-            0.25,
-            -0.26729774475097656
+            0.0,
+            0.0
           ],
           "resize_during_jump": {
             "apex_cell": [
-              21.78125,
-              8.679587364196777
+              21.53125,
+              8.946885108947754
             ],
-            "apex_frame": 112,
-            "apex_rise_cells": 1.2577481269836426,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250458717346191,
             "apex_world_px": [
-              813.75,
-              -158.44944763183594
+              783.75,
+              -126.37382507324219
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              20.71875,
-              7.421842575073242
+              20.375,
+              7.421841621398926
             ],
-            "landing_frame": 144,
+            "landing_frame": 154,
             "landing_world_px": [
-              686.25,
-              -309.3789367675781
+              645.0,
+              -309.3790283203125
             ],
             "resize_frame_delta_cells": [
               -0.03125,
@@ -8544,6 +8792,10 @@
             "scale_after_frame_105": 2.0
           },
           "resize_frame_excess_delta_cells": [
+            0.0,
+            0.0
+          ],
+          "resize_landing_delta_cells": [
             0.0,
             0.0
           ]
@@ -8629,32 +8881,32 @@
             10
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": -0.26729774475097656,
+          "resize_apex_delta_cells": 0.0,
           "resize_apex_position_delta_cells": [
-            0.25,
-            -0.26729774475097656
+            0.0,
+            0.0
           ],
           "resize_during_jump": {
             "apex_cell": [
-              22.78125,
-              8.679587364196777
+              22.53125,
+              8.946885108947754
             ],
-            "apex_frame": 112,
-            "apex_rise_cells": 1.2577481269836426,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250458717346191,
             "apex_world_px": [
-              933.75,
-              -158.4494171142578
+              903.75,
+              -126.37379455566406
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              21.71875,
-              7.421864032745361
+              21.375,
+              7.421862602233887
             ],
-            "landing_frame": 144,
+            "landing_frame": 154,
             "landing_world_px": [
-              806.25,
-              -309.3763732910156
+              765.0,
+              -309.3764953613281
             ],
             "resize_frame_delta_cells": [
               -0.03125,
@@ -8667,6 +8919,10 @@
             "scale_after_frame_105": 2.0
           },
           "resize_frame_excess_delta_cells": [
+            0.0,
+            0.0
+          ],
+          "resize_landing_delta_cells": [
             0.0,
             0.0
           ]
@@ -8752,32 +9008,32 @@
             10
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": -0.26729774475097656,
+          "resize_apex_delta_cells": 0.0,
           "resize_apex_position_delta_cells": [
-            -0.25,
-            -0.26729774475097656
+            0.0,
+            0.0
           ],
           "resize_during_jump": {
             "apex_cell": [
-              7.21875,
-              8.679587364196777
+              7.46875,
+              8.946885108947754
             ],
-            "apex_frame": 112,
-            "apex_rise_cells": 1.2577481269836426,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250458717346191,
             "apex_world_px": [
-              -933.75,
-              -158.44944763183594
+              -903.75,
+              -126.37382507324219
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              8.28125,
-              7.421842575073242
+              8.625,
+              7.421841621398926
             ],
-            "landing_frame": 144,
+            "landing_frame": 154,
             "landing_world_px": [
-              -806.25,
-              -309.3789367675781
+              -765.0,
+              -309.3790283203125
             ],
             "resize_frame_delta_cells": [
               0.03125,
@@ -8790,6 +9046,10 @@
             "scale_after_frame_105": 2.0
           },
           "resize_frame_excess_delta_cells": [
+            0.0,
+            0.0
+          ],
+          "resize_landing_delta_cells": [
             0.0,
             0.0
           ]
@@ -8875,32 +9135,32 @@
             10
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": -0.26729774475097656,
+          "resize_apex_delta_cells": 0.0,
           "resize_apex_position_delta_cells": [
-            -0.25,
-            -0.26729774475097656
+            0.0,
+            0.0
           ],
           "resize_during_jump": {
             "apex_cell": [
-              6.21875,
-              8.679587364196777
+              6.46875,
+              8.946885108947754
             ],
-            "apex_frame": 112,
-            "apex_rise_cells": 1.2577481269836426,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250458717346191,
             "apex_world_px": [
-              -1053.75,
-              -158.4494171142578
+              -1023.75,
+              -126.37379455566406
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              7.28125,
-              7.421842575073242
+              7.625,
+              7.421841621398926
             ],
-            "landing_frame": 144,
+            "landing_frame": 154,
             "landing_world_px": [
-              -926.25,
-              -309.3789367675781
+              -885.0,
+              -309.3790283203125
             ],
             "resize_frame_delta_cells": [
               0.03125,
@@ -8913,6 +9173,10 @@
             "scale_after_frame_105": 2.0
           },
           "resize_frame_excess_delta_cells": [
+            0.0,
+            0.0
+          ],
+          "resize_landing_delta_cells": [
             0.0,
             0.0
           ]
@@ -8998,32 +9262,32 @@
             10
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": -0.26729774475097656,
+          "resize_apex_delta_cells": 0.0,
           "resize_apex_position_delta_cells": [
-            0.25,
-            -0.26729774475097656
+            0.0,
+            0.0
           ],
           "resize_during_jump": {
             "apex_cell": [
-              22.78125,
-              8.679587364196777
+              22.53125,
+              8.946885108947754
             ],
-            "apex_frame": 112,
-            "apex_rise_cells": 1.2577481269836426,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250458717346191,
             "apex_world_px": [
-              933.75,
-              -158.44944763183594
+              903.75,
+              -126.37382507324219
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              21.71875,
-              7.421842575073242
+              21.375,
+              7.421841621398926
             ],
-            "landing_frame": 144,
+            "landing_frame": 154,
             "landing_world_px": [
-              806.25,
-              -309.3789367675781
+              765.0,
+              -309.3790283203125
             ],
             "resize_frame_delta_cells": [
               -0.03125,
@@ -9036,6 +9300,10 @@
             "scale_after_frame_105": 2.0
           },
           "resize_frame_excess_delta_cells": [
+            0.0,
+            0.0
+          ],
+          "resize_landing_delta_cells": [
             0.0,
             0.0
           ]
@@ -9121,32 +9389,32 @@
             10
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": -0.26729774475097656,
+          "resize_apex_delta_cells": 0.0,
           "resize_apex_position_delta_cells": [
-            0.25,
-            -0.26729774475097656
+            0.0,
+            0.0
           ],
           "resize_during_jump": {
             "apex_cell": [
-              23.78125,
-              8.679587364196777
+              23.53125,
+              8.946885108947754
             ],
-            "apex_frame": 112,
-            "apex_rise_cells": 1.2577481269836426,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250458717346191,
             "apex_world_px": [
-              1053.75,
-              -158.4494171142578
+              1023.75,
+              -126.37379455566406
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              22.71875,
-              7.421842575073242
+              22.375,
+              7.421841621398926
             ],
-            "landing_frame": 144,
+            "landing_frame": 154,
             "landing_world_px": [
-              926.25,
-              -309.3789367675781
+              885.0,
+              -309.3790283203125
             ],
             "resize_frame_delta_cells": [
               -0.03125,
@@ -9159,6 +9427,10 @@
             "scale_after_frame_105": 2.0
           },
           "resize_frame_excess_delta_cells": [
+            0.0,
+            0.0
+          ],
+          "resize_landing_delta_cells": [
             0.0,
             0.0
           ]
@@ -9244,32 +9516,32 @@
             18
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": -0.26729726791381836,
+          "resize_apex_delta_cells": 0.0,
           "resize_apex_position_delta_cells": [
-            -0.25,
-            -0.26729726791381836
+            0.0,
+            0.0
           ],
           "resize_during_jump": {
             "apex_cell": [
-              7.21875,
-              4.679588317871094
+              7.46875,
+              4.946885585784912
             ],
-            "apex_frame": 112,
-            "apex_rise_cells": 1.2577488422393799,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250461101531982,
             "apex_world_px": [
-              -933.75,
-              -638.4494018554688
+              -903.75,
+              -606.3737182617188
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              8.28125,
-              3.421842336654663
+              8.625,
+              3.4218413829803467
             ],
-            "landing_frame": 144,
+            "landing_frame": 154,
             "landing_world_px": [
-              -806.25,
-              -789.37890625
+              -765.0,
+              -789.3790283203125
             ],
             "resize_frame_delta_cells": [
               0.03125,
@@ -9282,6 +9554,10 @@
             "scale_after_frame_105": 2.0
           },
           "resize_frame_excess_delta_cells": [
+            0.0,
+            0.0
+          ],
+          "resize_landing_delta_cells": [
             0.0,
             0.0
           ]
@@ -9367,32 +9643,32 @@
             18
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": -0.26729774475097656,
+          "resize_apex_delta_cells": 0.0,
           "resize_apex_position_delta_cells": [
-            -0.25,
-            -0.26729774475097656
+            0.0,
+            0.0
           ],
           "resize_during_jump": {
             "apex_cell": [
-              6.21875,
-              4.6796064376831055
+              6.46875,
+              4.946904182434082
             ],
-            "apex_frame": 112,
-            "apex_rise_cells": 1.2577488422393799,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250465869903564,
             "apex_world_px": [
-              -1053.75,
-              -638.4472045898438
+              -1023.75,
+              -606.3715209960938
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              7.28125,
-              3.421842336654663
+              7.625,
+              3.4218413829803467
             ],
-            "landing_frame": 144,
+            "landing_frame": 154,
             "landing_world_px": [
-              -926.25,
-              -789.37890625
+              -885.0,
+              -789.3790283203125
             ],
             "resize_frame_delta_cells": [
               0.03125,
@@ -9405,6 +9681,10 @@
             "scale_after_frame_105": 2.0
           },
           "resize_frame_excess_delta_cells": [
+            0.0,
+            0.0
+          ],
+          "resize_landing_delta_cells": [
             0.0,
             0.0
           ]
@@ -9490,32 +9770,32 @@
             18
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": -0.26729774475097656,
+          "resize_apex_delta_cells": 0.0,
           "resize_apex_position_delta_cells": [
-            0.25,
-            -0.26729774475097656
+            0.0,
+            0.0
           ],
           "resize_during_jump": {
             "apex_cell": [
-              22.78125,
-              4.6796064376831055
+              22.53125,
+              4.946904182434082
             ],
-            "apex_frame": 112,
-            "apex_rise_cells": 1.2577488422393799,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250465869903564,
             "apex_world_px": [
-              933.75,
-              -638.4472045898438
+              903.75,
+              -606.3715209960938
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              21.71875,
-              3.421842336654663
+              21.375,
+              3.4218413829803467
             ],
-            "landing_frame": 144,
+            "landing_frame": 154,
             "landing_world_px": [
-              806.25,
-              -789.37890625
+              765.0,
+              -789.3790283203125
             ],
             "resize_frame_delta_cells": [
               -0.03125,
@@ -9528,6 +9808,10 @@
             "scale_after_frame_105": 2.0
           },
           "resize_frame_excess_delta_cells": [
+            0.0,
+            0.0
+          ],
+          "resize_landing_delta_cells": [
             0.0,
             0.0
           ]
@@ -9613,32 +9897,32 @@
             18
           ],
           "protocol": "Flat floor; identical input frames at every scale: move at 60 (running) or 90 (standing), jump 90, release jump 91, stop 180, observe through 239; resize 1.0 to requested scale before frame 105. Landing requires six stable frames. Frame deltas include ordinary motion; excess delta subtracts the no-resize baseline. Cell coordinates use the actual stage-root inverse transform.",
-          "resize_apex_delta_cells": -0.26729774475097656,
+          "resize_apex_delta_cells": 0.0,
           "resize_apex_position_delta_cells": [
-            0.25,
-            -0.26729774475097656
+            0.0,
+            0.0
           ],
           "resize_during_jump": {
             "apex_cell": [
-              23.78125,
-              4.6796064376831055
+              23.53125,
+              4.946904182434082
             ],
-            "apex_frame": 112,
-            "apex_rise_cells": 1.2577488422393799,
+            "apex_frame": 119,
+            "apex_rise_cells": 1.5250465869903564,
             "apex_world_px": [
-              1053.75,
-              -638.4472045898438
+              1023.75,
+              -606.3715209960938
             ],
             "initial_scale": 1.0,
             "jumped": true,
             "landing_cell": [
-              22.71875,
-              3.421863317489624
+              22.375,
+              3.4218623638153076
             ],
-            "landing_frame": 144,
+            "landing_frame": 154,
             "landing_world_px": [
-              926.25,
-              -789.3764038085938
+              885.0,
+              -789.3765258789062
             ],
             "resize_frame_delta_cells": [
               -0.03125,
@@ -9651,6 +9935,10 @@
             "scale_after_frame_105": 2.0
           },
           "resize_frame_excess_delta_cells": [
+            0.0,
+            0.0
+          ],
+          "resize_landing_delta_cells": [
             0.0,
             0.0
           ]

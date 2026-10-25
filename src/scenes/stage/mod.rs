@@ -78,6 +78,13 @@ impl Plugin for StageGameplayPlugin {
             .add_message::<systems::StoneAppendCommandMessage>()
             .add_message::<systems::StoneExternalOutcomeMessage>()
             .add_message::<systems::StoneTickMessage>()
+            .add_systems(
+                Update,
+                systems::rescale_stage_motion
+                    .after(crate::systems::engine::design_resolution::update_letterbox)
+                    .before(systems::StageSystemSet::Movement)
+                    .run_if(in_state(GameState::Stage)),
+            )
             .add_message::<systems::StonePlaceRequestMessage>()
             // Input: メッセージの受信、UI入力
             .add_systems(
