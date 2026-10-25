@@ -1,0 +1,7 @@
+{
+  "ron_path": "examples/headless/fixtures/snapshot-terrain.ron",
+  "seed_start": 17,
+  "seed_count": 1,
+  "max_frames": 1200,
+  "trajectory_every": 1
+}

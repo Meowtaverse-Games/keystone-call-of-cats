@@ -12,6 +12,7 @@ pub enum LaunchType {
     HeadlessVerify,
     Replay,
     HeadlessMeasureReach,
+    HeadlessMeasureSnapshot,
     SteamAppInfo,
 }
 
@@ -94,6 +95,12 @@ impl LaunchProfile {
                 }
                 "--headless-verify" => {
                     launch_profile.launch_type = LaunchType::HeadlessVerify;
+                    launch_profile.headless_scenario = args.get(index + 1).map(PathBuf::from);
+                    index += 1;
+                    changed = true;
+                }
+                "--headless-measure-snapshot" => {
+                    launch_profile.launch_type = LaunchType::HeadlessMeasureSnapshot;
                     launch_profile.headless_scenario = args.get(index + 1).map(PathBuf::from);
                     index += 1;
                     changed = true;
