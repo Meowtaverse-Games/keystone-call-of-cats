@@ -1,0 +1,16 @@
+{
+  "ron_path": "examples/headless/fixtures/stage-9.ron",
+  "seed_start": 17,
+  "seed_count": 1,
+  "start_frame": 0,
+  "programs": [
+    {
+      "stone_index": 0,
+      "language": "Rhai",
+      "code": "dig(\"down\");"
+    }
+  ],
+  "inputs": [],
+  "max_frames": 180,
+  "trajectory_every": 10
+}

@@ -1,0 +1,72 @@
+{
+  "ron_path": "examples/headless/fixtures/stage-2.ron",
+  "seed_start": 17,
+  "seed_count": 1,
+  "start_frame": 0,
+  "programs": [
+    {
+      "stone_index": 0,
+      "language": "Rhai",
+      "code": "move(\"down\");"
+    }
+  ],
+  "inputs": [
+    {
+      "frame": 90,
+      "key": "ArrowRight",
+      "pressed": true
+    },
+    {
+      "frame": 120,
+      "key": "Space",
+      "pressed": true
+    },
+    {
+      "frame": 121,
+      "key": "Space",
+      "pressed": false
+    },
+    {
+      "frame": 435,
+      "key": "Space",
+      "pressed": true
+    },
+    {
+      "frame": 436,
+      "key": "Space",
+      "pressed": false
+    },
+    {
+      "frame": 610,
+      "key": "Space",
+      "pressed": true
+    },
+    {
+      "frame": 611,
+      "key": "Space",
+      "pressed": false
+    },
+    {
+      "frame": 750,
+      "key": "Space",
+      "pressed": true
+    },
+    {
+      "frame": 751,
+      "key": "Space",
+      "pressed": false
+    },
+    {
+      "frame": 900,
+      "key": "Space",
+      "pressed": true
+    },
+    {
+      "frame": 901,
+      "key": "Space",
+      "pressed": false
+    }
+  ],
+  "max_frames": 1800,
+  "trajectory_every": 10
+}

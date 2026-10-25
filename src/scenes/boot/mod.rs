@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use crate::resources::game_state::GameState;
 
 mod components;
-mod systems;
+pub(crate) mod systems;
 
 pub struct BootPlugin;
 impl Plugin for BootPlugin {

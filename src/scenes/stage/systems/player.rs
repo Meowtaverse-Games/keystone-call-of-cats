@@ -3,13 +3,14 @@ use bevy::{input::ButtonInput, prelude::*};
 
 use crate::{
     LaunchProfile,
-    resources::{asset_store::AssetStore, design_resolution::ScaledViewport},
+    resources::{
+        asset_store::AssetStore, design_resolution::ScaledViewport,
+        player_physics::PlayerPhysicsParams,
+    },
     scenes::{assets::*, stage::components::*},
 };
 
 use super::ui::ScriptEditorState;
-
-const PLAYER_BASE_GRAVITY_SCALE: f32 = 80.0;
 
 pub fn spawn_player(
     commands: &mut Commands,
@@ -17,6 +18,7 @@ pub fn spawn_player(
     asset_store: &AssetStore,
     (x, y, scale): (f32, f32, f32),
     viewport_scale: f32,
+    physics: &PlayerPhysicsParams,
 ) {
     let idle_frames: Vec<Handle<Image>> = PLAYER_IDLE_KEYS
         .iter()
@@ -69,10 +71,10 @@ pub fn spawn_player(
                 frame_index: 0,
             },
             PlayerMotion {
-                speed: 120.0,
+                speed: physics.speed,
                 direction: 1.0,
                 is_moving: matches!(initial_state, PlayerAnimationState::Run),
-                jump_speed: 380.0,
+                jump_speed: physics.jump_speed,
                 ground_y: y,
                 ..default()
             },
@@ -81,12 +83,15 @@ pub fn spawn_player(
                 scale,
             },
             RigidBody::Dynamic,
-            GravityScale(PLAYER_BASE_GRAVITY_SCALE * viewport_scale),
+            GravityScale(physics.gravity_scale * viewport_scale),
             LockedAxes::ROTATION_LOCKED,
             Collider::compound(vec![(
-                Position::from_xy(0.0, scale * -0.6),
+                Position::from_xy(0.0, scale * physics.capsule_center_y),
                 Rotation::degrees(0.0),
-                Collider::capsule(scale * 1.4, scale * 1.2),
+                Collider::capsule(
+                    scale * physics.capsule_radius,
+                    scale * physics.capsule_length,
+                ),
             )]),
             CollidingEntities::default(),
             DebugRender::default().with_collider_color(Color::srgb(1.0, 0.0, 0.0)),
@@ -148,7 +153,6 @@ type MovePlayerComponents<'w> = (
     &'w mut LinearVelocity,
     &'w mut PlayerMotion,
     &'w mut Sprite,
-    &'w mut GravityScale,
     Option<&'w CollisionLayers>,
 );
 
@@ -156,6 +160,7 @@ pub fn move_player(
     editor_state: Res<ScriptEditorState>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
     viewport: Res<ScaledViewport>,
+    physics: Res<PlayerPhysicsParams>,
     mut query: Query<MovePlayerComponents<'_>, With<Player>>,
     spatial_query: SpatialQuery,
     mut gizmos: Gizmos,
@@ -167,7 +172,6 @@ pub fn move_player(
         mut velocity,
         mut motion,
         mut sprite,
-        mut gravity_scale,
         collision_layers,
     )) = query.iter_mut().next()
     else {
@@ -183,10 +187,6 @@ pub fn move_player(
 
     let mut input_dir: f32 = 0.0;
     let scale_factor = viewport.scale;
-    let target_gravity = PLAYER_BASE_GRAVITY_SCALE * scale_factor;
-    if (gravity_scale.0 - target_gravity).abs() > f32::EPSILON {
-        gravity_scale.0 = target_gravity;
-    }
 
     if keyboard_input.any_pressed(vec![KeyCode::ArrowRight, KeyCode::KeyD]) {
         input_dir += 1.0;
@@ -211,14 +211,19 @@ pub fn move_player(
 
     // Check ground contact directly via a downward shapecast from the player's feet.
     let player_transform = player_transform.compute_transform();
-    let foot_origin =
-        player_transform.translation + Vec3::new(0.0, -player_transform.scale.y * 12.3, 0.0);
+    let foot_origin = player_transform.translation
+        + Vec3::new(
+            0.0,
+            -player_transform.scale.y * physics.ground_foot_offset,
+            0.0,
+        );
     let cast_origin = foot_origin.truncate();
     let cast_shape = Collider::rectangle(
-        player_transform.scale.x * 8.0,
-        player_transform.scale.y * 0.4,
+        player_transform.scale.x * physics.ground_cast_width,
+        player_transform.scale.y * physics.ground_cast_height,
     );
-    let mut cast_config = ShapeCastConfig::from_max_distance(player_transform.scale.y * 3.0);
+    let mut cast_config =
+        ShapeCastConfig::from_max_distance(player_transform.scale.y * physics.ground_cast_distance);
     cast_config.ignore_origin_penetration = false;
 
     let filter_mask = collision_layers
@@ -310,6 +315,7 @@ pub fn reset_player_position(
 }
 
 pub fn drive_player_goal_descent(
+    physics: Res<PlayerPhysicsParams>,
     time: Res<Time>,
     mut commands: Commands,
     mut query: Query<PlayerGoalDescentComponents<'_>, With<Player>>,
@@ -337,7 +343,7 @@ pub fn drive_player_goal_descent(
     //    return;
     //}
 
-    if *count < 280 {
+    if *count < physics.goal_descent_frames {
         return;
     }
 

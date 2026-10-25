@@ -231,6 +231,10 @@ mod tests {
             .init_resource::<Outcomes>()
             .add_systems(Update, collect_outcomes.after(resolve_place_requests))
             .add_systems(Update, resolve_place_requests);
+        // Manual app.update() does not run plugin finish hooks. Avian initializes
+        // diagnostics there; complete the lifecycle before any fixed step can run.
+        app.finish();
+        app.cleanup();
         app
     }
 

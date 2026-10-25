@@ -1,0 +1,77 @@
+{
+  "ron_path": "examples/headless/fixtures/stage-1.ron",
+  "seed_start": 17,
+  "seed_count": 1,
+  "start_frame": 0,
+  "programs": [],
+  "inputs": [
+    {
+      "frame": 30,
+      "key": "ArrowRight",
+      "pressed": true
+    },
+    {
+      "frame": 60,
+      "key": "Space",
+      "pressed": true
+    },
+    {
+      "frame": 61,
+      "key": "Space",
+      "pressed": false
+    },
+    {
+      "frame": 235,
+      "key": "Space",
+      "pressed": true
+    },
+    {
+      "frame": 236,
+      "key": "Space",
+      "pressed": false
+    },
+    {
+      "frame": 300,
+      "key": "Space",
+      "pressed": true
+    },
+    {
+      "frame": 301,
+      "key": "Space",
+      "pressed": false
+    },
+    {
+      "frame": 405,
+      "key": "Space",
+      "pressed": true
+    },
+    {
+      "frame": 406,
+      "key": "Space",
+      "pressed": false
+    },
+    {
+      "frame": 510,
+      "key": "Space",
+      "pressed": true
+    },
+    {
+      "frame": 511,
+      "key": "Space",
+      "pressed": false
+    },
+    {
+      "frame": 720,
+      "key": "Space",
+      "pressed": true
+    },
+    {
+      "frame": 721,
+      "key": "Space",
+      "pressed": false
+    }
+  ],
+  "max_frames": 1800,
+  "trajectory_every": 10,
+  "post_goal_frames": 320
+}

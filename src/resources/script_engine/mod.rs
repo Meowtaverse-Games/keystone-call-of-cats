@@ -38,6 +38,16 @@ impl Default for ScriptExecutor {
 }
 
 impl ScriptExecutor {
+    /// Same executors and capability validation, with deterministic Rhai step handoff.
+    pub(crate) fn deterministic() -> Self {
+        Self::new(
+            Box::<RhaiScriptExecutor>::default(),
+            Box::new(RhaiScriptExecutor::deterministic()),
+            Box::<KeystoneScriptExecutor>::default(),
+            Box::<KeystoneScriptExecutor>::default(),
+        )
+    }
+
     pub fn new(
         runner: Box<dyn ScriptRunner>,
         stepper: Box<dyn ScriptStepper>,

@@ -1,7 +1,22 @@
 use crate::scenes::stage::systems::ui::ScriptEditorState;
 use avian2d::prelude::*;
 use bevy::prelude::*;
-use rand::RngExt;
+use rand::{RngExt, SeedableRng};
+
+/// Optional seeded stream; normal play retains its existing thread-local RNG.
+#[derive(Resource)]
+pub struct ObstacleRandom(rand::rngs::StdRng);
+impl ObstacleRandom {
+    pub fn new(seed: u64) -> Self {
+        Self(rand::rngs::StdRng::seed_from_u64(seed))
+    }
+}
+fn random_duration(random: Option<&mut ObstacleRandom>, range: std::ops::Range<f32>) -> f32 {
+    match random {
+        Some(random) => random.0.random_range(range),
+        None => rand::rng().random_range(range),
+    }
+}
 
 #[derive(Component)]
 pub struct AnimatedObstacle {
@@ -20,6 +35,7 @@ pub fn spawn_obstacle(
     asset_server: &AssetServer,
     texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     (x, y, scale): (f32, f32, f32),
+    random: Option<&mut ObstacleRandom>,
 ) {
     let tile_width = 16;
     let tile_height = 16;
@@ -45,8 +61,7 @@ pub fn spawn_obstacle(
     let loop_frames = [195, 196, 197, 198, 197, 196].to_vec();
     let vanish_frames = all_indices[4..8].to_vec();
 
-    let mut rng = rand::rng();
-    let duration = rng.random_range(10.0..18.0);
+    let duration = random_duration(random, 10.0..18.0);
     let collider_size = Vec2::new(tile_width as f32, tile_height as f32);
 
     let obstacle_entity = commands
@@ -80,6 +95,7 @@ pub fn animate_obstacle(
     mut commands: Commands,
     time: Res<Time>,
     editor_state: Option<Res<ScriptEditorState>>,
+    mut random: Option<ResMut<ObstacleRandom>>,
     mut query: Query<(
         Entity,
         &mut AnimatedObstacle,
@@ -100,8 +116,7 @@ pub fn animate_obstacle(
                 *visibility = Visibility::Visible;
 
                 // Reset timer with new random duration
-                let mut rng = rand::rng();
-                let duration = rng.random_range(2.0..5.0);
+                let duration = random_duration(random.as_deref_mut(), 2.0..5.0);
                 obstacle
                     .lifetime_timer
                     .set_duration(std::time::Duration::from_secs_f32(duration));

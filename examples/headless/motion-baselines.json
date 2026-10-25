@@ -1,0 +1,54 @@
+{
+  "gameplay_base": "14d8617ca764121eaa0e53055e4705deb90aad53",
+  "seed": 17,
+  "scenarios": [
+    {
+      "scenario": "examples/headless/stage-1.json",
+      "trajectory_hash": "fnv1a64-v1:8f5d6c37b6efc4fe",
+      "frames": 788,
+      "goal_frame": 787
+    },
+    {
+      "scenario": "examples/headless/stage-2.json",
+      "trajectory_hash": "fnv1a64-v1:eb1f870862eed1bc",
+      "frames": 1088,
+      "goal_frame": 1087
+    },
+    {
+      "scenario": "examples/headless/motion-fall.json",
+      "trajectory_hash": "fnv1a64-v1:d6e190c9dc0e1b3e",
+      "frames": 360,
+      "goal_frame": null
+    },
+    {
+      "scenario": "examples/headless/motion-goal-descent.json",
+      "trajectory_hash": "fnv1a64-v1:63e20b54b92550b6",
+      "frames": 1108,
+      "goal_frame": 787
+    },
+    {
+      "scenario": "examples/headless/motion-running-jump.json",
+      "trajectory_hash": "fnv1a64-v1:6398b8fa2c5b19e4",
+      "frames": 360,
+      "goal_frame": null
+    },
+    {
+      "scenario": "examples/headless/motion-standing-jump.json",
+      "trajectory_hash": "fnv1a64-v1:a3552db409496309",
+      "frames": 360,
+      "goal_frame": null
+    },
+    {
+      "scenario": "examples/headless/motion-walk-stop.json",
+      "trajectory_hash": "fnv1a64-v1:c768faf848165d79",
+      "frames": 360,
+      "goal_frame": null
+    },
+    {
+      "scenario": "examples/headless/motion-wall-hit.json",
+      "trajectory_hash": "fnv1a64-v1:014f9a927d21f4d8",
+      "frames": 360,
+      "goal_frame": null
+    }
+  ]
+}

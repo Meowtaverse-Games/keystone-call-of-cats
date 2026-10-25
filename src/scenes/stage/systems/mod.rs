@@ -7,6 +7,9 @@ mod schedule;
 mod stone;
 mod tiles;
 mod ui;
+mod viewport;
+
+pub use viewport::rescale_stage_motion;
 
 pub use {schedule::StageSystemSet, tiles::update_dynamic_solid};
 
@@ -25,6 +28,7 @@ use crate::{
         chunk_grammar_map::{self, Map, TileKind},
         design_resolution::{LetterboxOffsets, ScaledViewport},
         file_storage::FileStorageResource,
+        player_physics::PlayerPhysicsParams,
         settings::GameSettings,
         stage_catalog::*,
         stage_progress::StageProgress,
@@ -34,11 +38,13 @@ use crate::{
     scenes::{assets::AudioKey, stage::components::StageTile},
     util::localization::{localized_stage_name, tr, tr_with_args},
 };
-use audio::{StageAudioHandles, StageAudioState};
+pub(crate) use audio::{StageAudioHandles, StageAudioState};
 
 pub use goal::check_goal_completion;
 pub use obstacle::*;
-pub use place::{PlaceState, StageGridMetrics, reset_placed_tiles, resolve_place_requests};
+pub use place::{
+    PlaceState, PlacedTile, StageGridMetrics, reset_placed_tiles, resolve_place_requests,
+};
 pub use player::*;
 pub(crate) use stone::StoneCommandState;
 pub use stone::{
@@ -131,7 +137,7 @@ fn compute_stage_root_translation(viewport: &ScaledViewport, window_size: Vec2) 
     Vec3::new(translation.x, translation.y, 1.0)
 }
 
-fn spawn_stage(
+pub(crate) fn spawn_stage(
     commands: &mut Commands,
     transform: Transform,
     map_assets: &TiledMapAssets,
@@ -140,6 +146,7 @@ fn spawn_stage(
     asset_store: &AssetStore,
     asset_server: &AssetServer,
     atlas_layouts: &mut Assets<TextureAtlasLayout>,
+    physics: &PlayerPhysicsParams,
 ) -> Entity {
     let stage_root = commands
         .spawn((
@@ -159,6 +166,7 @@ fn spawn_stage(
         asset_store,
         asset_server,
         atlas_layouts,
+        physics,
     );
 
     stage_root
@@ -173,6 +181,7 @@ fn populate_stage_contents(
     asset_store: &AssetStore,
     asset_server: &AssetServer,
     atlas_layouts: &mut Assets<TextureAtlasLayout>,
+    physics: &PlayerPhysicsParams,
 ) {
     tiles::spawn_tiles(commands, stage_root, tiled_map_assets, map, viewport);
 
@@ -195,8 +204,15 @@ fn populate_stage_contents(
         commands,
         stage_root,
         asset_store,
-        tile_position_to_world(player_position, real_tile_size, viewport_size, scale, 2.2),
+        tile_position_to_world(
+            player_position,
+            real_tile_size,
+            viewport_size,
+            scale,
+            physics.spawn_y_offset,
+        ),
         viewport.scale,
+        physics,
     );
 
     let stone_positions = map.tile_positions_multiple(TileKind::Stone);
@@ -218,6 +234,7 @@ fn populate_stage_contents(
         );
     }
 
+    let mut obstacle_random = map.simulation_seed.map(obstacle::ObstacleRandom::new);
     map.tile_positions(TileKind::Obstacle)
         .iter()
         .for_each(|&obstacle_position| {
@@ -234,8 +251,15 @@ fn populate_stage_contents(
                     scale,
                     0.0,
                 ),
+                obstacle_random.as_mut(),
             );
         });
+
+    if let Some(random) = obstacle_random {
+        commands.insert_resource(random);
+    } else {
+        commands.remove_resource::<obstacle::ObstacleRandom>();
+    }
 
     map.tile_positions(TileKind::Goal)
         .iter()
@@ -313,6 +337,7 @@ fn cleanup_stage_entities(
 #[derive(SystemParam)]
 pub struct StageSetupParams<'w, 's> {
     asset_store: Res<'w, AssetStore>,
+    physics: Res<'w, PlayerPhysicsParams>,
     tiled_map_assets: Res<'w, TiledMapAssets>,
     viewport: Res<'w, ScaledViewport>,
     letterbox_offsets: Res<'w, LetterboxOffsets>,
@@ -499,6 +524,7 @@ pub fn setup(mut commands: Commands, mut params: StageSetupParams) {
         params.asset_store.as_ref(),
         params.asset_server.as_ref(),
         params.atlas_layouts.as_mut(),
+        &params.physics,
     );
 
     let tutorial_dialog = params
@@ -595,6 +621,7 @@ pub fn advance_stage_if_cleared(
 #[derive(SystemParam)]
 pub struct StageReloadParams<'w, 's> {
     asset_store: Res<'w, AssetStore>,
+    physics: Res<'w, PlayerPhysicsParams>,
     viewport: Res<'w, ScaledViewport>,
     letterbox_offsets: Res<'w, LetterboxOffsets>,
     asset_server: Res<'w, AssetServer>,
@@ -678,6 +705,7 @@ pub fn reload_stage_if_needed(mut commands: Commands, mut params: StageReloadPar
         params.asset_store.as_ref(),
         params.asset_server.as_ref(),
         params.atlas_layouts.as_mut(),
+        &params.physics,
     );
 
     if let Some(editor) = params.editor_state.as_deref_mut() {
@@ -731,8 +759,13 @@ pub fn update_stage_root(
     let window_size = window.resolution.size();
     let translation = compute_stage_root_translation(&viewport, window_size);
 
+    apply_stage_root_viewport(&mut transform, translation, viewport.scale);
+}
+
+/// Shared viewport transform operation; the headless viewport stays centered.
+pub(crate) fn apply_stage_root_viewport(transform: &mut Transform, translation: Vec3, scale: f32) {
     transform.translation = translation;
-    transform.scale = Vec3::splat(viewport.scale);
+    transform.scale = Vec3::splat(scale);
 }
 
 const DISABLED_SCENE_SATURATION: f32 = 0.01;
@@ -889,6 +922,7 @@ mod tests {
         app.add_plugins(AssetPlugin::default())
             .init_asset::<TextureAtlasLayout>()
             .init_resource::<VplState>()
+            .insert_resource(PlayerPhysicsParams::embedded())
             .insert_resource(AssetStore::default())
             .insert_resource(ScaledViewport::new(Vec2::ONE))
             .insert_resource(LetterboxOffsets::default())
