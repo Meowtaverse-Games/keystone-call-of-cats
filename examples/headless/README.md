@@ -52,11 +52,20 @@ real-time pacing, never simulation delta. Asset loading uses zero simulation tim
 the first stage update is the same zero-delta bootstrap as headless.
 
 The initial window is 1800×1200. **Physics viewport scale is fixed to the scenario's
-`viewport_scale` (default 1), including its explicit `scale_changes`.** Resizing the
-real window does not alter that scale or world origin; it may crop/reframe the
-stage. Use identical scenario scale settings when comparing reports. `--seed`
-selects one seed, including its `seed_inputs` override, independently of the batch
-range. `--viewport-scale` is only a headless/reach override, not a replay option.
+`viewport_scale` (default 1), including its explicit `scale_changes`.** The camera
+alone zooms out and shifts its view so the entire 30×20-cell canvas fits to the
+right of the opaque editor panel, with a small margin. The stage root, physical
+coordinates, `ScaledViewport`, and simulation remain unchanged. Camera projection
+and translation are updated after egui finishes layout and before camera/transform
+updates, using the reported panel width and screen dimensions in egui points
+(so UI/DPI scale is accounted for). Window resizing or a changed reported panel
+width recomputes the framing, including after playback stops. Manual input remains
+locked, so dragging the panel is disabled in replay; any layout-driven width
+change still triggers the same fit. This display zoom is separate from physical
+viewport scale and does not affect hashes.
+Use identical scenario scale settings when comparing reports. `--seed` selects one
+seed, including its `seed_inputs` override, independently of the batch range.
+`--viewport-scale` is only a headless/reach override, not a replay option.
 
 Replay does not install the settings or progression/save plugins, Steam, or the
 external-control server. It uses default settings, empty script storage, and a
@@ -69,11 +78,15 @@ use deterministic Rhai synchronization and the same script restrictions below.
 Compare `seeds[0].trajectory_hash`, not `execution_hash`, when a batch run and a
 single-seed replay use different batch metadata. The hash includes every frame,
 not just the trajectory samples. The windowless replay-schedule test matches both example trajectories, commands and
-goal frames. The two permitted WSLg checks terminated in winit 0.30.13 Wayland
-keyboard initialization (`attempt to add with overflow`); real-window hash equality
-is **not yet verified**, and no replay reports were produced. See
-`replay-validation.json` for the attempts. The asset-root lookup observed in those
-attempts has been corrected to the repository `assets` directory.
+goal frames. **Real-window equality and visual framing will be checked by Claude
+on Windows.** WSLg cannot run replay on this machine: debug panics in winit 0.30.13
+Wayland keyboard initialization (`attempt to add with overflow`); Claude also
+confirmed release exits with Wayland `Broken pipe` after creating a window, while
+X11 cannot start because `libxkbcommon-x11` is missing. No windows were opened for
+this revision, and no workaround or dependency installation was attempted.
+`replay-validation.json` retains the previous debug attempts, not successful
+replay reports. The asset-root lookup observed in those attempts was corrected to
+the repository `assets` directory.
 
 After generating both reports, compare the deterministic observations (wall time
 and FPS intentionally differ):
@@ -151,7 +164,7 @@ The benchmark script also measures complete process wall time, and verifies that
 all 1,800,000 frames ran (idle input avoids early goal exits).
 
 Each seed contains `cleared`, nullable `goal_frame`, `frames`, `termination`
-(`goal`, `max_frames`, `compile_error`, `script_error`), nullable `error`,
+(`goal`, `max_frames`, `compile_error`, `script_error`, `observation_error`), nullable `error`,
 `terrain_ascii`, `terrain_hash`, `execution_hash`, `trajectory_hash`, `commands`, and `trajectory`.
 A failed compile or script is a reportable simulation outcome; malformed scenario
 or unreadable files cause exit 2. Successful report generation exits 0, even if a
@@ -165,7 +178,11 @@ coordinates. World px values retain scaling.
 Schema 2 adds `stones`, `placed_tiles`, and `dug_tiles` to every trajectory sample.
 Each sample retains the player's `frame`, `cell: [x,y]`, and `world_px: [x,y]`.
 Each stone has `stone_index`, `cell`, and `world_px`. Placed/dug tiles have `cell`
-and `world_px`; these arrays are sorted by position and deduplicated. Dug tiles
+and `world_px`; these arrays are sorted by position and deduplicated. `placed_tiles`
+contains only currently present platforms: entities marked `DugTile` are excluded,
+even if they retain `PlacedTile`. Such entities appear only in `dug_tiles` until
+restored. `observation_error` is a replay-side failure to collect simulation state.
+Dug tiles
 record the currently removed rocks at each sample, including unchanged ones;
 restored rocks disappear from that array. Stones sort by index. Coordinates come
 from the actual entities, with the same stage-root transform as the player.
@@ -261,3 +278,28 @@ The schema-2 release benchmark completed 1,000 seeds × 1,800 frames with `--job
 One seed took 0.452 seconds wall time (0.434 seconds simulation; 4,150.4 FPS).
 See `benchmark-summary.json`; regenerate with `python3 examples/headless/benchmark.py --jobs 24`.
 The 300-second target is met on this machine and is not a CI timing gate.
+
+## Placement and digging examples
+
+```sh
+env -u DISPLAY -u WAYLAND_DISPLAY target/release/keystone-cc \
+  --headless-verify examples/headless/place.json --report examples/headless/place-report.json
+env -u DISPLAY -u WAYLAND_DISPLAY target/release/keystone-cc \
+  --headless-verify examples/headless/dig.json --report examples/headless/dig-report.json
+```
+
+`place.json` uses the existing Type4 `tools/stage_sim/examples/ai-candidate.ron`
+without changing it and executes `place("up");`. `dig.json` uses main Stage 9
+(Type3) and executes `dig("down");`. Both use seed 17, idle player input, and a
+180-frame limit; clearing the stage is not their purpose. Their reports demonstrate
+actual product commands and sampled platform/dug positions. A regression test also
+marks a placed tile as dug and restores it, checking that it moves between the two
+report arrays without appearing in both.
+
+With the recorded seed, placement completes at frame 1; the first sampled platform
+is at frame 10, cell `[10, 5]`, world `[-270, -270]` px. Digging completes at frame
+30; that sample contains the removed rock at cell `[6, 2]`, world `[-510, -450]` px.
+Both terminate with `max_frames`, as intended. No combined place-then-dig scenario
+was forced: Type4 permits place but not dig, and Type3 permits dig but not place.
+The component-lifecycle regression test covers removal/restoration of placed tiles
+without changing those product capability restrictions.

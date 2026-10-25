@@ -206,6 +206,51 @@ fn result_ui(mut contexts: EguiContexts, replay: Res<Replay>) {
             });
     }
 }
+/// Fit the physical canvas into the area to the right of egui, using only
+/// camera projection and translation. Coordinates here are egui logical points.
+fn camera_framing(screen: Vec2, panel: f32, canvas: Vec2) -> Option<(Vec2, Vec2)> {
+    if !screen.is_finite() || screen.min_element() <= 1.0 {
+        return None;
+    }
+    let panel = panel.clamp(0.0, screen.x - 1.0);
+    let margin = 16.0_f32.min((screen.x - panel) * 0.25).min(screen.y * 0.25);
+    let available = Vec2::new(screen.x - panel, screen.y) - Vec2::splat(2.0 * margin);
+    let units_per_point = (canvas / available).max_element();
+    Some((
+        screen * units_per_point,
+        Vec2::new(-panel * 0.5 * units_per_point, 0.0),
+    ))
+}
+fn frame_replay_camera(
+    mut contexts: EguiContexts,
+    offsets: Res<LetterboxOffsets>,
+    viewport: Res<ScaledViewport>,
+    mut cameras: Query<(&mut Projection, &mut Transform), With<crate::MainCamera>>,
+) {
+    let Ok(ctx) = contexts.ctx_mut() else {
+        return;
+    };
+    let screen = ctx.content_rect().size();
+    let Some((size, center)) = camera_framing(
+        Vec2::new(screen.x, screen.y),
+        offsets.left,
+        viewport.size * viewport.scale,
+    ) else {
+        return;
+    };
+    for (mut projection, mut transform) in &mut cameras {
+        if let Projection::Orthographic(ref mut projection) = *projection {
+            projection.scaling_mode = bevy::camera::ScalingMode::Fixed {
+                width: size.x,
+                height: size.y,
+            };
+            projection.scale = 1.0;
+            transform.translation.x = center.x;
+            transform.translation.y = center.y;
+        }
+    }
+}
+
 pub fn run(profile: &LaunchProfile) -> Result<()> {
     let source = profile
         .headless_scenario
@@ -324,6 +369,13 @@ pub fn run(profile: &LaunchProfile) -> Result<()> {
     )
     .add_systems(Last, (collect_outcomes, after_frame).chain())
     .add_systems(
+        PostUpdate,
+        frame_replay_camera
+            .after(bevy_egui::EguiPostUpdateSet::EndPass)
+            .before(bevy::camera::CameraUpdateSystems)
+            .before(bevy::transform::TransformSystems::Propagate),
+    )
+    .add_systems(
         EguiPrimaryContextPass,
         (
             crate::scenes::boot::systems::setup_font,
@@ -370,6 +422,28 @@ fn configure_freeze(app: &mut App) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn camera_fits_full_canvas_beside_panel_at_every_size_and_scale() {
+        for screen in [
+            Vec2::new(1800.0, 1200.0),
+            Vec2::new(900.0, 600.0),
+            Vec2::new(2400.0, 1000.0),
+        ] {
+            for fraction in [0.125, 0.25, 0.5] {
+                for scale in [0.5, 0.75, 1.0, 1.25, 1.5, 2.0] {
+                    let panel = screen.x * fraction;
+                    let canvas = Vec2::new(1800.0, 1200.0) * scale;
+                    let (view, center) = camera_framing(screen, panel, canvas).unwrap();
+                    for corner in [Vec2::new(-0.5, -0.5), Vec2::new(0.5, 0.5)] {
+                        let pixel = ((canvas * corner - center) / view + Vec2::splat(0.5)) * screen;
+                        assert!(pixel.x >= panel && pixel.x <= screen.x);
+                        assert!(pixel.y >= 0.0 && pixel.y <= screen.y);
+                    }
+                }
+            }
+        }
+        assert!(camera_framing(Vec2::ZERO, 0.0, Vec2::ONE).is_none());
+    }
     #[test]
     fn storage_is_always_empty_and_never_persists() {
         let storage = NoSaveStorage;

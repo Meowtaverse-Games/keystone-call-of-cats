@@ -556,8 +556,11 @@ fn snapshot(world: &mut World, frame: u64, digest: &mut Digest) -> Result<Trajec
             position: position_sample(world, p),
         })
         .collect();
-    let placed_tiles = tile_samples::<systems::PlacedTile>(world);
-    let dug_tiles = tile_samples::<crate::scenes::stage::components::DugTile>(world);
+    let placed_tiles = tile_samples::<(
+        With<systems::PlacedTile>,
+        Without<crate::scenes::stage::components::DugTile>,
+    )>(world);
+    let dug_tiles = tile_samples::<With<crate::scenes::stage::components::DugTile>>(world);
     let cell = cell_position(world, position).floor().as_ivec2();
     Ok(TrajectoryPoint {
         stones,
@@ -575,9 +578,9 @@ fn position_sample(world: &mut World, position: Vec2) -> PositionSample {
         world_px: position.to_array(),
     }
 }
-fn tile_samples<C: Component>(world: &mut World) -> Vec<PositionSample> {
+fn tile_samples<F: bevy::ecs::query::QueryFilter>(world: &mut World) -> Vec<PositionSample> {
     let mut positions: Vec<_> = world
-        .query_filtered::<&GlobalTransform, With<C>>()
+        .query_filtered::<&GlobalTransform, F>()
         .iter(world)
         .map(|t| t.translation().truncate())
         .collect();
@@ -860,19 +863,34 @@ mod tests {
     fn snapshot_records_placed_and_dug_tiles_in_both_coordinate_spaces() {
         let mut app = build_app(load_map(&scenario(2), 17).unwrap());
         let position = player_position(&mut app).unwrap();
-        app.world_mut().spawn((
-            crate::scenes::stage::components::DugTile {
-                collider: Collider::rectangle(1.0, 1.0),
-            },
-            systems::PlacedTile,
-            GlobalTransform::from_translation(position.extend(0.0)),
-        ));
+        let tile = app
+            .world_mut()
+            .spawn((
+                systems::PlacedTile,
+                GlobalTransform::from_translation(position.extend(0.0)),
+            ))
+            .id();
         let point = snapshot(app.world_mut(), 0, &mut Digest::new()).unwrap();
         assert_eq!(point.placed_tiles.len(), 1);
-        assert_eq!(point.dug_tiles.len(), 1);
-        assert_eq!(point.dug_tiles[0].cell, point.cell);
+        assert!(point.dug_tiles.is_empty());
         assert_eq!(point.placed_tiles[0].cell, point.cell);
         assert_eq!(point.placed_tiles[0].world_px, point.world_px);
+        app.world_mut()
+            .entity_mut(tile)
+            .insert(crate::scenes::stage::components::DugTile {
+                collider: Collider::rectangle(1.0, 1.0),
+            });
+        let dug = snapshot(app.world_mut(), 1, &mut Digest::new()).unwrap();
+        assert!(dug.placed_tiles.is_empty());
+        assert_eq!(dug.dug_tiles.len(), 1);
+        assert_eq!(dug.dug_tiles[0].cell, point.cell);
+        assert_eq!(dug.dug_tiles[0].world_px, point.world_px);
+        app.world_mut()
+            .entity_mut(tile)
+            .remove::<crate::scenes::stage::components::DugTile>();
+        let restored = snapshot(app.world_mut(), 2, &mut Digest::new()).unwrap();
+        assert_eq!(restored.placed_tiles.len(), 1);
+        assert!(restored.dug_tiles.is_empty());
     }
     #[test]
     fn graphical_and_headless_register_the_same_gameplay_and_physics() {
