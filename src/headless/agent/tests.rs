@@ -20,15 +20,16 @@ fn scenario(name: &str, code: Option<&str>) -> Scenario {
 fn physical_routes_and_exported_inputs_reproduce() {
     let reach = default_reach();
     assert_eq!(reach.max_gap(), 2);
+    assert_eq!(reach.jump_headroom, 2);
     assert!(!reach.takeoffs(false, true, 1).is_empty());
     assert!(reach.takeoffs(false, true, 2).is_empty());
-    for (name, code, expected) in [
-        ("walk", None, "cleared"),
-        ("step", None, "cleared"),
-        ("gap", None, "cleared"),
-        ("high", None, "unsolved"),
-        ("high", Some("place(\"up\");"), "cleared"),
-        ("move", Some("move(\"right\");"), "cleared"),
+    for (name, code, expected, max_attempts) in [
+        ("walk", None, "cleared", 1),
+        ("step", None, "cleared", 1),
+        ("gap", None, "cleared", 2),
+        ("high", None, "unsolved", 1),
+        ("high", Some("place(\"up\");"), "cleared", 2),
+        ("move", Some("move(\"right\");"), "cleared", 1),
     ] {
         let result = solve(&scenario(name, code), 17, reach, 8).unwrap();
         println!(
@@ -38,6 +39,7 @@ fn physical_routes_and_exported_inputs_reproduce() {
             serde_json::to_string(&result.failures).unwrap()
         );
         assert_eq!(result.status, expected, "{name} {code:?}");
+        assert!(result.attempts <= max_attempts, "{name} {code:?}");
         if let Some(solution) = result.solution {
             let exported: Scenario =
                 serde_json::from_str(&serde_json::to_string(&solution).unwrap()).unwrap();
@@ -65,8 +67,8 @@ fn stage_fixture_varies_and_successes_replay() {
             "stage1 seed {seed}: {} attempts {}",
             result.status, result.attempts
         );
-        assert_ne!(result.status, "error");
-        assert!(result.attempts <= 8);
+        assert_eq!(result.status, "cleared");
+        assert!(result.attempts <= 2);
         terrain.insert(result.terrain_hash.unwrap());
         if let Some(solution) = result.solution {
             cleared += 1;
@@ -77,7 +79,43 @@ fn stage_fixture_varies_and_successes_replay() {
         }
     }
     assert!(terrain.len() > 1);
-    assert!(cleared > 0);
+    assert_eq!(cleared, 4);
+}
+
+#[test]
+fn low_ceiling_corridor_waits_for_the_stone_and_replays() {
+    let scenario: Scenario =
+        serde_json::from_str(&fs::read_to_string("examples/headless/agent-corridor.json").unwrap())
+            .unwrap();
+    let result = solve(&scenario, 17, default_reach(), 8).unwrap();
+    assert_eq!(result.status, "cleared");
+    assert_eq!(result.attempts, 1);
+    assert!(result.failures.is_empty());
+    assert!(result.runs[0].planned_wait_until > scenario.start_frame + 30);
+    assert!(
+        result.runs[0]
+            .route
+            .iter()
+            .all(|segment| matches!(segment.action, Action::Walk | Action::Drop))
+    );
+    let exported: Scenario =
+        serde_json::from_str(&serde_json::to_string(&result.solution.unwrap()).unwrap()).unwrap();
+    assert!(!exported.seed_inputs[&17].is_empty());
+    let verified = verify(&exported, 1).unwrap();
+    assert!(verified.seeds[0].cleared);
+    assert_eq!(
+        verified.seeds[0].trajectory_hash,
+        result.result.unwrap().trajectory_hash
+    );
+
+    let no_code: Scenario = serde_json::from_str(
+        &fs::read_to_string("examples/headless/agent-corridor-no-code.json").unwrap(),
+    )
+    .unwrap();
+    let result = solve(&no_code, 17, default_reach(), 8).unwrap();
+    assert_eq!(result.status, "unsolved");
+    assert_eq!(result.attempts, 1);
+    assert!(result.solution.is_none());
 }
 
 #[test]
@@ -95,7 +133,10 @@ fn invalid_inputs_and_budgets_are_rejected_before_measurement() {
 
 #[test]
 fn script_errors_are_not_unsolved() {
-    let reach = AgentReach { trials: vec![] };
+    let reach = AgentReach {
+        trials: vec![],
+        jump_headroom: 0,
+    };
     for code in ["this is not valid rhai", "loop {}"] {
         let result = solve(&scenario("high", Some(code)), 17, &reach, 8).unwrap();
         assert_eq!(result.status, "error");
@@ -114,6 +155,7 @@ fn measurement_follows_overridden_physics() {
     )
     .unwrap();
     assert!(measured.takeoffs(false, true, 1).is_empty());
+    assert!(measured.jump_headroom < default_reach().jump_headroom);
     let result = solve(&scenario, 17, &measured, 2).unwrap();
     assert_eq!(result.status, "unsolved");
     assert!(result.solution.is_none());
@@ -178,4 +220,94 @@ fn retries_start_fresh_and_respect_both_budgets() {
         result.failures[1].segment.as_ref().unwrap().to
     );
     assert!(result.solution.is_none());
+}
+
+#[test]
+fn passages_check_headroom_and_the_complete_landing_column_in_both_directions() {
+    let grid = Grid::new("........\n........\n........\n........\n........\n........");
+    for direction in [-1, 1] {
+        let from = [3, 2];
+        let to = [3 + direction * 3, 1];
+        assert!(grid.passage_clear(from, to, 2));
+        // Departure ceiling, intermediate ceiling, and the landing column's
+        // departure height all used to be omitted by gap-jump checks.
+        for blocker in [
+            [3, 3],
+            [3, 4],
+            [3 + direction, 3],
+            [3 + direction * 2, 4],
+            [to[0], 2],
+            [to[0], 3],
+            to,
+        ] {
+            let mut blocked = grid.clone();
+            blocked.solid.insert(blocker);
+            assert!(
+                !blocked.passage_clear(from, to, 2),
+                "direction={direction} blocker={blocker:?}"
+            );
+        }
+        let drop = [3 + direction, 0];
+        assert!(grid.passage_clear(from, drop, 0));
+        for y in 0..=from[1] {
+            let mut blocked = grid.clone();
+            blocked.solid.insert([drop[0], y]);
+            assert!(!blocked.passage_clear(from, drop, 0));
+        }
+        // A low ceiling can prevent jumping without preventing walking/dropping.
+        let mut ceiling = grid.clone();
+        ceiling.solid.insert([3, 3]);
+        assert!(ceiling.passage_clear(from, [3 + direction, 2], 0));
+        assert!(ceiling.passage_clear(from, drop, 0));
+
+        let step = [3 + direction, 3];
+        let mut supported = grid.clone();
+        supported.solid.insert([step[0], 2]);
+        assert!(supported.passage_clear(from, step, 2));
+        supported.solid.insert([step[0], 4]);
+        assert!(!supported.passage_clear(from, step, 2));
+    }
+    assert!(!grid.passage_clear([3, 4], [5, 4], 2));
+}
+
+#[test]
+fn passage_clearance_uses_observed_stones_platforms_and_digging() {
+    let base = Grid::new("......\n......\n......\n......\n......");
+    let from = [1, 1];
+    let to = [4, 1];
+    let obstacle = PositionSample {
+        cell: [2, 3],
+        world_px: [0.0; 2],
+    };
+    let mut state = SensedState {
+        frame: 30,
+        goal_reached: false,
+        player_cell: [1.5, 1.5],
+        velocity: [0.0; 2],
+        grounded: true,
+        on_stone: None,
+        scene: TrajectoryPoint {
+            stones: vec![],
+            placed_tiles: vec![],
+            dug_tiles: vec![],
+            frame: 30,
+            cell: from,
+            world_px: [0.0; 2],
+        },
+    };
+    assert!(base.observed(&state).passage_clear(from, to, 2));
+    state.scene.stones.push(StoneSample {
+        stone_index: 0,
+        position: obstacle.clone(),
+    });
+    assert!(!base.observed(&state).passage_clear(from, to, 2));
+    state.scene.stones.clear();
+    state.scene.placed_tiles.push(obstacle.clone());
+    assert!(!base.observed(&state).passage_clear(from, to, 2));
+    state.scene.placed_tiles.clear();
+    let mut terrain = base.clone();
+    terrain.solid.insert(obstacle.cell);
+    assert!(!terrain.observed(&state).passage_clear(from, to, 2));
+    state.scene.dug_tiles.push(obstacle);
+    assert!(terrain.observed(&state).passage_clear(from, to, 2));
 }

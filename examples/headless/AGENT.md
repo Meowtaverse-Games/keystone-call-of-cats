@@ -39,6 +39,14 @@ are shared across the batch and excluded from those per-seed totals.
   all five takeoff positions. Successful takeoffs are retained, not inferred from
   a ballistic formula or hard-coded one/two-cell limits. These are empirical
   bounds for a finite protocol, not an exhaustive capability proof.
+* Jump clearance uses the maximum peak rise of successful landing trials,
+  rounded up to whole cells (two cells with the default physics). The grid must
+  be clear from the source through the destination column up to that height,
+  including the source's headroom and intermediate cells. At the destination,
+  the check starts at landing height, allowing an upward step's supporting floor.
+  Drops include every destination-column cell from landing through departure
+  height. Both checks use the same terrain, stone and placed-platform occupancy
+  as support checks, including observed digging.
 * For supplied programs, a fresh idle-player Session runs through the frame
   budget first. Stone/placed/dug occupied-cell changes retain their observed
   frames. If the current arrangement has no route, a future arrangement can
@@ -75,18 +83,23 @@ by the controller, `result` is a Session prefix: its inherited `max_frames`
 termination label does not mean the full budget ran. Use `frames` and `failures`
 for the actual stopping boundary and reason.
 
-The grid does not model full capsule clearance or arbitrary moving-platform
-intercepts. Upward jumps require an adjacent destination; larger horizontal
-jumps use measured gap trials. Obstacles and dynamic solids are conservative
-static blockers in planning. The controller and retries may recover from a
-coarse model, but ceiling collisions, moving supports, touch-sensitive programs,
-large parameter overrides and routes outside measured bounds can remain
-unsolved, with reasons. A forecast is not a certificate that support persists at
-arrival. All successful routes still require real-physics goal contact.
+The grid checks a conservative rectangular jump passage, not the complete arc
+or swept capsule. It can reject a physically possible jump around an obstacle
+inside that rectangle. Upward jumps require an adjacent destination; larger
+horizontal jumps use measured gap trials. Obstacles and dynamic solids are
+static blockers at each observed frame. Subcell clearance, moving supports,
+touch-sensitive programs, large parameter overrides and routes outside measured
+bounds can still remain unsolved. A forecast is not a certificate that the
+passage stays clear or support persists at arrival. The controller and retries
+may recover from this coarse model; all successful routes still require
+real-physics goal contact.
 
 Fixture scenarios `agent-walk`, `agent-step`, `agent-gap`, `agent-high-no-code`,
-`agent-high` and `agent-move` cover the acceptance cases independently of product
-stages. `agent-stage-1` uses the frozen chunk fixture over varying seeds. Rust
+`agent-high`, `agent-move`, `agent-corridor` and `agent-corridor-no-code` cover the
+acceptance cases independently of product stages. The corridor has a one-cell
+ceiling and requires `move("down");` to fill a floor hole before walking through;
+without code it remains unsolved. `agent-stage-1` uses the frozen chunk fixture
+over varying seeds. Rust
 regressions replay successful `seed_inputs` through the ordinary verifier and
 compare the complete `trajectory_hash`.
 
@@ -103,7 +116,7 @@ output. The 300-second target is recorded, never enforced as a CI timing gate.
 
 ## Recorded regression results
 
-On the implementation build (seed 17; frame counts sum all attempts):
+On the 2026-10-26 clearance-fix build (seed 17; frame counts sum all attempts):
 
 | Fixture / program | Result | Attempts | Frames |
 | --- | --- | ---: | ---: |
@@ -113,24 +126,38 @@ On the implementation build (seed 17; frame counts sum all attempts):
 | Two-cell step / no code | unsolved | 1 | 30 |
 | Same two-cell step / `place("up");` | cleared | 2 | 1,137 |
 | Moving stone / `move("right");` | cleared | 1 | 759 |
+| Low-ceiling corridor / `move("down");` | cleared | 1 | 639 |
+| Same corridor / no code | unsolved | 1 | 30 |
 
 The gap and placed-platform trials exercise actual failed segments followed by
 fresh-world retries. Frozen Stage 1 seeds 17–20 all clear in two attempts and
 produce more than one terrain hash. Every successful fixture and Stage 1 input
 schedule reproduces its complete trajectory hash in the ordinary verifier.
+
+The existing fixture results, attempts, frame counts and trajectory hashes are
+unchanged from before the clearance fix. The corridor previously needed eight
+attempts and 3,170 frames with code; it now waits until frame 33 and walks through
+on its first attempt. Without code, it remains unsolved, stopping after 30 frames
+instead of timing out on seven blocked segments before giving up on attempt eight.
+The corridor success trajectory changes only near the exit: a ceiling-obstructed
+jump is replaced by two walk edges and a drop, taking 639 rather than 637 frames
+for the successful attempt. Its exported inputs reproduce the new hash.
+
 Additional regressions cover a five-second wait for stone movement, lower jump
 speed, compile/runtime script errors, retry/frame budgets and post-goal tails.
 
 Release benchmark: 1,000 seeds (0–999), no code, `--jobs 24`, 1,800
-frames/attempt, at most eight attempts: **85.691 seconds** process wall time,
-including **17.099 seconds** of shared reach measurement. All 1,000 seeds cleared
-(28 distinct terrain hashes), with zero unsolved/errors, **2.313 attempts** and
-**1,430.408 attempted frames** per terrain on average. There were 758 two-attempt,
-171 three-attempt and 71 four-attempt runs. The five-minute target was met without
-changing product physics or the release optimization settings. See
+frames/attempt, at most eight attempts: **75.843 seconds** process wall time,
+including **13.000 seconds** of shared reach measurement. All 1,000 seeds cleared
+(28 distinct terrain hashes), with zero unsolved/errors, **2.100 attempts** and
+**1,370.697 attempted frames** per terrain on average. There were 71 one-attempt,
+758 two-attempt and 171 three-attempt runs. The previous recorded benchmark
+averaged 2.313 attempts and 1,430.408 attempted frames. The five-minute target was
+met without changing product physics or the release optimization settings. See
 [agent-benchmark-summary.json](agent-benchmark-summary.json).
 
 All 1,000 exported solution files were then combined via `seed_inputs` and run
 through release `--headless-verify --jobs 24`: all cleared and all 1,000
-`trajectory_hash` values matched. The eight frozen motion hashes also matched in
-the release binary, in addition to the full debug baseline/reach sweep.
+`trajectory_hash` values matched. The eight frozen motion hashes, Stage 1/2
+hashes and every recorded reach/scale summary value also matched in the release
+`snapshot-baselines.py` sweep.
