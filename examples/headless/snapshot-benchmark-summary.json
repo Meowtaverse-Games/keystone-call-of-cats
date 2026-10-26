@@ -1,0 +1,498 @@
+{
+  "platform": "Linux-6.18.33.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "cpu_count": 24,
+  "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+  "protocol": "20 samples per depth, one warm-up, alternating restore/replay order; no speed gate",
+  "reports": [
+    {
+      "backend": "full-replay-correctness-oracle",
+      "crossover_frame": null,
+      "crossover_note": "No algorithmic crossover: restore performs full replay plus validation. Small timing differences are noise, not evidence of acceleration.",
+      "measurements": [
+        {
+          "frame": 10,
+          "replay_from_start": {
+            "max_us": 31476.272999999997,
+            "mean_us": 24965.953200000004
+          },
+          "restore": {
+            "max_us": 31885.394999999997,
+            "mean_us": 23887.90685
+          },
+          "samples": 20,
+          "snapshot": {
+            "max_us": 742.194,
+            "mean_us": 246.80150000000012
+          },
+          "snapshot_owned_bytes": 3679
+        },
+        {
+          "frame": 100,
+          "replay_from_start": {
+            "max_us": 73406.367,
+            "mean_us": 53060.39480000001
+          },
+          "restore": {
+            "max_us": 69031.118,
+            "mean_us": 52383.732
+          },
+          "samples": 20,
+          "snapshot": {
+            "max_us": 642.406,
+            "mean_us": 330.66515
+          },
+          "snapshot_owned_bytes": 20870
+        },
+        {
+          "frame": 1000,
+          "replay_from_start": {
+            "max_us": 448850.893,
+            "mean_us": 357560.20430000004
+          },
+          "restore": {
+            "max_us": 411372.663,
+            "mean_us": 359009.6455
+          },
+          "samples": 20,
+          "snapshot": {
+            "max_us": 7281.18,
+            "mean_us": 2165.5407999999998
+          },
+          "snapshot_owned_bytes": 192770
+        }
+      ],
+      "memory_definition": "size_of::<Snapshot>() + owned boxed JSON bytes; excludes allocator overhead and transient reconstruction worlds",
+      "profile": "release",
+      "scenario": {
+        "inputs": [],
+        "max_frames": 1200,
+        "player_physics": {
+          "capsule_center_y": null,
+          "capsule_length": null,
+          "capsule_radius": null,
+          "goal_align_x": null,
+          "goal_descent_frames": null,
+          "goal_descent_speed": null,
+          "gravity_scale": null,
+          "ground_cast_distance": null,
+          "ground_cast_height": null,
+          "ground_cast_width": null,
+          "ground_foot_offset": null,
+          "jump_speed": null,
+          "spawn_y_offset": null,
+          "speed": null
+        },
+        "post_goal_frames": 0,
+        "programs": [],
+        "ron_path": "examples/headless/fixtures/snapshot-terrain.ron",
+        "scale_changes": [],
+        "seed_count": 1,
+        "seed_inputs": {},
+        "seed_start": 17,
+        "stage_id": null,
+        "start_frame": 0,
+        "trajectory_every": 1,
+        "viewport_scale": 1.0
+      },
+      "schema_version": 1,
+      "label": "no-code"
+    },
+    {
+      "backend": "full-replay-correctness-oracle",
+      "crossover_frame": null,
+      "crossover_note": "No algorithmic crossover: restore performs full replay plus validation. Small timing differences are noise, not evidence of acceleration.",
+      "measurements": [
+        {
+          "frame": 10,
+          "replay_from_start": {
+            "max_us": 39478.909999999996,
+            "mean_us": 22027.08895
+          },
+          "restore": {
+            "max_us": 32853.66499999999,
+            "mean_us": 21818.8511
+          },
+          "samples": 20,
+          "snapshot": {
+            "max_us": 508.325,
+            "mean_us": 250.88539999999998
+          },
+          "snapshot_owned_bytes": 2658
+        },
+        {
+          "frame": 100,
+          "replay_from_start": {
+            "max_us": 64347.28200000001,
+            "mean_us": 50381.58065
+          },
+          "restore": {
+            "max_us": 64200.816999999995,
+            "mean_us": 51823.015400000004
+          },
+          "samples": 20,
+          "snapshot": {
+            "max_us": 737.674,
+            "mean_us": 377.26165
+          },
+          "snapshot_owned_bytes": 3277
+        },
+        {
+          "frame": 1000,
+          "replay_from_start": {
+            "max_us": 412309.82300000003,
+            "mean_us": 345454.77560000005
+          },
+          "restore": {
+            "max_us": 485967.036,
+            "mean_us": 349625.53245000006
+          },
+          "samples": 20,
+          "snapshot": {
+            "max_us": 7852.166000000001,
+            "mean_us": 2348.9289500000004
+          },
+          "snapshot_owned_bytes": 173805
+        }
+      ],
+      "memory_definition": "size_of::<Snapshot>() + owned boxed JSON bytes; excludes allocator overhead and transient reconstruction worlds",
+      "profile": "release",
+      "scenario": {
+        "inputs": [],
+        "max_frames": 1200,
+        "player_physics": {
+          "capsule_center_y": null,
+          "capsule_length": null,
+          "capsule_radius": null,
+          "goal_align_x": null,
+          "goal_descent_frames": null,
+          "goal_descent_speed": null,
+          "gravity_scale": null,
+          "ground_cast_distance": null,
+          "ground_cast_height": null,
+          "ground_cast_width": null,
+          "ground_foot_offset": null,
+          "jump_speed": null,
+          "spawn_y_offset": null,
+          "speed": null
+        },
+        "post_goal_frames": 0,
+        "programs": [
+          {
+            "code": "sleep(0.2); dig(\"down\"); sleep(0.2); move(\"right\");",
+            "language": "Rhai",
+            "stone_index": 0
+          }
+        ],
+        "ron_path": "examples/headless/fixtures/stage-9.ron",
+        "scale_changes": [],
+        "seed_count": 1,
+        "seed_inputs": {},
+        "seed_start": 17,
+        "stage_id": null,
+        "start_frame": 0,
+        "trajectory_every": 1,
+        "viewport_scale": 1.0
+      },
+      "schema_version": 1,
+      "label": "rhai-dig"
+    },
+    {
+      "backend": "full-replay-correctness-oracle",
+      "crossover_frame": null,
+      "crossover_note": "No algorithmic crossover: restore performs full replay plus validation. Small timing differences are noise, not evidence of acceleration.",
+      "measurements": [
+        {
+          "frame": 10,
+          "replay_from_start": {
+            "max_us": 19248.736999999997,
+            "mean_us": 16729.177100000004
+          },
+          "restore": {
+            "max_us": 18077.444000000003,
+            "mean_us": 16313.109949999998
+          },
+          "samples": 20,
+          "snapshot": {
+            "max_us": 310.99600000000004,
+            "mean_us": 148.12715
+          },
+          "snapshot_owned_bytes": 2648
+        },
+        {
+          "frame": 100,
+          "replay_from_start": {
+            "max_us": 51477.452,
+            "mean_us": 44696.77819999999
+          },
+          "restore": {
+            "max_us": 50350.95,
+            "mean_us": 45234.96365
+          },
+          "samples": 20,
+          "snapshot": {
+            "max_us": 393.891,
+            "mean_us": 230.39810000000003
+          },
+          "snapshot_owned_bytes": 3268
+        },
+        {
+          "frame": 1000,
+          "replay_from_start": {
+            "max_us": 387510.474,
+            "mean_us": 338355.01785000006
+          },
+          "restore": {
+            "max_us": 363463.062,
+            "mean_us": 333279.4786999999
+          },
+          "samples": 20,
+          "snapshot": {
+            "max_us": 3443.794,
+            "mean_us": 2003.4080499999998
+          },
+          "snapshot_owned_bytes": 173796
+        }
+      ],
+      "memory_definition": "size_of::<Snapshot>() + owned boxed JSON bytes; excludes allocator overhead and transient reconstruction worlds",
+      "profile": "release",
+      "scenario": {
+        "inputs": [],
+        "max_frames": 1200,
+        "player_physics": {
+          "capsule_center_y": null,
+          "capsule_length": null,
+          "capsule_radius": null,
+          "goal_align_x": null,
+          "goal_descent_frames": null,
+          "goal_descent_speed": null,
+          "gravity_scale": null,
+          "ground_cast_distance": null,
+          "ground_cast_height": null,
+          "ground_cast_width": null,
+          "ground_foot_offset": null,
+          "jump_speed": null,
+          "spawn_y_offset": null,
+          "speed": null
+        },
+        "post_goal_frames": 0,
+        "programs": [
+          {
+            "code": "sleep 0.2\ndig down\nsleep 0.2\nmove right",
+            "language": "Keystone",
+            "stone_index": 0
+          }
+        ],
+        "ron_path": "examples/headless/fixtures/stage-9.ron",
+        "scale_changes": [],
+        "seed_count": 1,
+        "seed_inputs": {},
+        "seed_start": 17,
+        "stage_id": null,
+        "start_frame": 0,
+        "trajectory_every": 1,
+        "viewport_scale": 1.0
+      },
+      "schema_version": 1,
+      "label": "keystone-dig"
+    },
+    {
+      "backend": "full-replay-correctness-oracle",
+      "crossover_frame": null,
+      "crossover_note": "No algorithmic crossover: restore performs full replay plus validation. Small timing differences are noise, not evidence of acceleration.",
+      "measurements": [
+        {
+          "frame": 10,
+          "replay_from_start": {
+            "max_us": 24250.844,
+            "mean_us": 18424.37035
+          },
+          "restore": {
+            "max_us": 22740.691,
+            "mean_us": 20507.44555
+          },
+          "samples": 20,
+          "snapshot": {
+            "max_us": 725.387,
+            "mean_us": 220.71385
+          },
+          "snapshot_owned_bytes": 2068
+        },
+        {
+          "frame": 100,
+          "replay_from_start": {
+            "max_us": 70621.971,
+            "mean_us": 52668.13885
+          },
+          "restore": {
+            "max_us": 68689.311,
+            "mean_us": 53477.714100000005
+          },
+          "samples": 20,
+          "snapshot": {
+            "max_us": 695.198,
+            "mean_us": 316.86204999999995
+          },
+          "snapshot_owned_bytes": 2478
+        },
+        {
+          "frame": 1000,
+          "replay_from_start": {
+            "max_us": 376304.03099999996,
+            "mean_us": 328572.65255
+          },
+          "restore": {
+            "max_us": 395903.52,
+            "mean_us": 339100.5252
+          },
+          "samples": 20,
+          "snapshot": {
+            "max_us": 3521.692,
+            "mean_us": 1897.9291000000003
+          },
+          "snapshot_owned_bytes": 161839
+        }
+      ],
+      "memory_definition": "size_of::<Snapshot>() + owned boxed JSON bytes; excludes allocator overhead and transient reconstruction worlds",
+      "profile": "release",
+      "scenario": {
+        "inputs": [],
+        "max_frames": 1200,
+        "player_physics": {
+          "capsule_center_y": null,
+          "capsule_length": null,
+          "capsule_radius": null,
+          "goal_align_x": null,
+          "goal_descent_frames": null,
+          "goal_descent_speed": null,
+          "gravity_scale": null,
+          "ground_cast_distance": null,
+          "ground_cast_height": null,
+          "ground_cast_width": null,
+          "ground_foot_offset": null,
+          "jump_speed": null,
+          "spawn_y_offset": null,
+          "speed": null
+        },
+        "post_goal_frames": 0,
+        "programs": [
+          {
+            "code": "place(\"up\"); move(\"right\"); move(\"left\");",
+            "language": "Rhai",
+            "stone_index": 0
+          }
+        ],
+        "ron_path": "examples/headless/fixtures/snapshot-place.ron",
+        "scale_changes": [],
+        "seed_count": 1,
+        "seed_inputs": {},
+        "seed_start": 17,
+        "stage_id": null,
+        "start_frame": 0,
+        "trajectory_every": 1,
+        "viewport_scale": 1.0
+      },
+      "schema_version": 1,
+      "label": "rhai-place"
+    },
+    {
+      "backend": "full-replay-correctness-oracle",
+      "crossover_frame": null,
+      "crossover_note": "No algorithmic crossover: restore performs full replay plus validation. Small timing differences are noise, not evidence of acceleration.",
+      "measurements": [
+        {
+          "frame": 10,
+          "replay_from_start": {
+            "max_us": 19623.437,
+            "mean_us": 17466.01485
+          },
+          "restore": {
+            "max_us": 23027.119,
+            "mean_us": 18221.359249999998
+          },
+          "samples": 20,
+          "snapshot": {
+            "max_us": 324.83399999999995,
+            "mean_us": 183.0581
+          },
+          "snapshot_owned_bytes": 2056
+        },
+        {
+          "frame": 100,
+          "replay_from_start": {
+            "max_us": 79034.42700000001,
+            "mean_us": 50729.24835
+          },
+          "restore": {
+            "max_us": 76873.865,
+            "mean_us": 52545.8322
+          },
+          "samples": 20,
+          "snapshot": {
+            "max_us": 706.411,
+            "mean_us": 290.21175
+          },
+          "snapshot_owned_bytes": 2466
+        },
+        {
+          "frame": 1000,
+          "replay_from_start": {
+            "max_us": 459936.796,
+            "mean_us": 338085.23559999996
+          },
+          "restore": {
+            "max_us": 434047.461,
+            "mean_us": 338866.61075000005
+          },
+          "samples": 20,
+          "snapshot": {
+            "max_us": 2955.849,
+            "mean_us": 1923.2789999999993
+          },
+          "snapshot_owned_bytes": 161827
+        }
+      ],
+      "memory_definition": "size_of::<Snapshot>() + owned boxed JSON bytes; excludes allocator overhead and transient reconstruction worlds",
+      "profile": "release",
+      "scenario": {
+        "inputs": [],
+        "max_frames": 1200,
+        "player_physics": {
+          "capsule_center_y": null,
+          "capsule_length": null,
+          "capsule_radius": null,
+          "goal_align_x": null,
+          "goal_descent_frames": null,
+          "goal_descent_speed": null,
+          "gravity_scale": null,
+          "ground_cast_distance": null,
+          "ground_cast_height": null,
+          "ground_cast_width": null,
+          "ground_foot_offset": null,
+          "jump_speed": null,
+          "spawn_y_offset": null,
+          "speed": null
+        },
+        "post_goal_frames": 0,
+        "programs": [
+          {
+            "code": "place up\nmove right\nmove left",
+            "language": "Keystone",
+            "stone_index": 0
+          }
+        ],
+        "ron_path": "examples/headless/fixtures/snapshot-place.ron",
+        "scale_changes": [],
+        "seed_count": 1,
+        "seed_inputs": {},
+        "seed_start": 17,
+        "stage_id": null,
+        "start_frame": 0,
+        "trajectory_every": 1,
+        "viewport_scale": 1.0
+      },
+      "schema_version": 1,
+      "label": "keystone-place"
+    }
+  ],
+  "cpu": "AMD Ryzen AI 9 HX 370 w/ Radeon 890M"
+}

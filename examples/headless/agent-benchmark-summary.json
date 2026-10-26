@@ -1,0 +1,32 @@
+{
+  "condition": "no_code",
+  "count": 1000,
+  "cleared": 1000,
+  "unsolved": 0,
+  "errors": 0,
+  "clear_rate": 1.0,
+  "mean_attempts": 2.313,
+  "mean_frames": 1430.408,
+  "elapsed_seconds": 84.869900518,
+  "reach_measurement_seconds": 17.099117136,
+  "command": [
+    "target/release-build/release/keystone-cc",
+    "--headless-agent",
+    "target/agent-benchmark/scenario.json",
+    "--report",
+    "target/agent-benchmark/report.json",
+    "--jobs",
+    "24",
+    "--agent-attempts",
+    "8"
+  ],
+  "profile": "release (build separately with cargo build --release)",
+  "process_wall_seconds": 85.69088607899903,
+  "target_seconds": 300,
+  "within_target": true,
+  "unique_terrain_hashes": 28,
+  "max_frames": 1800,
+  "max_attempts": 8,
+  "total_attempt_frames": 1430408,
+  "total_observation_frames": 0
+}

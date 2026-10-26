@@ -1,4 +1,6 @@
 //! Offline driver: all simulation is performed by the product's stage systems.
+mod agent;
+pub mod checkpoint;
 mod reach;
 pub mod replay;
 
@@ -138,18 +140,18 @@ impl InputKey {
         }
     }
 }
-#[derive(Serialize)]
+#[derive(Clone, Serialize)]
 pub struct PositionSample {
     pub cell: [i32; 2],
     pub world_px: [f32; 2],
 }
-#[derive(Serialize)]
+#[derive(Clone, Serialize)]
 pub struct StoneSample {
     pub stone_index: usize,
     #[serde(flatten)]
     pub position: PositionSample,
 }
-#[derive(Serialize)]
+#[derive(Clone, Serialize)]
 pub struct TrajectoryPoint {
     pub stones: Vec<StoneSample>,
     pub placed_tiles: Vec<PositionSample>,
@@ -158,7 +160,7 @@ pub struct TrajectoryPoint {
     pub cell: [i32; 2],
     pub world_px: [f32; 2],
 }
-#[derive(Serialize)]
+#[derive(Clone, Serialize)]
 pub struct SeedReport {
     pub seed: u64,
     pub cleared: bool,
@@ -204,10 +206,33 @@ struct Observation {
 struct ObservedProgram {
     inner: Box<dyn ScriptProgram>,
     error: Arc<Mutex<Option<String>>>,
+    trace: Option<checkpoint::ScriptTrace>,
+    stone_index: usize,
 }
 impl ScriptProgram for ObservedProgram {
     fn next(&mut self, state: &ScriptState) -> Option<ScriptCommand> {
-        self.inner.next(state)
+        let command = self.inner.next(state);
+        if let Some(trace) = &self.trace {
+            trace
+                .0
+                .lock()
+                .expect("script trace lock")
+                .push(checkpoint::ProgramCall {
+                    stone_index: self.stone_index,
+                    // The product inserts a fresh, unseeded `rand` placeholder,
+                    // but neither executor reads it (Keystone rand is rejected
+                    // above). It is not an observable sensor in this backend.
+                    state: state
+                        .iter()
+                        .filter(|(key, _)| {
+                            key.as_str() != crate::util::script_types::RAND_STATE_KEY
+                        })
+                        .map(|(key, value)| (key.clone(), format!("{value:?}")))
+                        .collect(),
+                    command: format!("{command:?}"),
+                });
+        }
+        command
     }
     fn take_error(&mut self) -> Option<ScriptExecutionError> {
         let error = self.inner.take_error();
@@ -465,6 +490,8 @@ fn start_programs(world: &mut World, scenario: &Scenario) -> Result<()> {
             Box::new(ObservedProgram {
                 inner,
                 error: world.resource::<Observation>().runtime_error.clone(),
+                trace: world.get_resource::<checkpoint::ScriptTrace>().cloned(),
+                stone_index: idx,
             }) as Box<dyn ScriptProgram>
         }));
         buffers.push(code.into());
@@ -481,6 +508,7 @@ fn start_programs(world: &mut World, scenario: &Scenario) -> Result<()> {
 }
 
 // Versioned FNV-1a, deliberately independent of Rust's randomized/default hashers.
+#[derive(Clone)]
 struct Digest(u64);
 impl Digest {
     fn new() -> Self {
@@ -628,6 +656,7 @@ fn tile_samples<F: bevy::ecs::query::QueryFilter>(world: &mut World) -> Vec<Posi
 }
 
 /// Identical input, VM startup and observation for offline and windowed execution.
+#[derive(Clone)]
 struct SeedRun {
     scenario: Scenario,
     report: SeedReport,
@@ -732,8 +761,8 @@ impl SeedRun {
         }
         Ok(ended)
     }
-    fn finish(mut self, world: &mut World) -> Result<SeedReport> {
-        self.report.commands = std::mem::take(&mut world.resource_mut::<Observation>().commands);
+    fn finish(mut self, world: &World) -> Result<SeedReport> {
+        self.report.commands = world.resource::<Observation>().commands.clone();
         self.trajectory_digest.add(&serde_json::to_vec(&(
             &self.report.commands,
             self.report.goal_frame,
@@ -877,7 +906,15 @@ pub fn run(profile: &LaunchProfile) -> Result<()> {
             if profile.headless_viewport_scale.is_some() {
                 scenario.viewport_scale = scale;
             }
-            serde_json::to_value(verify(&scenario, jobs)?)?
+            if matches!(profile.launch_type, LaunchType::HeadlessAgent) {
+                let report = agent::run(&scenario, jobs, profile.agent_attempts.unwrap_or(8))?;
+                agent::write_solutions(path, &report)?;
+                serde_json::to_value(report)?
+            } else if matches!(profile.launch_type, LaunchType::HeadlessMeasureSnapshot) {
+                checkpoint::measure(scenario)?
+            } else {
+                serde_json::to_value(verify(&scenario, jobs)?)?
+            }
         }
     };
     fs::write(path, serde_json::to_string_pretty(&value)? + "\n")?;

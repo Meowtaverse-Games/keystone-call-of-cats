@@ -186,6 +186,58 @@ fn trial(
         horizontal_travel_px: travel,
     })
 }
+/// Agent bounds use the same physical landing trials as the CLI sweep. Retain
+/// successful takeoffs instead of assuming that reach is monotonic in gap/height.
+#[derive(Clone, Serialize)]
+pub(super) struct AgentReach {
+    pub trials: Vec<ReachLanding>,
+}
+#[derive(Clone, Serialize)]
+pub(super) struct ReachLanding {
+    pub left: bool,
+    pub step: bool,
+    pub cells: i32,
+    pub before_edge: f32,
+}
+impl AgentReach {
+    pub fn takeoffs(&self, left: bool, step: bool, cells: i32) -> Vec<f32> {
+        self.trials
+            .iter()
+            .filter(|t| t.left == left && t.step == step && t.cells == cells)
+            .map(|t| t.before_edge)
+            .collect()
+    }
+    pub fn max_gap(&self) -> i32 {
+        self.trials
+            .iter()
+            .filter(|t| !t.step)
+            .map(|t| t.cells)
+            .max()
+            .unwrap_or(0)
+    }
+}
+pub(super) fn measure_agent(scale: f32, physics: &PlayerPhysicsParams) -> Result<AgentReach> {
+    let mut trials = vec![];
+    for left in [false, true] {
+        for step in [true, false] {
+            for cells in 0..=if step { 5 } else { 8 } {
+                for takeoff in [6.5, 6.75, 6.9, 6.0, 5.5] {
+                    let result = trial((26, 10), left, true, step, cells, takeoff, scale, physics)?;
+                    if result.landed {
+                        trials.push(ReachLanding {
+                            left,
+                            step,
+                            cells: cells as i32,
+                            before_edge: 7.0 - takeoff,
+                        });
+                    }
+                }
+            }
+        }
+    }
+    Ok(AgentReach { trials })
+}
+
 pub(super) fn measure(scale: f32) -> Result<ReachReport> {
     let physics = PlayerPhysicsParams::embedded();
     let mut fixed_input_comparisons = vec![];

@@ -1,0 +1,6 @@
+{
+  "ron_path": "examples/headless/fixtures/stage-1.ron",
+  "seed_start": 17,
+  "seed_count": 4,
+  "max_frames": 1800
+}
