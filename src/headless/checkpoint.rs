@@ -53,8 +53,21 @@ struct Saved {
 
 /// All mutations go through `step`: exposing a mutable World would make the
 /// reconstruction incomplete. Snapshot boundaries are after App::update/Last.
+/// Frame-boundary sensing only; no entities or mutable world escape the session.
+#[derive(Clone, Serialize)]
+pub struct SensedState {
+    pub frame: u64,
+    pub goal_reached: bool,
+    pub player_cell: [f32; 2],
+    pub velocity: [f32; 2],
+    pub grounded: bool,
+    pub on_stone: Option<usize>,
+    pub scene: TrajectoryPoint,
+}
+
 pub struct Session {
     app: App,
+    sensing: bevy::ecs::system::SystemState<SpatialQuery<'static, 'static>>,
     run: SeedRun,
     ron_source: String,
     overrides: BTreeMap<u64, Vec<KeyChange>>,
@@ -79,8 +92,10 @@ impl Session {
             scenario.player_physics.resolve()?,
         );
         app.insert_resource(ScriptTrace::default());
+        let sensing = bevy::ecs::system::SystemState::new(app.world_mut());
         Ok(Self {
             app,
+            sensing,
             run,
             ron_source,
             overrides: BTreeMap::new(),
@@ -140,6 +155,57 @@ impl Session {
 
     pub fn report(&self) -> Result<SeedReport> {
         self.run.clone().finish(self.app.world())
+    }
+
+    /// Read product transforms and the same foot shapecast used by player input.
+    /// `&mut self` is needed only for Bevy query caches, never for simulation writes.
+    pub fn observe(&mut self) -> Result<SensedState> {
+        let world = self.app.world_mut();
+        let (entity, transform, velocity, mask) = world
+            .query_filtered::<(
+                Entity,
+                &GlobalTransform,
+                &LinearVelocity,
+                Option<&CollisionLayers>,
+            ), With<Player>>()
+            .iter(world)
+            .next()
+            .map(|(e, t, v, layers)| {
+                (
+                    e,
+                    t.compute_transform(),
+                    v.0,
+                    layers.map_or(LayerMask::ALL, |l| l.filters),
+                )
+            })
+            .ok_or("Player was not spawned")?;
+        let physics = world.resource::<PlayerPhysicsParams>();
+        let shape = Collider::rectangle(
+            transform.scale.x * physics.ground_cast_width,
+            transform.scale.y * physics.ground_cast_height,
+        );
+        let origin = transform.translation.truncate()
+            - Vec2::Y * transform.scale.y * physics.ground_foot_offset;
+        let mut config =
+            ShapeCastConfig::from_max_distance(transform.scale.y * physics.ground_cast_distance);
+        config.ignore_origin_penetration = false;
+        let filter = SpatialQueryFilter::from_mask(mask).with_excluded_entities([entity]);
+        let hit =
+            self.sensing
+                .get(world)?
+                .cast_shape(&shape, origin, 0.0, Dir2::NEG_Y, &config, &filter);
+        let on_stone = hit.and_then(|h| world.get::<StoneIndex>(h.entity).map(|i| i.0));
+        let player_cell = cell_position(world, transform.translation.truncate()).to_array();
+        let scene = snapshot(world, self.run.report.frames, &mut Digest::new())?;
+        Ok(SensedState {
+            frame: self.frame(),
+            goal_reached: self.run.report.cleared,
+            player_cell,
+            velocity: velocity.to_array(),
+            grounded: hit.is_some(),
+            on_stone,
+            scene,
+        })
     }
 
     pub fn snapshot(&self) -> Result<Snapshot> {

@@ -466,3 +466,9 @@ and all five takeoff positions, testing step heights 0–5. The integer step bou
 stays one cell, while the smaller rise changes the trajectory hash from
 `fnv1a64-v1:a3552db409496309` to `fnv1a64-v1:c874d03e072f5121`.
 These observations describe this input protocol, not all possible routes.
+
+## Autonomous player
+
+`--headless-agent` plans cell routes, executes them through `Session::step`, and
+retries in fresh worlds. See [AGENT.md](AGENT.md) for scenarios, exported replay
+inputs, bounded-search limitations and the repeatable 1,000-seed benchmark.

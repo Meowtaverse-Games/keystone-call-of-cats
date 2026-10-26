@@ -10,6 +10,7 @@ pub enum LaunchType {
     Normal,
     ShowChunkGrammarAsciiMap,
     HeadlessVerify,
+    HeadlessAgent,
     Replay,
     HeadlessMeasureReach,
     HeadlessMeasureSnapshot,
@@ -23,6 +24,7 @@ pub struct LaunchProfile {
     pub headless_scenario: Option<PathBuf>,
     pub headless_report: Option<PathBuf>,
     pub headless_jobs: Option<usize>,
+    pub agent_attempts: Option<usize>,
     pub headless_viewport_scale: Option<f32>,
     pub changed: bool,
     pub launch_type: LaunchType,
@@ -90,6 +92,20 @@ impl LaunchProfile {
                         args.get(index + 1)
                             .and_then(|s| s.parse().ok())
                             .unwrap_or(f64::NAN),
+                    );
+                    index += 1;
+                }
+                "--headless-agent" => {
+                    launch_profile.launch_type = LaunchType::HeadlessAgent;
+                    launch_profile.headless_scenario = args.get(index + 1).map(PathBuf::from);
+                    index += 1;
+                    changed = true;
+                }
+                "--agent-attempts" => {
+                    launch_profile.agent_attempts = Some(
+                        args.get(index + 1)
+                            .and_then(|s| s.parse().ok())
+                            .unwrap_or(0),
                     );
                     index += 1;
                 }
@@ -241,6 +257,38 @@ mod tests {
     use std::path::PathBuf;
 
     use super::LaunchProfile;
+
+    #[test]
+    fn agent_parses_scenario_and_attempt_limit_without_external_services() {
+        let args = [
+            "game",
+            "--headless-agent",
+            "scenario.json",
+            "--report",
+            "out.json",
+            "--jobs",
+            "24",
+            "--agent-attempts",
+            "8",
+        ]
+        .map(str::to_owned);
+        let profile = LaunchProfile::from_args(&args);
+        assert!(matches!(
+            profile.launch_type,
+            super::LaunchType::HeadlessAgent
+        ));
+        assert_eq!(profile.agent_attempts, Some(8));
+        assert_eq!(profile.headless_jobs, Some(24));
+        assert_eq!(
+            profile.headless_scenario,
+            Some(PathBuf::from("scenario.json"))
+        );
+        assert!(!profile.external_control);
+        assert!(!profile.ci_smoke_enabled());
+        let invalid =
+            LaunchProfile::from_args(&["game", "--agent-attempts", "oops"].map(str::to_owned));
+        assert_eq!(invalid.agent_attempts, Some(0));
+    }
 
     #[test]
     fn replay_parses_seed_speed_and_optional_report() {

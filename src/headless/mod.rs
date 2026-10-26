@@ -1,4 +1,5 @@
 //! Offline driver: all simulation is performed by the product's stage systems.
+mod agent;
 pub mod checkpoint;
 mod reach;
 pub mod replay;
@@ -905,7 +906,11 @@ pub fn run(profile: &LaunchProfile) -> Result<()> {
             if profile.headless_viewport_scale.is_some() {
                 scenario.viewport_scale = scale;
             }
-            if matches!(profile.launch_type, LaunchType::HeadlessMeasureSnapshot) {
+            if matches!(profile.launch_type, LaunchType::HeadlessAgent) {
+                let report = agent::run(&scenario, jobs, profile.agent_attempts.unwrap_or(8))?;
+                agent::write_solutions(path, &report)?;
+                serde_json::to_value(report)?
+            } else if matches!(profile.launch_type, LaunchType::HeadlessMeasureSnapshot) {
                 checkpoint::measure(scenario)?
             } else {
                 serde_json::to_value(verify(&scenario, jobs)?)?
