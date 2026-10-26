@@ -191,6 +191,8 @@ fn trial(
 #[derive(Clone, Serialize)]
 pub(super) struct AgentReach {
     pub trials: Vec<ReachLanding>,
+    /// Maximum successful rise, rounded up to cells for a conservative passage.
+    pub jump_headroom: i32,
 }
 #[derive(Clone, Serialize)]
 pub(super) struct ReachLanding {
@@ -218,12 +220,15 @@ impl AgentReach {
 }
 pub(super) fn measure_agent(scale: f32, physics: &PlayerPhysicsParams) -> Result<AgentReach> {
     let mut trials = vec![];
+    let mut jump_headroom = 0;
     for left in [false, true] {
         for step in [true, false] {
             for cells in 0..=if step { 5 } else { 8 } {
                 for takeoff in [6.5, 6.75, 6.9, 6.0, 5.5] {
                     let result = trial((26, 10), left, true, step, cells, takeoff, scale, physics)?;
                     if result.landed {
+                        jump_headroom =
+                            jump_headroom.max((result.peak_rise_px / result.tile_px).ceil() as i32);
                         trials.push(ReachLanding {
                             left,
                             step,
@@ -235,7 +240,10 @@ pub(super) fn measure_agent(scale: f32, physics: &PlayerPhysicsParams) -> Result
             }
         }
     }
-    Ok(AgentReach { trials })
+    Ok(AgentReach {
+        trials,
+        jump_headroom,
+    })
 }
 
 pub(super) fn measure(scale: f32) -> Result<ReachReport> {
