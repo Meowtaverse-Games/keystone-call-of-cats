@@ -158,10 +158,7 @@ stage7-description = Instead of the sleep command, you can use the is_touched co
     Right: `{$move-right}`
 
 
-stage8-text = You have reached a maze-like level.
-    The stone has a detection function to check if there is a place to move in the up, down, left, or right directions, or if it is empty.
-    ____
-    Use the detection function is_empty to determine which path to take and guide the player to the goal.
+stage8-text = A stone is waiting across the valley. Use is_touched so it moves right only while you are riding it.
 
 
 stage8-description = Instead of the sleep command, you can use the is_touched command.
@@ -238,19 +235,12 @@ stage11-text = This level alternates between hollows and rocks.
 stage11-description = ...
 
 
-stage13-text = Within a narrow tunnel, you and the stone must pass each other.
-    If either one goes too far forward, it will block the other's path, and you won't be able to proceed.
-    
-    In this stage, let's program a "give way movement" using is_touched_player and sleep, such as:
-    
-    The stone pauses if the player catches up
-    
-    Let the player pass first, then the stone starts moving again
-    
-    If you get stuck, think about "when should I have waited" and rewrite the program.
+stage13-text = A high ledge blocks your way.
+    Build one foothold above the stone, then use it to cross to the other side.
 
 
-stage13-description = ...
+stage13-description = Place one foothold above the stone to reach the high ledge.
+    `{$place-up}`
 
 
 stage14-text = You wandered into a small maze made of soft rock.
