@@ -116,7 +116,7 @@ output. The 300-second target is recorded, never enforced as a CI timing gate.
 
 ## Recorded regression results
 
-On the implementation build (seed 17; frame counts sum all attempts):
+On the 2026-10-26 clearance-fix build (seed 17; frame counts sum all attempts):
 
 | Fixture / program | Result | Attempts | Frames |
 | --- | --- | ---: | ---: |
@@ -126,24 +126,38 @@ On the implementation build (seed 17; frame counts sum all attempts):
 | Two-cell step / no code | unsolved | 1 | 30 |
 | Same two-cell step / `place("up");` | cleared | 2 | 1,137 |
 | Moving stone / `move("right");` | cleared | 1 | 759 |
+| Low-ceiling corridor / `move("down");` | cleared | 1 | 639 |
+| Same corridor / no code | unsolved | 1 | 30 |
 
 The gap and placed-platform trials exercise actual failed segments followed by
 fresh-world retries. Frozen Stage 1 seeds 17–20 all clear in two attempts and
 produce more than one terrain hash. Every successful fixture and Stage 1 input
 schedule reproduces its complete trajectory hash in the ordinary verifier.
+
+The existing fixture results, attempts, frame counts and trajectory hashes are
+unchanged from before the clearance fix. The corridor previously needed eight
+attempts and 3,170 frames with code; it now waits until frame 33 and walks through
+on its first attempt. Without code, it remains unsolved, stopping after 30 frames
+instead of timing out on seven blocked segments before giving up on attempt eight.
+The corridor success trajectory changes only near the exit: a ceiling-obstructed
+jump is replaced by two walk edges and a drop, taking 639 rather than 637 frames
+for the successful attempt. Its exported inputs reproduce the new hash.
+
 Additional regressions cover a five-second wait for stone movement, lower jump
 speed, compile/runtime script errors, retry/frame budgets and post-goal tails.
 
 Release benchmark: 1,000 seeds (0–999), no code, `--jobs 24`, 1,800
-frames/attempt, at most eight attempts: **85.691 seconds** process wall time,
-including **17.099 seconds** of shared reach measurement. All 1,000 seeds cleared
-(28 distinct terrain hashes), with zero unsolved/errors, **2.313 attempts** and
-**1,430.408 attempted frames** per terrain on average. There were 758 two-attempt,
-171 three-attempt and 71 four-attempt runs. The five-minute target was met without
-changing product physics or the release optimization settings. See
+frames/attempt, at most eight attempts: **75.843 seconds** process wall time,
+including **13.000 seconds** of shared reach measurement. All 1,000 seeds cleared
+(28 distinct terrain hashes), with zero unsolved/errors, **2.100 attempts** and
+**1,370.697 attempted frames** per terrain on average. There were 71 one-attempt,
+758 two-attempt and 171 three-attempt runs. The previous recorded benchmark
+averaged 2.313 attempts and 1,430.408 attempted frames. The five-minute target was
+met without changing product physics or the release optimization settings. See
 [agent-benchmark-summary.json](agent-benchmark-summary.json).
 
 All 1,000 exported solution files were then combined via `seed_inputs` and run
 through release `--headless-verify --jobs 24`: all cleared and all 1,000
-`trajectory_hash` values matched. The eight frozen motion hashes also matched in
-the release binary, in addition to the full debug baseline/reach sweep.
+`trajectory_hash` values matched. The eight frozen motion hashes, Stage 1/2
+hashes and every recorded reach/scale summary value also matched in the release
+`snapshot-baselines.py` sweep.
