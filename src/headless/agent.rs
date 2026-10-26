@@ -74,6 +74,18 @@ impl Grid {
     fn standing(&self, [x, y]: Cell) -> bool {
         self.free([x, y]) && self.solid.contains(&[x, y - 1])
     }
+    fn passage_clear(&self, from: Cell, to: Cell, headroom: i32) -> bool {
+        // A conservative envelope, not a simulated arc. Include the departure
+        // height in the landing column, even when simply walking off a ledge.
+        // An upward step's support lies below its landing cell and is allowed.
+        let dx = to[0] - from[0];
+        let top = (from[1] + headroom).max(to[1]);
+        (0..=dx.abs()).all(|i| {
+            let x = from[0] + i * dx.signum();
+            let bottom = if i == dx.abs() { to[1] } else { from[1] };
+            (bottom..=top).all(|y| self.free([x, y]))
+        })
+    }
     fn route(
         &self,
         start: Cell,
@@ -125,12 +137,8 @@ impl Grid {
                     if !walk && !drop && takeoffs.is_empty() {
                         continue;
                     }
-                    if drop && (y..from[1]).any(|h| !self.free([to[0], h])) {
-                        continue;
-                    }
-                    if gap > 0
-                        && (1..dx.abs()).any(|i| !self.free([from[0] + i * dx.signum(), from[1]]))
-                    {
+                    let headroom = if walk || drop { 0 } else { reach.jump_headroom };
+                    if !self.passage_clear(from, to, headroom) {
                         continue;
                     }
                     if walk || drop {

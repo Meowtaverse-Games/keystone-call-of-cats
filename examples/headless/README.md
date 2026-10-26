@@ -168,7 +168,7 @@ Unknown fields are errors. Paths are relative to the process working directory.
 | --- | --- | --- |
 | `viewport_scale` | positive finite number, 1.0 | Initial `ScaledViewport.scale`; also applied to the stage root |
 | `scale_changes` | array, `[]` | Entries `{ "frame": 105, "scale": 0.75 }`; simulate viewport resize before that update |
-| `stage_id` | integer 1–12 | Loads `assets/stages/stage-N.ron`; use exactly one stage selector |
+| `stage_id` | integer ID in the stage catalog | Resolves the stage path through `assets/stages/list.ron`; use exactly one stage selector |
 | `ron_path` | string | Alternative RON path; uses the same product generator |
 | `seed_start` | u64, required | First terrain seed |
 | `seed_count` | positive integer, required | Consecutive seeds to run |

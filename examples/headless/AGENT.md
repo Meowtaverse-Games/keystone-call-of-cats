@@ -39,6 +39,14 @@ are shared across the batch and excluded from those per-seed totals.
   all five takeoff positions. Successful takeoffs are retained, not inferred from
   a ballistic formula or hard-coded one/two-cell limits. These are empirical
   bounds for a finite protocol, not an exhaustive capability proof.
+* Jump clearance uses the maximum peak rise of successful landing trials,
+  rounded up to whole cells (two cells with the default physics). The grid must
+  be clear from the source through the destination column up to that height,
+  including the source's headroom and intermediate cells. At the destination,
+  the check starts at landing height, allowing an upward step's supporting floor.
+  Drops include every destination-column cell from landing through departure
+  height. Both checks use the same terrain, stone and placed-platform occupancy
+  as support checks, including observed digging.
 * For supplied programs, a fresh idle-player Session runs through the frame
   budget first. Stone/placed/dug occupied-cell changes retain their observed
   frames. If the current arrangement has no route, a future arrangement can
@@ -75,18 +83,23 @@ by the controller, `result` is a Session prefix: its inherited `max_frames`
 termination label does not mean the full budget ran. Use `frames` and `failures`
 for the actual stopping boundary and reason.
 
-The grid does not model full capsule clearance or arbitrary moving-platform
-intercepts. Upward jumps require an adjacent destination; larger horizontal
-jumps use measured gap trials. Obstacles and dynamic solids are conservative
-static blockers in planning. The controller and retries may recover from a
-coarse model, but ceiling collisions, moving supports, touch-sensitive programs,
-large parameter overrides and routes outside measured bounds can remain
-unsolved, with reasons. A forecast is not a certificate that support persists at
-arrival. All successful routes still require real-physics goal contact.
+The grid checks a conservative rectangular jump passage, not the complete arc
+or swept capsule. It can reject a physically possible jump around an obstacle
+inside that rectangle. Upward jumps require an adjacent destination; larger
+horizontal jumps use measured gap trials. Obstacles and dynamic solids are
+static blockers at each observed frame. Subcell clearance, moving supports,
+touch-sensitive programs, large parameter overrides and routes outside measured
+bounds can still remain unsolved. A forecast is not a certificate that the
+passage stays clear or support persists at arrival. The controller and retries
+may recover from this coarse model; all successful routes still require
+real-physics goal contact.
 
 Fixture scenarios `agent-walk`, `agent-step`, `agent-gap`, `agent-high-no-code`,
-`agent-high` and `agent-move` cover the acceptance cases independently of product
-stages. `agent-stage-1` uses the frozen chunk fixture over varying seeds. Rust
+`agent-high`, `agent-move`, `agent-corridor` and `agent-corridor-no-code` cover the
+acceptance cases independently of product stages. The corridor has a one-cell
+ceiling and requires `move("down");` to fill a floor hole before walking through;
+without code it remains unsolved. `agent-stage-1` uses the frozen chunk fixture
+over varying seeds. Rust
 regressions replay successful `seed_inputs` through the ordinary verifier and
 compare the complete `trajectory_hash`.
 
