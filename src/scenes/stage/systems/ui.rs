@@ -459,6 +459,9 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
 
                                 stones_info.sort_by_key(|(idx, _)| *idx);
 
+                                editor.active_programs.clear();
+                                script_executor.reset_signals();
+
                                 let mut all_programs = Vec::new();
                                 let mut compile_error = None;
 

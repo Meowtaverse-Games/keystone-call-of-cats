@@ -65,6 +65,11 @@ impl ScriptExecutor {
         }
     }
 
+    pub fn reset_signals(&self) {
+        self.stepper.reset_signals();
+        self.ks_stepper.reset_signals();
+    }
+
     pub fn compile_step(
         &self,
         language: Language,

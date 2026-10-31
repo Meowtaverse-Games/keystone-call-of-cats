@@ -118,6 +118,12 @@ impl ScriptStepper for RhaiScriptExecutor {
             self.shared_signals.clone(),
         )?))
     }
+
+    fn reset_signals(&self) {
+        if let Ok(mut signals) = self.shared_signals.lock() {
+            signals.clear();
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -1019,6 +1025,23 @@ mod tests {
             .expect("receiver should compile");
 
         assert!(next_command_within(&mut *sender, &state).is_some());
+        assert_waiting(&mut *receiver, &state);
+    }
+
+    #[test]
+    fn reset_signals_drops_signals_from_a_previous_run() {
+        let executor = RhaiScriptExecutor::new();
+        let state = ScriptState::default();
+        let mut sender = executor
+            .compile_step(r#"send("go"); sleep(1);"#, None)
+            .expect("sender should compile");
+        assert!(next_command_within(&mut *sender, &state).is_some());
+        drop(sender);
+
+        executor.reset_signals();
+        let mut receiver = executor
+            .compile_step(r#"receive("go"); move("right");"#, None)
+            .expect("receiver should compile");
         assert_waiting(&mut *receiver, &state);
     }
 }

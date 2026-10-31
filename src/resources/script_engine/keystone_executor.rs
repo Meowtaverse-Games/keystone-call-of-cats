@@ -129,6 +129,12 @@ impl ScriptStepper for KeystoneScriptExecutor {
             self.api.clone(),
         )))
     }
+
+    fn reset_signals(&self) {
+        if let Ok(mut signals) = self.api.shared_signals.lock() {
+            signals.clear();
+        }
+    }
 }
 
 struct KeystoneScriptProgram {
@@ -339,5 +345,29 @@ mod tests {
             map_event(Event::Place(Direction::Right)),
             Some(ScriptCommand::Place(MoveDirection::Right))
         ));
+    }
+
+    #[test]
+    fn reset_signals_drops_signals_from_a_previous_run() {
+        let executor = KeystoneScriptExecutor::default();
+        let state = ScriptState::default();
+        let receiver_source = "receive \"go\"\nmove right";
+
+        let mut sender = executor.compile_step("send \"go\"", None).unwrap();
+        assert!(sender.next(&state).is_none());
+        let mut receiver = executor.compile_step(receiver_source, None).unwrap();
+        assert!(receiver.next(&state).is_none());
+        assert!(matches!(
+            receiver.next(&state),
+            Some(ScriptCommand::Move(MoveDirection::Right))
+        ));
+
+        let mut sender = executor.compile_step("send \"go\"", None).unwrap();
+        assert!(sender.next(&state).is_none());
+        executor.reset_signals();
+        let mut receiver = executor.compile_step(receiver_source, None).unwrap();
+        for _ in 0..5 {
+            assert!(receiver.next(&state).is_none());
+        }
     }
 }
