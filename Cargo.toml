@@ -26,7 +26,8 @@ steamworks = { version = "0.13.1", optional = true }
 thiserror = "2.0.20"
 fluent_content = "0.0.5"
 unic-langid = { version = "0.9.6", features = ["macros"] }
-keystone-lang = { git = "https://github.com/Meowtaverse-Games/keystone-lang.git", rev = "267d9ccdf94e336ab282580763ee28a6a1139272" }
+keystone-lang = { git = "https://github.com/Meowtaverse-Games/keystone-lang.git", rev="e07a36a22607fadb121534e49abc5dccf9f9a89b" }
+keystone-blocks = { git = "https://github.com/Meowtaverse-Games/keystone-blocks.git", rev="320cd8bcf9620d18a1292063170c2096ea6803fe" }
 bevy_embedded_assets = "0.16.0"
 
 [features]
