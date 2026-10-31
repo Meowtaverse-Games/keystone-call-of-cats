@@ -14,12 +14,18 @@ use std::{
     time::Duration,
 };
 
+type SharedSignals = Arc<Mutex<HashSet<String>>>;
+
 /// Rhai-based implementation of the `ScriptRunner` boundary.
-pub struct RhaiScriptExecutor;
+pub struct RhaiScriptExecutor {
+    shared_signals: SharedSignals,
+}
 
 impl RhaiScriptExecutor {
     pub fn new() -> Self {
-        Self
+        Self {
+            shared_signals: SharedSignals::default(),
+        }
     }
 
     fn parse_commands(
@@ -32,7 +38,13 @@ impl RhaiScriptExecutor {
         let emitter = CommandEmitter::recorder(MAX_COMMANDS);
         let state = SharedScriptState::default();
         let mut engine = base_engine(Some(MAX_OPS as u64));
-        register_commands(&mut engine, emitter.clone(), state, allowed_commands);
+        register_commands(
+            &mut engine,
+            emitter.clone(),
+            state,
+            SharedSignals::default(),
+            allowed_commands,
+        );
 
         let _ = engine
             .eval::<Dynamic>(script)
@@ -53,7 +65,14 @@ impl RhaiScriptExecutor {
         let emitter = CommandEmitter::recorder(PREFLIGHT_MAX_COMMANDS);
         let state = SharedScriptState::default();
         let mut engine = base_engine(Some(PREFLIGHT_MAX_OPS as u64));
-        register_commands(&mut engine, emitter.clone(), state, allowed_commands);
+        // Preflight must not consume or leave signals that the real run depends on.
+        register_commands(
+            &mut engine,
+            emitter.clone(),
+            state,
+            SharedSignals::default(),
+            allowed_commands,
+        );
 
         match engine.eval::<Dynamic>(script) {
             Ok(_) => Ok(()),
@@ -96,6 +115,7 @@ impl ScriptStepper for RhaiScriptExecutor {
         Ok(Box::new(RhaiScriptProgram::spawn(
             source.trim().to_string(),
             allowed_commands.cloned(),
+            self.shared_signals.clone(),
         )?))
     }
 }
@@ -309,9 +329,31 @@ fn register_commands(
     engine: &mut Engine,
     emitter: CommandEmitter,
     state: SharedScriptState,
+    signals: SharedSignals,
     allowed_commands: Option<&HashSet<String>>,
 ) {
     engine.register_type_with_name::<CommandValue>("Command");
+
+    {
+        let send = signals.clone();
+        engine.register_fn("send", move |channel: &str| send_signal(channel, &send));
+        let send = signals.clone();
+        engine.register_fn("send", move |channel: RhaiInt| {
+            send_signal(&channel.to_string(), &send)
+        });
+    }
+    {
+        let receive_emitter = emitter.clone();
+        let receive = signals.clone();
+        engine.register_fn("receive", move |channel: &str| {
+            receive_signal(channel, &receive, &receive_emitter)
+        });
+        let emitter = emitter.clone();
+        let receive = signals;
+        engine.register_fn("receive", move |channel: RhaiInt| {
+            receive_signal(&channel.to_string(), &receive, &emitter)
+        });
+    }
 
     {
         let emitter = emitter.clone();
@@ -423,6 +465,35 @@ fn register_commands(
             });
         } else {
             engine.register_fn("is_empty", |_: &str| sensor_not_allowed("is_empty"));
+        }
+    }
+}
+
+fn send_signal(channel: &str, signals: &SharedSignals) -> CommandValue {
+    if let Ok(mut signals) = signals.lock() {
+        signals.insert(channel.to_owned());
+    }
+    CommandValue()
+}
+
+fn receive_signal(
+    channel: &str,
+    signals: &SharedSignals,
+    emitter: &CommandEmitter,
+) -> Result<CommandValue, Box<EvalAltResult>> {
+    loop {
+        let received = signals
+            .lock()
+            .map(|mut signals| signals.remove(channel))
+            .unwrap_or(false);
+        if received {
+            return Ok(CommandValue());
+        }
+        match &emitter.target {
+            CommandEmitterTarget::Recorder(_) => return Ok(CommandValue()),
+            CommandEmitterTarget::Stream(stream) => {
+                wait_for_resume(&stream.resume, &stream.stop_flag)?
+            }
         }
     }
 }
@@ -599,6 +670,7 @@ impl RhaiScriptProgram {
     fn spawn(
         source: String,
         allowed_commands: Option<HashSet<String>>,
+        signals: SharedSignals,
     ) -> Result<Self, ScriptExecutionError> {
         let (sender, receiver) = mpsc::sync_channel::<ScriptCommand>(STREAM_CHANNEL_SIZE);
         let stop_flag = Arc::new(AtomicBool::new(false));
@@ -613,6 +685,7 @@ impl RhaiScriptProgram {
             &mut engine,
             emitter,
             shared_state.clone(),
+            signals,
             allowed_commands.as_ref(),
         );
 
@@ -874,5 +947,78 @@ mod tests {
             thread::sleep(Duration::from_millis(2));
             assert!(program.next(&untouched_state).is_none());
         }
+    }
+
+    fn assert_waiting(program: &mut dyn ScriptProgram, state: &ScriptState) {
+        for _ in 0..5 {
+            thread::sleep(Duration::from_millis(2));
+            let next = program.next(state);
+            assert!(next.is_none(), "receive should block, got {next:?}");
+        }
+    }
+
+    #[test]
+    fn receive_waits_until_another_stone_sends() {
+        let executor = RhaiScriptExecutor::new();
+        let state = ScriptState::default();
+        let mut receiver = executor
+            .compile_step(r#"receive("go"); move("right");"#, None)
+            .expect("receiver should compile");
+        let mut sender = executor
+            .compile_step(r#"sleep(1); send("go"); sleep(1);"#, None)
+            .expect("sender should compile");
+
+        assert_waiting(&mut *receiver, &state);
+
+        assert!(matches!(
+            next_command_within(&mut *sender, &state),
+            Some(ScriptCommand::Sleep(_))
+        ));
+        assert_waiting(&mut *receiver, &state);
+
+        assert!(matches!(
+            next_command_within(&mut *sender, &state),
+            Some(ScriptCommand::Sleep(_))
+        ));
+        assert!(matches!(
+            next_command_within(&mut *receiver, &state),
+            Some(ScriptCommand::Move(MoveDirection::Right))
+        ));
+    }
+
+    #[test]
+    fn receive_consumes_each_signal_once() {
+        let executor = RhaiScriptExecutor::new();
+        let state = ScriptState::default();
+        let mut sender = executor
+            .compile_step(r#"send(1); sleep(1);"#, None)
+            .expect("sender should compile");
+        let mut receiver = executor
+            .compile_step(
+                r#"receive(1); move("left"); receive(1); move("left");"#,
+                None,
+            )
+            .expect("receiver should compile");
+
+        assert!(next_command_within(&mut *sender, &state).is_some());
+        assert!(matches!(
+            next_command_within(&mut *receiver, &state),
+            Some(ScriptCommand::Move(MoveDirection::Left))
+        ));
+        assert_waiting(&mut *receiver, &state);
+    }
+
+    #[test]
+    fn signals_are_not_shared_between_executors() {
+        let state = ScriptState::default();
+        let mut sender = RhaiScriptExecutor::new()
+            .compile_step(r#"send("go"); sleep(1);"#, None)
+            .expect("sender should compile");
+        let mut receiver = RhaiScriptExecutor::new()
+            .compile_step(r#"receive("go"); move("right");"#, None)
+            .expect("receiver should compile");
+
+        assert!(next_command_within(&mut *sender, &state).is_some());
+        assert_waiting(&mut *receiver, &state);
     }
 }
