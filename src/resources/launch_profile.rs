@@ -208,11 +208,11 @@ impl LaunchProfile {
                     launch_profile.render_physics = true;
                     changed = true;
                 }
-                _ if arg.starts_with("--stage-id=") => {
-                    let value = &arg["--stage-id=".len()..];
-                    match value.parse::<usize>() {
+                _ if arg.starts_with("--stage=") => {
+                    let value = &arg["--stage=".len()..];
+                    match parse_stage_id(value) {
                         Ok(id) => {
-                            launch_profile.stage_id = Some(StageId(id));
+                            launch_profile.stage_id = Some(id);
                             changed = true;
                         }
                         Err(err) => {
@@ -220,12 +220,12 @@ impl LaunchProfile {
                         }
                     }
                 }
-                "--stage-id" => {
+                "--stage" => {
                     if index + 1 < args.len() {
                         let value = &args[index + 1];
-                        match value.parse::<usize>() {
+                        match parse_stage_id(value) {
                             Ok(id) => {
-                                launch_profile.stage_id = Some(StageId(id));
+                                launch_profile.stage_id = Some(id);
                                 changed = true;
                                 index += 1;
                             }
@@ -235,7 +235,7 @@ impl LaunchProfile {
                             }
                         }
                     } else {
-                        warn!("--stage-id flag provided without a value");
+                        warn!("--stage flag provided without a value");
                     }
                 }
                 _ => {}
@@ -252,12 +252,46 @@ impl LaunchProfile {
     }
 }
 
+fn parse_stage_id(value: &str) -> Result<StageId, &'static str> {
+    let id = StageId::from(value);
+    if crate::resources::stage_catalog::StageCatalog::load_from_assets()
+        .stage_by_id(&id)
+        .is_some()
+    {
+        Ok(id)
+    } else {
+        Err("unknown or unpublished stage")
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::path::PathBuf;
 
     use super::LaunchProfile;
 
+    #[test]
+    fn stage_selector_accepts_stable_ids_only() {
+        for args in [
+            vec!["game", "--stage", "move-02"],
+            vec!["game", "--stage=move-02"],
+        ] {
+            let profile =
+                LaunchProfile::from_args(&args.into_iter().map(str::to_owned).collect::<Vec<_>>());
+            assert_eq!(profile.stage_id, Some(super::StageId::from("move-02")));
+        }
+        for args in [
+            vec!["game", "--stage", "2"],
+            vec!["game", "--stage-id", "2"],
+            vec!["game", "--stage=missing-01"],
+        ] {
+            assert!(
+                LaunchProfile::from_args(&args.into_iter().map(str::to_owned).collect::<Vec<_>>())
+                    .stage_id
+                    .is_none()
+            );
+        }
+    }
     #[test]
     fn agent_parses_scenario_and_attempt_limit_without_external_services() {
         let args = [

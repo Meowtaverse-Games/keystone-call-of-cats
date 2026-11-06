@@ -31,7 +31,7 @@ injected before that update; the product reads them in `Update` as usual.
 
 `fixtures/stage-1.ron`, `fixtures/stage-2.ron`, and `fixtures/stage-9.ron`
 are headless baseline terrain, managed separately from product stages. They are
-byte-for-byte copies of `assets/stages/stage-N.ron` at main
+byte-for-byte copies of the former `assets/stages/stage-N.ron` at main
 `6d24d0f9fa3ed0b2abe13109bc8447639e2dca8f`. Do not refresh these fixtures when
 redesigning product stages; change them only as an intentional baseline change.
 
@@ -53,7 +53,7 @@ hashes describe the original scenarios.
 
 All shipped Stage 1/2/9 scenarios now use **frozen baseline terrain**, including
 the replay examples below. To view current **product terrain**, make a separate
-scenario copy and replace `ron_path` with `"stage_id": 1` (or another catalog ID).
+scenario copy and replace `ron_path` with `"stage": "move-01"` (or another catalog ID).
 `benchmark.json` also uses frozen terrain because `benchmark.py` checks its total
 frame count.
 
@@ -168,7 +168,7 @@ Unknown fields are errors. Paths are relative to the process working directory.
 | --- | --- | --- |
 | `viewport_scale` | positive finite number, 1.0 | Initial `ScaledViewport.scale`; also applied to the stage root |
 | `scale_changes` | array, `[]` | Entries `{ "frame": 105, "scale": 0.75 }`; simulate viewport resize before that update |
-| `stage_id` | integer ID in the stage catalog | Resolves the stage path through `assets/stages/list.ron`; use exactly one stage selector |
+| `stage` | stable string ID in the stage catalog | Resolves the stage path through `assets/stages/list.ron`; use exactly one stage selector |
 | `ron_path` | string | Alternative RON path; uses the same product generator |
 | `seed_start` | u64, required | First terrain seed |
 | `seed_count` | positive integer, required | Consecutive seeds to run |
@@ -438,7 +438,7 @@ integration, collider dimensions, ground probes and input timing determine the
 actual reach trials. They are never fed back into movement calculations.
 
 Headless stage IDs are accepted only when present in the embedded `StageCatalog`.
-Error messages include its range and exact IDs. Expanding the product catalog and
+Error messages include the available stable IDs. Expanding the product catalog and
 embedded maps expands accepted IDs without changing the headless loader.
 The registration regression derives all normal stage systems from every schedule.
 A single commented allowlist identifies presentation/tutorial functions and the

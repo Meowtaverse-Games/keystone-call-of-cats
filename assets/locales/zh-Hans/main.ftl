@@ -70,3 +70,9 @@ stage-ui-error-invalid-move-direction = move命令必须指定 left/top/right/do
 stage-ui-error-invalid-sleep-duration = sleep命令的秒数必须大于等于0。
 stage-ui-error-engine = 脚本运行错误: {$message}
 stage-ui-error-unsupported-language = 不支持的脚本语言: {$language}
+
+stage-category-move-name = 移动
+stage-category-sense-name = 感知
+stage-category-dig-name = 挖掘
+stage-category-place-name = 建造
+stage-category-signal-name = 传达

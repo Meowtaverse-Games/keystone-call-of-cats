@@ -70,3 +70,9 @@ stage-ui-error-invalid-move-direction = move命令にはleft/top/right/downの�
 stage-ui-error-invalid-sleep-duration = sleep命令の秒数は0以上である必要があります。
 stage-ui-error-engine = スクリプト実行エラー: {$message}
 stage-ui-error-unsupported-language = サポートされていないスクリプト言語です: {$language}
+
+stage-category-move-name = 動かす
+stage-category-sense-name = 見る
+stage-category-dig-name = ほる
+stage-category-place-name = 置く
+stage-category-signal-name = 伝える

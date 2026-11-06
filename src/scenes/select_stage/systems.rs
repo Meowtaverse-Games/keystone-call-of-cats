@@ -31,6 +31,8 @@ pub struct StageSelectState {
     current_page: usize,
     cards_per_page: usize,
     total_entries: usize,
+    category: usize,
+    category_ranges: Vec<std::ops::Range<usize>>,
 }
 
 #[derive(Resource, Default)]
@@ -48,6 +50,7 @@ type StageTouchButtonFilter = Or<(
     With<StageBackButton>,
     With<StageOptionsButton>,
     With<StagePageButton>,
+    With<StageCategoryButton>,
     With<StagePlayButton>,
 )>;
 
@@ -56,10 +59,48 @@ impl StageSelectState {
         Self {
             current_page: 0,
             cards_per_page: cards_per_page.max(1),
-            total_entries: total_entries.max(1),
+            total_entries,
+            category: 0,
+            category_ranges: std::iter::once(0..total_entries).collect(),
         }
     }
 
+    fn from_catalog(catalog: &StageCatalog, last: Option<&StageId>) -> Self {
+        let mut state = Self::new(catalog.stages.len(), CARDS_PER_PAGE);
+        let mut offset = 0;
+        state.category_ranges = catalog
+            .categories
+            .iter()
+            .filter(|cat| !cat.stages.is_empty())
+            .map(|cat| {
+                let range = offset..offset + cat.stages.len();
+                offset = range.end;
+                range
+            })
+            .collect();
+        if state.category_ranges.is_empty() {
+            state.category_ranges.push(0..0);
+        }
+        let index = last
+            .and_then(|id| catalog.iter().position(|s| &s.id == id))
+            .unwrap_or(0);
+        let category = state
+            .category_ranges
+            .iter()
+            .position(|range| range.contains(&index))
+            .unwrap_or(0);
+        state.select_category(category);
+        state.current_page =
+            index.saturating_sub(state.category_ranges[category].start) / CARDS_PER_PAGE;
+        state
+    }
+    fn select_category(&mut self, category: usize) {
+        if let Some(range) = self.category_ranges.get(category) {
+            self.category = category;
+            self.total_entries = range.len();
+            self.current_page = 0;
+        }
+    }
     pub fn total_pages(&self) -> usize {
         self.total_entries.div_ceil(self.cards_per_page).max(1)
     }
@@ -67,7 +108,8 @@ impl StageSelectState {
     pub fn visible_range(&self) -> std::ops::Range<usize> {
         let start = (self.current_page * self.cards_per_page).min(self.total_entries);
         let end = (start + self.cards_per_page).min(self.total_entries);
-        start..end
+        let offset = self.category_ranges[self.category].start;
+        start + offset..end + offset
     }
 
     pub fn move_page(&mut self, delta: isize) -> bool {
@@ -93,15 +135,15 @@ struct StageEntry {
 }
 
 impl StageEntry {
-    fn from(stage_progress: &StageProgress, meta: &StageMeta) -> Self {
+    fn from(stage_progress: &StageProgress, catalog: &StageCatalog, meta: &StageMeta) -> Self {
         Self {
             meta: meta.clone(),
-            playable: stage_progress.is_unlocked(meta.id),
+            playable: stage_progress.is_unlocked(catalog, &meta.id),
         }
     }
 
     fn localized_title(&self, localization: &Localization) -> String {
-        localized_stage_name(localization, self.meta.id, &self.meta.title)
+        localized_stage_name(localization, &self.meta)
     }
 }
 
@@ -182,18 +224,10 @@ pub fn setup(
 
     let entries: Vec<StageEntry> = catalog
         .iter()
-        .map(|m| StageEntry::from(&progress, m))
+        .map(|m| StageEntry::from(&progress, &catalog, m))
         .collect();
     let summary = StageSummary::from_entries(&entries);
-    let mut state = StageSelectState::new(entries.len(), CARDS_PER_PAGE);
-
-    // Restore last played page
-    if let Some(index) = progress
-        .last_played_stage_id
-        .and_then(|last_id| catalog.iter().position(|m| m.id == last_id))
-    {
-        state.current_page = index / CARDS_PER_PAGE;
-    }
+    let state = StageSelectState::from_catalog(&catalog, progress.last_played_stage_id.as_ref());
 
     let current_page_number = state.current_page + 1;
     let total_pages = state.total_pages();
@@ -220,6 +254,43 @@ pub fn setup(
     commands.entity(root).with_children(|parent| {
         spawn_glow_layers(parent);
         spawn_hero_section(parent, &font, &display_font, &summary, &localization);
+        parent
+            .spawn(Node {
+                column_gap: Val::Px(16.0),
+                ..default()
+            })
+            .with_children(|tabs| {
+                for (index, category) in catalog
+                    .categories
+                    .iter()
+                    .filter(|cat| !cat.stages.is_empty())
+                    .enumerate()
+                {
+                    tabs.spawn((
+                        Button,
+                        StageCategoryButton { index },
+                        Node {
+                            padding: UiRect::all(Val::Px(12.0)),
+                            ..default()
+                        },
+                        BackgroundColor(card_background_color()),
+                    ))
+                    .with_children(|button| {
+                        button.spawn((
+                            Text::new(tr(
+                                &localization,
+                                &format!("stage-category-{}-name", category.id),
+                            )),
+                            TextFont {
+                                font: FontSource::Handle(font.clone()),
+                                font_size: FontSize::Px(24.0),
+                                ..default()
+                            },
+                            TextColor(primary_text_color()),
+                        ));
+                    });
+                }
+            });
         spawn_stage_cards(parent, &entries, &font, &localization);
         spawn_bottom_bar(parent, &font, &page_text);
     });
@@ -282,6 +353,36 @@ pub fn handle_nav_buttons(
     }
 }
 
+pub fn handle_category_buttons(
+    interactions: Query<(&StageCategoryButton, &Interaction), Changed<Interaction>>,
+    mut state: ResMut<StageSelectState>,
+    options: Res<OptionsOverlayState>,
+) {
+    if options.open {
+        return;
+    }
+    for (button, interaction) in &interactions {
+        if *interaction == Interaction::Pressed {
+            state.select_category(button.index);
+        }
+    }
+}
+
+pub fn update_category_visuals(
+    state: Res<StageSelectState>,
+    mut buttons: Query<(&StageCategoryButton, &Interaction, &mut BackgroundColor)>,
+) {
+    for (button, interaction, mut color) in &mut buttons {
+        color.0 = if button.index == state.category {
+            accent_color()
+        } else if *interaction == Interaction::Hovered {
+            subtle_button_color(0.35)
+        } else {
+            card_background_color()
+        };
+    }
+}
+
 pub fn handle_options_button(
     mut commands: Commands,
     audio: Res<AudioHandles>,
@@ -323,7 +424,7 @@ pub fn handle_play_buttons(
         if *interaction == Interaction::Pressed {
             play_ui_click(&mut commands, &audio, &settings);
             if let Some(stage) = catalog.stage_by_index(button.stage_index) {
-                stage_progress.set_last_played(stage.id, &**file_storage);
+                stage_progress.set_last_played(stage.id.clone(), &**file_storage);
                 progression.select_stage(stage);
                 next_state.set(GameState::Stage);
             } else {
@@ -338,9 +439,33 @@ pub fn handle_keyboard_navigation(
     mut state: ResMut<StageSelectState>,
     mut exit_events: MessageWriter<AppExit>,
     options: Res<OptionsOverlayState>,
+    mut buttons: Query<(&StagePlayButton, &mut Interaction)>,
 ) {
     if options.open {
         return;
+    }
+    let slot = [KeyCode::Digit1, KeyCode::Digit2, KeyCode::Digit3]
+        .iter()
+        .position(|key| keys.just_pressed(*key))
+        .or_else(|| keys.just_pressed(KeyCode::Enter).then_some(0));
+    if let Some(slot) = slot {
+        let index = state.visible_range().start + slot;
+        for (button, mut interaction) in &mut buttons {
+            if button.enabled
+                && button.stage_index == index
+                && state.visible_range().contains(&index)
+            {
+                *interaction = Interaction::Pressed;
+            }
+        }
+    }
+    if keys.just_pressed(KeyCode::ArrowDown) {
+        let category = (state.category + 1).min(state.category_ranges.len() - 1);
+        state.select_category(category);
+    }
+    if keys.just_pressed(KeyCode::ArrowUp) {
+        let category = state.category.saturating_sub(1);
+        state.select_category(category);
     }
     if keys.just_pressed(KeyCode::ArrowRight) {
         state.move_page(1);
@@ -845,11 +970,11 @@ fn spawn_stage_cards(
                         ..default()
                     })
                     .with_children(|header| {
-                        let stage_number = format!("{:02}", index + 1);
+                        let stage_number = format!("{:02}", entry.meta.display_number);
                         let stage_header = tr_with_args(
                             localization,
                             "stage-select-stage-header",
-                            &[("number", stage_number.as_str())],
+                            &[("number", &stage_number)],
                         );
                         header
                             .spawn(Text::new(stage_header))
@@ -863,6 +988,14 @@ fn spawn_stage_cards(
                         spawn_stage_chip(header, font, entry.playable, &ready_label, &locked_label);
                     });
 
+                    if !entry.meta.published {
+                        spawn_experimental_label(
+                            card,
+                            font,
+                            &tr(localization, "stage-select-badge-experimental"),
+                            true,
+                        );
+                    }
                     let stage_title = entry.localized_title(localization);
                     card.spawn(Text::new(stage_title))
                         .insert(TextFont {
@@ -1159,6 +1292,183 @@ mod tests {
         );
     }
 
+    #[test]
+    fn restores_category_page_and_hides_empty_categories() {
+        let catalog = StageCatalog::load_from_assets();
+        let mut state = StageSelectState::from_catalog(&catalog, Some(&"dig-04".into()));
+        assert_eq!(state.category_ranges.len(), 3);
+        assert_eq!(state.category, 2);
+        assert_eq!(state.current_page, 1);
+        assert_eq!(state.visible_range(), 11..12);
+        state.select_category(0);
+        assert_eq!(state.visible_range(), 0..3);
+        assert!(state.move_page(1));
+        assert_eq!(state.visible_range(), 3..6);
+        assert!(!state.move_page(1));
+        state.select_category(1);
+        assert_eq!(state.visible_range(), 6..8);
+        assert_eq!(state.total_pages(), 1);
+        let progress = StageProgress::default();
+        assert!(
+            catalog.categories[1]
+                .stages
+                .iter()
+                .all(|s| !progress.is_unlocked(&catalog, &s.id))
+        );
+    }
+
+    #[test]
+    fn mouse_and_keyboard_select_categories_and_keyboard_only_plays_visible_unlocked_cards() {
+        use bevy::ecs::system::RunSystemOnce;
+        let mut world = World::new();
+        world.insert_resource(StageSelectState::from_catalog(
+            &StageCatalog::load_from_assets(),
+            None,
+        ));
+        world.insert_resource(OptionsOverlayState::default());
+        world.insert_resource(ButtonInput::<KeyCode>::default());
+        world.init_resource::<Messages<AppExit>>();
+        let tab = world
+            .spawn((StageCategoryButton { index: 2 }, Interaction::Pressed))
+            .id();
+        world.run_system_once(handle_category_buttons).unwrap();
+        assert_eq!(world.resource::<StageSelectState>().category, 2);
+        *world.get_mut::<Interaction>(tab).unwrap() = Interaction::None;
+        world
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .press(KeyCode::ArrowUp);
+        world.run_system_once(handle_keyboard_navigation).unwrap();
+        assert_eq!(world.resource::<StageSelectState>().category, 1);
+        let locked = world
+            .spawn((
+                StagePlayButton {
+                    stage_index: 6,
+                    enabled: false,
+                },
+                Interaction::None,
+            ))
+            .id();
+        world.resource_mut::<ButtonInput<KeyCode>>().reset_all();
+        world
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .press(KeyCode::Enter);
+        world.run_system_once(handle_keyboard_navigation).unwrap();
+        assert_eq!(
+            *world.get::<Interaction>(locked).unwrap(),
+            Interaction::None
+        );
+        world.resource_mut::<StageSelectState>().select_category(0);
+        let playable = world
+            .spawn((
+                StagePlayButton {
+                    stage_index: 0,
+                    enabled: true,
+                },
+                Interaction::None,
+            ))
+            .id();
+        world.run_system_once(handle_keyboard_navigation).unwrap();
+        assert_eq!(
+            *world.get::<Interaction>(playable).unwrap(),
+            Interaction::Pressed
+        );
+    }
+
+    #[test]
+    fn mouse_keyboard_and_touch_play_the_same_category_card() {
+        use crate::resources::file_storage::{FileError, FileStorage};
+        struct NoSave;
+        impl FileStorage for NoSave {
+            fn load(&self, _: &str) -> Result<Option<Vec<u8>>, FileError> {
+                Ok(None)
+            }
+            fn save(&self, _: &str, _: &[u8]) -> Result<(), FileError> {
+                Ok(())
+            }
+        }
+        for mode in ["mouse", "keyboard", "touch"] {
+            let catalog = StageCatalog::load_from_assets();
+            let state = StageSelectState::from_catalog(&catalog, Some(&"dig-02".into()));
+            let mut app = App::new();
+            app.add_plugins(InputPlugin)
+                .insert_resource(catalog)
+                .insert_resource(state)
+                .init_resource::<OptionsOverlayState>()
+                .init_resource::<StageTouchInputState>()
+                .init_resource::<StageProgressionState>()
+                .init_resource::<StageProgress>()
+                .init_resource::<NextState<GameState>>()
+                .init_resource::<AudioHandles>()
+                .init_resource::<GameSettings>()
+                .insert_resource(FileStorageResource::new(std::sync::Arc::new(NoSave)))
+                .add_message::<AppExit>()
+                .add_systems(
+                    Update,
+                    (
+                        route_touch_to_stage_button,
+                        handle_keyboard_navigation,
+                        handle_play_buttons,
+                    )
+                        .chain(),
+                );
+            let window = app
+                .world_mut()
+                .spawn((PrimaryWindow, Window::default()))
+                .id();
+            let target = app
+                .world_mut()
+                .spawn((
+                    StagePlayButton {
+                        stage_index: 9,
+                        enabled: true,
+                    },
+                    button_node(Vec2::new(100.0, 100.0)),
+                ))
+                .id();
+            match mode {
+                "mouse" => {
+                    *app.world_mut().get_mut::<Interaction>(target).unwrap() = Interaction::Pressed
+                }
+                "keyboard" => {
+                    app.world_mut()
+                        .write_message(bevy::input::keyboard::KeyboardInput {
+                            key_code: KeyCode::Digit2,
+                            logical_key: bevy::input::keyboard::Key::Character("2".into()),
+                            state: bevy::input::ButtonState::Pressed,
+                            text: None,
+                            repeat: false,
+                            window,
+                        });
+                }
+                _ => {
+                    app.world_mut().write_message(touch_input(
+                        window,
+                        1,
+                        TouchPhase::Started,
+                        Vec2::new(100.0, 100.0),
+                    ));
+                }
+            }
+            app.update();
+            assert_eq!(
+                app.world()
+                    .resource::<StageProgressionState>()
+                    .current_stage_id(),
+                StageId::from("dig-02"),
+                "{mode}"
+            );
+            assert_eq!(
+                app.world().resource::<StageProgress>().last_played_stage_id,
+                Some("dig-02".into()),
+                "{mode}"
+            );
+            assert!(matches!(
+                app.world().resource::<NextState<GameState>>(),
+                NextState::Pending(GameState::Stage)
+            ));
+        }
+    }
+
     fn touch_input(window: Entity, id: u64, phase: TouchPhase, position: Vec2) -> TouchInput {
         TouchInput {
             phase,
@@ -1200,7 +1510,7 @@ mod tests {
         let target = app
             .world_mut()
             .spawn((
-                StagePageButton { delta: 1 },
+                StageCategoryButton { index: 1 },
                 button_node(Vec2::new(350.0, 175.0)),
             ))
             .id();

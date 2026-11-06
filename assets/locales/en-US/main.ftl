@@ -70,3 +70,9 @@ stage-ui-error-invalid-move-direction = move() needs left/top/right/down but got
 stage-ui-error-invalid-sleep-duration = sleep() duration must be zero or greater.
 stage-ui-error-engine = Script runtime error: {$message}
 stage-ui-error-unsupported-language = Script language "{$language}" is not supported.
+
+stage-category-move-name = Move
+stage-category-sense-name = Sense
+stage-category-dig-name = Dig
+stage-category-place-name = Build
+stage-category-signal-name = Signal
