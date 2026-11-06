@@ -17,3 +17,5 @@ pub mod steam_client;
 pub mod stone_type;
 pub mod tiled;
 pub mod visibility;
+
+pub mod legacy_stage_ids;
