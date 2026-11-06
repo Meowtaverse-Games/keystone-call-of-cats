@@ -223,11 +223,11 @@ impl ScriptEditorState {
         self.last_action_context = context;
     }
 
-    pub fn set_tutorial_for_stage(&mut self, stage_id: StageId) {
+    pub fn set_tutorial_for_stage(&mut self, stage_id: &StageId) {
         self.tutorial_dialog = tutorial_dialog_for_stage(stage_id);
     }
 
-    pub fn set_command_help_for_stage(&mut self, stage_id: StageId) {
+    pub fn set_command_help_for_stage(&mut self, stage_id: &StageId) {
         self.command_help = command_help_for_stage(stage_id);
     }
 }
@@ -277,7 +277,7 @@ impl EditorMenuAction {
     }
 }
 
-pub fn init_editor_state(commands: &mut Commands, stage_id: StageId) {
+pub fn init_editor_state(commands: &mut Commands, stage_id: &StageId) {
     let mut editor_state = ScriptEditorState::default();
     editor_state.set_tutorial_for_stage(stage_id);
     editor_state.set_command_help_for_stage(stage_id);
@@ -734,7 +734,7 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                     let stage_id = progression.current_stage_id();
 
                     let current_codes =
-                        stage_scripts.stage_codes(settings.script_language, stage_id);
+                        stage_scripts.stage_codes(settings.script_language, &stage_id);
 
                     if current_codes
                         .map(|codes| codes != editor.buffers.as_slice())
@@ -888,11 +888,10 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
     // }
 
     // Display stage name in top-right corner
-    let stage_name = localized_stage_name(
-        &localization,
-        progression.current_stage_id(),
-        &format!("Stage {}", progression.current_stage_id().0),
-    );
+    let stage_name = progression
+        .current_stage()
+        .map(|stage| localized_stage_name(&localization, stage))
+        .unwrap_or_default();
 
     let top_right_margin = 12.0;
     let label_color = egui::Color32::from_white_alpha(200);
@@ -1036,15 +1035,15 @@ fn is_player_touching_stone(
         .any(|&entity| entity == stone_entity)
 }
 
-pub fn tutorial_dialog_for_stage(stage_id: StageId) -> Option<TutorialDialog> {
-    let id = stage_id.0;
-    Some(TutorialDialog::new(format!("stage{}-text", id)))
+pub fn tutorial_dialog_for_stage(stage_id: &StageId) -> Option<TutorialDialog> {
+    let id = &stage_id.0;
+    Some(TutorialDialog::new(format!("stage-{}-text", id)))
 }
 
-fn command_help_for_stage(stage_id: StageId) -> Option<CommandHelpDialog> {
+fn command_help_for_stage(stage_id: &StageId) -> Option<CommandHelpDialog> {
     Some(CommandHelpDialog::new(
         "stage-ui-command-help-title",
-        format!("stage{}-description", stage_id.0),
+        format!("stage-{}-description", stage_id.0),
     ))
 }
 

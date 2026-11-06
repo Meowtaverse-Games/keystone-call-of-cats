@@ -79,7 +79,7 @@ impl StageProgressionState {
     pub fn current_stage_id(&self) -> StageId {
         self.current_stage
             .as_ref()
-            .map(|stage| stage.id)
+            .map(|stage| stage.id.clone())
             .unwrap_or_default()
     }
 
@@ -92,7 +92,7 @@ impl StageProgressionState {
             return false;
         }
 
-        let Some(next_stage) = stage_catalog.next_stage(self.current_stage.as_ref().unwrap().id)
+        let Some(next_stage) = stage_catalog.next_stage(&self.current_stage.as_ref().unwrap().id)
         else {
             return false;
         };
@@ -344,6 +344,7 @@ pub struct StageSetupParams<'w, 's> {
     asset_server: Res<'w, AssetServer>,
     atlas_layouts: ResMut<'w, Assets<TextureAtlasLayout>>,
     window_query: Query<'w, 's, &'static Window, With<PrimaryWindow>>,
+    progress: Option<ResMut<'w, StageProgress>>,
     progression: ResMut<'w, StageProgressionState>,
     editor_state: Option<ResMut<'w, ScriptEditorState>>,
     vpl_state: ResMut<'w, VplState>,
@@ -415,7 +416,7 @@ pub fn resize_editor_buffers_system(
     let current_lang = settings.script_language;
     let saved_codes = stage_scripts
         .as_ref()
-        .and_then(|scripts| scripts.stage_codes(current_lang, current_stage_id))
+        .and_then(|scripts| scripts.stage_codes(current_lang, &current_stage_id))
         .map(|slice| slice.to_vec());
 
     editor_state.resize_buffers(stone_count, saved_codes.as_deref());
@@ -473,10 +474,13 @@ fn reset_vpl_for_stage(state: &mut VplState) {
 pub fn setup(mut commands: Commands, mut params: StageSetupParams) {
     reset_vpl_for_stage(&mut params.vpl_state);
     let current_stage_id = params.progression.current_stage_id();
+    if let Some(progress) = params.progress.as_deref_mut() {
+        progress.last_played_stage_id = Some(current_stage_id.clone());
+    }
     match params.editor_state.as_deref_mut() {
         Some(editor) => {
-            editor.set_tutorial_for_stage(current_stage_id);
-            editor.set_command_help_for_stage(current_stage_id);
+            editor.set_tutorial_for_stage(&current_stage_id);
+            editor.set_command_help_for_stage(&current_stage_id);
             editor.controls_enabled = false;
             editor.pending_player_reset = false;
             editor.stage_cleared = false;
@@ -484,7 +488,7 @@ pub fn setup(mut commands: Commands, mut params: StageSetupParams) {
             editor.active_programs.clear();
             editor.buffers.clear();
         }
-        None => ui::init_editor_state(&mut commands, current_stage_id),
+        None => ui::init_editor_state(&mut commands, &current_stage_id),
     }
 
     if params.audio_handles.is_none() {
@@ -531,7 +535,7 @@ pub fn setup(mut commands: Commands, mut params: StageSetupParams) {
         .editor_state
         .as_ref()
         .and_then(|editor| editor.tutorial_dialog.clone())
-        .or_else(|| ui::tutorial_dialog_for_stage(current_stage_id));
+        .or_else(|| ui::tutorial_dialog_for_stage(&current_stage_id));
     if let Some(dialog) = tutorial_dialog {
         commands.insert_resource(PendingTutorial {
             dialog: dialog.clone(),
@@ -591,15 +595,14 @@ pub fn advance_stage_if_cleared(
         warn!("Stage clear: failed to save scripts: {err}");
     }
 
-    // Keep the next ID unlocked even at the catalog end so future stages are
-    // available to players who have already cleared the current final stage.
-    progress.unlock_until(StageId(progression.current_stage_id().0 + 1));
+    // Persist completion even at the catalog end so appended stages can unlock.
+    progress.clear(progression.current_stage_id());
 
     if progression.advance(&stage_catalog) {
         let stage_label = progression
             .current_stage()
-            .map(|stage| localized_stage_name(&localization, stage.id, &stage.title))
-            .unwrap_or_else(|| format!("STAGE-{}", progression.current_stage_id().0));
+            .map(|stage| localized_stage_name(&localization, stage))
+            .unwrap_or_default();
         editor_state.last_run_feedback = Some(tr_with_args(
             &localization,
             "stage-ui-feedback-advance",
@@ -615,6 +618,7 @@ pub fn advance_stage_if_cleared(
         editor_state.last_run_feedback = Some(tr(&localization, "stage-ui-feedback-complete"));
     }
 
+    progress.last_played_stage_id = Some(progression.current_stage_id());
     editor_state.stage_cleared = false;
 }
 
@@ -662,8 +666,8 @@ pub fn reload_stage_if_needed(mut commands: Commands, mut params: StageReloadPar
     let stage_label = params
         .progression
         .current_stage()
-        .map(|stage| localized_stage_name(&params.localization, stage.id, &stage.title))
-        .unwrap_or_else(|| format!("STAGE-{}", stage_id.0));
+        .map(|stage| localized_stage_name(&params.localization, stage))
+        .unwrap_or_default();
     let current_map = params.progression.current_map();
 
     if let (Some(scripts), Some(storage)) = (params.stage_scripts.as_ref(), params.storage.as_ref())
@@ -713,8 +717,8 @@ pub fn reload_stage_if_needed(mut commands: Commands, mut params: StageReloadPar
         editor.controls_enabled = false;
         editor.pending_player_reset = false;
         editor.stage_cleared = false;
-        editor.set_tutorial_for_stage(stage_id);
-        editor.set_command_help_for_stage(stage_id);
+        editor.set_tutorial_for_stage(&stage_id);
+        editor.set_command_help_for_stage(&stage_id);
         editor.buffers.clear();
         editor.last_run_feedback = Some(tr_with_args(
             &params.localization,
@@ -727,7 +731,7 @@ pub fn reload_stage_if_needed(mut commands: Commands, mut params: StageReloadPar
         .editor_state
         .as_ref()
         .and_then(|editor| editor.tutorial_dialog.clone())
-        .or_else(|| ui::tutorial_dialog_for_stage(stage_id));
+        .or_else(|| ui::tutorial_dialog_for_stage(&stage_id));
     if let Some(dialog) = tutorial_dialog {
         ui::spawn_tutorial_overlay(
             &mut commands,
@@ -826,7 +830,7 @@ mod tests {
     #[test]
     fn clearing_catalog_stages_sets_feedback_and_unlocks_next_id() {
         let catalog = StageCatalog::load_from_assets();
-        let last_id = catalog.stages.last().unwrap().id;
+        let last_id = catalog.stages.last().unwrap().id.clone();
         for stage in catalog.iter() {
             let mut progression = StageProgressionState::default();
             progression.select_stage(stage);
@@ -854,7 +858,10 @@ mod tests {
                 assert!(!progression.pending_reload);
                 "stage-ui-feedback-complete"
             } else {
-                assert_eq!(progression.current_stage_id(), StageId(stage.id.0 + 1));
+                assert_eq!(
+                    progression.current_stage_id(),
+                    catalog.next_stage(&stage.id).unwrap().id.clone()
+                );
                 assert!(progression.pending_reload);
                 "stage-ui-feedback-advance"
             };
@@ -862,10 +869,18 @@ mod tests {
             assert!(!editor.controls_enabled);
             assert!(!editor.pending_player_reset);
             assert!(!editor.stage_cleared);
+            assert_eq!(
+                world
+                    .resource::<StageProgress>()
+                    .last_played_stage_id
+                    .as_ref(),
+                Some(&progression.current_stage_id())
+            );
             assert!(
                 world
                     .resource::<StageProgress>()
-                    .is_unlocked(StageId(stage.id.0 + 1))
+                    .cleared
+                    .contains(&stage.id)
             );
         }
     }
@@ -909,11 +924,11 @@ mod tests {
         };
         let (bridge, receiver, server) = external_control::start(&profile).unwrap().unwrap();
         let mut progression = StageProgressionState::default();
-        progression.select_stage(&StageMeta {
-            id: StageId(1),
-            title: "Stage 1".into(),
-            unlocked: true,
-        });
+        progression.select_stage(
+            StageCatalog::load_from_assets()
+                .stage_by_id(&"move-01".into())
+                .unwrap(),
+        );
         let mut external_state = ExternalControlState::default();
         external_state.generation = 9;
         external_state.owner = true;
