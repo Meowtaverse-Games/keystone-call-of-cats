@@ -29,7 +29,7 @@ Keystone: Call of Cats — a 2D puzzle game where the player guides cats and sto
 - [src/resources/](src/resources/) — Bevy `Resource`s and shared data types (stage catalog, stone capabilities, settings, launch profile, …)
 - [src/systems/](src/systems/) — Engine-level systems (`engine`, `stage`, `steam`)
 - [src/util/](src/util/) — Helpers: font loading, localization, script type adapters
-- [assets/stages/stage-N.ron](assets/stages/) — Stage definitions in RON; index in `list.ron`
+- [assets/stages/<id>.ron](assets/stages/) — Stage definitions in RON; index in `list.ron`
 - [assets/locales/](assets/locales/) — Fluent (`.ftl`) translations for `en-US`, `ja-JP`, `zh-Hans`
 - [tools/ftl_sheet_exporter/](tools/ftl_sheet_exporter/) — Standalone Rust binary that regenerates `ja-JP/main.ftl` from a Google Sheet (OAuth installed-app flow)
 - [scripts/](scripts/) — Build / deploy / FTL-export shell scripts

@@ -68,7 +68,7 @@ pub struct Scenario {
     pub viewport_scale: f32,
     #[serde(default)]
     pub scale_changes: Vec<ScaleChange>,
-    pub stage_id: Option<usize>,
+    pub stage: Option<StageId>,
     pub ron_path: Option<PathBuf>,
     pub seed_start: u64,
     pub seed_count: usize,
@@ -418,22 +418,18 @@ fn build_app_with_physics(map: Map, scale: f32, physics: PlayerPhysicsParams) ->
 /// Resolve IDs from the catalog rather than imposing a second stage-count limit.
 fn scenario_map_path(scenario: &Scenario, catalog: &StageCatalog) -> Result<PathBuf> {
     let accepted = || {
-        let mut ids: Vec<_> = catalog.iter().map(|stage| stage.id.0).collect();
+        let mut ids: Vec<_> = catalog.iter().map(|stage| stage.id.0.clone()).collect();
         ids.sort_unstable();
-        let range = match (ids.first(), ids.last()) {
-            (Some(first), Some(last)) => format!("{first}..={last}"),
-            _ => "empty".into(),
-        };
-        format!("{range} (catalog IDs: {ids:?})")
+        format!("{ids:?}")
     };
-    match (&scenario.stage_id, &scenario.ron_path) {
-        (Some(id), None) if catalog.stage_by_id(StageId(*id)).is_some() => {
-            Ok(PathBuf::from(format!("assets/stages/stage-{id}.ron")))
+    match (&scenario.stage, &scenario.ron_path) {
+        (Some(id), None) if catalog.stage_by_id(id).is_some() => {
+            Ok(PathBuf::from(format!("assets/stages/{id}.ron")))
         }
         (None, Some(path)) => Ok(path.clone()),
-        (Some(id), None) => Err(format!("Unknown stage_id {id}; accepted: {}", accepted()).into()),
+        (Some(id), None) => Err(format!("Unknown stage {id}; accepted: {}", accepted()).into()),
         _ => Err(format!(
-            "Specify exactly one of stage_id (accepted: {}) or ron_path",
+            "Specify exactly one of stage (accepted: {}) or ron_path",
             accepted()
         )
         .into()),
@@ -924,13 +920,13 @@ pub fn run(profile: &LaunchProfile) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    fn product_stage_scenario(stage: usize) -> Scenario {
-        serde_json::from_value(serde_json::json!({"stage_id":stage,"seed_start":17,"seed_count":1,"max_frames":120,"inputs":[{"frame":2,"key":"ArrowRight","pressed":true},{"frame":20,"key":"Space","pressed":true}]})).unwrap()
+    fn product_stage_scenario(stage: &str) -> Scenario {
+        serde_json::from_value(serde_json::json!({"stage":stage,"seed_start":17,"seed_count":1,"max_frames":120,"inputs":[{"frame":2,"key":"ArrowRight","pressed":true},{"frame":20,"key":"Space","pressed":true}]})).unwrap()
     }
     // Behavior regressions use frozen terrain; catalog tests exercise product stages.
     fn fixture_scenario(stage: usize) -> Scenario {
-        let mut scenario = product_stage_scenario(stage);
-        scenario.stage_id = None;
+        let mut scenario = product_stage_scenario("move-01");
+        scenario.stage = None;
         scenario.ron_path = Some(format!("examples/headless/fixtures/stage-{stage}.ron").into());
         scenario
     }
@@ -1637,35 +1633,23 @@ mod tests {
     fn scenario_stage_ids_follow_the_catalog_without_a_fixed_upper_bound() {
         let catalog = StageCatalog::load_from_assets();
         for stage in catalog.iter() {
-            assert!(scenario_map_path(&product_stage_scenario(stage.id.0), &catalog).is_ok());
-            assert!(load_map(&product_stage_scenario(stage.id.0), 17).is_ok());
+            assert!(scenario_map_path(&product_stage_scenario(&stage.id.0), &catalog).is_ok());
+            assert!(load_map(&product_stage_scenario(&stage.id.0), 17).is_ok());
         }
-        let first = catalog.iter().map(|s| s.id.0).min().unwrap();
-        let last = catalog.iter().map(|s| s.id.0).max().unwrap();
-        for id in [first - 1, last + 1] {
-            let error = scenario_map_path(&product_stage_scenario(id), &catalog)
-                .unwrap_err()
-                .to_string();
-            assert!(error.contains(&format!("{first}..={last}")), "{error}");
-        }
-        // Model the expanded branch by extending the loaded catalog, without
-        // changing assets or coupling this test to main's current stage count.
+        assert!(scenario_map_path(&product_stage_scenario("missing-01"), &catalog).is_err());
         let mut expanded = catalog.clone();
-        for id in last + 1..=20 {
-            expanded
-                .stages
-                .push(crate::resources::stage_catalog::StageMeta {
-                    id: StageId(id),
-                    title: format!("Stage {id}"),
-                    unlocked: true,
-                });
-            assert!(scenario_map_path(&product_stage_scenario(id), &expanded).is_ok());
-        }
-        let expanded_last = expanded.iter().map(|s| s.id.0).max().unwrap();
-        assert!(scenario_map_path(&product_stage_scenario(expanded_last + 1), &expanded).is_err());
-        // A min/max range must not accidentally admit gaps in the catalog.
-        expanded.stages.retain(|s| s.id.0 != first + 1);
-        assert!(scenario_map_path(&product_stage_scenario(first + 1), &expanded).is_err());
+        let mut extra = expanded.stages[0].clone();
+        extra.id = "move-99".into();
+        expanded.stages.push(extra);
+        assert!(scenario_map_path(&product_stage_scenario("move-99"), &expanded).is_ok());
+        assert!(scenario_map_path(&product_stage_scenario("move-98"), &expanded).is_err());
+        let mut legacy = serde_json::to_value(product_stage_scenario("move-01")).unwrap();
+        legacy.as_object_mut().unwrap().remove("stage");
+        legacy["stage_id"] = serde_json::json!(1);
+        assert!(serde_json::from_value::<Scenario>(legacy).is_err());
+        let mut numeric = serde_json::to_value(product_stage_scenario("move-01")).unwrap();
+        numeric["stage"] = serde_json::json!(1);
+        assert!(serde_json::from_value::<Scenario>(numeric).is_err());
     }
 
     #[test]

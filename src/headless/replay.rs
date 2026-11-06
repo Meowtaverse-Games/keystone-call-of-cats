@@ -7,7 +7,7 @@ use crate::{
         design_resolution::LetterboxOffsets,
         file_storage::{FileError, FileStorage, FileStorageResource},
         locale_resources::LocaleFolder,
-        stage_catalog::{StageCatalog, StageId},
+        stage_catalog::StageCatalog,
         stage_scripts::StageScripts,
     },
     scenes::{
@@ -429,9 +429,9 @@ pub fn run(profile: &LaunchProfile) -> Result<()> {
         ),
     );
     configure_freeze(&mut app);
-    if let Some(id) = scenario.stage_id {
+    if let Some(id) = &scenario.stage {
         let catalog = StageCatalog::load_from_assets();
-        if let Some(stage) = catalog.stage_by_id(StageId(id)) {
+        if let Some(stage) = catalog.stage_by_id(id) {
             app.world_mut()
                 .resource_mut::<systems::StageProgressionState>()
                 .select_stage(stage);

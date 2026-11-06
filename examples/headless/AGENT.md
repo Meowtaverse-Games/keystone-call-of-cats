@@ -12,7 +12,7 @@ env -u DISPLAY -u WAYLAND_DISPLAY target/release/keystone-cc \
 ```
 
 The input uses the existing strict headless scenario schema. Omit `inputs` and
-`seed_inputs`. `stage_id`/`ron_path`, seed range, programs (Rhai or Keystone),
+`seed_inputs`. `stage`/`ron_path`, seed range, programs (Rhai or Keystone),
 `player_physics`, constant `viewport_scale`, `start_frame`, `max_frames`, sampling
 and post-goal observation retain their existing meaning. `--agent-attempts` is
 1–64 (default 8); `--jobs` is 1–256. `max_frames` bounds **each attempt** and the
