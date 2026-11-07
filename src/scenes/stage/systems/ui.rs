@@ -814,7 +814,7 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                                                 if stone_query
                                                     .iter()
                                                     .find(|(_, _, _, index)| index.0 == editor.selected_idx)
-                                                    .is_some_and(|(_, _, stone_type, _)| *stone_type == StoneType::Type4)
+                                                    .is_some_and(|(_, _, stone_type, _)| matches!(stone_type, StoneType::Type4 | StoneType::Type5))
                                                 {
                                                     ui.add_space(4.0);
                                                     let place_syntax = match settings.script_language {
