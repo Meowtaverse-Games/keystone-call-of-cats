@@ -1,0 +1,31 @@
+assert unreachable
+assert unreachable
+s 0 move down
+s 0 move down
+s 0 move down
+s 0 place down
+s 0 move right
+s 0 place down
+s 0 move right
+s 0 move up
+s 1 place down
+s 1 move right
+s 1 place down
+s 1 move right
+s 1 place down
+s 1 move right
+s 1 move up
+p right
+p leap-right
+p leap-right
+p leap-right
+p jump-right
+p leap-right
+p leap-right
+p leap-right
+p leap-right
+p leap-right
+p leap-right
+p leap-right
+p leap-right
+assert goal
