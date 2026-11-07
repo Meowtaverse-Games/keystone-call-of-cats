@@ -106,6 +106,8 @@ pub trait ScriptStepper: Send + Sync + 'static {
         source: &str,
         allowed_commands: Option<&HashSet<String>>,
     ) -> Result<Box<dyn ScriptProgram>, ScriptExecutionError>;
+
+    fn reset_signals(&self);
 }
 
 #[derive(Debug, Clone)]
