@@ -144,6 +144,14 @@ impl ScriptStepper for RhaiScriptExecutor {
 #[derive(Clone)]
 struct CommandValue();
 
+/// What the VM thread hands back for one step.
+enum StepEvent {
+    Command(ScriptCommand),
+    /// Blocking steps only: the VM has nothing to do this frame, so `next` must
+    /// return instead of holding the frame until another stone sends a signal.
+    Waiting,
+}
+
 const INVALID_MOVE_PREFIX: &str = "__invalid_move__:";
 const INVALID_DIG_PREFIX: &str = "__invalid_dig__:";
 const INVALID_SLEEP_PREFIX: &str = "__invalid_sleep__:";
@@ -195,15 +203,17 @@ impl CommandEmitter {
     }
 
     fn stream(
-        sender: SyncSender<ScriptCommand>,
+        sender: SyncSender<StepEvent>,
         stop_flag: Arc<AtomicBool>,
         resume: Arc<Mutex<Receiver<()>>>,
+        blocking_steps: bool,
     ) -> Self {
         Self {
             target: CommandEmitterTarget::Stream(CommandStream {
                 sender,
                 stop_flag,
                 resume,
+                blocking_steps,
             }),
         }
     }
@@ -267,13 +277,27 @@ impl CommandRecorder {
 
 #[derive(Clone)]
 struct CommandStream {
-    sender: SyncSender<ScriptCommand>,
+    sender: SyncSender<StepEvent>,
     stop_flag: Arc<AtomicBool>,
     resume: Arc<Mutex<Receiver<()>>>,
+    blocking_steps: bool,
 }
 
 impl CommandStream {
     fn send(&self, command: ScriptCommand) -> Result<(), Box<EvalAltResult>> {
+        self.yield_event(StepEvent::Command(command))
+    }
+
+    /// Give up the current frame while `receive` has no signal to consume.
+    fn wait_for_next_step(&self) -> Result<(), Box<EvalAltResult>> {
+        if self.blocking_steps {
+            self.yield_event(StepEvent::Waiting)
+        } else {
+            wait_for_resume(&self.resume, &self.stop_flag)
+        }
+    }
+
+    fn yield_event(&self, event: StepEvent) -> Result<(), Box<EvalAltResult>> {
         if self.stop_flag.load(Ordering::Relaxed) {
             return Err(Box::new(EvalAltResult::ErrorRuntime(
                 STOP_REQUEST_TOKEN.into(),
@@ -281,7 +305,7 @@ impl CommandStream {
             )));
         }
 
-        self.sender.send(command).map_err(|_| {
+        self.sender.send(event).map_err(|_| {
             Box::new(EvalAltResult::ErrorRuntime(
                 STOP_REQUEST_TOKEN.into(),
                 Position::NONE,
@@ -521,9 +545,7 @@ fn receive_signal(
         }
         match &emitter.target {
             CommandEmitterTarget::Recorder(_) => return Ok(CommandValue()),
-            CommandEmitterTarget::Stream(stream) => {
-                wait_for_resume(&stream.resume, &stream.stop_flag)?
-            }
+            CommandEmitterTarget::Stream(stream) => stream.wait_for_next_step()?,
         }
     }
 }
@@ -692,7 +714,7 @@ const RESUME_CHANNEL_SIZE: usize = 0;
 struct RhaiScriptProgram {
     blocking_steps: bool,
     step_operations: Arc<AtomicUsize>,
-    receiver: Mutex<Receiver<ScriptCommand>>,
+    receiver: Mutex<Receiver<StepEvent>>,
     stop_flag: Arc<AtomicBool>,
     handle: Option<JoinHandle<()>>,
     resume_tx: SyncSender<()>,
@@ -707,7 +729,7 @@ impl RhaiScriptProgram {
         blocking_steps: bool,
         signals: SharedSignals,
     ) -> Result<Self, ScriptExecutionError> {
-        let (sender, receiver) = mpsc::sync_channel::<ScriptCommand>(STREAM_CHANNEL_SIZE);
+        let (sender, receiver) = mpsc::sync_channel::<StepEvent>(STREAM_CHANNEL_SIZE);
         let stop_flag = Arc::new(AtomicBool::new(false));
         let (resume_tx, resume_rx) = mpsc::sync_channel::<()>(RESUME_CHANNEL_SIZE);
         let resume_rx = Arc::new(Mutex::new(resume_rx));
@@ -731,7 +753,8 @@ impl RhaiScriptProgram {
             });
         }
 
-        let emitter = CommandEmitter::stream(sender, stop_flag.clone(), resume_rx.clone());
+        let emitter =
+            CommandEmitter::stream(sender, stop_flag.clone(), resume_rx.clone(), blocking_steps);
         register_commands(
             &mut engine,
             emitter,
@@ -819,8 +842,8 @@ impl ScriptProgram for RhaiScriptProgram {
         };
 
         match result {
-            Ok(command) => Some(command),
-            Err(RecvTimeoutError::Timeout) => None,
+            Ok(StepEvent::Command(command)) => Some(command),
+            Ok(StepEvent::Waiting) | Err(RecvTimeoutError::Timeout) => None,
             Err(RecvTimeoutError::Disconnected) => {
                 self.stop_and_join();
                 None
@@ -879,6 +902,98 @@ mod tests {
             .recv_timeout(Duration::from_secs(10))
             .expect("deterministic VM handshake stalled");
         worker.join().unwrap();
+    }
+
+    /// Fails the test instead of hanging the suite when a blocking step stalls.
+    fn within_deadline(name: &str, body: impl FnOnce() + Send + 'static) {
+        let (finished, result) = mpsc::channel();
+        let worker = thread::spawn(move || {
+            body();
+            finished.send(()).unwrap();
+        });
+        result
+            .recv_timeout(Duration::from_secs(10))
+            .unwrap_or_else(|_| panic!("{name} stalled"));
+        worker.join().unwrap();
+    }
+
+    #[test]
+    fn deterministic_receive_yields_the_frame_until_a_later_stone_sends() {
+        within_deadline("deterministic receive", || {
+            let executor = RhaiScriptExecutor::deterministic();
+            let state = ScriptState::new();
+            let mut receiver = executor
+                .compile_step(r#"receive("go"); move("right");"#, None)
+                .unwrap();
+            let mut sender = executor
+                .compile_step(r#"sleep(1); send("go"); sleep(1);"#, None)
+                .unwrap();
+
+            // Frame 1: the receiver goes first and must not block the frame.
+            assert!(receiver.next(&state).is_none());
+            assert!(matches!(sender.next(&state), Some(ScriptCommand::Sleep(_))));
+            // Frame 2: the signal is not out yet, so the receiver still waits.
+            assert!(receiver.next(&state).is_none());
+            assert!(matches!(sender.next(&state), Some(ScriptCommand::Sleep(_))));
+            // Frame 3: the signal arrived during frame 2.
+            assert!(matches!(
+                receiver.next(&state),
+                Some(ScriptCommand::Move(MoveDirection::Right))
+            ));
+            assert!(receiver.next(&state).is_none());
+            assert!(receiver.take_error().is_none());
+        });
+    }
+
+    #[test]
+    fn deterministic_receive_without_a_sender_keeps_waiting_and_can_be_dropped() {
+        within_deadline("deterministic unanswered receive", || {
+            let executor = RhaiScriptExecutor::deterministic();
+            let state = ScriptState::new();
+            let mut receiver = executor
+                .compile_step(r#"receive("never"); move("right");"#, None)
+                .unwrap();
+
+            for _ in 0..1_000 {
+                assert!(receiver.next(&state).is_none());
+                assert!(receiver.take_error().is_none());
+            }
+        });
+    }
+
+    #[test]
+    fn deterministic_signal_order_is_repeatable() {
+        within_deadline("deterministic signal replay", || {
+            let run = || {
+                let executor = RhaiScriptExecutor::deterministic();
+                let state = ScriptState::new();
+                let mut programs = [
+                    r#"receive("a"); move("left"); send("b"); receive("a"); move("left");"#,
+                    r#"sleep(1); send("a"); receive("b"); send("a"); move("right");"#,
+                ]
+                .map(|source| executor.compile_step(source, None).unwrap());
+
+                let mut trace = Vec::new();
+                for frame in 0..20 {
+                    for (stone, program) in programs.iter_mut().enumerate() {
+                        trace.push((frame, stone, format!("{:?}", program.next(&state))));
+                    }
+                }
+                trace
+            };
+
+            let first = run();
+            assert_eq!(
+                first
+                    .iter()
+                    .filter(|(_, _, command)| command != "None")
+                    .count(),
+                4
+            );
+            for _ in 0..50 {
+                assert_eq!(run(), first);
+            }
+        });
     }
 
     #[test]
