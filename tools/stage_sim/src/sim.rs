@@ -336,8 +336,10 @@ impl World {
                     .parse::<usize>()
                     .map_err(|_| anyhow!("invalid stone index '{index}'"))?;
                 let direction = Direction::parse(direction)?;
-                if (*action == "dig" && !matches!(self.stone_type, StoneType::Type3))
-                    || (*action == "place" && !matches!(self.stone_type, StoneType::Type4))
+                if (*action == "dig"
+                    && !matches!(self.stone_type, StoneType::Type3 | StoneType::Type5))
+                    || (*action == "place"
+                        && !matches!(self.stone_type, StoneType::Type4 | StoneType::Type5))
                 {
                     bail!("{:?} cannot {action}", self.stone_type);
                 }

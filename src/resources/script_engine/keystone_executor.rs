@@ -382,4 +382,17 @@ mod tests {
             assert!(receiver.next(&state).is_none());
         }
     }
+
+    #[test]
+    fn rejects_send_and_receive_without_the_capability() {
+        let executor = KeystoneScriptExecutor::default();
+        let move_only = HashSet::from(["move".to_string()]);
+
+        for (source, command) in [("send \"go\"", "send"), ("receive \"go\"", "receive")] {
+            assert!(matches!(
+                executor.compile_step(source, Some(&move_only)),
+                Err(ScriptExecutionError::InvalidCommand(message)) if message.contains(command)
+            ));
+        }
+    }
 }

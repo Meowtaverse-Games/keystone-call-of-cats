@@ -388,15 +388,18 @@ fn register_commands(
 ) {
     engine.register_type_with_name::<CommandValue>("Command");
 
-    {
+    if allowed_commands.is_none_or(|s| s.contains("send")) {
         let send = signals.clone();
         engine.register_fn("send", move |channel: &str| send_signal(channel, &send));
         let send = signals.clone();
         engine.register_fn("send", move |channel: RhaiInt| {
             send_signal(&channel.to_string(), &send)
         });
+    } else {
+        engine.register_fn("send", |_: &str| command_not_allowed("send"));
+        engine.register_fn("send", |_: RhaiInt| command_not_allowed("send"));
     }
-    {
+    if allowed_commands.is_none_or(|s| s.contains("receive")) {
         let receive_emitter = emitter.clone();
         let receive = signals.clone();
         engine.register_fn("receive", move |channel: &str| {
@@ -407,6 +410,9 @@ fn register_commands(
         engine.register_fn("receive", move |channel: RhaiInt| {
             receive_signal(&channel.to_string(), &receive, &emitter)
         });
+    } else {
+        engine.register_fn("receive", |_: &str| command_not_allowed("receive"));
+        engine.register_fn("receive", |_: RhaiInt| command_not_allowed("receive"));
     }
 
     {
@@ -1015,6 +1021,8 @@ mod tests {
             "if is_touched() { move(\"right\"); }",
             "if is_empty(\"right\") { move(\"right\"); }",
             "try { dig(\"down\"); } catch (error) { move(\"right\"); }",
+            "send(\"go\");",
+            "receive(1);",
         ] {
             assert!(
                 executor.compile_step(source, Some(&type1)).is_err(),
