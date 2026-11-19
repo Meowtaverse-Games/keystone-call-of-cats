@@ -504,6 +504,9 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
 
                                 stones_info.sort_by_key(|(idx, _)| *idx);
 
+                                editor.active_programs.clear();
+                                script_executor.reset_signals();
+
                                 let mut all_programs = Vec::new();
                                 let mut compile_error = None;
 
@@ -808,11 +811,11 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                                                         &entry, &font_id, ui,
                                                     );
                                                 ui.label(entry_job);
-                                                if stone_query
+                                                let selected_stone_type = stone_query
                                                     .iter()
                                                     .find(|(_, _, _, index)| index.0 == editor.selected_idx)
-                                                    .is_some_and(|(_, _, stone_type, _)| *stone_type == StoneType::Type4)
-                                                {
+                                                    .map(|(_, _, stone_type, _)| *stone_type);
+                                                if matches!(selected_stone_type, Some(StoneType::Type4 | StoneType::Type5)) {
                                                     ui.add_space(4.0);
                                                     let place_syntax = match settings.script_language {
                                                         Language::Rhai => "place(\"right\");",
@@ -822,6 +825,18 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                                                         &localization,
                                                         "stage-ui-place-help",
                                                         &[("place", place_syntax)],
+                                                    )).font(font_id.clone()));
+                                                }
+                                                if selected_stone_type == Some(StoneType::Type5) {
+                                                    ui.add_space(4.0);
+                                                    let (send_syntax, receive_syntax) = match settings.script_language {
+                                                        Language::Rhai => ("send(\"go\");", "receive(\"go\");"),
+                                                        Language::Keystone => ("send \"go\"", "receive \"go\""),
+                                                    };
+                                                    ui.label(RichText::new(tr_with_args(
+                                                        &localization,
+                                                        "stage-ui-signal-help",
+                                                        &[("send", send_syntax), ("receive", receive_syntax)],
                                                     )).font(font_id.clone()));
                                                 }
                                                 ui.add_space(4.0);
