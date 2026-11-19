@@ -33,12 +33,15 @@ impl Plugin for StageSelectPlugin {
                         .before(systems::handle_back_button)
                         .before(systems::handle_options_button)
                         .before(systems::handle_nav_buttons)
+                        .before(systems::handle_category_buttons)
                         .before(systems::handle_play_buttons),
                     systems::handle_back_button,
                     systems::handle_options_button,
                     systems::handle_nav_buttons,
+                    systems::handle_category_buttons,
                     systems::handle_play_buttons,
-                    systems::handle_keyboard_navigation,
+                    systems::handle_keyboard_navigation.before(systems::handle_play_buttons),
+                    systems::update_category_visuals,
                     systems::refresh_cards,
                     systems::update_page_indicator,
                     systems::update_button_visuals,

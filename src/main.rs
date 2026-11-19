@@ -73,7 +73,12 @@ fn main() {
             return;
         }
         LaunchType::ShowChunkGrammarAsciiMap => {
-            chunk_grammar_map::show_ascii_map(launch_profile.stage_id.unwrap_or(StageId(1)).0);
+            chunk_grammar_map::show_ascii_map(
+                launch_profile
+                    .stage_id
+                    .clone()
+                    .unwrap_or_else(|| StageId::from("move-01")),
+            );
             return;
         }
         #[cfg(feature = "steam")]
