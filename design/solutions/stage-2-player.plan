@@ -1,0 +1,22 @@
+# After the stone moves down, the corridor becomes walkable.
+wait
+p right
+p right
+p right
+p right
+p right
+p right
+p right
+p right
+p right
+p right
+p right
+p right
+p right
+p right
+p right
+p right
+p right
+p right
+p right
+assert goal

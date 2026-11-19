@@ -1,0 +1,462 @@
+[
+  {
+    "representative_seed": 0,
+    "seeds": [
+      0,
+      25,
+      45,
+      49,
+      55,
+      67,
+      71,
+      77,
+      84
+    ]
+  },
+  {
+    "representative_seed": 1,
+    "seeds": [
+      1
+    ]
+  },
+  {
+    "representative_seed": 2,
+    "seeds": [
+      2
+    ]
+  },
+  {
+    "representative_seed": 3,
+    "seeds": [
+      3,
+      75
+    ]
+  },
+  {
+    "representative_seed": 4,
+    "seeds": [
+      4
+    ]
+  },
+  {
+    "representative_seed": 5,
+    "seeds": [
+      5,
+      22
+    ]
+  },
+  {
+    "representative_seed": 6,
+    "seeds": [
+      6,
+      96
+    ]
+  },
+  {
+    "representative_seed": 7,
+    "seeds": [
+      7
+    ]
+  },
+  {
+    "representative_seed": 8,
+    "seeds": [
+      8,
+      14
+    ]
+  },
+  {
+    "representative_seed": 9,
+    "seeds": [
+      9,
+      16,
+      47
+    ]
+  },
+  {
+    "representative_seed": 10,
+    "seeds": [
+      10
+    ]
+  },
+  {
+    "representative_seed": 11,
+    "seeds": [
+      11,
+      30
+    ]
+  },
+  {
+    "representative_seed": 12,
+    "seeds": [
+      12,
+      39
+    ]
+  },
+  {
+    "representative_seed": 13,
+    "seeds": [
+      13
+    ]
+  },
+  {
+    "representative_seed": 15,
+    "seeds": [
+      15
+    ]
+  },
+  {
+    "representative_seed": 17,
+    "seeds": [
+      17
+    ]
+  },
+  {
+    "representative_seed": 18,
+    "seeds": [
+      18
+    ]
+  },
+  {
+    "representative_seed": 19,
+    "seeds": [
+      19
+    ]
+  },
+  {
+    "representative_seed": 20,
+    "seeds": [
+      20
+    ]
+  },
+  {
+    "representative_seed": 21,
+    "seeds": [
+      21
+    ]
+  },
+  {
+    "representative_seed": 23,
+    "seeds": [
+      23
+    ]
+  },
+  {
+    "representative_seed": 24,
+    "seeds": [
+      24,
+      79
+    ]
+  },
+  {
+    "representative_seed": 26,
+    "seeds": [
+      26,
+      72
+    ]
+  },
+  {
+    "representative_seed": 27,
+    "seeds": [
+      27
+    ]
+  },
+  {
+    "representative_seed": 28,
+    "seeds": [
+      28
+    ]
+  },
+  {
+    "representative_seed": 29,
+    "seeds": [
+      29,
+      48
+    ]
+  },
+  {
+    "representative_seed": 31,
+    "seeds": [
+      31,
+      35
+    ]
+  },
+  {
+    "representative_seed": 32,
+    "seeds": [
+      32,
+      78
+    ]
+  },
+  {
+    "representative_seed": 33,
+    "seeds": [
+      33
+    ]
+  },
+  {
+    "representative_seed": 34,
+    "seeds": [
+      34,
+      86
+    ]
+  },
+  {
+    "representative_seed": 36,
+    "seeds": [
+      36
+    ]
+  },
+  {
+    "representative_seed": 37,
+    "seeds": [
+      37
+    ]
+  },
+  {
+    "representative_seed": 38,
+    "seeds": [
+      38
+    ]
+  },
+  {
+    "representative_seed": 40,
+    "seeds": [
+      40
+    ]
+  },
+  {
+    "representative_seed": 41,
+    "seeds": [
+      41
+    ]
+  },
+  {
+    "representative_seed": 42,
+    "seeds": [
+      42
+    ]
+  },
+  {
+    "representative_seed": 43,
+    "seeds": [
+      43,
+      85
+    ]
+  },
+  {
+    "representative_seed": 44,
+    "seeds": [
+      44,
+      60
+    ]
+  },
+  {
+    "representative_seed": 46,
+    "seeds": [
+      46
+    ]
+  },
+  {
+    "representative_seed": 50,
+    "seeds": [
+      50
+    ]
+  },
+  {
+    "representative_seed": 51,
+    "seeds": [
+      51
+    ]
+  },
+  {
+    "representative_seed": 52,
+    "seeds": [
+      52
+    ]
+  },
+  {
+    "representative_seed": 53,
+    "seeds": [
+      53
+    ]
+  },
+  {
+    "representative_seed": 54,
+    "seeds": [
+      54,
+      98
+    ]
+  },
+  {
+    "representative_seed": 56,
+    "seeds": [
+      56
+    ]
+  },
+  {
+    "representative_seed": 57,
+    "seeds": [
+      57
+    ]
+  },
+  {
+    "representative_seed": 58,
+    "seeds": [
+      58
+    ]
+  },
+  {
+    "representative_seed": 59,
+    "seeds": [
+      59
+    ]
+  },
+  {
+    "representative_seed": 61,
+    "seeds": [
+      61
+    ]
+  },
+  {
+    "representative_seed": 62,
+    "seeds": [
+      62
+    ]
+  },
+  {
+    "representative_seed": 63,
+    "seeds": [
+      63,
+      70
+    ]
+  },
+  {
+    "representative_seed": 64,
+    "seeds": [
+      64,
+      95
+    ]
+  },
+  {
+    "representative_seed": 65,
+    "seeds": [
+      65
+    ]
+  },
+  {
+    "representative_seed": 66,
+    "seeds": [
+      66
+    ]
+  },
+  {
+    "representative_seed": 68,
+    "seeds": [
+      68
+    ]
+  },
+  {
+    "representative_seed": 69,
+    "seeds": [
+      69
+    ]
+  },
+  {
+    "representative_seed": 73,
+    "seeds": [
+      73
+    ]
+  },
+  {
+    "representative_seed": 74,
+    "seeds": [
+      74
+    ]
+  },
+  {
+    "representative_seed": 76,
+    "seeds": [
+      76
+    ]
+  },
+  {
+    "representative_seed": 80,
+    "seeds": [
+      80
+    ]
+  },
+  {
+    "representative_seed": 81,
+    "seeds": [
+      81
+    ]
+  },
+  {
+    "representative_seed": 82,
+    "seeds": [
+      82
+    ]
+  },
+  {
+    "representative_seed": 83,
+    "seeds": [
+      83
+    ]
+  },
+  {
+    "representative_seed": 87,
+    "seeds": [
+      87
+    ]
+  },
+  {
+    "representative_seed": 88,
+    "seeds": [
+      88
+    ]
+  },
+  {
+    "representative_seed": 89,
+    "seeds": [
+      89
+    ]
+  },
+  {
+    "representative_seed": 90,
+    "seeds": [
+      90
+    ]
+  },
+  {
+    "representative_seed": 91,
+    "seeds": [
+      91
+    ]
+  },
+  {
+    "representative_seed": 92,
+    "seeds": [
+      92,
+      97
+    ]
+  },
+  {
+    "representative_seed": 93,
+    "seeds": [
+      93
+    ]
+  },
+  {
+    "representative_seed": 94,
+    "seeds": [
+      94
+    ]
+  },
+  {
+    "representative_seed": 99,
+    "seeds": [
+      99
+    ]
+  }
+]

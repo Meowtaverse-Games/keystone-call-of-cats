@@ -1,0 +1,64 @@
+assert unreachable
+s 0 dig left
+s 0 move left
+s 0 dig up
+p leap-right
+p right
+p right
+p right
+p right
+p right
+p right
+p right
+p right
+p left
+p left
+p left
+p left
+p left
+p left
+p right
+p right
+p right
+p left
+p left
+p left
+p right
+p right
+s 0 move up
+p right
+p right
+s 0 move down
+s 0 move right
+s 0 move right
+s 0 move right
+s 0 move right
+s 0 move right
+s 0 move right
+s 0 move right
+s 0 move right
+s 0 move right
+s 0 move up
+s 0 move up
+s 0 dig left
+s 0 move left
+s 0 dig up
+s 0 dig left
+s 0 move left
+p right
+p right
+p right
+p right
+p jump-right
+s 0 move right
+s 0 move right
+s 0 move right
+s 0 move right
+s 0 move right
+s 0 move right
+s 0 move right
+p right
+p leap-right
+p leap-right
+p leap-right
+assert goal

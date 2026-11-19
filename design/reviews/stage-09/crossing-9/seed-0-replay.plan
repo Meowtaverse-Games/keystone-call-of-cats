@@ -1,0 +1,25 @@
+s 0 dig left
+s 0 move left
+s 0 dig left
+s 0 move left
+s 0 move left
+p leap-right
+s 0 move up
+p left
+p right
+p leap-right
+p leap-right
+p right
+p right
+p right
+p right
+p right
+p leap-right
+p leap-right
+p leap-right
+p leap-right
+p leap-right
+p leap-right
+p leap-right
+p leap-right
+assert goal

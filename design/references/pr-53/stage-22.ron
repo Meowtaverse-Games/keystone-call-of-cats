@@ -1,0 +1,144 @@
+(
+    map_size: (26, 10),
+    stone_type: Type5,
+    start_chunks: [
+        ChunkTemplate(
+            id: "start-1",
+            map: [
+                "......",
+                "@.....",
+                "##....",
+                ".....E",
+                "#..##E",
+                "##...#",
+                "###...",
+            ]
+        )
+    ],
+    middle_chunks: [
+        ChunkTemplate(
+            id: "middle-1",
+            required_count: 1,
+            map: [
+                "I......E",
+                "###.S.##",
+            ]
+        ),
+        ChunkTemplate(
+            id: "middle-2",
+            map: [
+                "IE",
+                "##",
+            ]
+        ),
+        ChunkTemplate(
+            id: "middle-3",
+            map: [
+                "I..",
+                "#.E",
+                "###",
+            ]
+        ),
+        ChunkTemplate(
+            id: "middle-4",
+            map: [
+                "I...",
+                "#..E",
+                "##.#",
+            ]
+        ),
+        ChunkTemplate(
+            id: "middle-5",
+            map: [
+                "I E",
+                "###",
+            ]
+        ),
+        ChunkTemplate(
+            id: "middle-6",
+            map: [
+                "......",
+                "I.....E",
+                "...##.E",
+                "######",
+            ]
+        ),
+        ChunkTemplate(
+            id: "middle-7",
+            map: [
+                ".....E",
+                "I....#",
+                "#...#.",
+                "..####",
+            ]
+        ),
+        ChunkTemplate(
+            id: "middle-8",
+            map: [
+                "......",
+                ".....E",
+                "I....#",
+                "#..###",
+            ]
+        ),
+        ChunkTemplate(
+            id: "middle-9",
+            map: [
+                "I.....",
+                "#....E",
+                "##...E",
+                "######",
+            ]
+        ),
+        ChunkTemplate(
+            id: "middle-10",
+            map: [
+                "I....",
+                "....E",
+                "#...E",
+                "#####",
+            ]
+        ),
+        ChunkTemplate(
+            id: "middle-11",
+            map: [
+                "I.....",
+                "#....E",
+                "#....E",
+                "...###",
+            ]
+        )
+    ],
+    goal_chunks: [
+        ChunkTemplate(
+            id: "goal-1",
+            map: [
+                "......",
+                "......",
+                "......",
+                "......",
+                "......",
+                "......",
+                "I.###G",
+                "####.G",
+                ".###.G",
+                ".#...G",
+            ]
+        ),
+        ChunkTemplate(
+            id: "goal-2",
+            map: [
+                "......",
+                "......",
+                "......",
+                "......",
+                "......",
+                "I.....",
+                "##..#G",
+                "#####G",
+                ".##..G",
+                ".#...G",
+            ]
+        )
+    ]
+)

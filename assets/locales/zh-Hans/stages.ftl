@@ -158,10 +158,7 @@ stage7-description = 代替 sleep 命令，可以使用 is_touched 命令。
     右: `{$move-right}`
 
 
-stage8-text = 来到了迷宫一样的楼层。
-    石头具有判定功能，可以检查上下左右方向是否有可移动的地方，或者是否为空。
-    ____
-    利用 is_empty 判定功能，一边判断该走哪条路，一边引导玩家到达终点吧。
+stage8-text = 山谷对面有一块石头在等待。使用 is_touched，让石头只在你站在上面时向右移动。
 
 
 stage8-description = 代替 sleep 命令，可以使用 is_touched 命令。
@@ -238,21 +235,12 @@ stage11-text = 这一层空洞和岩石交错分布。
 stage11-description = ...
 
 
-stage13-text = 在狭窄的隧道中，你和石头必须互相错开。
-    如果任何一方过于靠前，就会堵住另一方的路，无法前进。
-    
-    在这个关卡，使用 is_touched_player 和 sleep，
-    
-    如果玩家追上了，石头就暂停
-    
-    先让玩家通过，然后石头再次开始移动
-    
-    试着编写这样的“互相谦让的动作”。
-    如果卡住了，请一边思考“在什么时机等待比较好”，
-    一边重写程序。
+stage13-text = 高台挡住了去路。
+    在石头上方放置一个落脚点，再以它为踏板前往另一侧。
 
 
-stage13-description = ...
+stage13-description = 在石头上方放置一个落脚点，前往高处的平台。
+    `{$place-up}`
 
 
 stage14-text = 闯入了一个由软岩构成的小迷宫。

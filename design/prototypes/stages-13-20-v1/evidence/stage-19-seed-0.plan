@@ -1,0 +1,34 @@
+assert unreachable
+assert unreachable
+s 0 dig right
+s 1 dig right
+s 0 move right
+s 1 move right
+s 0 dig right
+s 1 dig right
+s 0 move right
+s 1 move right
+s 0 move down
+s 1 move down
+p right
+p right
+p right
+p right
+p right
+p right
+p right
+p right
+p right
+p right
+p right
+p right
+p right
+p right
+p right
+p right
+p right
+p right
+p leap-right
+p right
+p leap-right
+assert goal

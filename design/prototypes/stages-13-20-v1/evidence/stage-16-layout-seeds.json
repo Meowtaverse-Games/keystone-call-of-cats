@@ -1,0 +1,192 @@
+[
+  {
+    "representative_seed": 0,
+    "seeds": [
+      0
+    ]
+  },
+  {
+    "representative_seed": 1,
+    "seeds": [
+      1,
+      4,
+      7,
+      11,
+      27,
+      34,
+      43,
+      51,
+      53,
+      56,
+      69,
+      76,
+      80,
+      82,
+      83,
+      85,
+      97
+    ]
+  },
+  {
+    "representative_seed": 2,
+    "seeds": [
+      2,
+      3,
+      9,
+      12,
+      18,
+      37,
+      49,
+      63,
+      68,
+      70,
+      78,
+      84,
+      87,
+      89,
+      91,
+      92,
+      94,
+      98
+    ]
+  },
+  {
+    "representative_seed": 5,
+    "seeds": [
+      5,
+      16,
+      24,
+      25
+    ]
+  },
+  {
+    "representative_seed": 6,
+    "seeds": [
+      6,
+      15,
+      26,
+      50,
+      58,
+      61,
+      62,
+      65,
+      72,
+      79,
+      90,
+      96
+    ]
+  },
+  {
+    "representative_seed": 8,
+    "seeds": [
+      8,
+      19,
+      30
+    ]
+  },
+  {
+    "representative_seed": 10,
+    "seeds": [
+      10,
+      23,
+      33,
+      45,
+      47,
+      59
+    ]
+  },
+  {
+    "representative_seed": 13,
+    "seeds": [
+      13,
+      73
+    ]
+  },
+  {
+    "representative_seed": 14,
+    "seeds": [
+      14
+    ]
+  },
+  {
+    "representative_seed": 17,
+    "seeds": [
+      17,
+      28,
+      36,
+      42,
+      93
+    ]
+  },
+  {
+    "representative_seed": 20,
+    "seeds": [
+      20,
+      31,
+      32,
+      44,
+      77
+    ]
+  },
+  {
+    "representative_seed": 21,
+    "seeds": [
+      21,
+      40,
+      54
+    ]
+  },
+  {
+    "representative_seed": 22,
+    "seeds": [
+      22,
+      66,
+      71,
+      95
+    ]
+  },
+  {
+    "representative_seed": 29,
+    "seeds": [
+      29,
+      74,
+      81
+    ]
+  },
+  {
+    "representative_seed": 35,
+    "seeds": [
+      35,
+      52,
+      64
+    ]
+  },
+  {
+    "representative_seed": 38,
+    "seeds": [
+      38,
+      46,
+      57,
+      60,
+      86,
+      88
+    ]
+  },
+  {
+    "representative_seed": 39,
+    "seeds": [
+      39,
+      41,
+      55,
+      67,
+      75,
+      99
+    ]
+  },
+  {
+    "representative_seed": 48,
+    "seeds": [
+      48
+    ]
+  }
+]

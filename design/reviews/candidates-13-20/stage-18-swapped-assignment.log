@@ -1,0 +1,33 @@
+stage=18 seed=0
+design-size=(28, 18) canvas-size=(30, 20) margin=(1, 1)
+chunks=stage-18-fixed-v1 -> goal-noop
+programs=2 initial=player=(7, 6) stones=[(13, 10), (7, 5)] dig=0:5,1:5 place=unlimited goal=not-reached actions=0 blocked=0
+round   1 stone 0: sleep 15 (15 design rounds)
+round   1 stone 1: stone 1 -> (7, 6)
+round   2 stone 1: stone 1 -> (7, 7)
+round   3 stone 1: stone 1 -> (7, 8)
+round   4 stone 1: stone 1 -> (7, 9)
+round   5 player: player -> (8, 10)
+round   6 player: player -> (9, 10)
+round   7 player: player -> (10, 10)
+round   8 player: player -> (11, 10)
+round   9 player: player -> (12, 10)
+round  10 player: player -> (13, 11)
+round  17 stone 0: stone 0 -> (14, 10)
+round  18 stone 0: stone 0 -> (15, 10)
+round  19 stone 0: stone 0 -> (16, 10)
+round  20 stone 0: stone 0 -> (17, 10)
+round  21 stone 0: stone 0 -> (18, 10)
+round  22 stone 0: stone 0 -> (19, 10)
+round  23 player: player -> (20, 10)
+round  24 player: player -> (21, 10)
+round  25 player: player -> (22, 10)
+round  26 player: player -> (23, 10)
+round  27 player: player -> (24, 10)
+round  28 player: player -> (25, 10)
+round  29 player: player -> (26, 10)
+round  30 player: player -> (27, 10)
+round  31 player: player -> (28, 1)
+goal reached at round 31
+final: player=(28, 1) stones=[(19, 10), (7, 9)] dig=0:5,1:5 place=unlimited goal=reached actions=25 blocked=0
+goal-reachable=true (abstract grid model)

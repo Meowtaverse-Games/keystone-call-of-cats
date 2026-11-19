@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "simulator_version": "0.1.0",
+  "model": "discrete_grid",
+  "limitations": [
+    "Not a Bevy physics, timing, human difficulty or fun verdict.",
+    "Player-only paths hold stones and obstacles stationary; no stone-program search.",
+    "Obstacle expiry, dynamic terrain randomization and fractional stone offsets are not simulated.",
+    "CLI seeds are not product seeds. Use the captured RON with the same simulator revision.",
+    "Plans are sequential simulator actions, not Rhai/Keystone programs or concurrent scheduling."
+  ],
+  "stage": 20,
+  "first_seed": 0,
+  "seeds": 1,
+  "expect": "goal",
+  "walk_to_goal": true,
+  "require_initially_unreachable": false,
+  "reject_blocked": true,
+  "place_limit_override": 6,
+  "passed": 0,
+  "failed": 1,
+  "distinct_initial_layouts": 1,
+  "elapsed_ms": 2,
+  "results": [
+    {
+      "seed": 0,
+      "passed": false,
+      "error": "no player-only route after plan",
+      "chunks": [
+        "stage-20-fixed-v1",
+        "goal-noop"
+      ],
+      "initially_reachable": false,
+      "goal_reached": false,
+      "goal_reachable": false,
+      "executed_plan": [],
+      "initial_map": "    000000000011111111112222222222\n    012345678901234567890123456789\n 19 ##############################\n 18 #............................#\n 17 #............................#\n 16 #............................#\n 15 #............................#\n 14 #............................#\n 13 #............................#\n 12 #............................#\n 11 #............................#\n 10 #............................#\n  9 #............................#\n  8 #.......0......1......2......#\n  7 #............................#\n  6 #............................#\n  5 #...@........................#\n  4 #*******..*****..*****..****.#\n  3 #*******..*****..*****..****G#\n  2 #*******..*****..*****..****G#\n  1 #***************************G#\n  0 ##############################\n",
+      "final_map": "    000000000011111111112222222222\n    012345678901234567890123456789\n 19 ##############################\n 18 #............................#\n 17 #............................#\n 16 #............................#\n 15 #............................#\n 14 #............................#\n 13 #............................#\n 12 #............................#\n 11 #............................#\n 10 #............................#\n  9 #............................#\n  8 #.......0......1......2......#\n  7 #............................#\n  6 #............................#\n  5 #...@........................#\n  4 #*******..*****..*****..****.#\n  3 #*******..*****..*****..****G#\n  2 #*******..*****..*****..****G#\n  1 #***************************G#\n  0 ##############################\n",
+      "final_status": "player=(4, 5) stones=[(8, 8), (15, 8), (22, 8)] dig=0:0,1:0,2:0 place=6 goal=not-reached actions=0 blocked=0",
+      "metrics": {
+        "actions": 0,
+        "player_actions": 0,
+        "stone_moves": 0,
+        "digs": 0,
+        "places": 0,
+        "blocked_actions": 0
+      },
+      "elapsed_ms": 1
+    }
+  ],
+  "source_commit": "aed511c",
+  "source_path": "design/stages/stage-20.ron"
+}
