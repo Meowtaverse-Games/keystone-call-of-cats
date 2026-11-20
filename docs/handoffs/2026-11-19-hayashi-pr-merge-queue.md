@@ -87,6 +87,11 @@ cc main（`e471ebf`）を lang `2da99f1`・blocks `369ef0a` に上げると、co
 - Slack Meowtaverse `#times-hayashi`（C084MV07J0K）: 11/14 13:00 の林君の報告（ts `1794628822.278049`）、11/1 の依頼スレッド（ts `1793417137.244469`）
 - Sasara Hub:
   - note `agent-api/note/4359e579-a6e8-4539-ade9-0f7a96c17e51`（林君への依頼の仕方）
+  - note `agent-api/note/031bb978-be2c-4a5e-9859-b1981fef6f36`（林君との作業の進め方。Slack のトラッカーの運用）
+  - decision `7a1661ef`（林君の作業を 1.0 とリリース後に分ける。11/2 の追加依頼は未送信だった）
+  - events `c2e5dd93`（トラッカーの整理）、`4426f644`（林君への投稿）
+  - task `610814c2`（lang と blocks の PR ブランチを、固定の引き上げ後に削除する。backlog）
+  - 未決定（本人）: VPL を製品版に出すか（Hub の backlog「VPL を experimental feature で隠すか決める」）。決まったら、VPL の翻訳対応・高さのはみ出し・全角文字の 3 件をトラッカーに足すか決める。
   - decisions `4741633b`（Type5・Rhai ブロック）、`26b65225`（else・パスワードの中継）、`0e611601`（11/2 の追加依頼）
   - events `573d4df5`（依頼の送信記録）、`e61f96e4`（lang マージ）、`3318d992`（blocks マージ）、`d2774236`（cc マージ）
   - task `d1d750ed`
