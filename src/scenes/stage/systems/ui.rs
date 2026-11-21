@@ -122,6 +122,7 @@ fn show_vpl_in_panel(
     stone_idx: usize,
     code: &mut String,
     allowed_commands: Option<&HashSet<String>>,
+    language: keystone_blocks::CodeLanguage,
     size: egui::Vec2,
     font_offset: f32,
     editing_locked: bool,
@@ -161,8 +162,65 @@ fn show_vpl_in_panel(
         stone_idx,
         code,
         allowed_commands,
-        keystone_blocks::CodeLanguage::Keystone,
+        language,
     )
+}
+
+fn block_language(language: Language) -> keystone_blocks::CodeLanguage {
+    match language {
+        Language::Keystone => keystone_blocks::CodeLanguage::Keystone,
+        Language::Rhai => keystone_blocks::CodeLanguage::Rhai,
+    }
+}
+
+#[derive(Default)]
+pub struct VplSwitchState {
+    inspected: Option<(
+        String,
+        keystone_blocks::CodeLanguage,
+        keystone_blocks::CodeInspection,
+    )>,
+    confirm_for_stone: Option<usize>,
+}
+
+impl VplSwitchState {
+    fn inspect(
+        &mut self,
+        code: &str,
+        language: keystone_blocks::CodeLanguage,
+    ) -> keystone_blocks::CodeInspection {
+        match &self.inspected {
+            Some((cached_code, cached_language, inspection))
+                if cached_code == code && *cached_language == language =>
+            {
+                inspection.clone()
+            }
+            _ => {
+                let inspection = keystone_blocks::inspect_code(code, language);
+                self.inspected = Some((code.to_owned(), language, inspection.clone()));
+                inspection
+            }
+        }
+    }
+}
+
+#[derive(Debug, PartialEq)]
+enum VplOpen {
+    Open,
+    AskAboutComments,
+    Blocked(String),
+}
+
+fn vpl_open(inspection: keystone_blocks::CodeInspection) -> VplOpen {
+    match inspection {
+        keystone_blocks::CodeInspection::Representable {
+            has_comments: false,
+        } => VplOpen::Open,
+        keystone_blocks::CodeInspection::Representable { has_comments: true } => {
+            VplOpen::AskAboutComments
+        }
+        keystone_blocks::CodeInspection::Unrepresentable(reason) => VplOpen::Blocked(reason),
+    }
 }
 
 #[derive(Resource)]
@@ -325,7 +383,11 @@ pub struct StageUIParams<'w, 's> {
     file_storage: Res<'w, FileStorageResource>,
 }
 
-pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
+pub fn ui(
+    params: StageUIParams,
+    mut not_first: Local<bool>,
+    mut vpl_switch: Local<VplSwitchState>,
+) {
     let StageUIParams {
         mut commands,
         mut contexts,
@@ -673,18 +735,39 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                     });
                 }
 
-                let vpl_available = settings.script_language == Language::Keystone;
-                if !vpl_available {
-                    vpl_state.is_visible = false;
-                }
+                let code_language = block_language(settings.script_language);
+                let open = if vpl_state.is_visible {
+                    None
+                } else {
+                    editor
+                        .buffers
+                        .get(idx)
+                        .map(|code| vpl_open(vpl_switch.inspect(code, code_language)))
+                };
+                let blocked_reason = match &open {
+                    Some(VplOpen::Blocked(reason)) => Some(reason.as_str()),
+                    _ => None,
+                };
 
                 let vpl_button_text = if vpl_state.is_visible { "<< [ VPL ]" } else { ">> VPL" };
-                if ui
-                    .add_enabled(vpl_available, egui::Button::new(vpl_button_text))
-                    .on_disabled_hover_text("Blocks are available only for the Keystone language")
-                    .clicked()
-                {
-                    vpl_state.is_visible = !vpl_state.is_visible;
+                let mut vpl_button =
+                    ui.add_enabled(blocked_reason.is_none(), egui::Button::new(vpl_button_text));
+                if let Some(reason) = blocked_reason {
+                    vpl_button = vpl_button.on_disabled_hover_text(format!(
+                        "{}\n{}",
+                        tr(&localization, "stage-ui-vpl-unavailable"),
+                        reason
+                    ));
+                }
+                if vpl_button.clicked() {
+                    match open {
+                        None => vpl_state.is_visible = false,
+                        Some(VplOpen::Open) => vpl_state.is_visible = true,
+                        Some(VplOpen::AskAboutComments) => {
+                            vpl_switch.confirm_for_stone = Some(idx);
+                        }
+                        Some(VplOpen::Blocked(_)) => {}
+                    }
                 }
 
                 let font_offset = editor.font_offset;
@@ -703,6 +786,7 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
                         idx,
                         buffer,
                         allowed_commands,
+                        code_language,
                         egui::Vec2::new(available_size.x, text_height),
                         font_offset,
                         editing_locked,
@@ -888,6 +972,36 @@ pub fn ui(params: StageUIParams, mut not_first: Local<bool>) {
             });
 
         editor.stage_clear_popup_open = popup_open && !request_close;
+    }
+
+    if let Some(stone_idx) = vpl_switch.confirm_for_stone {
+        let mut answered = false;
+        let mut dialog_open = true;
+        egui::Window::new(tr(&localization, "stage-ui-vpl-comments-title"))
+            .anchor(Align2::CENTER_CENTER, egui::Vec2::ZERO)
+            .resizable(false)
+            .collapsible(false)
+            .open(&mut dialog_open)
+            .show(ctx, |ui| {
+                ui.label(tr(&localization, "stage-ui-vpl-comments-body"));
+                ui.add_space(12.0);
+                ui.horizontal(|ui| {
+                    let switch = tr(&localization, "stage-ui-vpl-comments-switch");
+                    if ui.button(switch.as_str()).clicked() {
+                        play_ui_click(&mut commands, &audio, &settings);
+                        vpl_state.is_visible = editor.selected_idx == stone_idx;
+                        answered = true;
+                    }
+                    let cancel = tr(&localization, "stage-ui-vpl-comments-cancel");
+                    if ui.button(cancel.as_str()).clicked() {
+                        play_ui_click(&mut commands, &audio, &settings);
+                        answered = true;
+                    }
+                });
+            });
+        if answered || !dialog_open {
+            vpl_switch.confirm_for_stone = None;
+        }
     }
 
     // // Draw in-stage (non-popup) clear banner while stage_cleared is true.
@@ -1393,7 +1507,10 @@ pub fn handle_tutorial_overlay_input(
 
 #[cfg(test)]
 mod tests {
-    use super::{Language, ScriptEditorState, command_help_args};
+    use super::{
+        Language, ScriptEditorState, VplOpen, VplSwitchState, block_language, command_help_args,
+        vpl_open,
+    };
     use crate::{
         resources::script_engine::KeystoneScriptExecutor, util::script_types::ScriptStepper,
     };
@@ -1408,6 +1525,49 @@ mod tests {
                 panic!("Keystone help example {key} ({source:?}) failed to compile: {error:?}");
             }
         }
+    }
+
+    #[test]
+    fn vpl_opens_only_for_code_the_blocks_can_show() {
+        let open = |code: &str, language| {
+            vpl_open(VplSwitchState::default().inspect(code, block_language(language)))
+        };
+
+        assert_eq!(open("move up", Language::Keystone), VplOpen::Open);
+        assert_eq!(open("move(\"up\");", Language::Rhai), VplOpen::Open);
+        assert_eq!(
+            open("// go\nmove(\"up\");", Language::Rhai),
+            VplOpen::AskAboutComments
+        );
+        assert!(matches!(
+            open("fn go() { move(\"up\"); }", Language::Rhai),
+            VplOpen::Blocked(_)
+        ));
+        assert!(matches!(
+            open("loop 3\n    move up", Language::Keystone),
+            VplOpen::Blocked(_)
+        ));
+        assert!(matches!(
+            open("move up", Language::Rhai),
+            VplOpen::Blocked(_)
+        ));
+    }
+
+    #[test]
+    fn vpl_inspection_is_redone_when_the_code_or_language_changes() {
+        let mut switch = VplSwitchState::default();
+        let rhai = block_language(Language::Rhai);
+        let keystone = block_language(Language::Keystone);
+
+        assert_eq!(vpl_open(switch.inspect("move up", keystone)), VplOpen::Open);
+        assert!(matches!(
+            vpl_open(switch.inspect("move up", rhai)),
+            VplOpen::Blocked(_)
+        ));
+        assert_eq!(
+            vpl_open(switch.inspect("move(\"up\");", rhai)),
+            VplOpen::Open
+        );
     }
 
     #[test]
