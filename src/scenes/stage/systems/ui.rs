@@ -155,7 +155,14 @@ fn show_vpl_in_panel(
     ]
     .into();
 
-    keystone_blocks::show_vpl_for_code(&mut child, vpl_state, stone_idx, code, allowed_commands)
+    keystone_blocks::show_vpl_for_code(
+        &mut child,
+        vpl_state,
+        stone_idx,
+        code,
+        allowed_commands,
+        keystone_blocks::CodeLanguage::Keystone,
+    )
 }
 
 #[derive(Resource)]
