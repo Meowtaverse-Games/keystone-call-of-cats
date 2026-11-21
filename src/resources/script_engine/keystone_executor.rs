@@ -249,6 +249,12 @@ fn map_error(err: Error) -> ScriptExecutionError {
         Error::NameError { name } => {
             ScriptExecutionError::Engine(format!("Name '{}' is not defined.", name))
         }
+        Error::TypeChanged { name, from, to } => ScriptExecutionError::Engine(format!(
+            "'{}' holds a {}, so it cannot be set to a {}.",
+            name,
+            type_to_str(from),
+            type_to_str(to)
+        )),
         Error::SyntaxError { messages } => {
             ScriptExecutionError::Engine(format!("Syntax error occurred. {}", messages[0]))
         }
