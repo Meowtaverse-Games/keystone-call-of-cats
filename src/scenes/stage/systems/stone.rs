@@ -153,6 +153,8 @@ pub fn spawn_stone(
         StoneType::Type2 => UVec2::new(4, 4),
         StoneType::Type3 => UVec2::new(2, 0),
         StoneType::Type4 => UVec2::new(5, 0),
+        // TODO: Type5 専用の見た目が決まるまで Type3 の画像を使い回す
+        StoneType::Type5 => UVec2::new(2, 0),
     };
 
     info!("stone_type: {:?}", stone_type);

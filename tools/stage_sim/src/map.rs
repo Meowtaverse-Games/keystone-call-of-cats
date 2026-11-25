@@ -13,6 +13,7 @@ pub enum StoneType {
     Type2,
     Type3,
     Type4,
+    Type5,
 }
 
 #[derive(Clone, Debug, Deserialize)]
