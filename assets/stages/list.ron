@@ -1,14 +1,24 @@
 [
-  (id: 1, unlocked: true),
-  (id: 2, unlocked: true),
-  (id: 3, unlocked: true),
-  (id: 4),
-  (id: 5),
-  (id: 6),
-  (id: 7),
-  (id: 8),
-  (id: 9),
-  (id: 10),
-  (id: 11),
-  (id: 12)
+  (id: "move", unlock_after: None, stages: [
+    (id: "move-01", published: true, unlocked: true),
+    (id: "move-02", published: true, unlocked: true),
+    (id: "move-03", published: true, unlocked: true),
+    (id: "move-04", published: true, unlocked: false),
+    (id: "move-05", published: true, unlocked: false),
+    (id: "move-06", published: true, unlocked: false),
+  ]),
+  (id: "sense", unlock_after: Some("move-06"), stages: [
+    (id: "sense-01", published: true, unlocked: false),
+    (id: "sense-02", published: true, unlocked: false),
+  ]),
+  (id: "dig", unlock_after: Some("sense-02"), stages: [
+    (id: "dig-01", published: true, unlocked: false),
+    (id: "dig-02", published: true, unlocked: false),
+    (id: "dig-03", published: true, unlocked: false),
+    (id: "dig-04", published: true, unlocked: false),
+  ]),
+  (id: "place", unlock_after: None, stages: [
+  ]),
+  (id: "signal", unlock_after: None, stages: [
+  ]),
 ]

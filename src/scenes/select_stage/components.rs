@@ -66,3 +66,8 @@ impl ButtonVisual {
         }
     }
 }
+
+#[derive(Component)]
+pub struct StageCategoryButton {
+    pub index: usize,
+}

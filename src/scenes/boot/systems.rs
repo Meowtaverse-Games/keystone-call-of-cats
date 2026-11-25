@@ -153,7 +153,7 @@ pub fn update(
     if boot_timer.timer.is_finished() && loaded.0 && localization_ready {
         info!("Boot timer finished");
         let mut target_state = GameState::SelectStage;
-        if let Some(stage_id) = launch_profile.stage_id {
+        if let Some(stage_id) = &launch_profile.stage_id {
             match stage_catalog.stage_by_id(stage_id) {
                 Some(stage) => {
                     info!("Launch profile selecting stage {:?}", stage.id);

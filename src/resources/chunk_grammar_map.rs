@@ -4,7 +4,7 @@ use std::collections::{HashMap, HashSet};
 
 use serde::Deserialize;
 
-use crate::resources::stage_catalog::{StageId, StageMeta};
+use crate::resources::stage_catalog::{StageCatalog, StageId};
 use crate::resources::stone_type::StoneType;
 
 pub const MAP_SIZE: (isize, isize) = (30, 20);
@@ -346,11 +346,11 @@ fn adjust_goal_layout(map: &mut Map) {
     }
 }
 
-pub fn show_ascii_map(stage_id: usize) {
-    let meta = StageMeta {
-        id: StageId(stage_id),
-        title: "".to_string(),
-        unlocked: true,
+pub fn show_ascii_map(stage_id: StageId) {
+    let catalog = StageCatalog::load_from_assets();
+    let Some(meta) = catalog.stage_by_id(&stage_id) else {
+        eprintln!("Unknown stage: {stage_id}");
+        return;
     };
 
     let map = meta.load_map();

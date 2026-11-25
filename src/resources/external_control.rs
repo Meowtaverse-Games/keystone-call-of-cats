@@ -67,7 +67,7 @@ pub struct ExternalCommand {
 #[derive(Clone, Debug, Default, Serialize)]
 pub struct ControlSnapshot {
     pub generation: u64,
-    pub active_stage: Option<usize>,
+    pub active_stage: Option<String>,
     pub external_owner: bool,
     pub stones: Vec<StoneSnapshot>,
 }
@@ -661,7 +661,7 @@ pub fn publish_external_snapshot(
 ) {
     let mut snapshot = ControlSnapshot {
         generation: control.generation,
-        active_stage: progression.current_stage().map(|s| s.id.0),
+        active_stage: progression.current_stage().map(|s| s.id.0.clone()),
         external_owner: control.owner,
         stones: Vec::new(),
     };
@@ -1318,7 +1318,7 @@ mod tests {
             .unwrap();
         *bridge.snapshot.lock().unwrap() = ControlSnapshot {
             generation: 2,
-            active_stage: Some(202),
+            active_stage: Some("move-02".into()),
             external_owner: true,
             stones: vec![StoneSnapshot {
                 index: 0,
@@ -1375,7 +1375,7 @@ mod tests {
             ingress,
             snapshot: Arc::new(Mutex::new(ControlSnapshot {
                 generation: 5,
-                active_stage: Some(202),
+                active_stage: Some("move-02".into()),
                 external_owner: true,
                 stones: vec![],
             })),

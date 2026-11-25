@@ -1,14 +1,16 @@
+#[path = "../../../src/resources/legacy_stage_ids.rs"]
+mod legacy_stage_ids;
 use std::{
     env, fs,
     path::{Path, PathBuf},
 };
 
-use anyhow::{Context, Result, anyhow};
+use anyhow::{anyhow, Context, Result};
 use clap::Parser;
 use dotenvy::dotenv;
 use reqwest::Client;
 use serde::Deserialize;
-use yup_oauth2::{InstalledFlowAuthenticator, InstalledFlowReturnMethod, read_application_secret};
+use yup_oauth2::{read_application_secret, InstalledFlowAuthenticator, InstalledFlowReturnMethod};
 
 #[derive(Parser, Debug)]
 #[command(
@@ -188,6 +190,19 @@ fn rows_to_entries(data: Vec<Vec<String>>) -> Vec<FluentEntry> {
             continue;
         }
 
+        let id = if let Ok(number) = id.parse::<usize>() {
+            let Some(mapped) = legacy_stage_ids::legacy_stage_id(number) else {
+                eprintln!(
+                    "Row {} has unmapped legacy stage {number}, skipping",
+                    index + 1
+                );
+                continue;
+            };
+            mapped
+        } else {
+            id
+        };
+
         let Some(text_row) = row.get(5) else {
             eprintln!("Row {} missing translation column, skipping", index + 1);
             continue;
@@ -218,13 +233,20 @@ fn render_entries(entries: &[FluentEntry]) -> String {
         out.push_str(format!("# stage {}", &entry.id).as_str());
         out.push('\n');
 
+        if let Some((category, _)) = entry.id.rsplit_once('-') {
+            out.push_str(&format!(
+                "stage-{}-name = {{ stage-category-{category}-name }} {{$number}}\n\n",
+                entry.id
+            ));
+        }
+
         out.push_str(&format_entry(
-            format!("stage{}-text", &entry.id).as_str(),
+            format!("stage-{}-text", &entry.id).as_str(),
             &entry.text,
         ));
         out.push_str("\n\n");
         out.push_str(&format_entry(
-            format!("stage{}-description", &entry.id).as_str(),
+            format!("stage-{}-description", &entry.id).as_str(),
             &entry.description,
         ));
         out.push_str("\n\n");
@@ -262,14 +284,34 @@ mod tests {
     use super::*;
 
     #[test]
+    fn accepts_stable_and_legacy_ids_but_skips_unmapped_numbers() {
+        let rows = ["dig-03", "11", "13", "23"].map(|id| {
+            vec![
+                id.into(),
+                "".into(),
+                "".into(),
+                "".into(),
+                "".into(),
+                "unchanged\ntext".into(),
+                "help".into(),
+            ]
+        });
+        let entries = rows_to_entries(rows.into());
+        assert_eq!(entries.len(), 2);
+        assert!(entries.iter().all(|e| e.id == "dig-03"));
+        let text = render_entries(&entries);
+        assert!(text.contains("stage-dig-03-text = unchanged\n    text"));
+        assert!(!text.contains("stage11"));
+    }
+    #[test]
     fn formats_single_line_entry() {
         let entry = format_entry("greeting", "hello world");
-        assert_eq!(entry, "greeting = hello world");
+        assert_eq!(entry, "greeting = hello world\r\n");
     }
 
     #[test]
     fn formats_multi_line_entry() {
         let entry = format_entry("intro", "line1\nline2\nline3");
-        assert_eq!(entry, "intro = line1\n    line2\n    line3");
+        assert_eq!(entry, "intro = line1\n    line2\n    line3\r\n");
     }
 }
