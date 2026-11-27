@@ -166,6 +166,10 @@ fn show_vpl_in_panel(
     )
 }
 
+fn blocks_available(language: Language) -> bool {
+    language == Language::Keystone || cfg!(feature = "experimental")
+}
+
 fn block_language(language: Language) -> keystone_blocks::CodeLanguage {
     match language {
         Language::Keystone => keystone_blocks::CodeLanguage::Keystone,
@@ -735,8 +739,14 @@ pub fn ui(
                     });
                 }
 
+                let vpl_available = blocks_available(settings.script_language);
+                if !vpl_available {
+                    vpl_state.is_visible = false;
+                    vpl_switch.confirm_for_stone = None;
+                }
+
                 let code_language = block_language(settings.script_language);
-                let open = if vpl_state.is_visible {
+                let open = if !vpl_available || vpl_state.is_visible {
                     None
                 } else {
                     editor
@@ -750,9 +760,14 @@ pub fn ui(
                 };
 
                 let vpl_button_text = if vpl_state.is_visible { "<< [ VPL ]" } else { ">> VPL" };
-                let mut vpl_button =
-                    ui.add_enabled(blocked_reason.is_none(), egui::Button::new(vpl_button_text));
-                if let Some(reason) = blocked_reason {
+                let mut vpl_button = ui.add_enabled(
+                    vpl_available && blocked_reason.is_none(),
+                    egui::Button::new(vpl_button_text),
+                );
+                if !vpl_available {
+                    vpl_button = vpl_button
+                        .on_disabled_hover_text("Blocks are available only for the Keystone language");
+                } else if let Some(reason) = blocked_reason {
                     vpl_button = vpl_button.on_disabled_hover_text(format!(
                         "{}\n{}",
                         tr(&localization, "stage-ui-vpl-unavailable"),
@@ -1508,8 +1523,8 @@ pub fn handle_tutorial_overlay_input(
 #[cfg(test)]
 mod tests {
     use super::{
-        Language, ScriptEditorState, VplOpen, VplSwitchState, block_language, command_help_args,
-        vpl_open,
+        Language, ScriptEditorState, VplOpen, VplSwitchState, block_language, blocks_available,
+        command_help_args, vpl_open,
     };
     use crate::{
         resources::script_engine::KeystoneScriptExecutor, util::script_types::ScriptStepper,
@@ -1551,6 +1566,15 @@ mod tests {
             open("move up", Language::Rhai),
             VplOpen::Blocked(_)
         ));
+    }
+
+    #[test]
+    fn rhai_blocks_are_offered_only_in_experimental_builds() {
+        assert!(blocks_available(Language::Keystone));
+        assert_eq!(
+            blocks_available(Language::Rhai),
+            cfg!(feature = "experimental")
+        );
     }
 
     #[test]
