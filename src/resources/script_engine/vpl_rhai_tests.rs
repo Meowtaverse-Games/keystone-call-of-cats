@@ -50,6 +50,9 @@ const PROGRAMS: &[&str] = &[
     "if is_empty(down)\n    place down\nelse\n    move right\nend\nif is_touched()\n    move left\nelse\n    sleep 0.5\nend",
     // Nested loops, which need different loop counters in Rhai.
     "loop 2\n    loop 2\n        move up\n    end\n    sleep 0.5\nend\nmove down",
+    // A forever loop, which the blocks write as Rhai's `loop { }`. Only the first
+    // commands are compared, since it never ends.
+    "while true\n    move up\n    sleep 1\nend",
     // `print` sends no command but must still run.
     "word = \"hi\"\nprint word\nmove right",
 ];
@@ -61,14 +64,25 @@ fn rhai_written_by_the_blocks_runs_like_the_same_keystone() {
 
     for source in PROGRAMS {
         let rhai_source = blocks_as_rhai(source);
-        let expected = commands(&keystone, source);
+        let mut expected = commands(&keystone, source);
+        let mut actual = commands(&rhai, &rhai_source);
         assert!(!expected.is_empty(), "{source:?} sends no commands");
+        if source.starts_with("while true") {
+            const START: usize = 40;
+            assert!(expected.len() >= START && actual.len() >= START);
+            expected.truncate(START);
+            actual.truncate(START);
+        }
         assert_eq!(
-            commands(&rhai, &rhai_source),
-            expected,
+            actual, expected,
             "\n--- keystone\n{source}\n--- rhai\n{rhai_source}"
         );
     }
+}
+
+#[test]
+fn a_forever_loop_is_written_as_rhai_loop() {
+    assert!(blocks_as_rhai("while true\n    move up\nend").starts_with("loop {"));
 }
 
 #[test]
