@@ -1,5 +1,7 @@
 mod keystone_executor;
 mod rhai_executor;
+#[cfg(test)]
+mod vpl_rhai_tests;
 
 use bevy::prelude::Resource;
 use serde::{Deserialize, Serialize};
