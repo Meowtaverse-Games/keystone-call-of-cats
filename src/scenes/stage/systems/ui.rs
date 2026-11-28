@@ -112,6 +112,13 @@ const FONT_OFFSET_STEP: f32 = 1.0;
 const FONT_OFFSET_MIN: f32 = -6.0;
 const FONT_OFFSET_MAX: f32 = 0.0;
 
+const MIN_EDITOR_HEIGHT: f32 = 160.0;
+
+fn editor_height(remaining: f32, help_height: f32, item_spacing: f32) -> f32 {
+    let gap = if help_height > 0.0 { item_spacing } else { 0.0 };
+    (remaining - help_height - gap).max(MIN_EDITOR_HEIGHT)
+}
+
 fn scaled_panel_font_size(base: f32, offset: f32) -> f32 {
     ((base + offset).max(4.0)) * 2.0
 }
@@ -713,7 +720,6 @@ pub fn ui(
                 let help_target_height = 220.0;
                 let help_height = help_anim * help_target_height;
 
-                let text_height = (available_size.y - help_height).max(160.0);
                 let font_size = scaled_panel_font_size(BASE_EDITOR_FONT_SIZE, editor.font_offset);
                 let editing_locked = editor.controls_enabled;
 
@@ -784,6 +790,16 @@ pub fn ui(
                         Some(VplOpen::Blocked(_)) => {}
                     }
                 }
+
+                let mut remaining_height = ui.available_height();
+                if !remaining_height.is_finite() {
+                    remaining_height = available_size.y;
+                }
+                let text_height = editor_height(
+                    remaining_height,
+                    help_height,
+                    ui.spacing().item_spacing.y,
+                );
 
                 let font_offset = editor.font_offset;
                 if vpl_state.is_visible
@@ -1523,8 +1539,8 @@ pub fn handle_tutorial_overlay_input(
 #[cfg(test)]
 mod tests {
     use super::{
-        Language, ScriptEditorState, VplOpen, VplSwitchState, block_language, blocks_available,
-        command_help_args, vpl_open,
+        Language, MIN_EDITOR_HEIGHT, ScriptEditorState, VplOpen, VplSwitchState, block_language,
+        blocks_available, command_help_args, editor_height, vpl_open,
     };
     use crate::{
         resources::script_engine::KeystoneScriptExecutor, util::script_types::ScriptStepper,
@@ -1566,6 +1582,13 @@ mod tests {
             open("move up", Language::Rhai),
             VplOpen::Blocked(_)
         ));
+    }
+
+    #[test]
+    fn the_editor_fills_what_is_left_below_its_rows() {
+        assert_eq!(editor_height(500.0, 0.0, 4.0), 500.0);
+        assert_eq!(editor_height(500.0, 220.0, 4.0), 276.0);
+        assert_eq!(editor_height(100.0, 0.0, 4.0), MIN_EDITOR_HEIGHT);
     }
 
     #[test]
